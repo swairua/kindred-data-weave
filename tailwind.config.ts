@@ -13,6 +13,10 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        body: ['var(--font-body)'],
+        mono: ['var(--font-mono)'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -46,6 +50,18 @@ export default {
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+        },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        calculated: {
+          DEFAULT: "hsl(var(--calculated))",
+          foreground: "hsl(var(--calculated-foreground))",
         },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",

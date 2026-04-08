@@ -1,16 +1,414 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Input } from "@/components/ui/input";
+import { ProjectContext } from "@/context/ProjectContext";
+import { useTestData } from "@/context/TestDataContext";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "sonner";
+import {
+  ChevronDown,
+  FileText,
+  FlaskConical,
+  Hammer,
+  LayoutDashboard,
+  Loader2,
+  LogOut,
+  Mountain,
+  TestTubeDiagonal,
+} from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-// IMPORTANT: Fully REPLACE this with your own code
-const PlaceholderIndex = () => {
-  // PLACEHOLDER: Replace this entire return statement with the user's app.
-  // The inline background color is intentionally not part of the design system.
+import GradingTest from "@/components/soil/GradingTest";
+import AtterbergTest from "@/components/soil/AtterbergTest";
+import ProctorTest from "@/components/soil/ProctorTest";
+import CBRTest from "@/components/soil/CBRTest";
+import ShearTest from "@/components/soil/ShearTest";
+import ConsolidationTest from "@/components/soil/ConsolidationTest";
+
+import SlumpTest from "@/components/concrete/SlumpTest";
+import CompressiveStrengthTest from "@/components/concrete/CompressiveStrengthTest";
+import UPVTTest from "@/components/concrete/UPVTTest";
+import SchmidtHammerTest from "@/components/concrete/SchmidtHammerTest";
+import CoringTest from "@/components/concrete/CoringTest";
+import ConcreteCubesTest from "@/components/concrete/ConcreteCubesTest";
+
+import UCSTest from "@/components/rock/UCSTest";
+import PointLoadTest from "@/components/rock/PointLoadTest";
+import PorosityTest from "@/components/rock/PorosityTest";
+
+import SPTTest from "@/components/special/SPTTest";
+import DCPTest from "@/components/special/DCPTest";
+
+import Dashboard from "@/pages/Dashboard";
+import Reports from "@/pages/Reports";
+import Admin from "@/pages/Admin";
+import { fetchCurrentUser, loginUser, logoutUser, type ApiUser } from "@/lib/api";
+
+interface IndexProps {
+  initialTab?: string;
+}
+
+type AuthStatus = "checking" | "authenticated" | "unauthenticated";
+
+const Index = ({ initialTab }: IndexProps) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const testData = useTestData();
+  const isTestsPage = location.pathname === "/tests";
+  const isReportsPage = location.pathname === "/reports";
+  const [view, setView] = useState<"dashboard" | "tests" | "reports" | "admin">(
+    isReportsPage ? "reports" : isTestsPage ? "tests" : "dashboard",
+  );
+  const [projectName, setProjectName] = useState("");
+  const [clientName, setClientName] = useState("");
+  const [showAdvancedMetadata, setShowAdvancedMetadata] = useState(false);
+  const [authStatus, setAuthStatus] = useState<AuthStatus>("checking");
+  const [currentUser, setCurrentUser] = useState<ApiUser | null>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isSubmittingLogin, setIsSubmittingLogin] = useState(false);
+  const today = new Date().toISOString().split("T")[0];
+
+  const projectCtx = useMemo(() => ({ projectName, clientName, date: today }), [projectName, clientName, today]);
+  const isAuthenticated = authStatus === "authenticated";
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const restoreSession = async () => {
+      const user = await fetchCurrentUser();
+
+      if (!isMounted) return;
+
+      if (user) {
+        setCurrentUser(user);
+        setAuthStatus("authenticated");
+      } else {
+        setCurrentUser(null);
+        setAuthStatus("unauthenticated");
+      }
+    };
+
+    restoreSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleProjectNameChange = (value: string) => {
+    setProjectName(value);
+    testData.updateProjectMetadata({ projectName: value });
+  };
+
+  const handleClientNameChange = (value: string) => {
+    setClientName(value);
+    testData.updateProjectMetadata({ clientName: value });
+  };
+
+  const handleMetadataChange = (key: keyof typeof testData.projectMetadata, value: string) => {
+    testData.updateProjectMetadata({ [key]: value });
+  };
+
+  const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const nextEmail = email.trim();
+    if (!nextEmail || !password) {
+      toast.error("Enter your email and password");
+      return;
+    }
+
+    setIsSubmittingLogin(true);
+
+    try {
+      const response = await loginUser(nextEmail, password);
+      setCurrentUser(response.user);
+      setAuthStatus("authenticated");
+      setEmail(nextEmail);
+      setPassword("");
+      toast.success(`Signed in as ${response.user.name}`);
+    } catch (error) {
+      setCurrentUser(null);
+      setAuthStatus("unauthenticated");
+      toast.error(error instanceof Error ? error.message : "Login failed");
+    } finally {
+      setIsSubmittingLogin(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+      toast.success("Logged out");
+    } catch (error) {
+      console.error("Failed to logout:", error);
+      toast.error("Failed to end the remote session");
+    } finally {
+      setCurrentUser(null);
+      setPassword("");
+      setAuthStatus("unauthenticated");
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: '#fcfbf8' }}>
-      <img data-lovable-blank-page-placeholder="REMOVE_THIS" src="/placeholder.svg" alt="Your app will live here!" />
-    </div>
+    <ProjectContext.Provider value={projectCtx}>
+      <div className="min-h-screen bg-background">
+        <header className="border-b bg-card sticky top-0 z-10">
+          <div className="container max-w-6xl mx-auto px-4 py-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center">
+                  <FlaskConical className="h-5 w-5 text-primary-foreground" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-foreground tracking-tight">Engineering Material Testing</h1>
+                  <p className="text-xs text-muted-foreground">Laboratory Test Data Management</p>
+                </div>
+              </div>
+
+              {authStatus === "checking" ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Checking session
+                </div>
+              ) : currentUser ? (
+                <div className="flex items-center gap-3 self-start sm:self-auto">
+                  <div className="text-left sm:text-right">
+                    <p className="text-sm font-medium text-foreground">{currentUser.name}</p>
+                    <p className="text-xs text-muted-foreground">{currentUser.email}</p>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={handleLogout}>
+                    <LogOut className="h-4 w-4" /> Logout
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+
+            {isAuthenticated && (
+              <>
+                <div className="mt-4 flex gap-2">
+                  <Button
+                    variant={view === "dashboard" ? "default" : "outline"}
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => {
+                      setView("dashboard");
+                      navigate("/");
+                    }}
+                  >
+                    <LayoutDashboard className="h-4 w-4" /> Dashboard
+                  </Button>
+                  <Button
+                    variant={view === "tests" ? "default" : "outline"}
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => {
+                      setView("tests");
+                      navigate("/tests");
+                    }}
+                  >
+                    <FlaskConical className="h-4 w-4" /> Tests
+                  </Button>
+                  <Button
+                    variant={view === "reports" ? "default" : "outline"}
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => {
+                      setView("reports");
+                      navigate("/reports");
+                    }}
+                  >
+                    <FileText className="h-4 w-4" /> Reports
+                  </Button>
+                  <Button
+                    variant={view === "admin" ? "default" : "outline"}
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => {
+                      setView("admin");
+                      navigate("/");
+                    }}
+                  >
+                    <Hammer className="h-4 w-4" /> Admin
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Project Name</Label>
+                    <Input value={projectName} onChange={(e) => handleProjectNameChange(e.target.value)} placeholder="Enter project name" className="h-9" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Client Name</Label>
+                    <Input value={clientName} onChange={(e) => handleClientNameChange(e.target.value)} placeholder="Enter client name" className="h-9" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Date</Label>
+                    <Input value={today} readOnly className="h-9 calculated-field cursor-default" />
+                  </div>
+                </div>
+
+                <Collapsible open={showAdvancedMetadata} onOpenChange={setShowAdvancedMetadata} className="mt-3 border-t pt-3">
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="gap-1.5 h-8 px-2 text-xs">
+                      <ChevronDown className="h-4 w-4 transition-transform" style={{ transform: showAdvancedMetadata ? "rotate(180deg)" : "rotate(0deg)" }} />
+                      Advanced Metadata
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-3 space-y-3 pt-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Lab Organization</Label>
+                        <Input
+                          value={testData.projectMetadata.labOrganization || ""}
+                          onChange={(e) => handleMetadataChange("labOrganization", e.target.value)}
+                          placeholder="Enter lab organization"
+                          className="h-9"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Date Reported</Label>
+                        <Input
+                          type="date"
+                          value={testData.projectMetadata.dateReported || ""}
+                          onChange={(e) => handleMetadataChange("dateReported", e.target.value)}
+                          className="h-9"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Checked By</Label>
+                        <Input
+                          value={testData.projectMetadata.checkedBy || ""}
+                          onChange={(e) => handleMetadataChange("checkedBy", e.target.value)}
+                          placeholder="Enter name of person who checked"
+                          className="h-9"
+                        />
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              </>
+            )}
+          </div>
+        </header>
+
+        <main className="container max-w-6xl mx-auto px-4 py-6">
+          {authStatus === "checking" ? (
+            <div className="flex min-h-[60vh] items-center justify-center">
+              <Card className="w-full max-w-md shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-lg">Checking your session</CardTitle>
+                  <CardDescription>Connecting to the lab API.</CardDescription>
+                </CardHeader>
+                <CardContent className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Please wait
+                </CardContent>
+              </Card>
+            </div>
+          ) : !isAuthenticated ? (
+            <div className="flex min-h-[60vh] items-center justify-center">
+              <Card className="w-full max-w-md shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-lg">Sign in</CardTitle>
+                  <CardDescription>Use your lab account to access tests, dashboards, and reports.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form className="space-y-4" onSubmit={handleLogin}>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={email}
+                        onChange={(event) => setEmail(event.target.value)}
+                        placeholder="Enter your email"
+                        autoComplete="email"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="password">Password</Label>
+                      <Input
+                        id="password"
+                        type="password"
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                        placeholder="Enter your password"
+                        autoComplete="current-password"
+                      />
+                    </div>
+                    <Button type="submit" className="w-full" disabled={isSubmittingLogin}>
+                      {isSubmittingLogin ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" /> Signing in
+                        </>
+                      ) : (
+                        "Login"
+                      )}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            </div>
+          ) : view === "dashboard" ? (
+            <Dashboard />
+          ) : view === "reports" ? (
+            <Reports />
+          ) : view === "admin" ? (
+            <Admin />
+          ) : (
+            <Tabs defaultValue={initialTab || "soil"} className="w-full">
+              <TabsList className="w-full grid grid-cols-4 mb-6 h-11">
+                <TabsTrigger value="soil" className="gap-1.5 text-sm">
+                  <Mountain className="h-4 w-4" /> Soil
+                </TabsTrigger>
+                <TabsTrigger value="concrete" className="gap-1.5 text-sm">
+                  <Hammer className="h-4 w-4" /> Concrete
+                </TabsTrigger>
+                <TabsTrigger value="rock" className="gap-1.5 text-sm">
+                  <Mountain className="h-4 w-4" /> Rock
+                </TabsTrigger>
+                <TabsTrigger value="special" className="gap-1.5 text-sm">
+                  <TestTubeDiagonal className="h-4 w-4" /> Special
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="soil" className="space-y-4">
+                <AtterbergTest />
+                <GradingTest />
+                <ProctorTest />
+                <CBRTest />
+                <ShearTest />
+                <ConsolidationTest />
+              </TabsContent>
+
+              <TabsContent value="concrete" className="space-y-4">
+                <UPVTTest />
+                <SchmidtHammerTest />
+                <CoringTest />
+                <ConcreteCubesTest />
+                <SlumpTest />
+                <CompressiveStrengthTest />
+              </TabsContent>
+
+              <TabsContent value="rock" className="space-y-4">
+                <UCSTest />
+                <PointLoadTest />
+                <PorosityTest />
+              </TabsContent>
+
+              <TabsContent value="special" className="space-y-4">
+                <SPTTest />
+                <DCPTest />
+              </TabsContent>
+            </Tabs>
+          )}
+        </main>
+      </div>
+    </ProjectContext.Provider>
   );
 };
-
-const Index = PlaceholderIndex;
 
 export default Index;
