@@ -42,6 +42,7 @@ import {
   countCompletedTests,
   countRecordDataPoints,
   deriveAtterbergStatus,
+  getRecordValidationMessages,
   isLiquidLimitTrialValid,
   isPlasticLimitTrialValid,
   isShrinkageLimitTrialValid,
