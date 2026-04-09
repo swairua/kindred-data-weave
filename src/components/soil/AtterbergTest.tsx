@@ -1347,6 +1347,7 @@ const RecordCard = ({
                 ) : null;
               })()}
 
+              {record.results.liquidLimit !== undefined || record.results.plasticityIndex !== undefined ? (
                 <PlasticityChart
                   liquidLimit={record.results.liquidLimit ?? null}
                   plasticityIndex={record.results.plasticityIndex ?? null}
