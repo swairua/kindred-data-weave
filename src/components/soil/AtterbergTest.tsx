@@ -1333,7 +1333,20 @@ const RecordCard = ({
                 </div>
               </div>
 
-              {record.results.liquidLimit !== undefined || record.results.plasticityIndex !== undefined ? (
+              {(() => {
+                const { warnings } = getRecordValidationMessages(record);
+                return warnings.length > 0 ? (
+                  <div className="flex gap-2 rounded-lg border border-amber-200/50 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/30 dark:bg-amber-950/20 dark:text-amber-200">
+                    <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      {warnings.map((warn, i) => (
+                        <div key={i}>{warn}</div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null;
+              })()}
+
                 <PlasticityChart
                   liquidLimit={record.results.liquidLimit ?? null}
                   plasticityIndex={record.results.plasticityIndex ?? null}
