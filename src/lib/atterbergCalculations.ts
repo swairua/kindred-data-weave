@@ -436,8 +436,9 @@ export const getTestValidationMessages = (test: AtterbergTest): { errors: string
   return { errors, warnings };
 };
 
-export const getRecordValidationMessages = (record: AtterbergRecord): { errors: string[]; info: string[] } => {
+export const getRecordValidationMessages = (record: AtterbergRecord): { errors: string[]; warnings: string[]; info: string[] } => {
   const errors: string[] = [];
+  const warnings: string[] = [];
   const info: string[] = [];
 
   if (record.tests.length === 0) {
@@ -451,12 +452,17 @@ export const getRecordValidationMessages = (record: AtterbergRecord): { errors: 
     info.push(`Progress: ${completedTests}/${totalTests} tests completed`);
   }
 
-  const plasticityIndex = record.results.plasticityIndex;
-  if (plasticityIndex !== undefined && plasticityIndex < 1) {
+  const { liquidLimit, plasticLimit, plasticityIndex } = record.results;
+
+  if (plasticityIndex !== undefined && plasticityIndex < 0) {
+    warnings.push(
+      `Plastic Limit (${plasticLimit}%) exceeds Liquid Limit (${liquidLimit}%) — PI is negative (${plasticityIndex}%). Please verify your data entry.`
+    );
+  } else if (plasticityIndex !== undefined && plasticityIndex < 1) {
     info.push("Soil appears to be non-plastic or nearly non-plastic");
   }
 
-  return { errors, info };
+  return { errors, warnings, info };
 };
 
 export const buildAtterbergSummaryFields = (results: CalculatedResults, recordCount: number, totalDataPoints: number) => [
