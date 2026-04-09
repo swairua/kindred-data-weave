@@ -193,7 +193,7 @@ export const calculateShrinkageLimit = (trials: ShrinkageLimitTrial[]): number |
  */
 export const calculatePlasticityIndex = (liquidLimit: number | null, plasticLimit: number | null): number | null => {
   if (liquidLimit === null || plasticLimit === null) return null;
-  if (liquidLimit < 0 || plasticLimit < 0 || plasticLimit > liquidLimit) return null;
+  if (liquidLimit < 0 || plasticLimit < 0) return null;
   return round(liquidLimit - plasticLimit);
 };
 

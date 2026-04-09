@@ -127,7 +127,7 @@ const PlasticityChart: React.FC<PlasticityChartProps> = ({ liquidLimit, plastici
       <div className="rounded-lg border bg-white p-4 dark:bg-slate-950">
         <h3 className="text-sm font-semibold mb-4">Plasticity Chart (ASTM D2487)</h3>
 
-        {scatterData.length > 0 ? (
+        {liquidLimit !== null ? (
           <ResponsiveContainer width="100%" height={400}>
             <ScatterChart margin={{ top: 20, right: 20, bottom: 60, left: 60 }}>
               <CartesianGrid strokeDasharray="3 3" />
