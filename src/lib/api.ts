@@ -1,27 +1,6 @@
 const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
 
-// In development, use the local proxy; in production, use the configured URL or external API
-const isDevelopment = import.meta.env.DEV;
-
-// Get the base URL - construct absolute URL for relative paths
-const getApiBaseUrl = (): string => {
-  if (configuredApiBaseUrl) {
-    return configuredApiBaseUrl;
-  }
-
-  if (isDevelopment) {
-    // In development, use the local proxy via relative path
-    // This will use the current window's origin
-    if (typeof window !== "undefined") {
-      return `${window.location.origin}/api/`;
-    }
-    return "/api/";
-  }
-
-  return "https://lab.wayrus.co.ke/api.php";
-};
-
-export const API_BASE_URL = getApiBaseUrl();
+export const API_BASE_URL = configuredApiBaseUrl || "https://lab.wayrus.co.ke/api.php";
 
 export interface ApiUser {
   id: number;
