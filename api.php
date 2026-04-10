@@ -260,26 +260,39 @@ function logAuditSave(
     string $testKey = 'atterberg',
     ?string $errorMessage = null
 ): bool {
-    $sql = "INSERT INTO atterberg_save_audit
-            (test_result_id, user_id, status, data_points, test_key, error_message)
-            VALUES (?, ?, ?, ?, ?, ?)";
+    try {
+        // Check if table exists first
+        $tableCheck = $conn->query("SELECT 1 FROM atterberg_save_audit LIMIT 1");
+        if ($tableCheck === false) {
+            error_log("atterberg_save_audit table does not exist or cannot be accessed: " . $conn->error);
+            return false;
+        }
 
-    $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        error_log("Failed to prepare audit log statement: " . $conn->error);
-        return false;
-    }
+        $sql = "INSERT INTO atterberg_save_audit
+                (test_result_id, user_id, status, data_points, test_key, error_message)
+                VALUES (?, ?, ?, ?, ?, ?)";
 
-    $stmt->bind_param('iisiss', $testResultId, $userId, $status, $dataPoints, $testKey, $errorMessage);
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            error_log("Failed to prepare audit log statement: " . $conn->error);
+            return false;
+        }
 
-    if (!$stmt->execute()) {
-        error_log("Failed to execute audit log: " . $stmt->error);
+        $stmt->bind_param('iisiss', $testResultId, $userId, $status, $dataPoints, $testKey, $errorMessage);
+
+        if (!$stmt->execute()) {
+            error_log("Failed to execute audit log for test_result_id=$testResultId: " . $stmt->error);
+            $stmt->close();
+            return false;
+        }
+
+        error_log("Audit log created: test_result_id=$testResultId, status=$status, data_points=$dataPoints");
         $stmt->close();
+        return true;
+    } catch (Throwable $e) {
+        error_log("Exception in logAuditSave: " . $e->getMessage());
         return false;
     }
-
-    $stmt->close();
-    return true;
 }
 
 function updateAuditSaveCompletion(
@@ -757,9 +770,14 @@ try {
         $created = $conn->query("SELECT * FROM `$table` WHERE `$primaryKey` = '" . $conn->real_escape_string((string) $insertId) . "' LIMIT 1")->fetch_assoc();
 
         // Log audit for Atterberg test saves
+        error_log("CREATE: table=$table, test_key=" . ($payload['test_key'] ?? 'NOT_SET'));
         if ($table === 'test_results' && ($payload['test_key'] ?? '') === 'atterberg') {
             $dataPoints = (int) ($payload['data_points'] ?? 0);
-            logAuditSave($conn, $insertId, $userId, 'completed', $dataPoints, 'atterberg');
+            error_log("Creating audit log for test_result_id=$insertId, data_points=$dataPoints");
+            $auditResult = logAuditSave($conn, $insertId, $userId, 'completed', $dataPoints, 'atterberg');
+            error_log("Audit log result: " . ($auditResult ? 'SUCCESS' : 'FAILED'));
+        } else {
+            error_log("Audit logging skipped: table match=" . ($table === 'test_results' ? 'YES' : 'NO') . ", test_key match=" . (($payload['test_key'] ?? '') === 'atterberg' ? 'YES' : 'NO'));
         }
 
         respond([
@@ -827,9 +845,14 @@ try {
         $updated = $conn->query("SELECT * FROM `$table` WHERE `$primaryKey` = '" . $conn->real_escape_string((string) $id) . "' LIMIT 1")->fetch_assoc();
 
         // Log audit for Atterberg test saves
+        error_log("UPDATE: table=$table, id=$id, test_key=" . ($payload['test_key'] ?? 'NOT_SET'));
         if ($table === 'test_results' && ($payload['test_key'] ?? '') === 'atterberg') {
             $dataPoints = (int) ($payload['data_points'] ?? 0);
-            logAuditSave($conn, (int) $id, $userId, 'completed', $dataPoints, 'atterberg');
+            error_log("Creating audit log for test_result_id=$id, data_points=$dataPoints");
+            $auditResult = logAuditSave($conn, (int) $id, $userId, 'completed', $dataPoints, 'atterberg');
+            error_log("Audit log result: " . ($auditResult ? 'SUCCESS' : 'FAILED'));
+        } else {
+            error_log("Audit logging skipped: table match=" . ($table === 'test_results' ? 'YES' : 'NO') . ", test_key match=" . (($payload['test_key'] ?? '') === 'atterberg' ? 'YES' : 'NO'));
         }
 
         respond([
