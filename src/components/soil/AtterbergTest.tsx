@@ -542,14 +542,16 @@ const AtterbergTest = () => {
     };
   }, []);
 
-  const { totalDataPoints, aggregateResults, aggregateProjectResults, status, totalCompletedTests } = useMemo(() => {
+  const { totalDataPoints, totalStartedDataPoints, aggregateResults, aggregateProjectResults, status, totalCompletedTests } = useMemo(() => {
     const totalPoints = computedRecords.reduce((sum, record) => sum + record.dataPoints, 0);
+    const totalStartedPoints = computedRecords.reduce((sum, record) => sum + record.startedDataPoints, 0);
     const completedTests = computedRecords.reduce((sum, record) => sum + record.completedTests, 0);
     const totalTests = computedRecords.reduce((sum, record) => sum + record.tests.length, 0);
     const projectResults = calculateProjectResults(computedRecords);
 
     return {
       totalDataPoints: totalPoints,
+      totalStartedDataPoints: totalStartedPoints,
       totalCompletedTests: completedTests,
       aggregateProjectResults: projectResults,
       status: deriveAtterbergStatus(totalPoints, completedTests, totalTests),
@@ -557,7 +559,7 @@ const AtterbergTest = () => {
     };
   }, [computedRecords]);
 
-  useTestReport("atterberg", totalDataPoints, aggregateResults, status);
+  useTestReport("atterberg", totalDataPoints, aggregateResults, status, totalStartedDataPoints);
 
   useEffect(() => {
     if (!hydratedRef.current) return;
