@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { listRecords } from "@/lib/api";
 
 export type TestStatus = "not-started" | "in-progress" | "completed";
 
@@ -9,6 +10,8 @@ export interface TestSummary {
   status: TestStatus;
   dataPoints: number;
   keyResults: { label: string; value: string }[];
+  enabled?: boolean;
+  sortOrder?: number;
 }
 
 // Generic project-level metadata (used across all test types)
@@ -163,6 +166,38 @@ export const TestDataProvider = ({ children }: { children: ReactNode }) => {
   const [tests, setTests] = useState<Record<string, TestSummary>>(defaultTests);
   const [projectMetadata, setProjectMetadata] = useState<ProjectMetadata>({});
   const [recordMetadata, setRecordMetadata] = useState<Record<string, RecordMetadata>>({});
+
+  useEffect(() => {
+    const loadTestDefinitions = async () => {
+      try {
+        const response = await listRecords("test_definitions", { limit: 1000 });
+        if (response?.data && Array.isArray(response.data)) {
+          const loadedTests: Record<string, TestSummary> = { ...defaultTests };
+
+          for (const record of response.data) {
+            const testKey = record.test_key;
+            if (testKey && loadedTests[testKey]) {
+              // Merge API data with default test
+              loadedTests[testKey] = {
+                ...loadedTests[testKey],
+                name: record.name || loadedTests[testKey].name,
+                category: record.category || loadedTests[testKey].category,
+                enabled: record.enabled !== false && record.enabled !== 0,
+                sortOrder: record.sort_order || 0,
+              };
+            }
+          }
+
+          setTests(loadedTests);
+        }
+      } catch (error) {
+        console.error("Failed to load test definitions from API:", error);
+        // Fall back to defaultTests if API fails
+      }
+    };
+
+    loadTestDefinitions();
+  }, []);
 
   const updateTest = useCallback((id: string, data: Partial<Omit<TestSummary, "id">>) => {
     setTests((prev) => ({

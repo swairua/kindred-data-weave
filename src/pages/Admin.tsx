@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Upload, Loader2, X } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { buildApiUrl } from "@/lib/api";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -12,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { TestDefinitionsManager } from "@/components/admin/TestDefinitionsManager";
 
 type ImageType = "logo" | "contacts" | "stamp";
 
@@ -208,9 +210,15 @@ const Admin = () => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Images Preview Section */}
-      <Card>
+    <Tabs defaultValue="images" className="w-full">
+      <TabsList className="grid w-full grid-cols-2">
+        <TabsTrigger value="images">Media Library</TabsTrigger>
+        <TabsTrigger value="tests">Test Definitions</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="images" className="space-y-6">
+        {/* Images Preview Section */}
+        <Card>
         <CardHeader>
           <CardTitle>Stored Images Preview</CardTitle>
           <CardDescription>Currently stored lab images (Logo, Contacts, Stamp)</CardDescription>
@@ -363,7 +371,12 @@ const Admin = () => {
           </CardContent>
         </Card>
       )}
-    </div>
+      </TabsContent>
+
+      <TabsContent value="tests" className="space-y-6">
+        <TestDefinitionsManager />
+      </TabsContent>
+    </Tabs>
   );
 };
 

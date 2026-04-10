@@ -21,37 +21,109 @@ import {
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-import GradingTest from "@/components/soil/GradingTest";
-import AtterbergTest from "@/components/soil/AtterbergTest";
-import ProctorTest from "@/components/soil/ProctorTest";
-import CBRTest from "@/components/soil/CBRTest";
-import ShearTest from "@/components/soil/ShearTest";
-import ConsolidationTest from "@/components/soil/ConsolidationTest";
-
-import SlumpTest from "@/components/concrete/SlumpTest";
-import CompressiveStrengthTest from "@/components/concrete/CompressiveStrengthTest";
-import UPVTTest from "@/components/concrete/UPVTTest";
-import SchmidtHammerTest from "@/components/concrete/SchmidtHammerTest";
-import CoringTest from "@/components/concrete/CoringTest";
-import ConcreteCubesTest from "@/components/concrete/ConcreteCubesTest";
-
-import UCSTest from "@/components/rock/UCSTest";
-import PointLoadTest from "@/components/rock/PointLoadTest";
-import PorosityTest from "@/components/rock/PorosityTest";
-
-import SPTTest from "@/components/special/SPTTest";
-import DCPTest from "@/components/special/DCPTest";
-
 import Dashboard from "@/pages/Dashboard";
 import Reports from "@/pages/Reports";
 import Admin from "@/pages/Admin";
 import { fetchCurrentUser, loginUser, logoutUser, type ApiUser } from "@/lib/api";
+import { registerAllTests } from "@/lib/testRegistration";
+import { registry } from "@/lib/testRegistry";
+
+// Initialize test registry once on module load
+registerAllTests();
 
 interface IndexProps {
   initialTab?: string;
 }
 
 type AuthStatus = "checking" | "authenticated" | "unauthenticated";
+
+type TestCategory = "soil" | "concrete" | "rock" | "special";
+
+// Component to render tests dynamically from registry
+const TestsView = ({ initialTab }: { initialTab?: string }) => {
+  const testData = useTestData();
+
+  // Group tests by category
+  const testsByCategory = useMemo(() => {
+    const categories: Record<TestCategory, { key: string; name: string; sortOrder: number }[]> = {
+      soil: [],
+      concrete: [],
+      rock: [],
+      special: [],
+    };
+
+    // Iterate through test data and build categories
+    for (const [testKey, testSummary] of Object.entries(testData.tests)) {
+      // Skip disabled tests
+      if (testSummary.enabled === false) {
+        continue;
+      }
+
+      const category = testSummary.category as TestCategory;
+      if (categories[category]) {
+        categories[category].push({
+          key: testKey,
+          name: testSummary.name,
+          sortOrder: testSummary.sortOrder || 0,
+        });
+      }
+    }
+
+    // Sort within each category by sortOrder
+    for (const category of Object.keys(categories) as TestCategory[]) {
+      categories[category].sort((a, b) => a.sortOrder - b.sortOrder);
+    }
+
+    return categories;
+  }, [testData.tests]);
+
+  const renderTestsByCategory = (category: TestCategory) => {
+    const tests = testsByCategory[category];
+    return (
+      <TabsContent value={category} className="space-y-4">
+        {tests.length === 0 ? (
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">No tests available for this category</p>
+            </CardContent>
+          </Card>
+        ) : (
+          tests.map((test) => {
+            const TestComponent = registry.getTest(test.key);
+            if (!TestComponent) {
+              return null;
+            }
+            return <TestComponent key={test.key} />;
+          })
+        )}
+      </TabsContent>
+    );
+  };
+
+  return (
+    <Tabs defaultValue={initialTab || "soil"} className="w-full">
+      <TabsList className="w-full grid grid-cols-4 mb-6 h-11">
+        <TabsTrigger value="soil" className="gap-1.5 text-sm">
+          <Mountain className="h-4 w-4" /> Soil
+        </TabsTrigger>
+        <TabsTrigger value="concrete" className="gap-1.5 text-sm">
+          <Hammer className="h-4 w-4" /> Concrete
+        </TabsTrigger>
+        <TabsTrigger value="rock" className="gap-1.5 text-sm">
+          <Mountain className="h-4 w-4" /> Rock
+        </TabsTrigger>
+        <TabsTrigger value="special" className="gap-1.5 text-sm">
+          <TestTubeDiagonal className="h-4 w-4" /> Special
+        </TabsTrigger>
+      </TabsList>
+
+      {renderTestsByCategory("soil")}
+      {renderTestsByCategory("concrete")}
+      {renderTestsByCategory("rock")}
+      {renderTestsByCategory("special")}
+    </Tabs>
+  );
+};
 
 const Index = ({ initialTab }: IndexProps) => {
   const location = useLocation();
@@ -359,51 +431,7 @@ const Index = ({ initialTab }: IndexProps) => {
           ) : view === "admin" ? (
             <Admin />
           ) : (
-            <Tabs defaultValue={initialTab || "soil"} className="w-full">
-              <TabsList className="w-full grid grid-cols-4 mb-6 h-11">
-                <TabsTrigger value="soil" className="gap-1.5 text-sm">
-                  <Mountain className="h-4 w-4" /> Soil
-                </TabsTrigger>
-                <TabsTrigger value="concrete" className="gap-1.5 text-sm">
-                  <Hammer className="h-4 w-4" /> Concrete
-                </TabsTrigger>
-                <TabsTrigger value="rock" className="gap-1.5 text-sm">
-                  <Mountain className="h-4 w-4" /> Rock
-                </TabsTrigger>
-                <TabsTrigger value="special" className="gap-1.5 text-sm">
-                  <TestTubeDiagonal className="h-4 w-4" /> Special
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="soil" className="space-y-4">
-                <AtterbergTest />
-                <GradingTest />
-                <ProctorTest />
-                <CBRTest />
-                <ShearTest />
-                <ConsolidationTest />
-              </TabsContent>
-
-              <TabsContent value="concrete" className="space-y-4">
-                <UPVTTest />
-                <SchmidtHammerTest />
-                <CoringTest />
-                <ConcreteCubesTest />
-                <SlumpTest />
-                <CompressiveStrengthTest />
-              </TabsContent>
-
-              <TabsContent value="rock" className="space-y-4">
-                <UCSTest />
-                <PointLoadTest />
-                <PorosityTest />
-              </TabsContent>
-
-              <TabsContent value="special" className="space-y-4">
-                <SPTTest />
-                <DCPTest />
-              </TabsContent>
-            </Tabs>
+            <TestsView initialTab={initialTab} />
           )}
         </main>
       </div>
