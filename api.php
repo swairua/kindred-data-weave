@@ -251,6 +251,67 @@ function filteredPayload(array $input): array
     return $payload;
 }
 
+function logAuditSave(
+    mysqli $conn,
+    int $testResultId,
+    int $userId,
+    string $status,
+    int $dataPoints = 0,
+    string $testKey = 'atterberg',
+    ?string $errorMessage = null
+): bool {
+    $sql = "INSERT INTO atterberg_save_audit
+            (test_result_id, user_id, status, data_points, test_key, error_message)
+            VALUES (?, ?, ?, ?, ?, ?)";
+
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        error_log("Failed to prepare audit log statement: " . $conn->error);
+        return false;
+    }
+
+    $stmt->bind_param('iisiss', $testResultId, $userId, $status, $dataPoints, $testKey, $errorMessage);
+
+    if (!$stmt->execute()) {
+        error_log("Failed to execute audit log: " . $stmt->error);
+        $stmt->close();
+        return false;
+    }
+
+    $stmt->close();
+    return true;
+}
+
+function updateAuditSaveCompletion(
+    mysqli $conn,
+    int $testResultId,
+    string $newStatus,
+    ?string $errorMessage = null
+): bool {
+    $sql = "UPDATE atterberg_save_audit
+            SET status = ?, error_message = ?, completed_at = NOW()
+            WHERE test_result_id = ?
+            ORDER BY created_at DESC
+            LIMIT 1";
+
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        error_log("Failed to prepare audit update statement: " . $conn->error);
+        return false;
+    }
+
+    $stmt->bind_param('ssi', $newStatus, $errorMessage, $testResultId);
+
+    if (!$stmt->execute()) {
+        error_log("Failed to execute audit update: " . $stmt->error);
+        $stmt->close();
+        return false;
+    }
+
+    $stmt->close();
+    return true;
+}
+
 try {
     $conn = db();
     $body = requestBody();
@@ -695,11 +756,18 @@ try {
         $insertId = $conn->insert_id;
         $created = $conn->query("SELECT * FROM `$table` WHERE `$primaryKey` = '" . $conn->real_escape_string((string) $insertId) . "' LIMIT 1")->fetch_assoc();
 
+        // Log audit for Atterberg test saves
+        if ($table === 'test_results' && ($payload['test_key'] ?? '') === 'atterberg') {
+            $dataPoints = (int) ($payload['data_points'] ?? 0);
+            logAuditSave($conn, $insertId, $userId, 'completed', $dataPoints, 'atterberg');
+        }
+
         respond([
             'message' => 'Record created',
             'table' => $table,
             'id' => $insertId,
             'data' => $created ? hydrateRow($created) : null,
+            'last_saved_at' => date('Y-m-d H:i:s'),
         ], 201);
     }
 
@@ -758,10 +826,17 @@ try {
 
         $updated = $conn->query("SELECT * FROM `$table` WHERE `$primaryKey` = '" . $conn->real_escape_string((string) $id) . "' LIMIT 1")->fetch_assoc();
 
+        // Log audit for Atterberg test saves
+        if ($table === 'test_results' && ($payload['test_key'] ?? '') === 'atterberg') {
+            $dataPoints = (int) ($payload['data_points'] ?? 0);
+            logAuditSave($conn, (int) $id, $userId, 'completed', $dataPoints, 'atterberg');
+        }
+
         respond([
             'message' => 'Record updated',
             'table' => $table,
             'data' => $updated ? hydrateRow($updated) : null,
+            'last_saved_at' => date('Y-m-d H:i:s'),
         ]);
     }
 

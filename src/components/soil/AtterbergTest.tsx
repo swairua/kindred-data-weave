@@ -434,6 +434,10 @@ const AtterbergTest = () => {
   const [projectState, setProjectState] = useState<AtterbergProjectState>({ records: [] });
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const [smokeCheckStatus, setSmokeCheckStatus] = useState<SmokeCheckStatus | null>(null);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const [lastSaveError, setLastSaveError] = useState<string | null>(null);
+  const saveStatusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hydratedRef = useRef(false);
   const loadAttemptedRef = useRef(false);
   const skipNextPersistRef = useRef(false);
@@ -511,6 +515,15 @@ const AtterbergTest = () => {
     };
   }, [effectiveProjectLookup]);
 
+  // Cleanup save status timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveStatusTimeoutRef.current) {
+        clearTimeout(saveStatusTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const { totalDataPoints, aggregateResults, aggregateProjectResults, status, totalCompletedTests } = useMemo(() => {
     const totalPoints = computedRecords.reduce((sum, record) => sum + record.dataPoints, 0);
     const completedTests = computedRecords.reduce((sum, record) => sum + record.completedTests, 0);
@@ -535,18 +548,40 @@ const AtterbergTest = () => {
       return;
     }
 
+    // Only set "saving" status for auto-save if not already in a manual save flow
+    if (saveStatus === "idle") {
+      setSaveStatus("saving");
+    }
+
     void saveAtterbergProjectToApi({
       lookup: effectiveProjectLookup,
       payload: buildExportPayload(),
       dataPoints: totalDataPoints,
       status,
       keyResults: aggregateResults,
+    }).then(() => {
+      const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      setSaveStatus("saved");
+      setLastSavedAt(now);
+      setLastSaveError(null);
+
+      // Auto-clear status after 2 seconds for auto-save
+      if (saveStatusTimeoutRef.current) {
+        clearTimeout(saveStatusTimeoutRef.current);
+      }
+      saveStatusTimeoutRef.current = setTimeout(() => {
+        setSaveStatus("idle");
+      }, 2000);
     }).catch((error) => {
       // Silently ignore duplicate errors in auto-save since they indicate the record was already created
       if (error instanceof Error && isDuplicateResultError(error)) {
         console.warn("Atterberg project auto-save: record already exists, data updated instead");
+        setSaveStatus("saved");
+        setLastSaveError(null);
         return;
       }
+      setSaveStatus("error");
+      setLastSaveError(error instanceof Error ? error.message : 'Unknown error');
       console.error("Failed to save Atterberg project to API:", error);
     });
   }, [aggregateResults, effectiveProjectLookup, persistedState, project.clientName, project.date, project.projectName, projectState, status, totalDataPoints]);
@@ -644,13 +679,37 @@ const AtterbergTest = () => {
   );
 
   const handleSave = useCallback(async () => {
-    await saveAtterbergProjectToApi({
-      lookup: effectiveProjectLookup,
-      payload: buildExportPayload(),
-      dataPoints: totalDataPoints,
-      status,
-      keyResults: aggregateResults,
-    });
+    setSaveStatus("saving");
+    setLastSaveError(null);
+
+    if (saveStatusTimeoutRef.current) {
+      clearTimeout(saveStatusTimeoutRef.current);
+    }
+
+    try {
+      await saveAtterbergProjectToApi({
+        lookup: effectiveProjectLookup,
+        payload: buildExportPayload(),
+        dataPoints: totalDataPoints,
+        status,
+        keyResults: aggregateResults,
+      });
+
+      const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      setSaveStatus("saved");
+      setLastSavedAt(now);
+      setLastSaveError(null);
+
+      // Auto-clear success status after 2 seconds
+      saveStatusTimeoutRef.current = setTimeout(() => {
+        setSaveStatus("idle");
+      }, 2000);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setSaveStatus("error");
+      setLastSaveError(errorMessage);
+      console.error("Failed to save Atterberg project:", error);
+    }
   }, [aggregateResults, effectiveProjectLookup, persistedState, project.clientName, project.date, project.projectName, projectState, status, totalDataPoints]);
 
   const handleClearAll = useCallback(async () => {
@@ -929,6 +988,9 @@ const AtterbergTest = () => {
         onExportSmokeCheck={handleExportSmokeCheck}
         exportSmokeCheckDisabled={computedRecords.length === 0}
         smokeCheckStatus={smokeCheckStatus}
+        saveStatus={saveStatus}
+        lastSavedAt={lastSavedAt}
+        lastSaveError={lastSaveError}
       >
       <div className="space-y-4 print:space-y-3">
         <Card className="border bg-muted/20 shadow-none print:border-border print:bg-transparent">
