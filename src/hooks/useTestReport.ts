@@ -4,18 +4,28 @@ import { useTestData, TestStatus } from "@/context/TestDataContext";
 /**
  * Hook to report test data to the dashboard context.
  * Call in each test component with relevant data.
+ *
+ * @param id - Test identifier
+ * @param dataPoints - Number of valid/complete data points
+ * @param keyResults - Summary results to display
+ * @param status - Optional explicit status override
+ * @param startedDataPoints - Optional count of started (but not necessarily complete) data points
  */
 export const useTestReport = (
   id: string,
   dataPoints: number,
   keyResults: { label: string; value: string }[],
   status?: TestStatus,
+  startedDataPoints?: number,
 ) => {
   const { updateTest } = useTestData();
   const prevRef = useRef<string>("");
 
   useEffect(() => {
-    const nextStatus: TestStatus = status ?? (dataPoints === 0 ? "not-started" : "in-progress");
+    // Determine status: use explicit status if provided, otherwise derive from data points
+    // Prefer startedDataPoints for showing in-progress work, fall back to dataPoints for completion
+    const pointsForStatus = startedDataPoints !== undefined ? startedDataPoints : dataPoints;
+    const nextStatus: TestStatus = status ?? (pointsForStatus === 0 ? "not-started" : "in-progress");
 
     const key = JSON.stringify({ dataPoints, keyResults, status: nextStatus });
     if (key === prevRef.current) return;
@@ -26,5 +36,5 @@ export const useTestReport = (
       keyResults: keyResults.filter((r) => r.value && r.value !== "—" && r.value !== ""),
       status: nextStatus,
     });
-  }, [id, dataPoints, keyResults, status, updateTest]);
+  }, [id, dataPoints, keyResults, status, startedDataPoints, updateTest]);
 };
