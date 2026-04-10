@@ -561,6 +561,7 @@ const AtterbergTest = () => {
 
   useTestReport("atterberg", totalDataPoints, aggregateResults, undefined, totalStartedDataPoints);
 
+  // Save state to localStorage for local persistence (no auto API save during active work)
   useEffect(() => {
     if (!hydratedRef.current) return;
     if (skipNextPersistRef.current) {
@@ -568,43 +569,14 @@ const AtterbergTest = () => {
       return;
     }
 
-    // Only set "saving" status for auto-save if not already in a manual save flow
-    if (saveStatus === "idle") {
-      setSaveStatus("saving");
+    // Persist to localStorage only - no API calls during active work
+    const persistedState = buildPersistedState(computedRecords);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(persistedState));
+    } catch (error) {
+      console.error("Failed to save to localStorage:", error);
     }
-
-    void saveAtterbergProjectToApi({
-      lookup: effectiveProjectLookup,
-      payload: buildExportPayload(),
-      dataPoints: totalDataPoints,
-      status,
-      keyResults: aggregateResults,
-    }).then((apiTimestamp) => {
-      setSaveStatus("saved");
-      // Use the API timestamp if available, otherwise use client timestamp
-      if (apiTimestamp) {
-        const displayTime = new Date(apiTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        setLastSavedAt(displayTime);
-      } else {
-        const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        setLastSavedAt(now);
-      }
-      setLastSaveError(null);
-
-      // Auto-clear status after 2 seconds for auto-save
-      if (saveStatusTimeoutRef.current) {
-        clearTimeout(saveStatusTimeoutRef.current);
-      }
-      saveStatusTimeoutRef.current = setTimeout(() => {
-        setSaveStatus("idle");
-      }, 2000);
-    }).catch((error) => {
-      // Report actual errors to user - backend handles duplicate detection properly
-      setSaveStatus("error");
-      setLastSaveError(error instanceof Error ? error.message : 'Unknown error');
-      console.error("Failed to save Atterberg project to API:", error);
-    });
-  }, [persistedState, effectiveProjectLookup, aggregateResults, status, totalDataPoints]);
+  }, [computedRecords]);
 
   const updateProjectMetadata = useCallback((updater: (state: AtterbergProjectState) => Partial<AtterbergProjectState>) => {
     setProjectState((prev) => ({
