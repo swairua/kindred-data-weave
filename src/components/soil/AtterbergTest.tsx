@@ -41,6 +41,7 @@ import {
   calculateTestResult,
   countCompletedTests,
   countRecordDataPoints,
+  countRecordStartedDataPoints,
   deriveAtterbergStatus,
   getRecordValidationMessages,
   isLiquidLimitTrialValid,
@@ -67,6 +68,7 @@ const STORAGE_KEY = "atterbergProjectState";
 
 type ComputedRecord = AtterbergRecord & {
   dataPoints: number;
+  startedDataPoints: number;
   completedTests: number;
 };
 
@@ -473,6 +475,7 @@ const AtterbergTest = () => {
       return {
         ...recordWithComputedTests,
         dataPoints: countRecordDataPoints(recordWithComputedTests),
+        startedDataPoints: countRecordStartedDataPoints(recordWithComputedTests),
         completedTests: countCompletedTests(recordWithComputedTests),
       };
     });

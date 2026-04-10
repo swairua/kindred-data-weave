@@ -269,6 +269,17 @@ export const countValidTrials = (test: AtterbergTest) => {
   }
 };
 
+export const countStartedTrials = (test: AtterbergTest) => {
+  switch (test.type) {
+    case "liquidLimit":
+      return test.trials.filter(isLiquidLimitTrialStarted).length;
+    case "plasticLimit":
+      return test.trials.filter(isPlasticLimitTrialStarted).length;
+    case "shrinkageLimit":
+      return test.trials.filter(isShrinkageLimitTrialStarted).length;
+  }
+};
+
 export const isLiquidLimitTestComplete = (test: Extract<AtterbergTest, { type: "liquidLimit" }>) => countValidTrials(test) >= 2;
 export const isPlasticLimitTestComplete = (test: Extract<AtterbergTest, { type: "plasticLimit" }>) => countValidTrials(test) >= 2;
 export const isShrinkageLimitTestComplete = (test: Extract<AtterbergTest, { type: "shrinkageLimit" }>) =>
@@ -329,6 +340,8 @@ export const calculateRecordResults = (record: AtterbergRecord): CalculatedResul
 
 export const countRecordDataPoints = (record: AtterbergRecord) => record.tests.reduce((sum, test) => sum + countValidTrials(test), 0);
 
+export const countRecordStartedDataPoints = (record: AtterbergRecord) => record.tests.reduce((sum, test) => sum + countStartedTrials(test), 0);
+
 export const countCompletedTests = (record: AtterbergRecord) =>
   record.tests.reduce((sum, test) => sum + (isAtterbergTestComplete(test) ? 1 : 0), 0);
 
@@ -346,8 +359,11 @@ export const calculateProjectResults = (records: AtterbergRecord[]): CalculatedR
   };
 };
 
-export const deriveAtterbergStatus = (dataPoints: number, completedTests: number, totalTests: number): TestStatus => {
-  if (dataPoints === 0) return "not-started";
+export const deriveAtterbergStatus = (dataPoints: number, completedTests: number, totalTests: number, startedDataPoints?: number): TestStatus => {
+  // Use startedDataPoints if available, otherwise fall back to dataPoints
+  const trialDataPoints = startedDataPoints !== undefined ? startedDataPoints : dataPoints;
+
+  if (trialDataPoints === 0) return "not-started";
   if (totalTests > 0 && completedTests === totalTests) return "completed";
   return "in-progress";
 };
