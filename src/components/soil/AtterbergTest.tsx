@@ -66,6 +66,49 @@ import { generateAtterbergXLSX } from "@/lib/xlsxExporter";
 
 const STORAGE_KEY = "atterbergProjectState";
 
+const MAX_RETRY_ATTEMPTS = 3;
+const INITIAL_RETRY_DELAY = 1000; // 1 second
+
+// Retry utility with exponential backoff
+const retryWithBackoff = async <T,>(
+  fn: () => Promise<T>,
+  maxAttempts: number = MAX_RETRY_ATTEMPTS,
+  initialDelay: number = INITIAL_RETRY_DELAY
+): Promise<T> => {
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+
+      // Don't retry for auth errors
+      if (lastError.message.includes("Unauthorized") || lastError.message.includes("Forbidden")) {
+        throw lastError;
+      }
+
+      // Only retry on transient failures (timeout, network)
+      const isTransientError =
+        lastError.message.includes("timeout") ||
+        lastError.message.includes("network") ||
+        lastError.message.includes("Failed to fetch") ||
+        lastError.message.includes("unable to reach");
+
+      if (!isTransientError || attempt === maxAttempts) {
+        throw lastError;
+      }
+
+      // Exponential backoff: 1s, 2s, 4s
+      const delay = initialDelay * Math.pow(2, attempt - 1);
+      console.warn(`Attempt ${attempt} failed: ${lastError.message}. Retrying in ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+
+  throw lastError;
+};
+
 type ComputedRecord = AtterbergRecord & {
   dataPoints: number;
   startedDataPoints: number;
@@ -264,10 +307,13 @@ const persistAtterbergProjectToApi = async ({
   keyResults: Array<{ label: string; value: string }>;
 }): Promise<string | null> => {
   try {
-    const [projectsResponse, resultsResponse] = await Promise.all([
-      listRecords<ApiProjectRow>("projects", { limit: 1000, orderBy: "updated_at", direction: "DESC" }),
-      listRecords<ApiAtterbergResultRow>("test_results", { limit: 1000, orderBy: "updated_at", direction: "DESC" }),
-    ]);
+    // Wrap the initial API calls with retry logic
+    const [projectsResponse, resultsResponse] = await retryWithBackoff(
+      () => Promise.all([
+        listRecords<ApiProjectRow>("projects", { limit: 1000, orderBy: "updated_at", direction: "DESC" }),
+        listRecords<ApiAtterbergResultRow>("test_results", { limit: 1000, orderBy: "updated_at", direction: "DESC" }),
+      ])
+    );
 
     let projectRow = hasLookupCriteria(lookup)
       ? projectsResponse.data.find((row) => matchesProjectLookup(row, lookup)) ?? null
@@ -279,19 +325,23 @@ const persistAtterbergProjectToApi = async ({
     let lastSavedAt: string | null = null;
 
     if (!projectRow) {
-      const createdProject = await createApiRecord<ApiProjectRow>("projects", {
-        name: projectName,
-        client_name: clientName || null,
-        project_date: projectDate || null,
-      });
+      const createdProject = await retryWithBackoff(
+        () => createApiRecord<ApiProjectRow>("projects", {
+          name: projectName,
+          client_name: clientName || null,
+          project_date: projectDate || null,
+        })
+      );
       projectRow = createdProject.data;
       lastSavedAt = createdProject.last_saved_at ?? null;
     } else {
-      const updatedProject = await updateApiRecord<ApiProjectRow>("projects", projectRow.id, {
-        name: projectName,
-        client_name: clientName || null,
-        project_date: projectDate || null,
-      });
+      const updatedProject = await retryWithBackoff(
+        () => updateApiRecord<ApiProjectRow>("projects", projectRow.id, {
+          name: projectName,
+          client_name: clientName || null,
+          project_date: projectDate || null,
+        })
+      );
       projectRow = updatedProject.data ?? projectRow;
       lastSavedAt = updatedProject.last_saved_at ?? null;
     }
@@ -317,8 +367,10 @@ const persistAtterbergProjectToApi = async ({
     if (matchingResults.length > 0) {
       const mostRecent = matchingResults.reduce((prev, curr) => (curr.id > prev.id ? curr : prev));
 
-      // Try to update the most recent record
-      const updateResponse = await updateApiRecord("test_results", mostRecent.id, resultPayload);
+      // Try to update the most recent record with retry
+      const updateResponse = await retryWithBackoff(
+        () => updateApiRecord("test_results", mostRecent.id, resultPayload)
+      );
       if (updateResponse.last_saved_at) {
         lastSavedAt = updateResponse.last_saved_at;
       }
@@ -333,7 +385,9 @@ const persistAtterbergProjectToApi = async ({
     } else {
       // No record exists, try to create one
       try {
-        const createResponse = await createApiRecord("test_results", resultPayload);
+        const createResponse = await retryWithBackoff(
+          () => createApiRecord("test_results", resultPayload)
+        );
         if (createResponse.last_saved_at) {
           lastSavedAt = createResponse.last_saved_at;
         }
@@ -344,11 +398,13 @@ const persistAtterbergProjectToApi = async ({
         }
 
         // Refetch latest data and try to update instead
-        const latestResultsResponse = await listRecords<ApiAtterbergResultRow>("test_results", {
-          limit: 1000,
-          orderBy: "updated_at",
-          direction: "DESC",
-        });
+        const latestResultsResponse = await retryWithBackoff(
+          () => listRecords<ApiAtterbergResultRow>("test_results", {
+            limit: 1000,
+            orderBy: "updated_at",
+            direction: "DESC",
+          })
+        );
         const refetchedResults = getAtterbergResultsForProject(latestResultsResponse.data, projectRow.id);
 
         if (!refetchedResults[0]) {
@@ -358,7 +414,9 @@ const persistAtterbergProjectToApi = async ({
 
         // Update the most recent record
         const mostRecent = refetchedResults.reduce((prev, curr) => (curr.id > prev.id ? curr : prev));
-        const updateResponse = await updateApiRecord("test_results", mostRecent.id, resultPayload);
+        const updateResponse = await retryWithBackoff(
+          () => updateApiRecord("test_results", mostRecent.id, resultPayload)
+        );
         if (updateResponse.last_saved_at) {
           lastSavedAt = updateResponse.last_saved_at;
         }
@@ -458,6 +516,7 @@ const AtterbergTest = () => {
   const hydratedRef = useRef(false);
   const loadAttemptedRef = useRef(false);
   const skipNextPersistRef = useRef(false);
+  const isSavingRef = useRef(false);
 
   const computedRecords = useMemo<ComputedRecord[]>(() => {
     return projectState.records.map((record) => {
@@ -671,6 +730,13 @@ const AtterbergTest = () => {
   );
 
   const handleSave = useCallback(async () => {
+    // Prevent concurrent saves - if already saving, ignore this click
+    if (isSavingRef.current) {
+      console.warn("Save already in progress, ignoring duplicate save request");
+      return;
+    }
+
+    isSavingRef.current = true;
     setSaveStatus("saving");
     setLastSaveError(null);
 
@@ -707,6 +773,8 @@ const AtterbergTest = () => {
       setSaveStatus("error");
       setLastSaveError(errorMessage);
       console.error("Failed to save Atterberg project:", error);
+    } finally {
+      isSavingRef.current = false;
     }
   }, [persistedState, effectiveProjectLookup, aggregateResults, status, totalDataPoints]);
 

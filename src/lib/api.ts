@@ -52,7 +52,7 @@ export const apiRequest = async <T>(
 
   const url = buildApiUrl(params);
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout (increased from 10s)
 
   try {
     const response = await fetch(url, {
@@ -70,10 +70,15 @@ export const apiRequest = async <T>(
 
     return data as T;
   } catch (error) {
+    // Handle abort errors with specific messaging
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("Request timeout: The server took too long to respond. Please check your network connection and try again.");
+    }
+
     if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
       // Network error - provide helpful debugging info
       console.warn(`Network error connecting to API at ${url}. Please check if the API server is reachable.`);
-      throw new Error(`Unable to reach API server at ${url}. Please ensure you have a valid internet connection and the API server is running.`);
+      throw new Error(`Unable to reach API server. Please ensure you have a valid internet connection and the API server is running.`);
     }
     throw error;
   } finally {
