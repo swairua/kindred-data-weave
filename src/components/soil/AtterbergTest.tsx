@@ -764,10 +764,10 @@ const AtterbergTest = () => {
       }
       setLastSaveError(null);
 
-      // Auto-clear success status after 2 seconds
+      // Auto-clear success status after 4 seconds (gives users time to continue editing)
       saveStatusTimeoutRef.current = setTimeout(() => {
         setSaveStatus("idle");
-      }, 2000);
+      }, 4000);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       setSaveStatus("error");

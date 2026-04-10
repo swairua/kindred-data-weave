@@ -166,7 +166,11 @@ const TestSection = ({ title, children, onSave, onClear, onExportPDF, onExportCS
                       : "Save failed"}
                 </div>
                 {lastSavedAt && saveStatus === "saved" && (
-                  <div className="text-current/80">Last saved at {lastSavedAt}</div>
+                  <div className="text-current/80">
+                    Last saved at {lastSavedAt}
+                    <br />
+                    <span className="text-xs">You can continue editing and add more tests anytime.</span>
+                  </div>
                 )}
                 {lastSaveError && saveStatus === "error" && (
                   <div className="text-current/80">{lastSaveError}</div>
