@@ -176,6 +176,7 @@ const ALLOWED_TABLES = [
 
 function respond(array $payload, int $status = 200): never
 {
+    error_log("RESPOND: status=$status, payload=" . json_encode($payload));
     http_response_code($status);
     echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
@@ -431,6 +432,14 @@ try {
     $body = requestBody();
     $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
     $action = strtolower((string) ($_GET['action'] ?? $body['action'] ?? ''));
+
+    error_log("==================== REQUEST ====================");
+    error_log("Method: $method");
+    error_log("Action: " . ($action ?: 'NOT SET'));
+    error_log("GET params: " . json_encode($_GET));
+    error_log("Request body: " . json_encode($body));
+    error_log("Session user_id: " . ($_SESSION['user_id'] ?? 'NOT SET'));
+    error_log("==============================================");
 
     // ============= AUTHENTICATION ENDPOINTS =============
 
@@ -776,14 +785,21 @@ try {
     }
 
     if ($action === 'create') {
+        error_log("=== CREATE ACTION START ===");
+        error_log("Table: $table");
+        error_log("Request body: " . json_encode($body));
+
         $user = requireAuth($conn);
         $userId = (int) $_SESSION['user_id'];
+        error_log("User ID: $userId");
 
         $payload = filteredPayload($body);
+        error_log("Filtered payload: " . json_encode($payload));
 
         // Automatically add user_id if table has it
         if (isset($schema['columns']['user_id'])) {
             $payload['user_id'] = $userId;
+            error_log("Added user_id to payload");
         }
 
         $columns = [];
@@ -792,6 +808,7 @@ try {
 
         foreach ($payload as $column => $value) {
             if (!isset($schema['columns'][$column]) || in_array($column, $schema['autoIncrement'], true)) {
+                error_log("Skipping column: $column (exists in schema: " . (isset($schema['columns'][$column]) ? 'YES' : 'NO') . ", is auto_increment: " . (in_array($column, $schema['autoIncrement'], true) ? 'YES' : 'NO') . ")");
                 continue;
             }
 
@@ -800,7 +817,11 @@ try {
             $values[] = normalizeValue($value);
         }
 
+        error_log("Columns to insert: " . json_encode($columns));
+        error_log("Values to insert: " . json_encode($values));
+
         if ($columns === []) {
+            error_log("ERROR: No valid fields provided for insert");
             respond(['error' => 'No valid fields provided for insert'], 422);
         }
 
@@ -811,15 +832,29 @@ try {
             implode(', ', $placeholders)
         );
 
+        error_log("SQL: $sql");
+
         $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            error_log("ERROR: Failed to prepare statement: " . $conn->error);
+            respond(['error' => 'Database error: ' . $conn->error], 500);
+        }
+
         bindParams($stmt, str_repeat('s', count($values)), $values);
-        $stmt->execute();
+
+        if (!$stmt->execute()) {
+            error_log("ERROR: Failed to execute statement: " . $stmt->error);
+            respond(['error' => 'Database error: ' . $stmt->error], 500);
+        }
 
         $insertId = $conn->insert_id;
+        error_log("Record inserted with ID: $insertId");
+
         $created = $conn->query("SELECT * FROM `$table` WHERE `$primaryKey` = '" . $conn->real_escape_string((string) $insertId) . "' LIMIT 1")->fetch_assoc();
+        error_log("Retrieved created record: " . json_encode($created));
 
         // Log audit for Atterberg test saves
-        error_log("CREATE: table=$table, test_key=" . ($payload['test_key'] ?? 'NOT_SET'));
+        error_log("Checking for audit logging: table=$table, test_key=" . ($payload['test_key'] ?? 'NOT_SET'));
         if ($table === 'test_results' && ($payload['test_key'] ?? '') === 'atterberg') {
             $dataPoints = (int) ($payload['data_points'] ?? 0);
             error_log("Creating audit log for test_result_id=$insertId, data_points=$dataPoints");
@@ -828,6 +863,8 @@ try {
         } else {
             error_log("Audit logging skipped: table match=" . ($table === 'test_results' ? 'YES' : 'NO') . ", test_key match=" . (($payload['test_key'] ?? '') === 'atterberg' ? 'YES' : 'NO'));
         }
+
+        error_log("=== CREATE ACTION END ===");
 
         respond([
             'message' => 'Record created',
@@ -839,26 +876,37 @@ try {
     }
 
     if ($action === 'update') {
+        error_log("=== UPDATE ACTION START ===");
+        error_log("Table: $table");
+        error_log("Request body: " . json_encode($body));
+
         $user = requireAuth($conn);
         $userId = (int) $_SESSION['user_id'];
+        error_log("User ID: $userId");
 
         $id = $_GET['id'] ?? $body['id'] ?? null;
         if ($id === null || $id === '') {
+            error_log("ERROR: Missing id parameter");
             respond(['error' => 'Missing id'], 400);
         }
+        error_log("Record ID: $id");
 
         // Check ownership if table has user_id
         if (isset($schema['columns']['user_id'])) {
+            error_log("Checking record ownership");
             $checkStmt = $conn->prepare("SELECT id FROM `$table` WHERE `$primaryKey` = ? AND `user_id` = ? LIMIT 1");
             $checkStmt->bind_param('si', $id, $userId);
             $checkStmt->execute();
             if (!$checkStmt->get_result()->fetch_assoc()) {
+                error_log("ERROR: Record not found or forbidden for user_id=$userId");
                 respond(['error' => 'Record not found or forbidden'], 404);
             }
+            error_log("Record ownership verified");
             $checkStmt->close();
         }
 
         $payload = filteredPayload($body);
+        error_log("Filtered payload: " . json_encode($payload));
 
         // Prevent user_id from being updated
         unset($payload['user_id']);
@@ -868,6 +916,7 @@ try {
 
         foreach ($payload as $column => $value) {
             if (!isset($schema['columns'][$column]) || $column === $primaryKey || in_array($column, $schema['autoIncrement'], true)) {
+                error_log("Skipping column: $column");
                 continue;
             }
 
@@ -875,7 +924,11 @@ try {
             $values[] = normalizeValue($value);
         }
 
+        error_log("Columns to update: " . json_encode(array_map(fn($s) => trim($s, '` = ?'), $sets)));
+        error_log("Values: " . json_encode($values));
+
         if ($sets === []) {
+            error_log("ERROR: No valid fields provided for update");
             respond(['error' => 'No valid fields provided for update'], 422);
         }
 
@@ -886,15 +939,29 @@ try {
             $primaryKey
         );
 
+        error_log("Update SQL: $sql");
+
         $values[] = $id;
         $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            error_log("ERROR: Failed to prepare update statement: " . $conn->error);
+            respond(['error' => 'Database error: ' . $conn->error], 500);
+        }
+
         bindParams($stmt, str_repeat('s', count($values)), $values);
-        $stmt->execute();
+
+        if (!$stmt->execute()) {
+            error_log("ERROR: Failed to execute update: " . $stmt->error);
+            respond(['error' => 'Database error: ' . $stmt->error], 500);
+        }
+
+        error_log("Update successful");
 
         $updated = $conn->query("SELECT * FROM `$table` WHERE `$primaryKey` = '" . $conn->real_escape_string((string) $id) . "' LIMIT 1")->fetch_assoc();
+        error_log("Retrieved updated record: " . json_encode($updated));
 
         // Log audit for Atterberg test saves
-        error_log("UPDATE: table=$table, id=$id, test_key=" . ($payload['test_key'] ?? 'NOT_SET'));
+        error_log("Checking for audit logging: table=$table, test_key=" . ($payload['test_key'] ?? 'NOT_SET'));
         if ($table === 'test_results' && ($payload['test_key'] ?? '') === 'atterberg') {
             $dataPoints = (int) ($payload['data_points'] ?? 0);
             error_log("Creating audit log for test_result_id=$id, data_points=$dataPoints");
@@ -903,6 +970,8 @@ try {
         } else {
             error_log("Audit logging skipped: table match=" . ($table === 'test_results' ? 'YES' : 'NO') . ", test_key match=" . (($payload['test_key'] ?? '') === 'atterberg' ? 'YES' : 'NO'));
         }
+
+        error_log("=== UPDATE ACTION END ===");
 
         respond([
             'message' => 'Record updated',
