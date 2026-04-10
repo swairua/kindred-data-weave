@@ -454,8 +454,6 @@ const AtterbergTest = () => {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [lastSaveError, setLastSaveError] = useState<string | null>(null);
-  const [hasRecords, setHasRecords] = useState(false);
-  const [hasDataInCurrentSession, setHasDataInCurrentSession] = useState(false);
   const saveStatusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hydratedRef = useRef(false);
   const loadAttemptedRef = useRef(false);
@@ -563,6 +561,7 @@ const AtterbergTest = () => {
 
   useTestReport("atterberg", totalDataPoints, aggregateResults, undefined, totalStartedDataPoints);
 
+  // Save state to localStorage for local persistence (no auto API save during active work)
   useEffect(() => {
     if (!hydratedRef.current) return;
     if (skipNextPersistRef.current) {
@@ -570,53 +569,14 @@ const AtterbergTest = () => {
       return;
     }
 
-    // Only trigger auto-save if:
-    // 1. User has added at least one record (hasRecords is true)
-    // 2. Either: (a) this is the first record being saved, OR (b) data has changed since last save
-    if (!hasRecords || (!hasDataInCurrentSession && projectState.records.length > 0)) {
-      return;
+    // Persist to localStorage only - no API calls during active work
+    const persistedState = buildPersistedState(computedRecords);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(persistedState));
+    } catch (error) {
+      console.error("Failed to save to localStorage:", error);
     }
-
-    // Only set "saving" status for auto-save if not already in a manual save flow
-    if (saveStatus === "idle") {
-      setSaveStatus("saving");
-    }
-
-    void saveAtterbergProjectToApi({
-      lookup: effectiveProjectLookup,
-      payload: buildExportPayload(),
-      dataPoints: totalDataPoints,
-      status,
-      keyResults: aggregateResults,
-    }).then((apiTimestamp) => {
-      setSaveStatus("saved");
-      // Use the API timestamp if available, otherwise use client timestamp
-      if (apiTimestamp) {
-        const displayTime = new Date(apiTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        setLastSavedAt(displayTime);
-      } else {
-        const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        setLastSavedAt(now);
-      }
-      setLastSaveError(null);
-
-      // Auto-clear status after 2 seconds for auto-save
-      if (saveStatusTimeoutRef.current) {
-        clearTimeout(saveStatusTimeoutRef.current);
-      }
-      saveStatusTimeoutRef.current = setTimeout(() => {
-        setSaveStatus("idle");
-      }, 2000);
-
-      // After successful save, allow further saves only when new data is entered
-      setHasDataInCurrentSession(false);
-    }).catch((error) => {
-      // Report actual errors to user - backend handles duplicate detection properly
-      setSaveStatus("error");
-      setLastSaveError(error instanceof Error ? error.message : 'Unknown error');
-      console.error("Failed to save Atterberg project to API:", error);
-    });
-  }, [hasRecords, hasDataInCurrentSession, projectState.records.length, effectiveProjectLookup]);
+  }, [computedRecords]);
 
   const updateProjectMetadata = useCallback((updater: (state: AtterbergProjectState) => Partial<AtterbergProjectState>) => {
     setProjectState((prev) => ({
@@ -646,13 +606,7 @@ const AtterbergTest = () => {
     setProjectState((prev) => ({
       records: [...prev.records, createRecord(prev.records.length)],
     }));
-    // Set hasRecords to true when first record is added - this will trigger first auto-save
-    if (!hasRecords) {
-      setHasRecords(true);
-    }
-    // Reset data tracking for new record
-    setHasDataInCurrentSession(false);
-  }, [hasRecords]);
+  }, []);
 
   const removeRecord = useCallback((recordId: string) => {
     setProjectState((prev) => ({
@@ -712,8 +666,6 @@ const AtterbergTest = () => {
   const updateTestTrials = useCallback(
     (recordId: string, testId: string, trials: AtterbergTest["trials"]) => {
       updateTest(recordId, testId, (test) => updateTrialsForType(test, trials));
-      // Mark that data has been entered in this session
-      setHasDataInCurrentSession(true);
     },
     [updateTest],
   );
