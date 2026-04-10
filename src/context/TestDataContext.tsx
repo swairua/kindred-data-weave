@@ -169,31 +169,47 @@ export const TestDataProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const loadTestDefinitions = async () => {
-      try {
-        const response = await listRecords("test_definitions", { limit: 1000 });
-        if (response?.data && Array.isArray(response.data)) {
-          const loadedTests: Record<string, TestSummary> = { ...defaultTests };
+      let retries = 0;
+      const maxRetries = 3;
 
-          for (const record of response.data) {
-            const testKey = record.test_key;
-            if (testKey && loadedTests[testKey]) {
-              // Merge API data with default test
-              loadedTests[testKey] = {
-                ...loadedTests[testKey],
-                name: record.name || loadedTests[testKey].name,
-                category: record.category || loadedTests[testKey].category,
-                enabled: record.enabled !== false && record.enabled !== 0,
-                sortOrder: record.sort_order || 0,
-              };
+      const attemptLoad = async (): Promise<void> => {
+        try {
+          const response = await listRecords("test_definitions", { limit: 1000 });
+          if (response?.data && Array.isArray(response.data)) {
+            const loadedTests: Record<string, TestSummary> = { ...defaultTests };
+
+            for (const record of response.data) {
+              const testKey = record.test_key;
+              if (testKey && loadedTests[testKey]) {
+                // Merge API data with default test
+                loadedTests[testKey] = {
+                  ...loadedTests[testKey],
+                  name: record.name || loadedTests[testKey].name,
+                  category: record.category || loadedTests[testKey].category,
+                  enabled: record.enabled !== false && record.enabled !== 0,
+                  sortOrder: record.sort_order || 0,
+                };
+              }
             }
-          }
 
-          setTests(loadedTests);
+            setTests(loadedTests);
+          }
+        } catch (error) {
+          retries++;
+          if (retries < maxRetries) {
+            // Retry with exponential backoff
+            const delay = Math.pow(2, retries - 1) * 1000;
+            console.warn(`Failed to load test definitions. Retrying in ${delay}ms... (Attempt ${retries}/${maxRetries})`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return attemptLoad();
+          } else {
+            console.error("Failed to load test definitions from API after 3 attempts:", error);
+            // Fall back to defaultTests if API fails
+          }
         }
-      } catch (error) {
-        console.error("Failed to load test definitions from API:", error);
-        // Fall back to defaultTests if API fails
-      }
+      };
+
+      attemptLoad();
     };
 
     loadTestDefinitions();

@@ -50,19 +50,35 @@ export const apiRequest = async <T>(
     headers.set("Content-Type", "application/json");
   }
 
-  const response = await fetch(buildApiUrl(params), {
-    credentials: "include",
-    ...init,
-    headers,
-  });
+  const url = buildApiUrl(params);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-  const data = await response.json().catch(() => null);
+  try {
+    const response = await fetch(url, {
+      credentials: "include",
+      ...init,
+      headers,
+      signal: controller.signal,
+    });
 
-  if (!response.ok) {
-    throw new Error(data?.message || data?.error || "API request failed");
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(data?.message || data?.error || "API request failed");
+    }
+
+    return data as T;
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
+      // Network error - provide helpful debugging info
+      console.warn(`Network error connecting to API at ${url}. Please check if the API server is reachable.`);
+      throw new Error(`Unable to reach API server at ${url}. Please ensure you have a valid internet connection and the API server is running.`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  return data as T;
 };
 
 export const loginUser = (email: string, password: string) =>
