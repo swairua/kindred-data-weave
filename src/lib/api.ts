@@ -102,6 +102,7 @@ export interface ApiWriteResponse<T> {
   id?: number;
   data: T | null;
   deleted?: boolean;
+  last_saved_at?: string;
 }
 
 export const listRecords = async <T>(table: string, params?: Record<string, string | number | boolean | null | undefined>) =>
