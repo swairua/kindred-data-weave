@@ -847,19 +847,29 @@ try {
             respond(['error' => 'Database error: ' . $stmt->error], 500);
         }
 
+        // Verify that the INSERT actually affected a row
+        if ($stmt->affected_rows <= 0) {
+            error_log("ERROR: INSERT statement did not affect any rows. Affected rows: " . $stmt->affected_rows);
+            respond(['error' => 'Failed to insert record - database did not accept the insert'], 500);
+        }
+
         $insertId = $conn->insert_id;
-        error_log("Record inserted with ID: $insertId");
+        error_log("Record inserted with ID: $insertId, affected_rows: " . $stmt->affected_rows);
 
         $created = $conn->query("SELECT * FROM `$table` WHERE `$primaryKey` = '" . $conn->real_escape_string((string) $insertId) . "' LIMIT 1")->fetch_assoc();
         error_log("Retrieved created record: " . json_encode($created));
 
-        // Log audit for Atterberg test saves
+        // Log audit for Atterberg test saves (non-blocking)
         error_log("Checking for audit logging: table=$table, test_key=" . ($payload['test_key'] ?? 'NOT_SET'));
         if ($table === 'test_results' && ($payload['test_key'] ?? '') === 'atterberg') {
             $dataPoints = (int) ($payload['data_points'] ?? 0);
             error_log("Creating audit log for test_result_id=$insertId, data_points=$dataPoints");
             $auditResult = logAuditSave($conn, $insertId, $userId, 'completed', $dataPoints, 'atterberg');
-            error_log("Audit log result: " . ($auditResult ? 'SUCCESS' : 'FAILED'));
+            if (!$auditResult) {
+                error_log("WARNING: Audit log creation failed for test_result_id=$insertId, but main record was saved successfully");
+            } else {
+                error_log("Audit log created successfully for test_result_id=$insertId");
+            }
         } else {
             error_log("Audit logging skipped: table match=" . ($table === 'test_results' ? 'YES' : 'NO') . ", test_key match=" . (($payload['test_key'] ?? '') === 'atterberg' ? 'YES' : 'NO'));
         }
@@ -955,18 +965,28 @@ try {
             respond(['error' => 'Database error: ' . $stmt->error], 500);
         }
 
-        error_log("Update successful");
+        // Verify that the UPDATE actually affected a row
+        if ($stmt->affected_rows <= 0) {
+            error_log("ERROR: UPDATE statement did not affect any rows. Affected rows: " . $stmt->affected_rows . ", ID: $id");
+            respond(['error' => 'Failed to update record - no rows matched the update criteria'], 500);
+        }
+
+        error_log("Update successful, affected_rows: " . $stmt->affected_rows);
 
         $updated = $conn->query("SELECT * FROM `$table` WHERE `$primaryKey` = '" . $conn->real_escape_string((string) $id) . "' LIMIT 1")->fetch_assoc();
         error_log("Retrieved updated record: " . json_encode($updated));
 
-        // Log audit for Atterberg test saves
+        // Log audit for Atterberg test saves (non-blocking)
         error_log("Checking for audit logging: table=$table, test_key=" . ($payload['test_key'] ?? 'NOT_SET'));
         if ($table === 'test_results' && ($payload['test_key'] ?? '') === 'atterberg') {
             $dataPoints = (int) ($payload['data_points'] ?? 0);
             error_log("Creating audit log for test_result_id=$id, data_points=$dataPoints");
             $auditResult = logAuditSave($conn, (int) $id, $userId, 'completed', $dataPoints, 'atterberg');
-            error_log("Audit log result: " . ($auditResult ? 'SUCCESS' : 'FAILED'));
+            if (!$auditResult) {
+                error_log("WARNING: Audit log creation failed for test_result_id=$id, but main record was updated successfully");
+            } else {
+                error_log("Audit log created successfully for test_result_id=$id");
+            }
         } else {
             error_log("Audit logging skipped: table match=" . ($table === 'test_results' ? 'YES' : 'NO') . ", test_key match=" . (($payload['test_key'] ?? '') === 'atterberg' ? 'YES' : 'NO'));
         }

@@ -260,7 +260,7 @@ const persistAtterbergProjectToApi = async ({
   dataPoints: number;
   status: string;
   keyResults: Array<{ label: string; value: string }>;
-}) => {
+}): Promise<string | null> => {
   try {
     const [projectsResponse, resultsResponse] = await Promise.all([
       listRecords<ApiProjectRow>("projects", { limit: 1000, orderBy: "updated_at", direction: "DESC" }),
@@ -274,6 +274,8 @@ const persistAtterbergProjectToApi = async ({
     const clientName = normalizeLookupValue(payload.project.clientName);
     const projectDate = normalizeLookupValue(payload.project.date);
 
+    let lastSavedAt: string | null = null;
+
     if (!projectRow) {
       const createdProject = await createApiRecord<ApiProjectRow>("projects", {
         name: projectName,
@@ -281,6 +283,7 @@ const persistAtterbergProjectToApi = async ({
         project_date: projectDate || null,
       });
       projectRow = createdProject.data;
+      lastSavedAt = createdProject.last_saved_at ?? null;
     } else {
       const updatedProject = await updateApiRecord<ApiProjectRow>("projects", projectRow.id, {
         name: projectName,
@@ -288,6 +291,7 @@ const persistAtterbergProjectToApi = async ({
         project_date: projectDate || null,
       });
       projectRow = updatedProject.data ?? projectRow;
+      lastSavedAt = updatedProject.last_saved_at ?? null;
     }
 
     if (!projectRow) {
@@ -312,7 +316,10 @@ const persistAtterbergProjectToApi = async ({
       const mostRecent = matchingResults.reduce((prev, curr) => (curr.id > prev.id ? curr : prev));
 
       // Try to update the most recent record
-      await updateApiRecord("test_results", mostRecent.id, resultPayload);
+      const updateResponse = await updateApiRecord("test_results", mostRecent.id, resultPayload);
+      if (updateResponse.last_saved_at) {
+        lastSavedAt = updateResponse.last_saved_at;
+      }
 
       // Clean up other duplicates in the background (don't block if they fail)
       if (matchingResults.length > 1) {
@@ -324,7 +331,10 @@ const persistAtterbergProjectToApi = async ({
     } else {
       // No record exists, try to create one
       try {
-        await createApiRecord("test_results", resultPayload);
+        const createResponse = await createApiRecord("test_results", resultPayload);
+        if (createResponse.last_saved_at) {
+          lastSavedAt = createResponse.last_saved_at;
+        }
       } catch (error) {
         // If duplicate error, another process may have created it while we were saving
         if (!isDuplicateResultError(error)) {
@@ -346,7 +356,10 @@ const persistAtterbergProjectToApi = async ({
 
         // Update the most recent record
         const mostRecent = refetchedResults.reduce((prev, curr) => (curr.id > prev.id ? curr : prev));
-        await updateApiRecord("test_results", mostRecent.id, resultPayload);
+        const updateResponse = await updateApiRecord("test_results", mostRecent.id, resultPayload);
+        if (updateResponse.last_saved_at) {
+          lastSavedAt = updateResponse.last_saved_at;
+        }
 
         // Clean up duplicates in background
         if (refetchedResults.length > 1) {
@@ -357,18 +370,20 @@ const persistAtterbergProjectToApi = async ({
         }
       }
     }
+
+    return lastSavedAt;
   } catch (error) {
     // If auth fails, silently continue (auto-save is non-critical)
     if (error instanceof Error && (error.message.includes("Unauthorized") || error.message.includes("Forbidden"))) {
       console.warn("API save skipped due to authentication, data is preserved locally");
-      return;
+      return null;
     }
 
     // Duplicate errors should have been handled in the inner catch block
     // If we still have a duplicate error here, log it and continue silently
     if (error instanceof Error && isDuplicateResultError(error)) {
       console.warn("Atterberg project: duplicate record was attempted but handled by update logic");
-      return;
+      return null;
     }
     throw error;
   }
@@ -559,10 +574,16 @@ const AtterbergTest = () => {
       dataPoints: totalDataPoints,
       status,
       keyResults: aggregateResults,
-    }).then(() => {
-      const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }).then((apiTimestamp) => {
       setSaveStatus("saved");
-      setLastSavedAt(now);
+      // Use the API timestamp if available, otherwise use client timestamp
+      if (apiTimestamp) {
+        const displayTime = new Date(apiTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        setLastSavedAt(displayTime);
+      } else {
+        const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        setLastSavedAt(now);
+      }
       setLastSaveError(null);
 
       // Auto-clear status after 2 seconds for auto-save
@@ -573,18 +594,12 @@ const AtterbergTest = () => {
         setSaveStatus("idle");
       }, 2000);
     }).catch((error) => {
-      // Silently ignore duplicate errors in auto-save since they indicate the record was already created
-      if (error instanceof Error && isDuplicateResultError(error)) {
-        console.warn("Atterberg project auto-save: record already exists, data updated instead");
-        setSaveStatus("saved");
-        setLastSaveError(null);
-        return;
-      }
+      // Report actual errors to user - backend handles duplicate detection properly
       setSaveStatus("error");
       setLastSaveError(error instanceof Error ? error.message : 'Unknown error');
       console.error("Failed to save Atterberg project to API:", error);
     });
-  }, [aggregateResults, effectiveProjectLookup, persistedState, project.clientName, project.date, project.projectName, projectState, status, totalDataPoints]);
+  }, [persistedState, effectiveProjectLookup, aggregateResults, status, totalDataPoints]);
 
   const updateProjectMetadata = useCallback((updater: (state: AtterbergProjectState) => Partial<AtterbergProjectState>) => {
     setProjectState((prev) => ({
@@ -687,7 +702,7 @@ const AtterbergTest = () => {
     }
 
     try {
-      await saveAtterbergProjectToApi({
+      const apiTimestamp = await saveAtterbergProjectToApi({
         lookup: effectiveProjectLookup,
         payload: buildExportPayload(),
         dataPoints: totalDataPoints,
@@ -695,9 +710,15 @@ const AtterbergTest = () => {
         keyResults: aggregateResults,
       });
 
-      const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       setSaveStatus("saved");
-      setLastSavedAt(now);
+      // Use the API timestamp if available, otherwise use client timestamp
+      if (apiTimestamp) {
+        const displayTime = new Date(apiTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        setLastSavedAt(displayTime);
+      } else {
+        const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        setLastSavedAt(now);
+      }
       setLastSaveError(null);
 
       // Auto-clear success status after 2 seconds
@@ -710,7 +731,7 @@ const AtterbergTest = () => {
       setLastSaveError(errorMessage);
       console.error("Failed to save Atterberg project:", error);
     }
-  }, [aggregateResults, effectiveProjectLookup, persistedState, project.clientName, project.date, project.projectName, projectState, status, totalDataPoints]);
+  }, [persistedState, effectiveProjectLookup, aggregateResults, status, totalDataPoints]);
 
   const handleClearAll = useCallback(async () => {
     try {
