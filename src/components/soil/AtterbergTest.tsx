@@ -559,7 +559,7 @@ const AtterbergTest = () => {
     };
   }, [computedRecords]);
 
-  useTestReport("atterberg", totalDataPoints, aggregateResults, status, totalStartedDataPoints);
+  useTestReport("atterberg", totalDataPoints, aggregateResults, undefined, totalStartedDataPoints);
 
   useEffect(() => {
     if (!hydratedRef.current) return;

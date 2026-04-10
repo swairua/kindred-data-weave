@@ -23,9 +23,10 @@ export const useTestReport = (
 
   useEffect(() => {
     // Determine status: use explicit status if provided, otherwise derive from data points
-    // Prefer startedDataPoints for showing in-progress work, fall back to dataPoints for completion
-    const pointsForStatus = startedDataPoints !== undefined ? startedDataPoints : dataPoints;
-    const nextStatus: TestStatus = status ?? (pointsForStatus === 0 ? "not-started" : "in-progress");
+    // Show "in-progress" if any trials have been started OR any valid data exists
+    const hasStartedData = startedDataPoints !== undefined && startedDataPoints > 0;
+    const hasValidData = dataPoints > 0;
+    const nextStatus: TestStatus = status ?? (hasStartedData || hasValidData ? "in-progress" : "not-started");
 
     const key = JSON.stringify({ dataPoints, keyResults, status: nextStatus });
     if (key === prevRef.current) return;
