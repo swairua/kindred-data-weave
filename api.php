@@ -27,6 +27,118 @@ if (in_array($origin, $allowed_origins, true) || $isLovablePreview) {
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
 
+// Database connection for session handling
+function createSessionDb(): mysqli
+{
+    $host = 'localhost';
+    $user = 'wayrusc1_labdatacraft';
+    $pass = 'Sirgeorge.12';
+    $name = 'wayrusc1_labdatacraft';
+    $port = 3306;
+
+    $conn = new mysqli($host, $user, $pass, $name, $port);
+    $conn->set_charset('utf8mb4');
+
+    return $conn;
+}
+
+// Custom session handler using database
+class DatabaseSessionHandler implements SessionHandlerInterface
+{
+    private mysqli $conn;
+
+    public function __construct(mysqli $conn)
+    {
+        $this->conn = $conn;
+    }
+
+    public function open(string $path, string $name): bool
+    {
+        return true;
+    }
+
+    public function close(): bool
+    {
+        return true;
+    }
+
+    public function read(string $id): string|false
+    {
+        try {
+            $sql = "SELECT session_data FROM `sessions` WHERE session_id = ? AND expires_at > NOW() LIMIT 1";
+            $stmt = $this->conn->prepare($sql);
+            if (!$stmt) {
+                return false;
+            }
+
+            $stmt->bind_param('s', $id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $row = $result->fetch_assoc();
+            $stmt->close();
+
+            return $row['session_data'] ?? '';
+        } catch (Exception $e) {
+            error_log('Session read error: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function write(string $id, string $data): bool
+    {
+        try {
+            $sql = "INSERT INTO `sessions` (session_id, session_data, expires_at, updated_at)
+                    VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 30 MINUTE), NOW())
+                    ON DUPLICATE KEY UPDATE session_data = ?, updated_at = NOW(), expires_at = DATE_ADD(NOW(), INTERVAL 30 MINUTE)";
+            $stmt = $this->conn->prepare($sql);
+            if (!$stmt) {
+                return false;
+            }
+
+            $stmt->bind_param('sss', $id, $data, $data);
+            $stmt->execute();
+            $stmt->close();
+
+            return true;
+        } catch (Exception $e) {
+            error_log('Session write error: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function destroy(string $id): bool
+    {
+        try {
+            $sql = "DELETE FROM `sessions` WHERE session_id = ?";
+            $stmt = $this->conn->prepare($sql);
+            if (!$stmt) {
+                return false;
+            }
+
+            $stmt->bind_param('s', $id);
+            $stmt->execute();
+            $stmt->close();
+
+            return true;
+        } catch (Exception $e) {
+            error_log('Session destroy error: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function gc(int $max_lifetime): int|false
+    {
+        try {
+            $sql = "DELETE FROM `sessions` WHERE expires_at < NOW()";
+            $this->conn->query($sql);
+            return $this->conn->affected_rows;
+        } catch (Exception $e) {
+            error_log('Session gc error: ' . $e->getMessage());
+            return false;
+        }
+    }
+}
+
 // Session configuration
 // Allow insecure cookies in development (localhost)
 $isLocalhost = strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') === 0 ||
@@ -37,6 +149,11 @@ session_set_cookie_params([
     'samesite' => 'None',
     'secure' => !$isLocalhost, // Allow insecure cookies for localhost development
 ]);
+
+// Initialize custom session handler
+$sessionDb = createSessionDb();
+$sessionHandler = new DatabaseSessionHandler($sessionDb);
+session_set_save_handler($sessionHandler, true);
 session_start();
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -81,39 +198,23 @@ function getCurrentUser(mysqli $conn): ?array
     }
 
     $userId = (int) $_SESSION['user_id'];
-    $sessionId = $_SESSION['session_id'] ?? null;
 
-    if (!$sessionId) {
-        return null;
-    }
-
-    // Validate session exists and hasn't expired
-    $sql = "SELECT s.*, u.id, u.email, u.name FROM `sessions` s
-            JOIN `users` u ON s.user_id = u.id
-            WHERE s.session_id = ? AND s.expires_at > NOW()
-            LIMIT 1";
+    // Fetch user from database to verify they still exist and get their details
+    $sql = "SELECT id, email, name FROM `users` WHERE id = ? LIMIT 1";
     $stmt = $conn->prepare($sql);
     if (!$stmt) {
         return null;
     }
 
-    $stmt->bind_param('s', $sessionId);
+    $stmt->bind_param('i', $userId);
     $stmt->execute();
     $result = $stmt->get_result();
     $row = $result->fetch_assoc();
+    $stmt->close();
 
     if (!$row) {
         session_destroy();
         return null;
-    }
-
-    // Update session expiration (sliding expiration: 30 minutes)
-    $expiresAt = date('Y-m-d H:i:s', strtotime('+30 minutes'));
-    $updateStmt = $conn->prepare("UPDATE `sessions` SET `expires_at` = ?, `updated_at` = NOW() WHERE `session_id` = ?");
-    if ($updateStmt) {
-        $updateStmt->bind_param('ss', $expiresAt, $sessionId);
-        $updateStmt->execute();
-        $updateStmt->close();
     }
 
     return [
@@ -367,27 +468,8 @@ try {
         $userId = $conn->insert_id;
         $insertStmt->close();
 
-        // Create session
-        $sessionId = bin2hex(random_bytes(32));
-        $expiresAt = date('Y-m-d H:i:s', strtotime('+30 days'));
-        $userAgent = substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 500);
-        $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-
-        $sessionStmt = $conn->prepare("INSERT INTO `sessions` (session_id, user_id, user_agent, ip_address, expires_at) VALUES (?, ?, ?, ?, ?)");
-        $sessionStmt->bind_param('sisss', $sessionId, $userId, $userAgent, $ipAddress, $expiresAt);
-        $sessionStmt->execute();
-        $sessionStmt->close();
-
+        // Create session - just set the user_id and let the session handler save it
         $_SESSION['user_id'] = $userId;
-        $_SESSION['session_id'] = $sessionId;
-        setcookie('PHPSESSID', $sessionId, [
-            'expires' => strtotime($expiresAt),
-            'path' => '/',
-            'domain' => '',
-            'secure' => true,
-            'httponly' => true,
-            'samesite' => 'None'
-        ]);
 
         respond([
             'message' => 'User registered and logged in',
@@ -419,28 +501,9 @@ try {
             respond(['error' => 'Invalid email or password'], 401);
         }
 
-        // Create session
-        $sessionId = bin2hex(random_bytes(32));
-        $expiresAt = date('Y-m-d H:i:s', strtotime('+30 days'));
-        $userAgent = substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 500);
-        $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+        // Create session - just set the user_id and let the session handler save it
         $userId = (int) $userRow['id'];
-
-        $sessionStmt = $conn->prepare("INSERT INTO `sessions` (session_id, user_id, user_agent, ip_address, expires_at) VALUES (?, ?, ?, ?, ?)");
-        $sessionStmt->bind_param('sisss', $sessionId, $userId, $userAgent, $ipAddress, $expiresAt);
-        $sessionStmt->execute();
-        $sessionStmt->close();
-
         $_SESSION['user_id'] = $userId;
-        $_SESSION['session_id'] = $sessionId;
-        setcookie('PHPSESSID', $sessionId, [
-            'expires' => strtotime($expiresAt),
-            'path' => '/',
-            'domain' => '',
-            'secure' => true,
-            'httponly' => true,
-            'samesite' => 'None'
-        ]);
 
         respond([
             'message' => 'Logged in successfully',
@@ -454,20 +517,8 @@ try {
     }
 
     if ($action === 'logout') {
-        if (isset($_SESSION['session_id'])) {
-            $sessionId = $_SESSION['session_id'];
-            $deleteStmt = $conn->prepare("DELETE FROM `sessions` WHERE session_id = ?");
-            $deleteStmt->bind_param('s', $sessionId);
-            $deleteStmt->execute();
-            $deleteStmt->close();
-        }
-
+        // session_destroy() will use our custom handler to delete from the database
         session_destroy();
-        setcookie('PHPSESSID', '', [
-            'expires' => time() - 3600,
-            'path' => '/',
-            'samesite' => 'None'
-        ]);
 
         respond(['message' => 'Logged out successfully']);
     }
@@ -492,10 +543,8 @@ try {
         error_log("=== UPLOAD REQUEST START ===");
 
         // Debug session info
-        error_log("Session ID: " . (isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 'NOT SET'));
-        error_log("Session session_id: " . ($_SESSION['session_id'] ?? 'NOT SET'));
+        error_log("Session user_id: " . (isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 'NOT SET'));
         error_log("PHPSESSID cookie: " . ($_COOKIE['PHPSESSID'] ?? 'NOT SET'));
-        error_log("All cookies: " . json_encode($_COOKIE));
         error_log("Origin: " . ($_SERVER['HTTP_ORIGIN'] ?? 'NOT SET'));
         error_log("User-Agent: " . ($_SERVER['HTTP_USER_AGENT'] ?? 'NOT SET'));
 
