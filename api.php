@@ -27,6 +27,118 @@ if (in_array($origin, $allowed_origins, true) || $isLovablePreview) {
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
 
+// Database connection for session handling
+function createSessionDb(): mysqli
+{
+    $host = 'localhost';
+    $user = 'wayrusc1_labdatacraft';
+    $pass = 'Sirgeorge.12';
+    $name = 'wayrusc1_labdatacraft';
+    $port = 3306;
+
+    $conn = new mysqli($host, $user, $pass, $name, $port);
+    $conn->set_charset('utf8mb4');
+
+    return $conn;
+}
+
+// Custom session handler using database
+class DatabaseSessionHandler implements SessionHandlerInterface
+{
+    private mysqli $conn;
+
+    public function __construct(mysqli $conn)
+    {
+        $this->conn = $conn;
+    }
+
+    public function open(string $path, string $name): bool
+    {
+        return true;
+    }
+
+    public function close(): bool
+    {
+        return true;
+    }
+
+    public function read(string $id): string|false
+    {
+        try {
+            $sql = "SELECT session_data FROM `sessions` WHERE session_id = ? AND expires_at > NOW() LIMIT 1";
+            $stmt = $this->conn->prepare($sql);
+            if (!$stmt) {
+                return false;
+            }
+
+            $stmt->bind_param('s', $id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $row = $result->fetch_assoc();
+            $stmt->close();
+
+            return $row['session_data'] ?? '';
+        } catch (Exception $e) {
+            error_log('Session read error: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function write(string $id, string $data): bool
+    {
+        try {
+            $sql = "INSERT INTO `sessions` (session_id, session_data, expires_at, updated_at)
+                    VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 30 MINUTE), NOW())
+                    ON DUPLICATE KEY UPDATE session_data = ?, updated_at = NOW(), expires_at = DATE_ADD(NOW(), INTERVAL 30 MINUTE)";
+            $stmt = $this->conn->prepare($sql);
+            if (!$stmt) {
+                return false;
+            }
+
+            $stmt->bind_param('sss', $id, $data, $data);
+            $stmt->execute();
+            $stmt->close();
+
+            return true;
+        } catch (Exception $e) {
+            error_log('Session write error: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function destroy(string $id): bool
+    {
+        try {
+            $sql = "DELETE FROM `sessions` WHERE session_id = ?";
+            $stmt = $this->conn->prepare($sql);
+            if (!$stmt) {
+                return false;
+            }
+
+            $stmt->bind_param('s', $id);
+            $stmt->execute();
+            $stmt->close();
+
+            return true;
+        } catch (Exception $e) {
+            error_log('Session destroy error: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function gc(int $max_lifetime): int|false
+    {
+        try {
+            $sql = "DELETE FROM `sessions` WHERE expires_at < NOW()";
+            $this->conn->query($sql);
+            return $this->conn->affected_rows;
+        } catch (Exception $e) {
+            error_log('Session gc error: ' . $e->getMessage());
+            return false;
+        }
+    }
+}
+
 // Session configuration
 // Allow insecure cookies in development (localhost)
 $isLocalhost = strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') === 0 ||
@@ -37,6 +149,11 @@ session_set_cookie_params([
     'samesite' => 'None',
     'secure' => !$isLocalhost, // Allow insecure cookies for localhost development
 ]);
+
+// Initialize custom session handler
+$sessionDb = createSessionDb();
+$sessionHandler = new DatabaseSessionHandler($sessionDb);
+session_set_save_handler($sessionHandler, true);
 session_start();
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -59,6 +176,7 @@ const ALLOWED_TABLES = [
 
 function respond(array $payload, int $status = 200): never
 {
+    error_log("RESPOND: status=$status, payload=" . json_encode($payload));
     http_response_code($status);
     echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
@@ -81,39 +199,23 @@ function getCurrentUser(mysqli $conn): ?array
     }
 
     $userId = (int) $_SESSION['user_id'];
-    $sessionId = $_SESSION['session_id'] ?? null;
 
-    if (!$sessionId) {
-        return null;
-    }
-
-    // Validate session exists and hasn't expired
-    $sql = "SELECT s.*, u.id, u.email, u.name FROM `sessions` s
-            JOIN `users` u ON s.user_id = u.id
-            WHERE s.session_id = ? AND s.expires_at > NOW()
-            LIMIT 1";
+    // Fetch user from database to verify they still exist and get their details
+    $sql = "SELECT id, email, name FROM `users` WHERE id = ? LIMIT 1";
     $stmt = $conn->prepare($sql);
     if (!$stmt) {
         return null;
     }
 
-    $stmt->bind_param('s', $sessionId);
+    $stmt->bind_param('i', $userId);
     $stmt->execute();
     $result = $stmt->get_result();
     $row = $result->fetch_assoc();
+    $stmt->close();
 
     if (!$row) {
         session_destroy();
         return null;
-    }
-
-    // Update session expiration (sliding expiration: 30 minutes)
-    $expiresAt = date('Y-m-d H:i:s', strtotime('+30 minutes'));
-    $updateStmt = $conn->prepare("UPDATE `sessions` SET `expires_at` = ?, `updated_at` = NOW() WHERE `session_id` = ?");
-    if ($updateStmt) {
-        $updateStmt->bind_param('ss', $expiresAt, $sessionId);
-        $updateStmt->execute();
-        $updateStmt->close();
     }
 
     return [
@@ -331,6 +433,14 @@ try {
     $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
     $action = strtolower((string) ($_GET['action'] ?? $body['action'] ?? ''));
 
+    error_log("==================== REQUEST ====================");
+    error_log("Method: $method");
+    error_log("Action: " . ($action ?: 'NOT SET'));
+    error_log("GET params: " . json_encode($_GET));
+    error_log("Request body: " . json_encode($body));
+    error_log("Session user_id: " . ($_SESSION['user_id'] ?? 'NOT SET'));
+    error_log("==============================================");
+
     // ============= AUTHENTICATION ENDPOINTS =============
 
     if ($action === 'register') {
@@ -367,27 +477,8 @@ try {
         $userId = $conn->insert_id;
         $insertStmt->close();
 
-        // Create session
-        $sessionId = bin2hex(random_bytes(32));
-        $expiresAt = date('Y-m-d H:i:s', strtotime('+30 days'));
-        $userAgent = substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 500);
-        $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-
-        $sessionStmt = $conn->prepare("INSERT INTO `sessions` (session_id, user_id, user_agent, ip_address, expires_at) VALUES (?, ?, ?, ?, ?)");
-        $sessionStmt->bind_param('sisss', $sessionId, $userId, $userAgent, $ipAddress, $expiresAt);
-        $sessionStmt->execute();
-        $sessionStmt->close();
-
+        // Create session - just set the user_id and let the session handler save it
         $_SESSION['user_id'] = $userId;
-        $_SESSION['session_id'] = $sessionId;
-        setcookie('PHPSESSID', $sessionId, [
-            'expires' => strtotime($expiresAt),
-            'path' => '/',
-            'domain' => '',
-            'secure' => true,
-            'httponly' => true,
-            'samesite' => 'None'
-        ]);
 
         respond([
             'message' => 'User registered and logged in',
@@ -419,28 +510,9 @@ try {
             respond(['error' => 'Invalid email or password'], 401);
         }
 
-        // Create session
-        $sessionId = bin2hex(random_bytes(32));
-        $expiresAt = date('Y-m-d H:i:s', strtotime('+30 days'));
-        $userAgent = substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 500);
-        $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+        // Create session - just set the user_id and let the session handler save it
         $userId = (int) $userRow['id'];
-
-        $sessionStmt = $conn->prepare("INSERT INTO `sessions` (session_id, user_id, user_agent, ip_address, expires_at) VALUES (?, ?, ?, ?, ?)");
-        $sessionStmt->bind_param('sisss', $sessionId, $userId, $userAgent, $ipAddress, $expiresAt);
-        $sessionStmt->execute();
-        $sessionStmt->close();
-
         $_SESSION['user_id'] = $userId;
-        $_SESSION['session_id'] = $sessionId;
-        setcookie('PHPSESSID', $sessionId, [
-            'expires' => strtotime($expiresAt),
-            'path' => '/',
-            'domain' => '',
-            'secure' => true,
-            'httponly' => true,
-            'samesite' => 'None'
-        ]);
 
         respond([
             'message' => 'Logged in successfully',
@@ -454,20 +526,8 @@ try {
     }
 
     if ($action === 'logout') {
-        if (isset($_SESSION['session_id'])) {
-            $sessionId = $_SESSION['session_id'];
-            $deleteStmt = $conn->prepare("DELETE FROM `sessions` WHERE session_id = ?");
-            $deleteStmt->bind_param('s', $sessionId);
-            $deleteStmt->execute();
-            $deleteStmt->close();
-        }
-
+        // session_destroy() will use our custom handler to delete from the database
         session_destroy();
-        setcookie('PHPSESSID', '', [
-            'expires' => time() - 3600,
-            'path' => '/',
-            'samesite' => 'None'
-        ]);
 
         respond(['message' => 'Logged out successfully']);
     }
@@ -492,10 +552,8 @@ try {
         error_log("=== UPLOAD REQUEST START ===");
 
         // Debug session info
-        error_log("Session ID: " . (isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 'NOT SET'));
-        error_log("Session session_id: " . ($_SESSION['session_id'] ?? 'NOT SET'));
+        error_log("Session user_id: " . (isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 'NOT SET'));
         error_log("PHPSESSID cookie: " . ($_COOKIE['PHPSESSID'] ?? 'NOT SET'));
-        error_log("All cookies: " . json_encode($_COOKIE));
         error_log("Origin: " . ($_SERVER['HTTP_ORIGIN'] ?? 'NOT SET'));
         error_log("User-Agent: " . ($_SERVER['HTTP_USER_AGENT'] ?? 'NOT SET'));
 
@@ -727,14 +785,21 @@ try {
     }
 
     if ($action === 'create') {
+        error_log("=== CREATE ACTION START ===");
+        error_log("Table: $table");
+        error_log("Request body: " . json_encode($body));
+
         $user = requireAuth($conn);
         $userId = (int) $_SESSION['user_id'];
+        error_log("User ID: $userId");
 
         $payload = filteredPayload($body);
+        error_log("Filtered payload: " . json_encode($payload));
 
         // Automatically add user_id if table has it
         if (isset($schema['columns']['user_id'])) {
             $payload['user_id'] = $userId;
+            error_log("Added user_id to payload");
         }
 
         $columns = [];
@@ -743,6 +808,7 @@ try {
 
         foreach ($payload as $column => $value) {
             if (!isset($schema['columns'][$column]) || in_array($column, $schema['autoIncrement'], true)) {
+                error_log("Skipping column: $column (exists in schema: " . (isset($schema['columns'][$column]) ? 'YES' : 'NO') . ", is auto_increment: " . (in_array($column, $schema['autoIncrement'], true) ? 'YES' : 'NO') . ")");
                 continue;
             }
 
@@ -751,7 +817,11 @@ try {
             $values[] = normalizeValue($value);
         }
 
+        error_log("Columns to insert: " . json_encode($columns));
+        error_log("Values to insert: " . json_encode($values));
+
         if ($columns === []) {
+            error_log("ERROR: No valid fields provided for insert");
             respond(['error' => 'No valid fields provided for insert'], 422);
         }
 
@@ -762,15 +832,29 @@ try {
             implode(', ', $placeholders)
         );
 
+        error_log("SQL: $sql");
+
         $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            error_log("ERROR: Failed to prepare statement: " . $conn->error);
+            respond(['error' => 'Database error: ' . $conn->error], 500);
+        }
+
         bindParams($stmt, str_repeat('s', count($values)), $values);
-        $stmt->execute();
+
+        if (!$stmt->execute()) {
+            error_log("ERROR: Failed to execute statement: " . $stmt->error);
+            respond(['error' => 'Database error: ' . $stmt->error], 500);
+        }
 
         $insertId = $conn->insert_id;
+        error_log("Record inserted with ID: $insertId");
+
         $created = $conn->query("SELECT * FROM `$table` WHERE `$primaryKey` = '" . $conn->real_escape_string((string) $insertId) . "' LIMIT 1")->fetch_assoc();
+        error_log("Retrieved created record: " . json_encode($created));
 
         // Log audit for Atterberg test saves
-        error_log("CREATE: table=$table, test_key=" . ($payload['test_key'] ?? 'NOT_SET'));
+        error_log("Checking for audit logging: table=$table, test_key=" . ($payload['test_key'] ?? 'NOT_SET'));
         if ($table === 'test_results' && ($payload['test_key'] ?? '') === 'atterberg') {
             $dataPoints = (int) ($payload['data_points'] ?? 0);
             error_log("Creating audit log for test_result_id=$insertId, data_points=$dataPoints");
@@ -779,6 +863,8 @@ try {
         } else {
             error_log("Audit logging skipped: table match=" . ($table === 'test_results' ? 'YES' : 'NO') . ", test_key match=" . (($payload['test_key'] ?? '') === 'atterberg' ? 'YES' : 'NO'));
         }
+
+        error_log("=== CREATE ACTION END ===");
 
         respond([
             'message' => 'Record created',
@@ -790,26 +876,37 @@ try {
     }
 
     if ($action === 'update') {
+        error_log("=== UPDATE ACTION START ===");
+        error_log("Table: $table");
+        error_log("Request body: " . json_encode($body));
+
         $user = requireAuth($conn);
         $userId = (int) $_SESSION['user_id'];
+        error_log("User ID: $userId");
 
         $id = $_GET['id'] ?? $body['id'] ?? null;
         if ($id === null || $id === '') {
+            error_log("ERROR: Missing id parameter");
             respond(['error' => 'Missing id'], 400);
         }
+        error_log("Record ID: $id");
 
         // Check ownership if table has user_id
         if (isset($schema['columns']['user_id'])) {
+            error_log("Checking record ownership");
             $checkStmt = $conn->prepare("SELECT id FROM `$table` WHERE `$primaryKey` = ? AND `user_id` = ? LIMIT 1");
             $checkStmt->bind_param('si', $id, $userId);
             $checkStmt->execute();
             if (!$checkStmt->get_result()->fetch_assoc()) {
+                error_log("ERROR: Record not found or forbidden for user_id=$userId");
                 respond(['error' => 'Record not found or forbidden'], 404);
             }
+            error_log("Record ownership verified");
             $checkStmt->close();
         }
 
         $payload = filteredPayload($body);
+        error_log("Filtered payload: " . json_encode($payload));
 
         // Prevent user_id from being updated
         unset($payload['user_id']);
@@ -819,6 +916,7 @@ try {
 
         foreach ($payload as $column => $value) {
             if (!isset($schema['columns'][$column]) || $column === $primaryKey || in_array($column, $schema['autoIncrement'], true)) {
+                error_log("Skipping column: $column");
                 continue;
             }
 
@@ -826,7 +924,11 @@ try {
             $values[] = normalizeValue($value);
         }
 
+        error_log("Columns to update: " . json_encode(array_map(fn($s) => trim($s, '` = ?'), $sets)));
+        error_log("Values: " . json_encode($values));
+
         if ($sets === []) {
+            error_log("ERROR: No valid fields provided for update");
             respond(['error' => 'No valid fields provided for update'], 422);
         }
 
@@ -837,15 +939,29 @@ try {
             $primaryKey
         );
 
+        error_log("Update SQL: $sql");
+
         $values[] = $id;
         $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            error_log("ERROR: Failed to prepare update statement: " . $conn->error);
+            respond(['error' => 'Database error: ' . $conn->error], 500);
+        }
+
         bindParams($stmt, str_repeat('s', count($values)), $values);
-        $stmt->execute();
+
+        if (!$stmt->execute()) {
+            error_log("ERROR: Failed to execute update: " . $stmt->error);
+            respond(['error' => 'Database error: ' . $stmt->error], 500);
+        }
+
+        error_log("Update successful");
 
         $updated = $conn->query("SELECT * FROM `$table` WHERE `$primaryKey` = '" . $conn->real_escape_string((string) $id) . "' LIMIT 1")->fetch_assoc();
+        error_log("Retrieved updated record: " . json_encode($updated));
 
         // Log audit for Atterberg test saves
-        error_log("UPDATE: table=$table, id=$id, test_key=" . ($payload['test_key'] ?? 'NOT_SET'));
+        error_log("Checking for audit logging: table=$table, test_key=" . ($payload['test_key'] ?? 'NOT_SET'));
         if ($table === 'test_results' && ($payload['test_key'] ?? '') === 'atterberg') {
             $dataPoints = (int) ($payload['data_points'] ?? 0);
             error_log("Creating audit log for test_result_id=$id, data_points=$dataPoints");
@@ -854,6 +970,8 @@ try {
         } else {
             error_log("Audit logging skipped: table match=" . ($table === 'test_results' ? 'YES' : 'NO') . ", test_key match=" . (($payload['test_key'] ?? '') === 'atterberg' ? 'YES' : 'NO'));
         }
+
+        error_log("=== UPDATE ACTION END ===");
 
         respond([
             'message' => 'Record updated',
