@@ -25,9 +25,12 @@ interface TestSectionProps {
   onExportSmokeCheck?: () => boolean | void | Promise<boolean | void>;
   exportSmokeCheckDisabled?: boolean;
   smokeCheckStatus?: SmokeCheckStatus | null;
+  saveStatus?: "idle" | "saving" | "saved" | "error";
+  lastSavedAt?: string | null;
+  lastSaveError?: string | null;
 }
 
-const TestSection = ({ title, children, onSave, onClear, onExportPDF, onExportCSV, onExportXLSX, onExportSmokeCheck, exportSmokeCheckDisabled, smokeCheckStatus }: TestSectionProps) => {
+const TestSection = ({ title, children, onSave, onClear, onExportPDF, onExportCSV, onExportXLSX, onExportSmokeCheck, exportSmokeCheckDisabled, smokeCheckStatus, saveStatus = "idle", lastSavedAt, lastSaveError }: TestSectionProps) => {
   const [open, setOpen] = useState(false);
 
   return (
@@ -98,6 +101,7 @@ const TestSection = ({ title, children, onSave, onClear, onExportPDF, onExportCS
               <Button
                 size="sm"
                 variant="default"
+                disabled={saveStatus === "saving"}
                 onClick={async () => {
                   try {
                     const result = await onSave();
@@ -109,7 +113,23 @@ const TestSection = ({ title, children, onSave, onClear, onExportPDF, onExportCS
                   }
                 }}
               >
-                <Save className="h-3.5 w-3.5 mr-1" /> Save
+                {saveStatus === "saving" ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Saving...
+                  </>
+                ) : saveStatus === "saved" ? (
+                  <>
+                    <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-green-600" /> Saved
+                  </>
+                ) : saveStatus === "error" ? (
+                  <>
+                    <AlertCircle className="h-3.5 w-3.5 mr-1 text-red-600" /> Error
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-3.5 w-3.5 mr-1" /> Save
+                  </>
+                )}
               </Button>
             )}
             {onClear && (
@@ -119,6 +139,42 @@ const TestSection = ({ title, children, onSave, onClear, onExportPDF, onExportCS
             )}
           </div>
         </div>
+        {saveStatus && saveStatus !== "idle" && (
+          <div
+            className={`mt-3 rounded-md border px-3 py-2 text-xs ${
+              saveStatus === "saved"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                : saveStatus === "error"
+                  ? "border-red-200 bg-red-50 text-red-800"
+                  : "border-blue-200 bg-blue-50 text-blue-800"
+            }`}
+          >
+            <div className="flex items-start gap-2">
+              {saveStatus === "saving" ? (
+                <Loader2 className="mt-0.5 h-3.5 w-3.5 animate-spin" />
+              ) : saveStatus === "saved" ? (
+                <CheckCircle2 className="mt-0.5 h-3.5 w-3.5" />
+              ) : (
+                <AlertCircle className="mt-0.5 h-3.5 w-3.5" />
+              )}
+              <div className="min-w-0 space-y-1">
+                <div className="font-medium">
+                  {saveStatus === "saving"
+                    ? "Saving in progress..."
+                    : saveStatus === "saved"
+                      ? "Saved successfully"
+                      : "Save failed"}
+                </div>
+                {lastSavedAt && saveStatus === "saved" && (
+                  <div className="text-current/80">Last saved at {lastSavedAt}</div>
+                )}
+                {lastSaveError && saveStatus === "error" && (
+                  <div className="text-current/80">{lastSaveError}</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
         {smokeCheckStatus && smokeCheckStatus.state !== "idle" && (
           <div
             className={`mt-3 rounded-md border px-3 py-2 text-xs ${

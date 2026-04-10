@@ -251,6 +251,80 @@ function filteredPayload(array $input): array
     return $payload;
 }
 
+function logAuditSave(
+    mysqli $conn,
+    int $testResultId,
+    int $userId,
+    string $status,
+    int $dataPoints = 0,
+    string $testKey = 'atterberg',
+    ?string $errorMessage = null
+): bool {
+    try {
+        // Check if table exists first
+        $tableCheck = $conn->query("SELECT 1 FROM atterberg_save_audit LIMIT 1");
+        if ($tableCheck === false) {
+            error_log("atterberg_save_audit table does not exist or cannot be accessed: " . $conn->error);
+            return false;
+        }
+
+        $sql = "INSERT INTO atterberg_save_audit
+                (test_result_id, user_id, status, data_points, test_key, error_message)
+                VALUES (?, ?, ?, ?, ?, ?)";
+
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            error_log("Failed to prepare audit log statement: " . $conn->error);
+            return false;
+        }
+
+        $stmt->bind_param('iisiss', $testResultId, $userId, $status, $dataPoints, $testKey, $errorMessage);
+
+        if (!$stmt->execute()) {
+            error_log("Failed to execute audit log for test_result_id=$testResultId: " . $stmt->error);
+            $stmt->close();
+            return false;
+        }
+
+        error_log("Audit log created: test_result_id=$testResultId, status=$status, data_points=$dataPoints");
+        $stmt->close();
+        return true;
+    } catch (Throwable $e) {
+        error_log("Exception in logAuditSave: " . $e->getMessage());
+        return false;
+    }
+}
+
+function updateAuditSaveCompletion(
+    mysqli $conn,
+    int $testResultId,
+    string $newStatus,
+    ?string $errorMessage = null
+): bool {
+    $sql = "UPDATE atterberg_save_audit
+            SET status = ?, error_message = ?, completed_at = NOW()
+            WHERE test_result_id = ?
+            ORDER BY created_at DESC
+            LIMIT 1";
+
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        error_log("Failed to prepare audit update statement: " . $conn->error);
+        return false;
+    }
+
+    $stmt->bind_param('ssi', $newStatus, $errorMessage, $testResultId);
+
+    if (!$stmt->execute()) {
+        error_log("Failed to execute audit update: " . $stmt->error);
+        $stmt->close();
+        return false;
+    }
+
+    $stmt->close();
+    return true;
+}
+
 try {
     $conn = db();
     $body = requestBody();
@@ -695,11 +769,23 @@ try {
         $insertId = $conn->insert_id;
         $created = $conn->query("SELECT * FROM `$table` WHERE `$primaryKey` = '" . $conn->real_escape_string((string) $insertId) . "' LIMIT 1")->fetch_assoc();
 
+        // Log audit for Atterberg test saves
+        error_log("CREATE: table=$table, test_key=" . ($payload['test_key'] ?? 'NOT_SET'));
+        if ($table === 'test_results' && ($payload['test_key'] ?? '') === 'atterberg') {
+            $dataPoints = (int) ($payload['data_points'] ?? 0);
+            error_log("Creating audit log for test_result_id=$insertId, data_points=$dataPoints");
+            $auditResult = logAuditSave($conn, $insertId, $userId, 'completed', $dataPoints, 'atterberg');
+            error_log("Audit log result: " . ($auditResult ? 'SUCCESS' : 'FAILED'));
+        } else {
+            error_log("Audit logging skipped: table match=" . ($table === 'test_results' ? 'YES' : 'NO') . ", test_key match=" . (($payload['test_key'] ?? '') === 'atterberg' ? 'YES' : 'NO'));
+        }
+
         respond([
             'message' => 'Record created',
             'table' => $table,
             'id' => $insertId,
             'data' => $created ? hydrateRow($created) : null,
+            'last_saved_at' => date('Y-m-d H:i:s'),
         ], 201);
     }
 
@@ -758,10 +844,22 @@ try {
 
         $updated = $conn->query("SELECT * FROM `$table` WHERE `$primaryKey` = '" . $conn->real_escape_string((string) $id) . "' LIMIT 1")->fetch_assoc();
 
+        // Log audit for Atterberg test saves
+        error_log("UPDATE: table=$table, id=$id, test_key=" . ($payload['test_key'] ?? 'NOT_SET'));
+        if ($table === 'test_results' && ($payload['test_key'] ?? '') === 'atterberg') {
+            $dataPoints = (int) ($payload['data_points'] ?? 0);
+            error_log("Creating audit log for test_result_id=$id, data_points=$dataPoints");
+            $auditResult = logAuditSave($conn, (int) $id, $userId, 'completed', $dataPoints, 'atterberg');
+            error_log("Audit log result: " . ($auditResult ? 'SUCCESS' : 'FAILED'));
+        } else {
+            error_log("Audit logging skipped: table match=" . ($table === 'test_results' ? 'YES' : 'NO') . ", test_key match=" . (($payload['test_key'] ?? '') === 'atterberg' ? 'YES' : 'NO'));
+        }
+
         respond([
             'message' => 'Record updated',
             'table' => $table,
             'data' => $updated ? hydrateRow($updated) : null,
+            'last_saved_at' => date('Y-m-d H:i:s'),
         ]);
     }
 
