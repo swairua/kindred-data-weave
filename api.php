@@ -718,8 +718,20 @@ try {
     }
 
     if ($action === 'list') {
-        $user = requireAuth($conn);
-        $userId = (int) $_SESSION['user_id'];
+        // Allow public tables to be listed without authentication
+        $publicTables = ['test_definitions'];
+        $user = null;
+        $userId = null;
+
+        if (!in_array($table, $publicTables, true)) {
+            // Require authentication for non-public tables
+            $user = requireAuth($conn);
+            $userId = (int) $_SESSION['user_id'];
+        } else {
+            // For public tables, get user if authenticated
+            $user = getCurrentUser($conn);
+            $userId = $user ? (int) $_SESSION['user_id'] : null;
+        }
 
         $limit = isset($_GET['limit']) ? max(1, (int) $_GET['limit']) : 100;
         $offset = isset($_GET['offset']) ? max(0, (int) $_GET['offset']) : 0;
@@ -733,9 +745,9 @@ try {
             $direction = 'DESC';
         }
 
-        // Filter by user_id if the table has it
+        // Filter by user_id if the table has it and user is authenticated
         $whereClause = '';
-        if (isset($schema['columns']['user_id'])) {
+        if ($userId && isset($schema['columns']['user_id'])) {
             $whereClause = "WHERE `user_id` = $userId";
         }
 
