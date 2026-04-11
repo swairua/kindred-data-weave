@@ -32,23 +32,29 @@ interface StoredImage {
 }
 
 const Admin = () => {
+  console.log("Admin: Component rendering");
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedImageType, setSelectedImageType] = useState<ImageType>("logo");
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [storedImages, setStoredImages] = useState<Record<ImageType, StoredImage>>({
-    logo: { type: "logo", loading: true },
-    contacts: { type: "contacts", loading: true },
-    stamp: { type: "stamp", loading: true },
+    logo: { type: "logo", loading: false },
+    contacts: { type: "contacts", loading: false },
+    stamp: { type: "stamp", loading: false },
   });
 
   useEffect(() => {
     const fetchStoredImages = async () => {
+      console.log("Admin: Starting to fetch stored images...");
       try {
         const url = buildApiUrl({ action: "list", table: "admin_images" });
+        console.log("Admin: Fetching from URL:", url);
         const resp = await fetch(url, { credentials: "include" });
+        console.log("Admin: Response status:", resp.status);
+
         if (!resp.ok) {
+          console.log("Admin: Response not ok, setting empty images");
           // Set with no images but no error
           setStoredImages({
             logo: { type: "logo", loading: false },
@@ -58,6 +64,7 @@ const Admin = () => {
           return;
         }
         const json = await resp.json();
+        console.log("Admin: API response data:", json);
         const rows: Array<{ image_type: string; file_path: string }> = json?.data || [];
 
         // Get latest per type
@@ -210,7 +217,8 @@ const Admin = () => {
   };
 
   return (
-    <Tabs defaultValue="images" className="w-full">
+    <div className="space-y-6">
+      <Tabs defaultValue="images" className="w-full">
       <TabsList className="grid w-full grid-cols-2">
         <TabsTrigger value="images">Media Library</TabsTrigger>
         <TabsTrigger value="tests">Test Definitions</TabsTrigger>
@@ -377,6 +385,7 @@ const Admin = () => {
         <TestDefinitionsManager />
       </TabsContent>
     </Tabs>
+    </div>
   );
 };
 

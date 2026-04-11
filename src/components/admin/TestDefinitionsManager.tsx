@@ -49,10 +49,21 @@ export const TestDefinitionsManager = () => {
 
   const loadTestDefinitions = useCallback(async () => {
     setLoading(true);
+    console.log("TestDefinitionsManager: Starting to load test definitions...");
     try {
-      const response = await listRecords<TestDefinition>("test_definitions", { limit: 1000, orderBy: "sort_order", direction: "ASC" });
+      const response = await listRecords<TestDefinition>("test_definitions", { limit: 1000 });
+      console.log("TestDefinitionsManager: API response received:", {
+        hasData: !!response?.data,
+        isArray: Array.isArray(response?.data),
+        dataLength: Array.isArray(response?.data) ? response.data.length : 'N/A',
+        fullResponse: response
+      });
       if (response?.data && Array.isArray(response.data)) {
+        console.log("TestDefinitionsManager: Setting tests with", response.data.length, "items");
+        console.log("TestDefinitionsManager: First test:", response.data[0]);
         setTests(response.data);
+      } else {
+        console.warn("TestDefinitionsManager: Response data is not an array:", response);
       }
     } catch (error) {
       console.error("Failed to load test definitions:", error);
@@ -63,8 +74,11 @@ export const TestDefinitionsManager = () => {
   }, []);
 
   useEffect(() => {
+    console.log("TestDefinitionsManager: Component mounted, loading test definitions");
     loadTestDefinitions();
   }, [loadTestDefinitions]);
+
+  console.log("TestDefinitionsManager: Rendering with state:", { loading, testsCount: tests.length });
 
   const handleEdit = (test: TestDefinition) => {
     setEditingTest({
