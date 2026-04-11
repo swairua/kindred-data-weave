@@ -189,19 +189,33 @@ const Index = ({ initialTab }: IndexProps) => {
   }, []);
 
   useEffect(() => {
-    if (authStatus !== "authenticated") return;
+    if (authStatus !== "authenticated") {
+      console.log("[Index] Skipping project history load: not authenticated yet");
+      return;
+    }
 
     let isMounted = true;
 
     const loadProjects = async () => {
       try {
+        console.log("[Index] Loading project history from API...");
         setIsLoadingProjects(true);
         const response = await listRecords<ApiProjectRow>("projects", { limit: 100, orderBy: "updated_at", direction: "DESC" });
-        if (isMounted) {
-          setProjectHistory(response.data || []);
+
+        if (!isMounted) {
+          console.log("[Index] Component unmounted before project history response");
+          return;
         }
+
+        const projects = response.data || [];
+        console.log(`[Index] Successfully loaded ${projects.length} projects from API`);
+        console.log("[Index] Projects:", projects);
+        setProjectHistory(projects);
       } catch (error) {
-        console.warn("Failed to load project history:", error);
+        console.error("[Index] Failed to load project history:", error);
+        if (isMounted) {
+          console.warn("[Index] Project history load failed - will show 'No saved projects'");
+        }
         // Silently fail - not critical to operation
       } finally {
         if (isMounted) {

@@ -323,6 +323,14 @@ const persistAtterbergProjectToApi = async ({
     const clientName = normalizeLookupValue(payload.project.clientName);
     const projectDate = normalizeLookupValue(payload.project.date);
 
+    console.log(`[Atterberg Save] Lookup criteria:`, lookup);
+    console.log(`[Atterberg Save] Found projects response: ${projectsResponse.data.length} projects`);
+    if (projectRow) {
+      console.log(`[Atterberg Save] Using project:`, projectRow);
+    } else {
+      console.log(`[Atterberg Save] No matching project found, will create one`);
+    }
+
     let lastSavedAt: string | null = null;
 
     if (!projectRow) {
@@ -367,13 +375,22 @@ const persistAtterbergProjectToApi = async ({
     // If multiple exist, update the most recent one (highest ID)
     if (matchingResults.length > 0) {
       const mostRecent = matchingResults.reduce((prev, curr) => (curr.id > prev.id ? curr : prev));
+      console.log(`[Atterberg Save] Found ${matchingResults.length} matching test_results records for project ${projectRow.id}`);
+      console.log(`[Atterberg Save] Most recent record ID: ${mostRecent.id}`, mostRecent);
+      console.log(`[Atterberg Save] Attempting to update test_results record ${mostRecent.id} with payload:`, resultPayload);
 
       // Try to update the most recent record with retry
-      const updateResponse = await retryWithBackoff(
-        () => updateApiRecord("test_results", mostRecent.id, resultPayload)
-      );
-      if (updateResponse.last_saved_at) {
-        lastSavedAt = updateResponse.last_saved_at;
+      try {
+        const updateResponse = await retryWithBackoff(
+          () => updateApiRecord("test_results", mostRecent.id, resultPayload)
+        );
+        console.log(`[Atterberg Save] Successfully updated test_results record ${mostRecent.id}`, updateResponse);
+        if (updateResponse.last_saved_at) {
+          lastSavedAt = updateResponse.last_saved_at;
+        }
+      } catch (updateError) {
+        console.error(`[Atterberg Save] Failed to update test_results record ${mostRecent.id}:`, updateError);
+        throw updateError;
       }
 
       // Clean up other duplicates in the background (don't block if they fail)
@@ -385,19 +402,23 @@ const persistAtterbergProjectToApi = async ({
       }
     } else {
       // No record exists, try to create one
+      console.log(`[Atterberg Save] No existing test_results records found for project ${projectRow.id}, attempting to create new one`);
       try {
         const createResponse = await retryWithBackoff(
           () => createApiRecord("test_results", resultPayload)
         );
+        console.log(`[Atterberg Save] Successfully created test_results record`, createResponse);
         if (createResponse.last_saved_at) {
           lastSavedAt = createResponse.last_saved_at;
         }
       } catch (error) {
         // If duplicate error, another process may have created it while we were saving
         if (!isDuplicateResultError(error)) {
+          console.error(`[Atterberg Save] Create failed with non-duplicate error:`, error);
           throw error;
         }
 
+        console.log(`[Atterberg Save] Create failed with duplicate error, refetching records to find newly created one`);
         // Refetch latest data and try to update instead
         const latestResultsResponse = await retryWithBackoff(
           () => listRecords<ApiAtterbergResultRow>("test_results", {
@@ -407,19 +428,28 @@ const persistAtterbergProjectToApi = async ({
           })
         );
         const refetchedResults = getAtterbergResultsForProject(latestResultsResponse.data, projectRow.id);
+        console.log(`[Atterberg Save] Refetched ${refetchedResults.length} test_results records for project ${projectRow.id}`);
 
         if (!refetchedResults[0]) {
           // Still no record found, something is wrong
+          console.error(`[Atterberg Save] Even after refetch, no test_results records found for project ${projectRow.id}`);
           throw error;
         }
 
         // Update the most recent record
         const mostRecent = refetchedResults.reduce((prev, curr) => (curr.id > prev.id ? curr : prev));
-        const updateResponse = await retryWithBackoff(
-          () => updateApiRecord("test_results", mostRecent.id, resultPayload)
-        );
-        if (updateResponse.last_saved_at) {
-          lastSavedAt = updateResponse.last_saved_at;
+        console.log(`[Atterberg Save] Attempting to update refetched record ${mostRecent.id}`);
+        try {
+          const updateResponse = await retryWithBackoff(
+            () => updateApiRecord("test_results", mostRecent.id, resultPayload)
+          );
+          console.log(`[Atterberg Save] Successfully updated refetched test_results record ${mostRecent.id}`, updateResponse);
+          if (updateResponse.last_saved_at) {
+            lastSavedAt = updateResponse.last_saved_at;
+          }
+        } catch (retryUpdateError) {
+          console.error(`[Atterberg Save] Failed to update refetched record ${mostRecent.id}:`, retryUpdateError);
+          throw retryUpdateError;
         }
 
         // Clean up duplicates in background
@@ -618,18 +648,24 @@ const AtterbergTest = () => {
 
   // Save state to localStorage for local persistence (no auto API save during active work)
   useEffect(() => {
-    if (!hydratedRef.current) return;
+    if (!hydratedRef.current) {
+      console.log("[AtterbergTest] Skipping localStorage save: not hydrated yet");
+      return;
+    }
     if (skipNextPersistRef.current) {
+      console.log("[AtterbergTest] Skipping localStorage save: flagged to skip");
       skipNextPersistRef.current = false;
       return;
     }
 
     // Persist to localStorage only - no API calls during active work
-    const persistedState = buildPersistedState(computedRecords);
     try {
+      const persistedState = buildPersistedState(computedRecords);
+      console.log(`[AtterbergTest] Persisting ${computedRecords.length} records to localStorage`);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(persistedState));
+      console.log("[AtterbergTest] Successfully saved to localStorage");
     } catch (error) {
-      console.error("Failed to save to localStorage:", error);
+      console.error("[AtterbergTest] Failed to save to localStorage:", error);
     }
   }, [computedRecords]);
 
@@ -641,10 +677,26 @@ const AtterbergTest = () => {
   }, []);
 
   const updateRecord = useCallback((recordId: string, updater: (record: AtterbergRecord) => AtterbergRecord) => {
-    setProjectState((prev) => ({
-      ...prev,
-      records: prev.records.map((record) => (record.id === recordId ? updater(record) : record)),
-    }));
+    try {
+      setProjectState((prev) => {
+        const updatedRecords = prev.records.map((record) => {
+          if (record.id === recordId) {
+            const updated = updater(record);
+            console.log(`[AtterbergTest] Updated record "${recordId}":`, updated);
+            return updated;
+          }
+          return record;
+        });
+        console.log(`[AtterbergTest] Project state updated with ${updatedRecords.length} records`);
+        return {
+          ...prev,
+          records: updatedRecords,
+        };
+      });
+    } catch (error) {
+      console.error(`[AtterbergTest] Error updating record "${recordId}":`, error);
+      throw error;
+    }
   }, []);
 
   const updateTest = useCallback(
@@ -671,11 +723,22 @@ const AtterbergTest = () => {
 
   const addTest = useCallback(
     (recordId: string, type: AtterbergTestType = "liquidLimit") => {
-      updateRecord(recordId, (record) => ({
-        ...record,
-        isExpanded: true,
-        tests: [...record.tests, createTest(type, record.tests)],
-      }));
+      try {
+        console.log(`[AtterbergTest] Adding test of type "${type}" to record "${recordId}"`);
+        updateRecord(recordId, (record) => {
+          const newTest = createTest(type, record.tests);
+          console.log(`[AtterbergTest] Created new test:`, newTest);
+          return {
+            ...record,
+            isExpanded: true,
+            tests: [...record.tests, newTest],
+          };
+        });
+        console.log(`[AtterbergTest] Test added successfully`);
+      } catch (error) {
+        console.error(`[AtterbergTest] Error adding test:`, error);
+        throw error;
+      }
     },
     [updateRecord],
   );
@@ -798,6 +861,34 @@ const AtterbergTest = () => {
       navigate("/");
     }, 500);
   }, [handleSave, navigate]);
+
+  // Auto-save effect with debounce (500ms delay)
+  // This ensures tests are automatically saved to the API as the user works
+  useEffect(() => {
+    // Don't auto-save until component is hydrated
+    if (!hydratedRef.current) {
+      console.log("[AutoSave] Skipping auto-save: component not hydrated yet");
+      return;
+    }
+
+    // Don't auto-save if there are no records
+    if (projectState.records.length === 0) {
+      return;
+    }
+
+    // Set up debounce timer for auto-save
+    const debounceTimer = setTimeout(() => {
+      console.log("[AutoSave] Debounce complete, triggering auto-save");
+      handleSave();
+    }, 500); // 500ms debounce delay
+
+    // Cleanup timer on unmount or when dependencies change
+    return () => {
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
+    };
+  }, [projectState.records, handleSave]);
 
   const handleClearAll = useCallback(async () => {
     try {

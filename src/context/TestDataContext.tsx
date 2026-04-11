@@ -203,14 +203,20 @@ export const TestDataProvider = ({ children }: { children: ReactNode }) => {
             console.log("Successfully loaded test definitions from API");
           }
         } catch (error) {
+          // Check if this is a 401 Unauthorized error (user not logged in yet)
+          const isUnauthorized = error instanceof Error && error.message?.includes("Unauthorized");
+
           retries++;
-          if (retries < maxRetries) {
+          if (retries < maxRetries && !isUnauthorized) {
             const delay = Math.pow(2, retries - 1) * 1000;
             console.warn(`Failed to load test definitions. Retrying in ${delay}ms... (Attempt ${retries}/${maxRetries})`);
             await new Promise(resolve => setTimeout(resolve, delay));
             return attemptLoad();
           } else {
-            console.error("Failed to load test definitions from API after 3 attempts:", error);
+            // Silently fail for 401 errors (expected when not authenticated)
+            if (!isUnauthorized) {
+              console.warn("Failed to load test definitions from API, using defaults");
+            }
           }
         }
       };
