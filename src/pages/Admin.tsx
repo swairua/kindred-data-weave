@@ -38,9 +38,9 @@ const Admin = () => {
   const [selectedImageType, setSelectedImageType] = useState<ImageType>("logo");
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [storedImages, setStoredImages] = useState<Record<ImageType, StoredImage>>({
-    logo: { type: "logo", loading: true },
-    contacts: { type: "contacts", loading: true },
-    stamp: { type: "stamp", loading: true },
+    logo: { type: "logo", loading: false },
+    contacts: { type: "contacts", loading: false },
+    stamp: { type: "stamp", loading: false },
   });
 
   useEffect(() => {
@@ -48,6 +48,7 @@ const Admin = () => {
       try {
         const url = buildApiUrl({ action: "list", table: "admin_images" });
         const resp = await fetch(url, { credentials: "include" });
+
         if (!resp.ok) {
           // Set with no images but no error
           setStoredImages({
@@ -210,7 +211,8 @@ const Admin = () => {
   };
 
   return (
-    <Tabs defaultValue="images" className="w-full">
+    <div className="space-y-6">
+      <Tabs defaultValue="images" className="w-full">
       <TabsList className="grid w-full grid-cols-2">
         <TabsTrigger value="images">Media Library</TabsTrigger>
         <TabsTrigger value="tests">Test Definitions</TabsTrigger>
@@ -377,6 +379,7 @@ const Admin = () => {
         <TestDefinitionsManager />
       </TabsContent>
     </Tabs>
+    </div>
   );
 };
 

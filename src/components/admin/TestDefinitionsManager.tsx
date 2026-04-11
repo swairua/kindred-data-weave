@@ -50,7 +50,7 @@ export const TestDefinitionsManager = () => {
   const loadTestDefinitions = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await listRecords<TestDefinition>("test_definitions", { limit: 1000, orderBy: "sort_order", direction: "ASC" });
+      const response = await listRecords<TestDefinition>("test_definitions", { limit: 1000 });
       if (response?.data && Array.isArray(response.data)) {
         setTests(response.data);
       }
