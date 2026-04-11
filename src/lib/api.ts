@@ -24,24 +24,16 @@ interface LogoutResponse {
 }
 
 export const buildApiUrl = (params?: Record<string, string | number | boolean | null | undefined>) => {
-  try {
-    if (!API_BASE_URL) {
-      throw new Error("API_BASE_URL is not configured");
-    }
-    const url = new URL(API_BASE_URL);
+  const url = new URL(API_BASE_URL);
 
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        if (value === undefined || value === null || value === "") return;
-        url.searchParams.set(key, String(value));
-      });
-    }
-
-    return url.toString();
-  } catch (error) {
-    console.error("[API] Error building URL with API_BASE_URL:", API_BASE_URL, "Error:", error);
-    throw error;
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === "") return;
+      url.searchParams.set(key, String(value));
+    });
   }
+
+  return url.toString();
 };
 
 export const apiRequest = async <T>(
@@ -58,20 +50,11 @@ export const apiRequest = async <T>(
     headers.set("Content-Type", "application/json");
   }
 
-  let url: string;
-  try {
-    url = buildApiUrl(params);
-    console.log("[API] Request URL:", url);
-  } catch (error) {
-    console.error("[API] Failed to build URL with params:", params, error);
-    throw error;
-  }
-
+  const url = buildApiUrl(params);
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout (increased from 10s)
 
   try {
-    console.log("[API] Sending request to:", url);
     const response = await fetch(url, {
       credentials: "include",
       ...init,
@@ -79,12 +62,10 @@ export const apiRequest = async <T>(
       signal: controller.signal,
     });
 
-    console.log("[API] Response status:", response.status);
     const data = await response.json().catch(() => null);
-    console.log("[API] Response data:", data);
 
     if (!response.ok) {
-      throw new Error(data?.message || data?.error || `API request failed with status ${response.status}`);
+      throw new Error(data?.message || data?.error || "API request failed");
     }
 
     return data as T;
@@ -99,7 +80,6 @@ export const apiRequest = async <T>(
       console.warn(`Network error connecting to API at ${url}. Please check if the API server is reachable.`);
       throw new Error(`Unable to reach API server. Please ensure you have a valid internet connection and the API server is running.`);
     }
-    console.error("[API] Request error:", error);
     throw error;
   } finally {
     clearTimeout(timeoutId);
