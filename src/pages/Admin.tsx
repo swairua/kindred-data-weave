@@ -32,7 +32,6 @@ interface StoredImage {
 }
 
 const Admin = () => {
-  console.log("Admin: Component rendering");
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -46,15 +45,11 @@ const Admin = () => {
 
   useEffect(() => {
     const fetchStoredImages = async () => {
-      console.log("Admin: Starting to fetch stored images...");
       try {
         const url = buildApiUrl({ action: "list", table: "admin_images" });
-        console.log("Admin: Fetching from URL:", url);
         const resp = await fetch(url, { credentials: "include" });
-        console.log("Admin: Response status:", resp.status);
 
         if (!resp.ok) {
-          console.log("Admin: Response not ok, setting empty images");
           // Set with no images but no error
           setStoredImages({
             logo: { type: "logo", loading: false },
@@ -64,7 +59,6 @@ const Admin = () => {
           return;
         }
         const json = await resp.json();
-        console.log("Admin: API response data:", json);
         const rows: Array<{ image_type: string; file_path: string }> = json?.data || [];
 
         // Get latest per type
