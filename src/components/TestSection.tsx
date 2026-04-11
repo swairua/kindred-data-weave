@@ -100,7 +100,7 @@ const TestSection = ({ title, children, onSave, onClear, onExportPDF, onExportCS
             {onSave && (
               <Button
                 size="sm"
-                variant="default"
+                variant={saveStatus === "error" ? "destructive" : "default"}
                 disabled={saveStatus === "saving"}
                 onClick={async () => {
                   try {
@@ -108,8 +108,9 @@ const TestSection = ({ title, children, onSave, onClear, onExportPDF, onExportCS
                     if (result !== false) {
                       toast.success(`${title} saved`);
                     }
-                  } catch {
-                    toast.error(`${title} save failed`);
+                  } catch (error) {
+                    const errorMsg = error instanceof Error ? error.message : `${title} save failed`;
+                    toast.error(errorMsg);
                   }
                 }}
               >
@@ -123,7 +124,7 @@ const TestSection = ({ title, children, onSave, onClear, onExportPDF, onExportCS
                   </>
                 ) : saveStatus === "error" ? (
                   <>
-                    <AlertCircle className="h-3.5 w-3.5 mr-1 text-red-600" /> Error
+                    <AlertCircle className="h-3.5 w-3.5 mr-1" /> Error
                   </>
                 ) : (
                   <>
