@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { listRecords, fetchCurrentUser } from "@/lib/api";
+import { listRecords } from "@/lib/api";
 
 export type TestStatus = "not-started" | "in-progress" | "completed";
 
