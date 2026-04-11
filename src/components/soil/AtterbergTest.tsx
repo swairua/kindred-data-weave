@@ -788,7 +788,18 @@ const AtterbergTest = () => {
     }
   }, [persistedState, effectiveProjectLookup, aggregateResults, status, totalDataPoints]);
 
-  const handleClearAll = useCallback(async () => {
+  const navigate = useNavigate();
+
+  const handleFinalSave = useCallback(async () => {
+    await handleSave();
+    // Only navigate if save was successful (saveStatus will be "saved")
+    toast.success("Project saved. Redirecting to dashboard...");
+    setTimeout(() => {
+      navigate("/");
+    }, 500);
+  }, [handleSave, navigate]);
+
+
     try {
       skipNextPersistRef.current = true;
       await clearAtterbergProjectFromApi(effectiveProjectLookup);
