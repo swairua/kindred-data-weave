@@ -153,6 +153,7 @@ const TestSection = ({ title, children, onSave, onFinalSave, onClear, onExportPD
                 <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> {"Save & Close"}
               </Button>
             )}
+            {onClear && (
               <Button size="sm" variant="outline" onClick={onClear}>
                 <Trash2 className="h-3.5 w-3.5 mr-1" /> Clear
               </Button>
