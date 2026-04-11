@@ -31,7 +31,7 @@ interface TestSectionProps {
   lastSaveError?: string | null;
 }
 
-const TestSection = ({ title, children, onSave, onClear, onExportPDF, onExportCSV, onExportXLSX, onExportSmokeCheck, exportSmokeCheckDisabled, smokeCheckStatus, saveStatus = "idle", lastSavedAt, lastSaveError }: TestSectionProps) => {
+const TestSection = ({ title, children, onSave, onFinalSave, onClear, onExportPDF, onExportCSV, onExportXLSX, onExportSmokeCheck, exportSmokeCheckDisabled, smokeCheckStatus, saveStatus = "idle", lastSavedAt, lastSaveError }: TestSectionProps) => {
   const [open, setOpen] = useState(false);
 
   return (
