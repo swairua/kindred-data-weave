@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { listRecords, fetchCurrentUser } from "@/lib/api";
+import { listRecords } from "@/lib/api";
 
 export type TestStatus = "not-started" | "in-progress" | "completed";
 
@@ -171,23 +171,6 @@ export const TestDataProvider = ({ children }: { children: ReactNode }) => {
     const loadTestDefinitions = async () => {
       let retries = 0;
       const maxRetries = 3;
-      let authCheckAttempts = 0;
-      const maxAuthCheckAttempts = 10; // Wait up to 10 seconds for auth
-
-      const waitForAuthentication = async (): Promise<boolean> => {
-        try {
-          const user = await fetchCurrentUser();
-          return user !== null;
-        } catch (error) {
-          authCheckAttempts++;
-          if (authCheckAttempts < maxAuthCheckAttempts) {
-            // Wait 1 second and try again
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            return waitForAuthentication();
-          }
-          return false;
-        }
-      };
 
       interface TestDefinitionRecord {
         test_key: string;
@@ -206,7 +189,6 @@ export const TestDataProvider = ({ children }: { children: ReactNode }) => {
             for (const record of response.data) {
               const testKey = record.test_key;
               if (testKey && loadedTests[testKey]) {
-                // Merge API data with default test
                 loadedTests[testKey] = {
                   ...loadedTests[testKey],
                   name: record.name || loadedTests[testKey].name,
@@ -223,28 +205,17 @@ export const TestDataProvider = ({ children }: { children: ReactNode }) => {
         } catch (error) {
           retries++;
           if (retries < maxRetries) {
-            // Retry with exponential backoff
             const delay = Math.pow(2, retries - 1) * 1000;
             console.warn(`Failed to load test definitions. Retrying in ${delay}ms... (Attempt ${retries}/${maxRetries})`);
             await new Promise(resolve => setTimeout(resolve, delay));
             return attemptLoad();
           } else {
             console.error("Failed to load test definitions from API after 3 attempts:", error);
-            // Fall back to defaultTests if API fails
           }
         }
       };
 
-      // Wait for authentication to be established before attempting to load
-      console.log("Waiting for authentication before loading test definitions...");
-      const isAuthenticated = await waitForAuthentication();
-
-      if (isAuthenticated) {
-        console.log("User authenticated, loading test definitions...");
-        await attemptLoad();
-      } else {
-        console.log("No authenticated user found, using default test definitions");
-      }
+      await attemptLoad();
     };
 
     loadTestDefinitions();

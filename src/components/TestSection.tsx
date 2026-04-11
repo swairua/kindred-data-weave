@@ -18,6 +18,7 @@ interface TestSectionProps {
   title: string;
   children: ReactNode;
   onSave?: () => void | boolean | Promise<void | boolean>;
+  onFinalSave?: () => void | Promise<void>;
   onClear?: () => void;
   onExportPDF?: () => boolean | void | Promise<boolean | void>;
   onExportCSV?: () => boolean | void;
@@ -30,7 +31,7 @@ interface TestSectionProps {
   lastSaveError?: string | null;
 }
 
-const TestSection = ({ title, children, onSave, onClear, onExportPDF, onExportCSV, onExportXLSX, onExportSmokeCheck, exportSmokeCheckDisabled, smokeCheckStatus, saveStatus = "idle", lastSavedAt, lastSaveError }: TestSectionProps) => {
+const TestSection = ({ title, children, onSave, onFinalSave, onClear, onExportPDF, onExportCSV, onExportXLSX, onExportSmokeCheck, exportSmokeCheckDisabled, smokeCheckStatus, saveStatus = "idle", lastSavedAt, lastSaveError }: TestSectionProps) => {
   const [open, setOpen] = useState(false);
 
   return (
@@ -131,6 +132,25 @@ const TestSection = ({ title, children, onSave, onClear, onExportPDF, onExportCS
                     <Save className="h-3.5 w-3.5 mr-1" /> Save
                   </>
                 )}
+              </Button>
+            )}
+            {onFinalSave && (
+              <Button
+                size="sm"
+                variant="default"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                disabled={saveStatus === "saving"}
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  try {
+                    await onFinalSave();
+                  } catch (error) {
+                    const errorMsg = error instanceof Error ? error.message : "Final save failed";
+                    toast.error(errorMsg);
+                  }
+                }}
+              >
+                <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> {"Save & Close"}
               </Button>
             )}
             {onClear && (

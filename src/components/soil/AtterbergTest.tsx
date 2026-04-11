@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { ChevronDown, ChevronRight, Download, Plus, Trash2, Upload, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -787,6 +788,17 @@ const AtterbergTest = () => {
     }
   }, [persistedState, effectiveProjectLookup, aggregateResults, status, totalDataPoints]);
 
+  const navigate = useNavigate();
+
+  const handleFinalSave = useCallback(async () => {
+    await handleSave();
+    // Only navigate if save was successful (saveStatus will be "saved")
+    toast.success("Project saved. Redirecting to dashboard...");
+    setTimeout(() => {
+      navigate("/");
+    }, 500);
+  }, [handleSave, navigate]);
+
   const handleClearAll = useCallback(async () => {
     try {
       skipNextPersistRef.current = true;
@@ -1056,6 +1068,7 @@ const AtterbergTest = () => {
       <TestSection
         title="Atterberg Limits Testing"
         onSave={handleSave}
+        onFinalSave={handleFinalSave}
         onClear={handleClearRequest}
         onExportPDF={handleExportPDF}
         onExportCSV={handleExportCSV}
