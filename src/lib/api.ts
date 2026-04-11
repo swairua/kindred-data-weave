@@ -2,6 +2,20 @@ const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
 
 export const API_BASE_URL = configuredApiBaseUrl || "https://lab.wayrus.co.ke/api.php";
 
+// Store session ID for cross-origin authentication
+let storedSessionId: string | null = null;
+
+export const setStoredSessionId = (sessionId: string | null) => {
+  storedSessionId = sessionId;
+  if (sessionId) {
+    console.log("[API] Stored session ID");
+  } else {
+    console.log("[API] Cleared session ID");
+  }
+};
+
+export const getStoredSessionId = (): string | null => storedSessionId;
+
 export interface ApiUser {
   id: number;
   email: string;
@@ -52,6 +66,13 @@ export const apiRequest = async <T>(
     headers.set("Content-Type", "application/json");
   }
 
+  // Add stored session ID if available (for cross-origin session handling)
+  const sessionId = getStoredSessionId();
+  if (sessionId && !headers.has("Cookie")) {
+    headers.set("Cookie", `PHPSESSID=${sessionId}`);
+    console.debug(`[API] Adding stored session ID to request`);
+  }
+
   const url = buildApiUrl(params);
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout (increased from 10s)
@@ -63,6 +84,16 @@ export const apiRequest = async <T>(
       headers,
       signal: controller.signal,
     });
+
+    // Extract and store session ID from Set-Cookie header if present
+    const setCookieHeader = response.headers.get("set-cookie");
+    if (setCookieHeader) {
+      const sessionMatch = setCookieHeader.match(/PHPSESSID=([^;]+)/);
+      if (sessionMatch && sessionMatch[1]) {
+        setStoredSessionId(sessionMatch[1]);
+        console.debug(`[API] Extracted session ID from response`);
+      }
+    }
 
     const data = await response.json().catch(() => null);
 
@@ -104,6 +135,8 @@ export const loginUser = async (email: string, password: string) => {
       { action: "login" },
     );
     console.log("[API] Login successful. Response:", response);
+    // apiRequest already captures and stores the session ID from response headers
+    console.log("[API] Session ID stored for subsequent requests");
     return response;
   } catch (error) {
     console.error("[API] Login failed:", error instanceof Error ? error.message : error);
@@ -195,4 +228,16 @@ export const updateRecord = async <T>(table: string, id: string | number, data: 
 export const deleteRecord = async <T>(table: string, id: string | number) =>
   apiRequest<ApiWriteResponse<T>>({ method: "DELETE", body: JSON.stringify({ table, id }) }, { action: "delete" });
 
-export const logoutUser = () => apiRequest<LogoutResponse>({ method: "POST" }, { action: "logout" });
+export const logoutUser = async () => {
+  try {
+    const response = await apiRequest<LogoutResponse>({ method: "POST" }, { action: "logout" });
+    // Clear stored session ID on logout
+    setStoredSessionId(null);
+    console.log("[API] Session cleared on logout");
+    return response;
+  } catch (error) {
+    // Clear session even if logout fails
+    setStoredSessionId(null);
+    throw error;
+  }
+};
