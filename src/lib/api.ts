@@ -149,30 +149,9 @@ export const fetchCurrentUser = async () => {
     console.log("[API] Calling me endpoint...");
     console.log("[API] API_BASE_URL:", API_BASE_URL);
 
-    const url = buildApiUrl({ action: "me" });
-    const response = await fetch(url, {
-      credentials: "include",
-      headers: {
-        "Accept": "application/json",
-      },
-    });
+    const data = await apiRequest<CurrentUserResponse>(undefined, { action: "me" });
 
-    console.log("[API] me endpoint HTTP status:", response.status);
-
-    const data = await response.json().catch(() => null);
     console.log("[API] me endpoint response data:", data);
-
-    // 401 is expected when user is not authenticated - this is not an error condition
-    if (response.status === 401) {
-      console.log("[API] User not authenticated (401 response)");
-      return null;
-    }
-
-    if (!response.ok) {
-      const errorMessage = data?.message || data?.error || `HTTP ${response.status}`;
-      console.error("[API] me endpoint failed with status ${response.status}:", errorMessage);
-      throw new Error(errorMessage);
-    }
 
     // If the response indicates not authenticated, return null
     if (data?.authenticated === false || !data?.user) {
@@ -183,8 +162,16 @@ export const fetchCurrentUser = async () => {
     console.log("[API] User authenticated as:", data.user);
     return data.user;
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // 401 is expected when user is not authenticated - this is not an error condition
+    if (errorMessage.includes("Unauthorized") || errorMessage.includes("401")) {
+      console.log("[API] User not authenticated (401 response)");
+      return null;
+    }
+
     console.error("[API] me endpoint error - details:", {
-      message: error instanceof Error ? error.message : String(error),
+      message: errorMessage,
       error: error
     });
     // API unavailable, network error - return null gracefully
@@ -227,6 +214,73 @@ export const updateRecord = async <T>(table: string, id: string | number, data: 
 
 export const deleteRecord = async <T>(table: string, id: string | number) =>
   apiRequest<ApiWriteResponse<T>>({ method: "DELETE", body: JSON.stringify({ table, id }) }, { action: "delete" });
+
+export const uploadFile = async (file: File, metadata?: Record<string, string>) => {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  if (metadata) {
+    Object.entries(metadata).forEach(([key, value]) => {
+      formData.append(key, value);
+    });
+  }
+
+  const headers = new Headers();
+
+  // Add stored session ID if available (for cross-origin session handling)
+  const sessionId = getStoredSessionId();
+  if (sessionId) {
+    headers.set("Cookie", `PHPSESSID=${sessionId}`);
+    console.debug(`[API] Adding stored session ID to upload request`);
+  }
+
+  const url = buildApiUrl({ action: "upload" });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout for uploads
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      credentials: "include",
+      headers,
+      body: formData,
+      signal: controller.signal,
+    });
+
+    // Extract and store session ID from Set-Cookie header if present
+    const setCookieHeader = response.headers.get("set-cookie");
+    if (setCookieHeader) {
+      const sessionMatch = setCookieHeader.match(/PHPSESSID=([^;]+)/);
+      if (sessionMatch && sessionMatch[1]) {
+        setStoredSessionId(sessionMatch[1]);
+        console.debug(`[API] Extracted session ID from upload response`);
+      }
+    }
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      const errorMessage = data?.message || data?.error || `HTTP ${response.status}`;
+      console.error(`[API] Upload failed - Status: ${response.status} - ${errorMessage}`);
+      console.error(`[API] Upload response data:`, JSON.stringify(data, null, 2));
+      throw new Error(errorMessage);
+    }
+
+    return data;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("Upload timeout: The server took too long to respond. Please try again.");
+    }
+
+    if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
+      console.warn(`Network error connecting to API at ${url}. Please check if the API server is reachable.`);
+      throw new Error(`Unable to reach API server. Please ensure you have a valid internet connection.`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
 
 export const logoutUser = async () => {
   try {

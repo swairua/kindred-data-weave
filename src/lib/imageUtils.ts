@@ -1,4 +1,4 @@
-import { buildApiUrl } from "./api";
+import { buildApiUrl, listRecords } from "./api";
 
 export interface AdminImages {
   logo?: string; // base64 data URL
@@ -17,22 +17,21 @@ const getAdminImageUrl = (path: string) => {
 
 const listAdminImagePaths = async (): Promise<AdminImagePaths> => {
   const latest: AdminImagePaths = {};
-  const url = buildApiUrl({ action: "list", table: "admin_images" });
-  const resp = await fetch(url, { credentials: "include" });
 
-  if (!resp.ok) {
-    return latest;
-  }
+  try {
+    const response = await listRecords<AdminImageRow>("admin_images");
+    const rows: AdminImageRow[] = response.data || [];
 
-  const json = await resp.json();
-  const rows: AdminImageRow[] = json?.data || [];
-
-  for (const row of rows) {
-    if (row.image_type === "logo" || row.image_type === "contacts" || row.image_type === "stamp") {
-      if (!latest[row.image_type]) {
-        latest[row.image_type] = row.file_path;
+    for (const row of rows) {
+      if (row.image_type === "logo" || row.image_type === "contacts" || row.image_type === "stamp") {
+        if (!latest[row.image_type]) {
+          latest[row.image_type] = row.file_path;
+        }
       }
     }
+  } catch (error) {
+    console.debug("Failed to fetch admin image paths:", error instanceof Error ? error.message : error);
+    // Silently fail - images are optional
   }
 
   return latest;
