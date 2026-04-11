@@ -192,7 +192,7 @@ export const TestDataProvider = ({ children }: { children: ReactNode }) => {
       interface TestDefinitionRecord {
         test_key: string;
         name: string;
-        category: string;
+        category: "soil" | "concrete" | "rock" | "special";
         enabled: boolean | number;
         sort_order: number;
       }
