@@ -66,11 +66,12 @@ export const apiRequest = async <T>(
     headers.set("Content-Type", "application/json");
   }
 
-  // Add stored session ID if available (for cross-origin session handling)
+  // For cross-origin requests, browsers automatically handle cookies with credentials: "include"
+  // Manual Cookie headers are blocked by browsers for security and won't be sent.
+  // Logging the stored session ID for debugging purposes only.
   const sessionId = getStoredSessionId();
-  if (sessionId && !headers.has("Cookie")) {
-    headers.set("Cookie", `PHPSESSID=${sessionId}`);
-    console.debug(`[API] Adding stored session ID to request`);
+  if (sessionId) {
+    console.debug(`[API] Session ID available: ${sessionId.substring(0, 8)}...`);
   }
 
   const url = buildApiUrl(params);
@@ -91,8 +92,12 @@ export const apiRequest = async <T>(
       const sessionMatch = setCookieHeader.match(/PHPSESSID=([^;]+)/);
       if (sessionMatch && sessionMatch[1]) {
         setStoredSessionId(sessionMatch[1]);
-        console.debug(`[API] Extracted session ID from response`);
+        console.log(`[API] Extracted and stored session ID from response`);
       }
+    } else if (params?.action === "login" || params?.action === "me") {
+      // For cross-origin requests, we may not be able to read Set-Cookie header
+      // The browser still receives and stores it automatically with credentials: "include"
+      console.log(`[API] No Set-Cookie header accessible (may be CORS-restricted, but browser is handling it)`);
     }
 
     const data = await response.json().catch(() => null);
@@ -103,6 +108,12 @@ export const apiRequest = async <T>(
       console.error(`[API] Response data:`, JSON.stringify(data, null, 2));
       console.error(`[API] Request URL:`, url);
       console.error(`[API] Request headers:`, Object.fromEntries(headers.entries()));
+
+      // Log CORS-related headers for debugging
+      console.error(`[API] Response CORS headers:`, {
+        "Access-Control-Allow-Credentials": response.headers.get("access-control-allow-credentials"),
+        "Access-Control-Allow-Origin": response.headers.get("access-control-allow-origin"),
+      });
       throw new Error(errorMessage);
     }
 
@@ -125,7 +136,10 @@ export const apiRequest = async <T>(
 };
 
 export const loginUser = async (email: string, password: string) => {
+  console.log("[API] === LOGIN REQUEST START ===");
   console.log("[API] Attempting login for email:", email);
+  console.log("[API] Current stored session ID:", getStoredSessionId());
+
   try {
     const response = await apiRequest<LoginResponse>(
       {
@@ -134,9 +148,13 @@ export const loginUser = async (email: string, password: string) => {
       },
       { action: "login" },
     );
+
+    console.log("[API] === LOGIN RESPONSE ===");
     console.log("[API] Login successful. Response:", response);
-    // apiRequest already captures and stores the session ID from response headers
-    console.log("[API] Session ID stored for subsequent requests");
+    console.log("[API] Stored session ID after login:", getStoredSessionId());
+    console.log("[API] NOTE: Browser should have received and stored the PHPSESSID cookie");
+    console.log("[API] Browser will automatically send it in future requests with credentials: 'include'");
+
     return response;
   } catch (error) {
     console.error("[API] Login failed:", error instanceof Error ? error.message : error);
@@ -146,16 +164,18 @@ export const loginUser = async (email: string, password: string) => {
 
 export const fetchCurrentUser = async () => {
   try {
-    console.log("[API] Calling me endpoint...");
+    console.log("[API] === ME ENDPOINT REQUEST START ===");
     console.log("[API] API_BASE_URL:", API_BASE_URL);
+    console.log("[API] Stored session ID:", getStoredSessionId());
 
     const data = await apiRequest<CurrentUserResponse>(undefined, { action: "me" });
 
-    console.log("[API] me endpoint response data:", data);
+    console.log("[API] === ME ENDPOINT RESPONSE ===");
+    console.log("[API] Response data:", data);
 
     // If the response indicates not authenticated, return null
     if (data?.authenticated === false || !data?.user) {
-      console.log("[API] User not authenticated (authenticated=false or no user)");
+      console.log("[API] User not authenticated");
       return null;
     }
 
@@ -166,14 +186,11 @@ export const fetchCurrentUser = async () => {
 
     // 401 is expected when user is not authenticated - this is not an error condition
     if (errorMessage.includes("Unauthorized") || errorMessage.includes("401")) {
-      console.log("[API] User not authenticated (401 response)");
+      console.log("[API] User not authenticated (401 response) - may need to login again");
       return null;
     }
 
-    console.error("[API] me endpoint error - details:", {
-      message: errorMessage,
-      error: error
-    });
+    console.error("[API] me endpoint error:", errorMessage);
     // API unavailable, network error - return null gracefully
     return null;
   }
@@ -225,24 +242,19 @@ export const uploadFile = async (file: File, metadata?: Record<string, string>) 
     });
   }
 
-  const headers = new Headers();
-
-  // Add stored session ID if available (for cross-origin session handling)
-  const sessionId = getStoredSessionId();
-  if (sessionId) {
-    headers.set("Cookie", `PHPSESSID=${sessionId}`);
-    console.debug(`[API] Adding stored session ID to upload request`);
-  }
-
   const url = buildApiUrl({ action: "upload" });
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout for uploads
 
   try {
+    const sessionId = getStoredSessionId();
+    if (sessionId) {
+      console.debug(`[API] Upload request with session ID: ${sessionId.substring(0, 8)}...`);
+    }
+
     const response = await fetch(url, {
       method: "POST",
       credentials: "include",
-      headers,
       body: formData,
       signal: controller.signal,
     });
