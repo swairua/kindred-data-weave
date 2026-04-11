@@ -1068,6 +1068,7 @@ const AtterbergTest = () => {
       <TestSection
         title="Atterberg Limits Testing"
         onSave={handleSave}
+        onFinalSave={handleFinalSave}
         onClear={handleClearRequest}
         onExportPDF={handleExportPDF}
         onExportCSV={handleExportCSV}
