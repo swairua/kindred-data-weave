@@ -799,7 +799,7 @@ const AtterbergTest = () => {
     }, 500);
   }, [handleSave, navigate]);
 
-
+  const handleClearAll = useCallback(async () => {
     try {
       skipNextPersistRef.current = true;
       await clearAtterbergProjectFromApi(effectiveProjectLookup);
