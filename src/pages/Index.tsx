@@ -395,21 +395,27 @@ const Index = ({ initialTab }: IndexProps) => {
                     <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
                       <History className="h-3.5 w-3.5" /> History
                     </Label>
-                    <Select value="" onValueChange={handleLoadProject}>
-                      <SelectTrigger className="h-9" disabled={isLoadingProjects || projectHistory.length === 0}>
-                        <SelectValue placeholder={isLoadingProjects ? "Loading..." : projectHistory.length === 0 ? "No saved projects" : "Load a project"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {projectHistory.map((project) => (
-                          <SelectItem key={project.id} value={String(project.id)}>
-                            <div className="flex flex-col">
-                              <span className="font-medium">{project.name}</span>
-                              <span className="text-xs text-muted-foreground">{project.client_name && `${project.client_name} • `}{project.project_date}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {projectHistory.length > 0 ? (
+                      <Select value="" onValueChange={handleLoadProject}>
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Load a project" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {projectHistory.map((project) => (
+                            <SelectItem key={project.id} value={String(project.id)}>
+                              <div className="flex flex-col">
+                                <span className="font-medium">{project.name}</span>
+                                <span className="text-xs text-muted-foreground">{project.client_name && `${project.client_name} • `}{project.project_date}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <div className="h-9 px-3 py-2 rounded-md border border-input bg-background text-muted-foreground text-sm flex items-center">
+                        {isLoadingProjects ? "Loading..." : "No saved projects"}
+                      </div>
+                    )}
                   </div>
                 </div>
 
