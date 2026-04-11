@@ -134,7 +134,25 @@ const TestSection = ({ title, children, onSave, onFinalSave, onClear, onExportPD
                 )}
               </Button>
             )}
-            {onClear && (
+            {onFinalSave && (
+              <Button
+                size="sm"
+                variant="default"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                disabled={saveStatus === "saving"}
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  try {
+                    await onFinalSave();
+                  } catch (error) {
+                    const errorMsg = error instanceof Error ? error.message : "Final save failed";
+                    toast.error(errorMsg);
+                  }
+                }}
+              >
+                <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Save &amp; Close
+              </Button>
+            )}
               <Button size="sm" variant="outline" onClick={onClear}>
                 <Trash2 className="h-3.5 w-3.5 mr-1" /> Clear
               </Button>
