@@ -170,6 +170,7 @@ export const TestDataProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const loadTestDefinitions = async () => {
       try {
+        console.log("[TestData] Starting to load test definitions");
         interface TestDefinitionRecord {
           test_key: string;
           name: string;
@@ -179,6 +180,8 @@ export const TestDataProvider = ({ children }: { children: ReactNode }) => {
         }
 
         const response = await listRecords<TestDefinitionRecord>("test_definitions", { limit: 1000 });
+        console.log("[TestData] Got response:", response);
+
         if (response?.data && Array.isArray(response.data)) {
           const loadedTests: Record<string, TestSummary> = { ...defaultTests };
 
@@ -196,14 +199,14 @@ export const TestDataProvider = ({ children }: { children: ReactNode }) => {
           }
 
           setTests(loadedTests);
-          console.log("Successfully loaded test definitions from API");
+          console.log("[TestData] Successfully loaded test definitions from API");
         }
       } catch (error) {
-        // Silently fail - we have defaults to fall back to
-        console.warn("Failed to load test definitions from API, using defaults");
+        console.warn("[TestData] Failed to load test definitions from API:", error instanceof Error ? error.message : error);
       }
     };
 
+    // Load test definitions but don't block rendering
     loadTestDefinitions();
   }, []);
 

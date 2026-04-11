@@ -166,29 +166,49 @@ const Index = ({ initialTab }: IndexProps) => {
 
   useEffect(() => {
     let isMounted = true;
+    let timeoutId: NodeJS.Timeout;
 
     const restoreSession = async () => {
-      console.log("[Index] Starting session restore...");
-      const user = await fetchCurrentUser();
-      console.log("[Index] Session restore complete. User:", user);
+      try {
+        console.log("[Index] Starting session restore...");
+        const user = await fetchCurrentUser();
+        console.log("[Index] Session restore complete. User:", user);
 
-      if (!isMounted) return;
+        if (!isMounted) return;
 
-      if (user) {
-        console.log("[Index] User authenticated, setting authStatus to authenticated");
-        setCurrentUser(user);
-        setAuthStatus("authenticated");
-      } else {
-        console.log("[Index] No user, setting authStatus to unauthenticated");
-        setCurrentUser(null);
-        setAuthStatus("unauthenticated");
+        if (user) {
+          console.log("[Index] User authenticated, setting authStatus to authenticated");
+          setCurrentUser(user);
+          setAuthStatus("authenticated");
+        } else {
+          console.log("[Index] No user, setting authStatus to unauthenticated");
+          setCurrentUser(null);
+          setAuthStatus("unauthenticated");
+        }
+      } catch (err) {
+        console.error("[Index] Error during session restore:", err);
+        if (isMounted) {
+          setCurrentUser(null);
+          setAuthStatus("unauthenticated");
+        }
       }
     };
 
+    // Start the session restore
     restoreSession();
+
+    // Set a timeout to force unauthenticated state if the check takes too long
+    timeoutId = setTimeout(() => {
+      if (isMounted) {
+        console.warn("[Index] Session restore timeout - setting to unauthenticated");
+        setCurrentUser(null);
+        setAuthStatus("unauthenticated");
+      }
+    }, 5000);
 
     return () => {
       isMounted = false;
+      clearTimeout(timeoutId);
     };
   }, []);
 
