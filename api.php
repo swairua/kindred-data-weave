@@ -16,7 +16,9 @@ $allowed_origins = [
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 // Allow any Lovable preview subdomain
 $isLovablePreview = (bool) preg_match('/^https:\/\/[a-z0-9\-]+\.lovable\.app$/', $origin);
-if (in_array($origin, $allowed_origins, true) || $isLovablePreview) {
+// Allow any Builder.io preview subdomain
+$isBuilderPreview = (bool) preg_match('/^https:\/\/[a-z0-9\-]+\.builderio\.xyz$/', $origin);
+if (in_array($origin, $allowed_origins, true) || $isLovablePreview || $isBuilderPreview) {
     header('Access-Control-Allow-Origin: ' . $origin);
     header('Access-Control-Allow-Credentials: true');
 } elseif ($origin) {
