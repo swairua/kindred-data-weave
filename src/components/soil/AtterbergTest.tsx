@@ -618,18 +618,24 @@ const AtterbergTest = () => {
 
   // Save state to localStorage for local persistence (no auto API save during active work)
   useEffect(() => {
-    if (!hydratedRef.current) return;
+    if (!hydratedRef.current) {
+      console.log("[AtterbergTest] Skipping localStorage save: not hydrated yet");
+      return;
+    }
     if (skipNextPersistRef.current) {
+      console.log("[AtterbergTest] Skipping localStorage save: flagged to skip");
       skipNextPersistRef.current = false;
       return;
     }
 
     // Persist to localStorage only - no API calls during active work
-    const persistedState = buildPersistedState(computedRecords);
     try {
+      const persistedState = buildPersistedState(computedRecords);
+      console.log(`[AtterbergTest] Persisting ${computedRecords.length} records to localStorage`);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(persistedState));
+      console.log("[AtterbergTest] Successfully saved to localStorage");
     } catch (error) {
-      console.error("Failed to save to localStorage:", error);
+      console.error("[AtterbergTest] Failed to save to localStorage:", error);
     }
   }, [computedRecords]);
 
@@ -641,10 +647,26 @@ const AtterbergTest = () => {
   }, []);
 
   const updateRecord = useCallback((recordId: string, updater: (record: AtterbergRecord) => AtterbergRecord) => {
-    setProjectState((prev) => ({
-      ...prev,
-      records: prev.records.map((record) => (record.id === recordId ? updater(record) : record)),
-    }));
+    try {
+      setProjectState((prev) => {
+        const updatedRecords = prev.records.map((record) => {
+          if (record.id === recordId) {
+            const updated = updater(record);
+            console.log(`[AtterbergTest] Updated record "${recordId}":`, updated);
+            return updated;
+          }
+          return record;
+        });
+        console.log(`[AtterbergTest] Project state updated with ${updatedRecords.length} records`);
+        return {
+          ...prev,
+          records: updatedRecords,
+        };
+      });
+    } catch (error) {
+      console.error(`[AtterbergTest] Error updating record "${recordId}":`, error);
+      throw error;
+    }
   }, []);
 
   const updateTest = useCallback(
@@ -671,11 +693,22 @@ const AtterbergTest = () => {
 
   const addTest = useCallback(
     (recordId: string, type: AtterbergTestType = "liquidLimit") => {
-      updateRecord(recordId, (record) => ({
-        ...record,
-        isExpanded: true,
-        tests: [...record.tests, createTest(type, record.tests)],
-      }));
+      try {
+        console.log(`[AtterbergTest] Adding test of type "${type}" to record "${recordId}"`);
+        updateRecord(recordId, (record) => {
+          const newTest = createTest(type, record.tests);
+          console.log(`[AtterbergTest] Created new test:`, newTest);
+          return {
+            ...record,
+            isExpanded: true,
+            tests: [...record.tests, newTest],
+          };
+        });
+        console.log(`[AtterbergTest] Test added successfully`);
+      } catch (error) {
+        console.error(`[AtterbergTest] Error adding test:`, error);
+        throw error;
+      }
     },
     [updateRecord],
   );
@@ -798,6 +831,34 @@ const AtterbergTest = () => {
       navigate("/");
     }, 500);
   }, [handleSave, navigate]);
+
+  // Auto-save effect with debounce (500ms delay)
+  // This ensures tests are automatically saved to the API as the user works
+  useEffect(() => {
+    // Don't auto-save until component is hydrated
+    if (!hydratedRef.current) {
+      console.log("[AutoSave] Skipping auto-save: component not hydrated yet");
+      return;
+    }
+
+    // Don't auto-save if there are no records
+    if (projectState.records.length === 0) {
+      return;
+    }
+
+    // Set up debounce timer for auto-save
+    const debounceTimer = setTimeout(() => {
+      console.log("[AutoSave] Debounce complete, triggering auto-save");
+      handleSave();
+    }, 500); // 500ms debounce delay
+
+    // Cleanup timer on unmount or when dependencies change
+    return () => {
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
+    };
+  }, [projectState.records, handleSave]);
 
   const handleClearAll = useCallback(async () => {
     try {
