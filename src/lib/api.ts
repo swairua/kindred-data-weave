@@ -33,7 +33,9 @@ export const buildApiUrl = (params?: Record<string, string | number | boolean | 
     });
   }
 
-  return url.toString();
+  const finalUrl = url.toString();
+  console.debug("[API] Built URL:", finalUrl);
+  return finalUrl;
 };
 
 export const apiRequest = async <T>(
@@ -67,7 +69,9 @@ export const apiRequest = async <T>(
     if (!response.ok) {
       const errorMessage = data?.message || data?.error || `HTTP ${response.status}`;
       console.error(`[API] Request failed: ${params?.action || 'unknown'} - Status: ${response.status} - ${errorMessage}`);
-      console.error(`[API] Response data:`, data);
+      console.error(`[API] Response data:`, JSON.stringify(data, null, 2));
+      console.error(`[API] Request URL:`, url);
+      console.error(`[API] Request headers:`, Object.fromEntries(headers.entries()));
       throw new Error(errorMessage);
     }
 
@@ -89,31 +93,68 @@ export const apiRequest = async <T>(
   }
 };
 
-export const loginUser = (email: string, password: string) =>
-  apiRequest<LoginResponse>(
-    {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    },
-    { action: "login" },
-  );
+export const loginUser = async (email: string, password: string) => {
+  console.log("[API] Attempting login for email:", email);
+  try {
+    const response = await apiRequest<LoginResponse>(
+      {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      },
+      { action: "login" },
+    );
+    console.log("[API] Login successful. Response:", response);
+    return response;
+  } catch (error) {
+    console.error("[API] Login failed:", error instanceof Error ? error.message : error);
+    throw error;
+  }
+};
 
 export const fetchCurrentUser = async () => {
   try {
     console.log("[API] Calling me endpoint...");
-    const response = await apiRequest<CurrentUserResponse>(undefined, { action: "me" });
-    console.log("[API] me endpoint response:", response);
+    console.log("[API] API_BASE_URL:", API_BASE_URL);
+
+    const url = buildApiUrl({ action: "me" });
+    const response = await fetch(url, {
+      credentials: "include",
+      headers: {
+        "Accept": "application/json",
+      },
+    });
+
+    console.log("[API] me endpoint HTTP status:", response.status);
+
+    const data = await response.json().catch(() => null);
+    console.log("[API] me endpoint response data:", data);
+
+    // 401 is expected when user is not authenticated - this is not an error condition
+    if (response.status === 401) {
+      console.log("[API] User not authenticated (401 response)");
+      return null;
+    }
+
+    if (!response.ok) {
+      const errorMessage = data?.message || data?.error || `HTTP ${response.status}`;
+      console.error("[API] me endpoint failed with status ${response.status}:", errorMessage);
+      throw new Error(errorMessage);
+    }
 
     // If the response indicates not authenticated, return null
-    if (response.authenticated === false || !response.user) {
+    if (data?.authenticated === false || !data?.user) {
       console.log("[API] User not authenticated (authenticated=false or no user)");
       return null;
     }
 
-    return response.user;
+    console.log("[API] User authenticated as:", data.user);
+    return data.user;
   } catch (error) {
-    console.log("[API] me endpoint error:", error instanceof Error ? error.message : error);
-    // API unavailable, not authenticated, or network error - return null gracefully
+    console.error("[API] me endpoint error - details:", {
+      message: error instanceof Error ? error.message : String(error),
+      error: error
+    });
+    // API unavailable, network error - return null gracefully
     return null;
   }
 };
