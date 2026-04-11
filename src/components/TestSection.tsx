@@ -18,6 +18,7 @@ interface TestSectionProps {
   title: string;
   children: ReactNode;
   onSave?: () => void | boolean | Promise<void | boolean>;
+  onFinalSave?: () => void | Promise<void>;
   onClear?: () => void;
   onExportPDF?: () => boolean | void | Promise<boolean | void>;
   onExportCSV?: () => boolean | void;
