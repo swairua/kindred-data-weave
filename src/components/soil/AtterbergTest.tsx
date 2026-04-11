@@ -433,18 +433,13 @@ const persistAtterbergProjectToApi = async ({
 
     return lastSavedAt;
   } catch (error) {
-    // If auth fails, silently continue (auto-save is non-critical)
-    if (error instanceof Error && (error.message.includes("Unauthorized") || error.message.includes("Forbidden"))) {
-      console.warn("API save skipped due to authentication, data is preserved locally");
-      return null;
-    }
-
     // Duplicate errors should have been handled in the inner catch block
     // If we still have a duplicate error here, log it and continue silently
     if (error instanceof Error && isDuplicateResultError(error)) {
       console.warn("Atterberg project: duplicate record was attempted but handled by update logic");
       return null;
     }
+    // For all other errors, including auth errors, throw them so the caller knows about the failure
     throw error;
   }
 };
@@ -769,7 +764,21 @@ const AtterbergTest = () => {
         setSaveStatus("idle");
       }, 4000);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      let errorMessage = 'Failed to save project';
+
+      if (error instanceof Error) {
+        errorMessage = error.message;
+
+        // Provide helpful messages for common errors
+        if (error.message.includes('Unauthorized') || error.message.includes('Forbidden')) {
+          errorMessage = 'Authentication failed. Please ensure you are logged in with valid credentials.';
+        } else if (error.message.includes('timeout')) {
+          errorMessage = 'Request timed out. The API server may be slow or unreachable.';
+        } else if (error.message.includes('Unable to reach')) {
+          errorMessage = 'Cannot reach the API server. Check your internet connection.';
+        }
+      }
+
       setSaveStatus("error");
       setLastSaveError(errorMessage);
       console.error("Failed to save Atterberg project:", error);

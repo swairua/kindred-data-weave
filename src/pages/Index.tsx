@@ -18,15 +18,30 @@ import {
   LogOut,
   Mountain,
   TestTubeDiagonal,
+  History,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import Dashboard from "@/pages/Dashboard";
 import Reports from "@/pages/Reports";
 import Admin from "@/pages/Admin";
-import { fetchCurrentUser, loginUser, logoutUser, type ApiUser } from "@/lib/api";
+import { fetchCurrentUser, loginUser, logoutUser, type ApiUser, listRecords } from "@/lib/api";
 import { registerAllTests } from "@/lib/testRegistration";
 import { registry } from "@/lib/testRegistry";
+
+interface ApiProjectRow {
+  id: number;
+  name: string;
+  client_name: string | null;
+  project_date: string | null;
+}
 
 // Initialize test registry once on module load
 registerAllTests();
@@ -142,6 +157,8 @@ const Index = ({ initialTab }: IndexProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmittingLogin, setIsSubmittingLogin] = useState(false);
+  const [projectHistory, setProjectHistory] = useState<ApiProjectRow[]>([]);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(false);
   const today = new Date().toISOString().split("T")[0];
 
   const projectCtx = useMemo(() => ({ projectName, clientName, date: today }), [projectName, clientName, today]);
@@ -171,6 +188,35 @@ const Index = ({ initialTab }: IndexProps) => {
     };
   }, []);
 
+  useEffect(() => {
+    if (authStatus !== "authenticated") return;
+
+    let isMounted = true;
+
+    const loadProjects = async () => {
+      try {
+        setIsLoadingProjects(true);
+        const response = await listRecords<ApiProjectRow>("projects", { limit: 100, orderBy: "updated_at", direction: "DESC" });
+        if (isMounted) {
+          setProjectHistory(response.data || []);
+        }
+      } catch (error) {
+        console.warn("Failed to load project history:", error);
+        // Silently fail - not critical to operation
+      } finally {
+        if (isMounted) {
+          setIsLoadingProjects(false);
+        }
+      }
+    };
+
+    loadProjects();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [authStatus]);
+
   const handleProjectNameChange = (value: string) => {
     setProjectName(value);
     testData.updateProjectMetadata({ projectName: value });
@@ -183,6 +229,16 @@ const Index = ({ initialTab }: IndexProps) => {
 
   const handleMetadataChange = (key: keyof typeof testData.projectMetadata, value: string) => {
     testData.updateProjectMetadata({ [key]: value });
+  };
+
+  const handleLoadProject = (projectId: string) => {
+    const project = projectHistory.find((p) => String(p.id) === projectId);
+    if (!project) return;
+
+    setProjectName(project.name);
+    setClientName(project.client_name || "");
+    testData.updateProjectMetadata({ projectName: project.name, clientName: project.client_name || "" });
+    toast.success(`Loaded project: ${project.name}`);
   };
 
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
@@ -308,7 +364,7 @@ const Index = ({ initialTab }: IndexProps) => {
                   </Button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mt-4">
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">Project Name</Label>
                     <Input value={projectName} onChange={(e) => handleProjectNameChange(e.target.value)} placeholder="Enter project name" className="h-9" />
@@ -320,6 +376,26 @@ const Index = ({ initialTab }: IndexProps) => {
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">Date</Label>
                     <Input value={today} readOnly className="h-9 calculated-field cursor-default" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                      <History className="h-3.5 w-3.5" /> History
+                    </Label>
+                    <Select value="" onValueChange={handleLoadProject}>
+                      <SelectTrigger className="h-9" disabled={isLoadingProjects || projectHistory.length === 0}>
+                        <SelectValue placeholder={isLoadingProjects ? "Loading..." : projectHistory.length === 0 ? "No saved projects" : "Load a project"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {projectHistory.map((project) => (
+                          <SelectItem key={project.id} value={String(project.id)}>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{project.name}</span>
+                              <span className="text-xs text-muted-foreground">{project.client_name && `${project.client_name} • `}{project.project_date}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 

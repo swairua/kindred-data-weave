@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { listRecords } from "@/lib/api";
+import { listRecords, fetchCurrentUser } from "@/lib/api";
 
 export type TestStatus = "not-started" | "in-progress" | "completed";
 
@@ -171,6 +171,23 @@ export const TestDataProvider = ({ children }: { children: ReactNode }) => {
     const loadTestDefinitions = async () => {
       let retries = 0;
       const maxRetries = 3;
+      let authCheckAttempts = 0;
+      const maxAuthCheckAttempts = 10; // Wait up to 10 seconds for auth
+
+      const waitForAuthentication = async (): Promise<boolean> => {
+        try {
+          const user = await fetchCurrentUser();
+          return user !== null;
+        } catch (error) {
+          authCheckAttempts++;
+          if (authCheckAttempts < maxAuthCheckAttempts) {
+            // Wait 1 second and try again
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            return waitForAuthentication();
+          }
+          return false;
+        }
+      };
 
       const attemptLoad = async (): Promise<void> => {
         try {
@@ -193,6 +210,7 @@ export const TestDataProvider = ({ children }: { children: ReactNode }) => {
             }
 
             setTests(loadedTests);
+            console.log("Successfully loaded test definitions from API");
           }
         } catch (error) {
           retries++;
@@ -209,7 +227,16 @@ export const TestDataProvider = ({ children }: { children: ReactNode }) => {
         }
       };
 
-      attemptLoad();
+      // Wait for authentication to be established before attempting to load
+      console.log("Waiting for authentication before loading test definitions...");
+      const isAuthenticated = await waitForAuthentication();
+
+      if (isAuthenticated) {
+        console.log("User authenticated, loading test definitions...");
+        await attemptLoad();
+      } else {
+        console.log("No authenticated user found, using default test definitions");
+      }
     };
 
     loadTestDefinitions();
