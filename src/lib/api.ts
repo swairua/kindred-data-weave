@@ -97,9 +97,19 @@ export const loginUser = (email: string, password: string) =>
 
 export const fetchCurrentUser = async () => {
   try {
+    console.log("[API] Calling me endpoint...");
     const response = await apiRequest<CurrentUserResponse>(undefined, { action: "me" });
+    console.log("[API] me endpoint response:", response);
+
+    // If the response indicates not authenticated, return null
+    if (response.authenticated === false || !response.user) {
+      console.log("[API] User not authenticated (authenticated=false or no user)");
+      return null;
+    }
+
     return response.user;
   } catch (error) {
+    console.log("[API] me endpoint error:", error instanceof Error ? error.message : error);
     // API unavailable, not authenticated, or network error - return null gracefully
     return null;
   }

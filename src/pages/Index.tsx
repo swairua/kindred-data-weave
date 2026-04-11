@@ -168,14 +168,18 @@ const Index = ({ initialTab }: IndexProps) => {
     let isMounted = true;
 
     const restoreSession = async () => {
+      console.log("[Index] Starting session restore...");
       const user = await fetchCurrentUser();
+      console.log("[Index] Session restore complete. User:", user);
 
       if (!isMounted) return;
 
       if (user) {
+        console.log("[Index] User authenticated, setting authStatus to authenticated");
         setCurrentUser(user);
         setAuthStatus("authenticated");
       } else {
+        console.log("[Index] No user, setting authStatus to unauthenticated");
         setCurrentUser(null);
         setAuthStatus("unauthenticated");
       }
@@ -187,6 +191,10 @@ const Index = ({ initialTab }: IndexProps) => {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    console.log("[Index] authStatus changed to:", authStatus);
+  }, [authStatus]);
 
   useEffect(() => {
     if (authStatus !== "authenticated") {
