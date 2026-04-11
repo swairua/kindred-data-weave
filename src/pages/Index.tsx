@@ -222,11 +222,18 @@ const Index = ({ initialTab }: IndexProps) => {
       return;
     }
 
+    if (!currentUser) {
+      console.log("[Index] Skipping project history load: no current user");
+      return;
+    }
+
     let isMounted = true;
 
     const loadProjects = async () => {
       try {
         console.log("[Index] Loading project history from API...");
+        console.log("[Index] Current auth status:", authStatus);
+        console.log("[Index] Current user:", currentUser);
         setIsLoadingProjects(true);
         const response = await listRecords<ApiProjectRow>("projects", { limit: 100 });
 
@@ -240,7 +247,38 @@ const Index = ({ initialTab }: IndexProps) => {
         console.log("[Index] Projects:", projects);
         setProjectHistory(projects);
       } catch (error) {
-        console.error("[Index] Failed to load project history:", error);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error("[Index] Failed to load project history:", errorMsg);
+
+        // If it's an authentication error, log additional context
+        if (errorMsg.includes("401") || errorMsg.includes("Unauthorized")) {
+          console.error("[Index] Authentication error - session may have expired or list endpoint requires re-authentication");
+          console.log("[Index] Auth status:", authStatus);
+          console.log("[Index] Current user:", currentUser);
+
+          // Try to refresh the session by verifying current user again
+          if (isMounted) {
+            console.log("[Index] Attempting to refresh session...");
+            try {
+              const refreshedUser = await fetchCurrentUser();
+              if (refreshedUser && isMounted) {
+                console.log("[Index] Session refreshed successfully");
+                // Don't retry project loading automatically - let user trigger it
+              } else if (isMounted) {
+                console.warn("[Index] Session refresh failed - marking as unauthenticated");
+                setCurrentUser(null);
+                setAuthStatus("unauthenticated");
+              }
+            } catch (refreshError) {
+              console.error("[Index] Session refresh failed:", refreshError);
+              if (isMounted) {
+                setCurrentUser(null);
+                setAuthStatus("unauthenticated");
+              }
+            }
+          }
+        }
+
         if (isMounted) {
           console.warn("[Index] Project history load failed - will show 'No saved projects'");
         }

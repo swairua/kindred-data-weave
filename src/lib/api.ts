@@ -65,7 +65,10 @@ export const apiRequest = async <T>(
     const data = await response.json().catch(() => null);
 
     if (!response.ok) {
-      throw new Error(data?.message || data?.error || "API request failed");
+      const errorMessage = data?.message || data?.error || `HTTP ${response.status}`;
+      console.error(`[API] Request failed: ${params?.action || 'unknown'} - Status: ${response.status} - ${errorMessage}`);
+      console.error(`[API] Response data:`, data);
+      throw new Error(errorMessage);
     }
 
     return data as T;
