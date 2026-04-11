@@ -189,9 +189,17 @@ export const TestDataProvider = ({ children }: { children: ReactNode }) => {
         }
       };
 
+      interface TestDefinitionRecord {
+        test_key: string;
+        name: string;
+        category: "soil" | "concrete" | "rock" | "special";
+        enabled: boolean | number;
+        sort_order: number;
+      }
+
       const attemptLoad = async (): Promise<void> => {
         try {
-          const response = await listRecords("test_definitions", { limit: 1000 });
+          const response = await listRecords<TestDefinitionRecord>("test_definitions", { limit: 1000 });
           if (response?.data && Array.isArray(response.data)) {
             const loadedTests: Record<string, TestSummary> = { ...defaultTests };
 
