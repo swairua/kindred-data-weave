@@ -2,6 +2,20 @@ const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
 
 export const API_BASE_URL = configuredApiBaseUrl || "https://lab.wayrus.co.ke/api.php";
 
+// Store session ID for cross-origin authentication
+let storedSessionId: string | null = null;
+
+export const setStoredSessionId = (sessionId: string | null) => {
+  storedSessionId = sessionId;
+  if (sessionId) {
+    console.log("[API] Stored session ID");
+  } else {
+    console.log("[API] Cleared session ID");
+  }
+};
+
+export const getStoredSessionId = (): string | null => storedSessionId;
+
 export interface ApiUser {
   id: number;
   email: string;
@@ -33,7 +47,9 @@ export const buildApiUrl = (params?: Record<string, string | number | boolean | 
     });
   }
 
-  return url.toString();
+  const finalUrl = url.toString();
+  console.debug("[API] Built URL:", finalUrl);
+  return finalUrl;
 };
 
 export const apiRequest = async <T>(
@@ -50,6 +66,13 @@ export const apiRequest = async <T>(
     headers.set("Content-Type", "application/json");
   }
 
+  // Add stored session ID if available (for cross-origin session handling)
+  const sessionId = getStoredSessionId();
+  if (sessionId && !headers.has("Cookie")) {
+    headers.set("Cookie", `PHPSESSID=${sessionId}`);
+    console.debug(`[API] Adding stored session ID to request`);
+  }
+
   const url = buildApiUrl(params);
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout (increased from 10s)
@@ -62,10 +85,25 @@ export const apiRequest = async <T>(
       signal: controller.signal,
     });
 
+    // Extract and store session ID from Set-Cookie header if present
+    const setCookieHeader = response.headers.get("set-cookie");
+    if (setCookieHeader) {
+      const sessionMatch = setCookieHeader.match(/PHPSESSID=([^;]+)/);
+      if (sessionMatch && sessionMatch[1]) {
+        setStoredSessionId(sessionMatch[1]);
+        console.debug(`[API] Extracted session ID from response`);
+      }
+    }
+
     const data = await response.json().catch(() => null);
 
     if (!response.ok) {
-      throw new Error(data?.message || data?.error || "API request failed");
+      const errorMessage = data?.message || data?.error || `HTTP ${response.status}`;
+      console.error(`[API] Request failed: ${params?.action || 'unknown'} - Status: ${response.status} - ${errorMessage}`);
+      console.error(`[API] Response data:`, JSON.stringify(data, null, 2));
+      console.error(`[API] Request URL:`, url);
+      console.error(`[API] Request headers:`, Object.fromEntries(headers.entries()));
+      throw new Error(errorMessage);
     }
 
     return data as T;
@@ -86,31 +124,70 @@ export const apiRequest = async <T>(
   }
 };
 
-export const loginUser = (email: string, password: string) =>
-  apiRequest<LoginResponse>(
-    {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    },
-    { action: "login" },
-  );
+export const loginUser = async (email: string, password: string) => {
+  console.log("[API] Attempting login for email:", email);
+  try {
+    const response = await apiRequest<LoginResponse>(
+      {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      },
+      { action: "login" },
+    );
+    console.log("[API] Login successful. Response:", response);
+    // apiRequest already captures and stores the session ID from response headers
+    console.log("[API] Session ID stored for subsequent requests");
+    return response;
+  } catch (error) {
+    console.error("[API] Login failed:", error instanceof Error ? error.message : error);
+    throw error;
+  }
+};
 
 export const fetchCurrentUser = async () => {
   try {
     console.log("[API] Calling me endpoint...");
-    const response = await apiRequest<CurrentUserResponse>(undefined, { action: "me" });
-    console.log("[API] me endpoint response:", response);
+    console.log("[API] API_BASE_URL:", API_BASE_URL);
+
+    const url = buildApiUrl({ action: "me" });
+    const response = await fetch(url, {
+      credentials: "include",
+      headers: {
+        "Accept": "application/json",
+      },
+    });
+
+    console.log("[API] me endpoint HTTP status:", response.status);
+
+    const data = await response.json().catch(() => null);
+    console.log("[API] me endpoint response data:", data);
+
+    // 401 is expected when user is not authenticated - this is not an error condition
+    if (response.status === 401) {
+      console.log("[API] User not authenticated (401 response)");
+      return null;
+    }
+
+    if (!response.ok) {
+      const errorMessage = data?.message || data?.error || `HTTP ${response.status}`;
+      console.error("[API] me endpoint failed with status ${response.status}:", errorMessage);
+      throw new Error(errorMessage);
+    }
 
     // If the response indicates not authenticated, return null
-    if (response.authenticated === false || !response.user) {
+    if (data?.authenticated === false || !data?.user) {
       console.log("[API] User not authenticated (authenticated=false or no user)");
       return null;
     }
 
-    return response.user;
+    console.log("[API] User authenticated as:", data.user);
+    return data.user;
   } catch (error) {
-    console.log("[API] me endpoint error:", error instanceof Error ? error.message : error);
-    // API unavailable, not authenticated, or network error - return null gracefully
+    console.error("[API] me endpoint error - details:", {
+      message: error instanceof Error ? error.message : String(error),
+      error: error
+    });
+    // API unavailable, network error - return null gracefully
     return null;
   }
 };
@@ -151,4 +228,16 @@ export const updateRecord = async <T>(table: string, id: string | number, data: 
 export const deleteRecord = async <T>(table: string, id: string | number) =>
   apiRequest<ApiWriteResponse<T>>({ method: "DELETE", body: JSON.stringify({ table, id }) }, { action: "delete" });
 
-export const logoutUser = () => apiRequest<LogoutResponse>({ method: "POST" }, { action: "logout" });
+export const logoutUser = async () => {
+  try {
+    const response = await apiRequest<LogoutResponse>({ method: "POST" }, { action: "logout" });
+    // Clear stored session ID on logout
+    setStoredSessionId(null);
+    console.log("[API] Session cleared on logout");
+    return response;
+  } catch (error) {
+    // Clear session even if logout fails
+    setStoredSessionId(null);
+    throw error;
+  }
+};
