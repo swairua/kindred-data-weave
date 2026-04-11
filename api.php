@@ -193,6 +193,13 @@ const ALLOWED_TABLES = [
 function respond(array $payload, int $status = 200): never
 {
     error_log("RESPOND: status=$status, payload=" . json_encode($payload));
+
+    // Ensure any pending session data is written before sending response
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        error_log("RESPOND: Session is active, calling session_write_close()");
+        session_write_close();
+    }
+
     http_response_code($status);
     echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
@@ -496,6 +503,11 @@ try {
         // Create session - just set the user_id and let the session handler save it
         $_SESSION['user_id'] = $userId;
 
+        // CRITICAL: Force session to be written to database before responding
+        error_log("SESSION WRITE: Calling session_write_close() before register response");
+        session_write_close();
+        error_log("SESSION WRITE: session_write_close() completed");
+
         respond([
             'message' => 'User registered and logged in',
             'user_id' => $userId,
@@ -530,6 +542,11 @@ try {
         $userId = (int) $userRow['id'];
         $_SESSION['user_id'] = $userId;
 
+        // CRITICAL: Force session to be written to database before responding
+        error_log("SESSION WRITE: Calling session_write_close() before login response");
+        session_write_close();
+        error_log("SESSION WRITE: session_write_close() completed");
+
         respond([
             'message' => 'Logged in successfully',
             'user_id' => $userId,
@@ -544,6 +561,9 @@ try {
     if ($action === 'logout') {
         // session_destroy() will use our custom handler to delete from the database
         session_destroy();
+
+        // Ensure logout is committed
+        error_log("SESSION DESTROY: session_destroy() called, session is destroyed");
 
         respond(['message' => 'Logged out successfully']);
     }

@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { Upload, Loader2, X } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { buildApiUrl } from "@/lib/api";
+import { buildApiUrl, listRecords, uploadFile } from "@/lib/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -46,20 +46,8 @@ const Admin = () => {
   useEffect(() => {
     const fetchStoredImages = async () => {
       try {
-        const url = buildApiUrl({ action: "list", table: "admin_images" });
-        const resp = await fetch(url, { credentials: "include" });
-
-        if (!resp.ok) {
-          // Set with no images but no error
-          setStoredImages({
-            logo: { type: "logo", loading: false },
-            contacts: { type: "contacts", loading: false },
-            stamp: { type: "stamp", loading: false },
-          });
-          return;
-        }
-        const json = await resp.json();
-        const rows: Array<{ image_type: string; file_path: string }> = json?.data || [];
+        const response = await listRecords<{ image_type: string; file_path: string }>("admin_images");
+        const rows: Array<{ image_type: string; file_path: string }> = response.data || [];
 
         // Get latest per type
         const latest: Record<string, string> = {};
@@ -129,50 +117,32 @@ const Admin = () => {
     setUploadProgress(10);
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("image_type", selectedImageType);
-
-      const url = buildApiUrl({ action: "upload" });
-
       console.log("Starting upload:", {
         fileName: file.name,
         fileSize: file.size,
         imageType: selectedImageType,
-        endpoint: url,
       });
 
       setUploadProgress(30);
 
-      const response = await fetch(url, {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      });
+      const data = await uploadFile(file, { image_type: selectedImageType });
 
       setUploadProgress(90);
 
-      const data = await response.json().catch(() => null);
-      console.log("Upload response:", { status: response.status, data });
+      console.log("Upload response:", data);
 
-      if (response.ok) {
-        setUploadedFiles((prev) => [
-          {
-            name: file.name,
-            size: file.size,
-            uploadedAt: new Date().toLocaleString(),
-            type: selectedImageType,
-          },
-          ...prev,
-        ]);
+      setUploadedFiles((prev) => [
+        {
+          name: file.name,
+          size: file.size,
+          uploadedAt: new Date().toLocaleString(),
+          type: selectedImageType,
+        },
+        ...prev,
+      ]);
 
-        const typeLabel = selectedImageType.charAt(0).toUpperCase() + selectedImageType.slice(1);
-        toast.success(`Uploaded ${typeLabel}: ${file.name}`);
-      } else {
-        const errorMsg = data?.error || response.statusText || `Status ${response.status}`;
-        console.error("Upload error:", errorMsg);
-        toast.error(`Upload failed: ${errorMsg}`);
-      }
+      const typeLabel = selectedImageType.charAt(0).toUpperCase() + selectedImageType.slice(1);
+      toast.success(`Uploaded ${typeLabel}: ${file.name}`);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
       console.error("Upload exception:", error);
