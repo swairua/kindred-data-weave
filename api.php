@@ -965,13 +965,36 @@ try {
             respond(['error' => 'Database error: ' . $stmt->error], 500);
         }
 
-        // Verify that the UPDATE actually affected a row
-        if ($stmt->affected_rows <= 0) {
-            error_log("ERROR: UPDATE statement did not affect any rows. Affected rows: " . $stmt->affected_rows . ", ID: $id");
-            respond(['error' => 'Failed to update record - no rows matched the update criteria'], 500);
+        // Verify that the record exists (affected_rows can be 0 if no values changed)
+        if ($stmt->affected_rows < 0) {
+            error_log("ERROR: UPDATE statement failed. Affected rows: " . $stmt->affected_rows . ", ID: $id");
+            respond(['error' => 'Failed to update record - database error'], 500);
         }
 
-        error_log("Update successful, affected_rows: " . $stmt->affected_rows);
+        // In MySQL, affected_rows = 0 means either:
+        // 1. The record doesn't exist, OR
+        // 2. The new values are identical to existing values
+        // We should verify the record exists if affected_rows = 0
+        if ($stmt->affected_rows === 0) {
+            error_log("UPDATE affected_rows = 0, verifying record exists. ID: $id");
+            $verifyStmt = $conn->prepare("SELECT 1 FROM `$table` WHERE `$primaryKey` = ? LIMIT 1");
+            if (!$verifyStmt) {
+                error_log("ERROR: Failed to prepare verification statement: " . $conn->error);
+                respond(['error' => 'Database error: ' . $conn->error], 500);
+            }
+            $verifyStmt->bind_param('s', $id);
+            $verifyStmt->execute();
+            $verifyResult = $verifyStmt->get_result()->fetch_assoc();
+            $verifyStmt->close();
+
+            if (!$verifyResult) {
+                error_log("ERROR: Record does not exist for update. ID: $id");
+                respond(['error' => 'Failed to update record - no rows matched the update criteria'], 500);
+            }
+            error_log("Record exists, values were unchanged. Update successful, affected_rows: 0");
+        } else {
+            error_log("Update successful, affected_rows: " . $stmt->affected_rows);
+        }
 
         $updated = $conn->query("SELECT * FROM `$table` WHERE `$primaryKey` = '" . $conn->real_escape_string((string) $id) . "' LIMIT 1")->fetch_assoc();
         error_log("Retrieved updated record: " . json_encode($updated));
