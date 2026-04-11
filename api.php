@@ -89,15 +89,29 @@ class DatabaseSessionHandler implements SessionHandlerInterface
     public function write(string $id, string $data): bool
     {
         try {
-            $sql = "INSERT INTO `sessions` (session_id, session_data, expires_at, updated_at)
-                    VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 30 MINUTE), NOW())
-                    ON DUPLICATE KEY UPDATE session_data = ?, updated_at = NOW(), expires_at = DATE_ADD(NOW(), INTERVAL 30 MINUTE)";
+            // Extract user_id from serialized session data
+            $userId = null;
+            if ($data !== '') {
+                try {
+                    $sessionData = unserialize($data, ['allowed_classes' => false]);
+                    if (is_array($sessionData) && isset($sessionData['user_id'])) {
+                        $userId = (int) $sessionData['user_id'];
+                    }
+                } catch (Exception $e) {
+                    error_log('Session data unserialize error: ' . $e->getMessage());
+                }
+            }
+
+            // Insert or update session with user_id
+            $sql = "INSERT INTO `sessions` (session_id, session_data, expires_at, updated_at, user_id)
+                    VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 30 MINUTE), NOW(), ?)
+                    ON DUPLICATE KEY UPDATE session_data = ?, updated_at = NOW(), expires_at = DATE_ADD(NOW(), INTERVAL 30 MINUTE), user_id = ?";
             $stmt = $this->conn->prepare($sql);
             if (!$stmt) {
                 return false;
             }
 
-            $stmt->bind_param('sss', $id, $data, $data);
+            $stmt->bind_param('ssiii', $id, $data, $userId, $data, $userId);
             $stmt->execute();
             $stmt->close();
 
