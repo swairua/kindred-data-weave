@@ -228,7 +228,7 @@ const Index = ({ initialTab }: IndexProps) => {
       try {
         console.log("[Index] Loading project history from API...");
         setIsLoadingProjects(true);
-        const response = await listRecords<ApiProjectRow>("projects", { limit: 100, orderBy: "updated_at", direction: "DESC" });
+        const response = await listRecords<ApiProjectRow>("projects", { limit: 100 });
 
         if (!isMounted) {
           console.log("[Index] Component unmounted before project history response");
