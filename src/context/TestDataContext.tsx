@@ -169,61 +169,44 @@ export const TestDataProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const loadTestDefinitions = async () => {
-      let retries = 0;
-      const maxRetries = 3;
-
-      interface TestDefinitionRecord {
-        test_key: string;
-        name: string;
-        category: "soil" | "concrete" | "rock" | "special";
-        enabled: boolean | number;
-        sort_order: number;
-      }
-
-      const attemptLoad = async (): Promise<void> => {
-        try {
-          const response = await listRecords<TestDefinitionRecord>("test_definitions", { limit: 1000 });
-          if (response?.data && Array.isArray(response.data)) {
-            const loadedTests: Record<string, TestSummary> = { ...defaultTests };
-
-            for (const record of response.data) {
-              const testKey = record.test_key;
-              if (testKey && loadedTests[testKey]) {
-                loadedTests[testKey] = {
-                  ...loadedTests[testKey],
-                  name: record.name || loadedTests[testKey].name,
-                  category: record.category || loadedTests[testKey].category,
-                  enabled: record.enabled !== false && record.enabled !== 0,
-                  sortOrder: record.sort_order || 0,
-                };
-              }
-            }
-
-            setTests(loadedTests);
-            console.log("Successfully loaded test definitions from API");
-          }
-        } catch (error) {
-          // Check if this is a 401 Unauthorized error (user not logged in yet)
-          const isUnauthorized = error instanceof Error && error.message?.includes("Unauthorized");
-
-          retries++;
-          if (retries < maxRetries && !isUnauthorized) {
-            const delay = Math.pow(2, retries - 1) * 1000;
-            console.warn(`Failed to load test definitions. Retrying in ${delay}ms... (Attempt ${retries}/${maxRetries})`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-            return attemptLoad();
-          } else {
-            // Silently fail for 401 errors (expected when not authenticated)
-            if (!isUnauthorized) {
-              console.warn("Failed to load test definitions from API, using defaults");
-            }
-          }
+      try {
+        console.log("[TestData] Starting to load test definitions");
+        interface TestDefinitionRecord {
+          test_key: string;
+          name: string;
+          category: "soil" | "concrete" | "rock" | "special";
+          enabled: boolean | number;
+          sort_order: number;
         }
-      };
 
-      await attemptLoad();
+        const response = await listRecords<TestDefinitionRecord>("test_definitions", { limit: 1000 });
+        console.log("[TestData] Got response:", response);
+
+        if (response?.data && Array.isArray(response.data)) {
+          const loadedTests: Record<string, TestSummary> = { ...defaultTests };
+
+          for (const record of response.data) {
+            const testKey = record.test_key;
+            if (testKey && loadedTests[testKey]) {
+              loadedTests[testKey] = {
+                ...loadedTests[testKey],
+                name: record.name || loadedTests[testKey].name,
+                category: record.category || loadedTests[testKey].category,
+                enabled: record.enabled !== false && record.enabled !== 0,
+                sortOrder: record.sort_order || 0,
+              };
+            }
+          }
+
+          setTests(loadedTests);
+          console.log("[TestData] Successfully loaded test definitions from API");
+        }
+      } catch (error) {
+        console.warn("[TestData] Failed to load test definitions from API:", error instanceof Error ? error.message : error);
+      }
     };
 
+    // Load test definitions but don't block rendering
     loadTestDefinitions();
   }, []);
 
