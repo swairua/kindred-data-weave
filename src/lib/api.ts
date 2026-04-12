@@ -16,6 +16,15 @@ export const setStoredSessionId = (sessionId: string | null) => {
 
 export const getStoredSessionId = (): string | null => storedSessionId;
 
+// Helper to diagnose cookie issues
+export const debugCookies = () => {
+  console.log("[API] === COOKIE DIAGNOSTIC ===");
+  console.log("[API] Document cookies:", document.cookie || "(empty)");
+  console.log("[API] Stored session ID in memory:", storedSessionId || "(empty)");
+  console.log("[API] API base URL:", API_BASE_URL);
+  console.log("[API] Note: With credentials:'include', browser sends cookies to this domain automatically");
+};
+
 export interface ApiUser {
   id: number;
   email: string;
@@ -86,6 +95,17 @@ export const apiRequest = async <T>(
       signal: controller.signal,
     });
 
+    // Log CORS headers for debugging
+    const allowCredentials = response.headers.get("access-control-allow-credentials");
+    const allowOrigin = response.headers.get("access-control-allow-origin");
+
+    if (allowCredentials || allowOrigin) {
+      console.debug(`[API] CORS headers present:`, {
+        "Access-Control-Allow-Credentials": allowCredentials,
+        "Access-Control-Allow-Origin": allowOrigin,
+      });
+    }
+
     // Extract and store session ID from Set-Cookie header if present
     const setCookieHeader = response.headers.get("set-cookie");
     if (setCookieHeader) {
@@ -97,7 +117,8 @@ export const apiRequest = async <T>(
     } else if (params?.action === "login" || params?.action === "me") {
       // For cross-origin requests, we may not be able to read Set-Cookie header
       // The browser still receives and stores it automatically with credentials: "include"
-      console.log(`[API] No Set-Cookie header accessible (may be CORS-restricted, but browser is handling it)`);
+      console.log(`[API] No Set-Cookie header accessible (expected for cross-origin, browser is handling cookies)`);
+      console.log(`[API] CORS Allow-Credentials header:`, allowCredentials);
     }
 
     const data = await response.json().catch(() => null);
@@ -146,6 +167,7 @@ export const loginUser = async (email: string, password: string) => {
   console.log("[API] === LOGIN REQUEST START ===");
   console.log("[API] Attempting login for email:", email);
   console.log("[API] Current stored session ID:", getStoredSessionId());
+  console.log("[API] Request will use credentials: 'include' for cross-origin cookie handling");
 
   try {
     const response = await apiRequest<LoginResponse>(
@@ -157,10 +179,12 @@ export const loginUser = async (email: string, password: string) => {
     );
 
     console.log("[API] === LOGIN RESPONSE ===");
-    console.log("[API] Login successful. Response:", response);
+    console.log("[API] Login successful. Response user:", response.user);
     console.log("[API] Stored session ID after login:", getStoredSessionId());
-    console.log("[API] NOTE: Browser should have received and stored the PHPSESSID cookie");
-    console.log("[API] Browser will automatically send it in future requests with credentials: 'include'");
+    console.log("[API] IMPORTANT: Browser should have received and stored the PHPSESSID cookie");
+    console.log("[API] Verify in DevTools → Application → Cookies that PHPSESSID is present");
+    console.log("[API] Browser will automatically send cookies in future requests with credentials: 'include'");
+    console.log("[API] Next requests should NOT get 401 if backend properly sets CORS headers");
 
     return response;
   } catch (error) {

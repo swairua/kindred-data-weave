@@ -252,9 +252,15 @@ const Index = ({ initialTab }: IndexProps) => {
 
         // If it's an authentication error, log additional context
         if (errorMsg.includes("401") || errorMsg.includes("Unauthorized")) {
-          console.error("[Index] Authentication error - session may have expired or list endpoint requires re-authentication");
+          console.error("[Index] ⚠️ AUTHENTICATION ERROR on list endpoint");
+          console.error("[Index] This means the session from login is not being sent with the list request");
+          console.error("[Index] Possible causes:");
+          console.error("[Index]   1. Backend not returning correct CORS headers for credentials");
+          console.error("[Index]   2. PHPSESSID cookie not being set on login");
+          console.error("[Index]   3. Cookie SameSite attribute preventing cross-origin sending");
           console.log("[Index] Auth status:", authStatus);
           console.log("[Index] Current user:", currentUser);
+          console.log("[Index] Current cookies:", document.cookie || "(empty)");
 
           // Try to refresh the session by verifying current user again
           if (isMounted) {
