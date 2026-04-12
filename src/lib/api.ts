@@ -104,16 +104,23 @@ export const apiRequest = async <T>(
 
     if (!response.ok) {
       const errorMessage = data?.message || data?.error || `HTTP ${response.status}`;
-      console.error(`[API] Request failed: ${params?.action || 'unknown'} - Status: ${response.status} - ${errorMessage}`);
-      console.error(`[API] Response data:`, JSON.stringify(data, null, 2));
-      console.error(`[API] Request URL:`, url);
-      console.error(`[API] Request headers:`, Object.fromEntries(headers.entries()));
 
-      // Log CORS-related headers for debugging
-      console.error(`[API] Response CORS headers:`, {
-        "Access-Control-Allow-Credentials": response.headers.get("access-control-allow-credentials"),
-        "Access-Control-Allow-Origin": response.headers.get("access-control-allow-origin"),
-      });
+      // 401 on "me" endpoint on initial load is expected when user is not logged in
+      // Only log as error if it's unexpected (not the "me" action or status is not 401)
+      if (response.status === 401 && params?.action === "me") {
+        console.debug(`[API] Expected 401 on me endpoint - user not authenticated yet`);
+      } else {
+        console.error(`[API] Request failed: ${params?.action || 'unknown'} - Status: ${response.status} - ${errorMessage}`);
+        console.error(`[API] Response data:`, JSON.stringify(data, null, 2));
+        console.error(`[API] Request URL:`, url);
+        console.error(`[API] Request headers:`, Object.fromEntries(headers.entries()));
+
+        // Log CORS-related headers for debugging
+        console.error(`[API] Response CORS headers:`, {
+          "Access-Control-Allow-Credentials": response.headers.get("access-control-allow-credentials"),
+          "Access-Control-Allow-Origin": response.headers.get("access-control-allow-origin"),
+        });
+      }
       throw new Error(errorMessage);
     }
 
@@ -167,6 +174,7 @@ export const fetchCurrentUser = async () => {
     console.log("[API] === ME ENDPOINT REQUEST START ===");
     console.log("[API] API_BASE_URL:", API_BASE_URL);
     console.log("[API] Stored session ID:", getStoredSessionId());
+    console.log("[API] NOTE: 401 response on initial load is expected - user not logged in yet");
 
     const data = await apiRequest<CurrentUserResponse>(undefined, { action: "me" });
 
@@ -175,7 +183,7 @@ export const fetchCurrentUser = async () => {
 
     // If the response indicates not authenticated, return null
     if (data?.authenticated === false || !data?.user) {
-      console.log("[API] User not authenticated");
+      console.log("[API] User not authenticated (expected if not logged in)");
       return null;
     }
 
@@ -186,11 +194,11 @@ export const fetchCurrentUser = async () => {
 
     // 401 is expected when user is not authenticated - this is not an error condition
     if (errorMessage.includes("Unauthorized") || errorMessage.includes("401")) {
-      console.log("[API] User not authenticated (401 response) - may need to login again");
+      console.log("[API] User not authenticated (401 response) - this is normal if not logged in yet");
       return null;
     }
 
-    console.error("[API] me endpoint error:", errorMessage);
+    console.warn("[API] me endpoint error (non-401):", errorMessage);
     // API unavailable, network error - return null gracefully
     return null;
   }
