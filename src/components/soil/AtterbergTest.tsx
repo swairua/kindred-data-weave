@@ -354,6 +354,30 @@ const persistAtterbergProjectToApi = async ({
       throw new Error("Unable to save project");
     }
 
+    // Clean up orphaned test results for this project before creating a new one
+    console.log(`[Atterberg Save] Cleaning up existing test_results for project ${projectRow.id}`);
+    try {
+      const existingResultsResponse = await retryWithBackoff(
+        () => listRecords<ApiAtterbergResultRow>("test_results", { limit: 5000, orderBy: "updated_at", direction: "DESC" })
+      );
+
+      const projectTestResults = existingResultsResponse.data.filter(
+        (row) => row.project_id === projectRow.id && row.test_key === "atterberg"
+      );
+
+      if (projectTestResults.length > 0) {
+        console.log(`[Atterberg Save] Found ${projectTestResults.length} existing test_results for project ${projectRow.id}, deleting them`);
+        await Promise.all(
+          projectTestResults.map((row) =>
+            retryWithBackoff(() => deleteApiRecord("test_results", row.id))
+          )
+        );
+      }
+    } catch (cleanupError) {
+      console.warn(`[Atterberg Save] Warning: Failed to clean up orphaned test_results:`, cleanupError);
+      // Don't fail the entire save operation if cleanup fails, just warn and continue
+    }
+
     // Always create a new test result record (no longer trying to update existing ones)
     const resultPayload = {
       project_id: projectRow.id,
@@ -404,7 +428,10 @@ const clearAtterbergProjectFromApi = async (lookup: AtterbergProjectLookup) => {
     if (hasLookupCriteria(lookup)) {
       const projectRow = projectsResponse.data.find((row) => matchesProjectLookup(row, lookup)) ?? null;
       if (projectRow) {
-        resultRows = getAtterbergResultsForProject(resultsResponse.data, projectRow.id);
+        // Find all atterberg test results for this project
+        resultRows = resultsResponse.data.filter(
+          (row) => row.project_id === projectRow.id && row.test_key === "atterberg"
+        );
       }
     } else {
       const latestResult = resultsResponse.data.find((row) => row.test_key === "atterberg" && row.payload_json) ?? null;
@@ -694,12 +721,8 @@ const AtterbergTest = () => {
   );
 
   const handleSave = useCallback(async () => {
-    // Prevent concurrent saves - if already saving, ignore this click
-    if (isSavingRef.current) {
-      console.warn("Save already in progress, ignoring duplicate save request");
-      return;
-    }
-
+    // Track save state for UI feedback (no longer blocking concurrent saves)
+    // The API layer already has retry logic with backoff to handle multiple concurrent requests
     isSavingRef.current = true;
     setSaveStatus("saving");
     setLastSaveError(null);
