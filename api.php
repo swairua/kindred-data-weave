@@ -546,18 +546,15 @@ try {
             respond(['error' => 'Invalid email or password'], 401);
         }
 
-        // Create session - just set the user_id and let the session handler save it
+        // Create session - set user_id and capture session token
         $userId = (int) $userRow['id'];
         $_SESSION['user_id'] = $userId;
+        $sessionToken = session_id();
 
         // CRITICAL: Force session to be written to database before responding
         error_log("SESSION WRITE: Calling session_write_close() before login response");
         session_write_close();
         error_log("SESSION WRITE: session_write_close() completed");
-
-        // Re-start session to get the session ID for the token response
-        session_start();
-        $_SESSION['user_id'] = $userId;
 
         respond([
             'message' => 'Logged in successfully',
