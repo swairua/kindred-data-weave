@@ -1,20 +1,20 @@
--- Migration: Add session_data column to sessions table for new session handler
--- This allows PHP's custom session handler to store serialized session data
+-- Migration: Fix sessions table for token-based auth
 
-ALTER TABLE `sessions` ADD COLUMN `session_data` LONGTEXT DEFAULT '' AFTER `session_id`;
+-- Drop the existing FK constraint that prevents NULL user_id
+ALTER TABLE `sessions` DROP FOREIGN KEY `fk_sessions_user`;
 
--- Ensure the expires_at column exists (should already be there, but just in case)
--- ALTER TABLE `sessions` MODIFY COLUMN `expires_at` DATETIME NOT NULL DEFAULT (DATE_ADD(NOW(), INTERVAL 30 MINUTE));
-
--- Update the table to make session_id the primary key if not already
--- ALTER TABLE `sessions` DROP PRIMARY KEY;
--- ALTER TABLE `sessions` ADD PRIMARY KEY (`session_id`);
-
--- Optional: Create an index on expires_at for the garbage collection query
-CREATE INDEX `idx_expires_at` ON `sessions` (`expires_at`);
-
--- Allow unauthenticated sessions (user not logged in yet)
+-- Allow NULL user_id for unauthenticated sessions
 ALTER TABLE `sessions` MODIFY COLUMN `user_id` INT NULL DEFAULT NULL;
 
--- Display the table structure to verify
+-- Re-add FK with ON DELETE SET NULL
+ALTER TABLE `sessions` ADD CONSTRAINT `fk_sessions_user` 
+  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL;
+
+-- Ensure session_data column exists
+-- ALTER TABLE `sessions` ADD COLUMN `session_data` LONGTEXT DEFAULT '' AFTER `session_id`;
+
+-- Ensure index on expires_at for garbage collection
+-- CREATE INDEX `idx_expires_at` ON `sessions` (`expires_at`);
+
+-- Verify
 DESCRIBE `sessions`;
