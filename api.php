@@ -89,18 +89,15 @@ class DatabaseSessionHandler implements SessionHandlerInterface
     public function write(string $id, string $data): bool
     {
         try {
-            // Extract user_id from serialized session data
+            // Read user_id from $_SESSION directly (PHP session data uses custom serialization)
             $userId = null;
-            if ($data !== '') {
-                try {
-                    $sessionData = unserialize($data, ['allowed_classes' => false]);
-                    if (is_array($sessionData) && isset($sessionData['user_id'])) {
-                        $userId = (int) $sessionData['user_id'];
-                    }
-                } catch (Exception $e) {
-                    error_log('Session data unserialize error: ' . $e->getMessage());
-                }
+            $tempData = $_SESSION ?? [];
+            if (isset($tempData['user_id'])) {
+                $userId = (int) $tempData['user_id'];
             }
+
+            // Default to 0 for unauthenticated sessions (user_id is NOT NULL)
+            $userIdValue = $userId ?? 0;
 
             // Insert or update session with user_id
             $sql = "INSERT INTO `sessions` (session_id, session_data, expires_at, updated_at, user_id)
@@ -111,7 +108,7 @@ class DatabaseSessionHandler implements SessionHandlerInterface
                 return false;
             }
 
-            $stmt->bind_param('ssiii', $id, $data, $userId, $data, $userId);
+            $stmt->bind_param('ssisi', $id, $data, $userIdValue, $data, $userIdValue);
             $stmt->execute();
             $stmt->close();
 
