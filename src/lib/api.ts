@@ -2,19 +2,47 @@ const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
 
 export const API_BASE_URL = configuredApiBaseUrl || "https://lab.wayrus.co.ke/api.php";
 
-// Store session ID for cross-origin authentication
-let storedSessionId: string | null = null;
+const SESSION_STORAGE_KEY = "lab_session_token";
 
-export const setStoredSessionId = (sessionId: string | null) => {
-  storedSessionId = sessionId;
-  if (sessionId) {
-    console.log("[API] Stored session ID");
+// Session token management (stored in localStorage for persistence)
+export const setSessionToken = (token: string | null) => {
+  if (token) {
+    localStorage.setItem(SESSION_STORAGE_KEY, token);
+    console.log("[API] Session token stored");
   } else {
-    console.log("[API] Cleared session ID");
+    localStorage.removeItem(SESSION_STORAGE_KEY);
+    console.log("[API] Session token cleared");
   }
 };
 
-export const getStoredSessionId = (): string | null => storedSessionId;
+export const getSessionToken = (): string | null => {
+  return localStorage.getItem(SESSION_STORAGE_KEY);
+};
+
+// Backward compatibility
+export const setStoredSessionId = (sessionId: string | null) => {
+  setSessionToken(sessionId);
+};
+
+export const getStoredSessionId = (): string | null => {
+  return getSessionToken();
+};
+
+// Debug function - can be called from browser console
+export const debugAuthState = () => {
+  const token = getSessionToken();
+  console.log("[API] === AUTH STATE DEBUG ===");
+  console.log("[API] Session token stored:", token ? `✓ Yes` : "✗ No");
+  if (token) {
+    console.log("[API] Token value:", token);
+    console.log("[API] Token length:", token.length);
+  }
+  console.log("[API] API Base URL:", API_BASE_URL);
+  console.log("[API] localStorage contents:", {
+    [SESSION_STORAGE_KEY]: localStorage.getItem(SESSION_STORAGE_KEY) || "(empty)",
+  });
+  console.log("[API] For next request, header will be:", token ? `X-Session-Token: ${token}` : "X-Session-Token: (not sent)");
+};
 
 export interface ApiUser {
   id: number;
@@ -26,6 +54,7 @@ interface LoginResponse {
   message: string;
   user_id: number;
   user: ApiUser;
+  session_token?: string; // Optional session token if backend provides it in response body
 }
 
 interface CurrentUserResponse {
@@ -66,54 +95,56 @@ export const apiRequest = async <T>(
     headers.set("Content-Type", "application/json");
   }
 
-  // For cross-origin requests, browsers automatically handle cookies with credentials: "include"
-  // Manual Cookie headers are blocked by browsers for security and won't be sent.
-  // Logging the stored session ID for debugging purposes only.
-  const sessionId = getStoredSessionId();
-  if (sessionId) {
-    console.debug(`[API] Session ID available: ${sessionId.substring(0, 8)}...`);
+  // Add session token as header if available
+  const sessionToken = getSessionToken();
+  if (sessionToken && !headers.has("X-Session-Token")) {
+    headers.set("X-Session-Token", sessionToken);
+    console.debug(`[API] Session token added to X-Session-Token header`);
+  } else if (!sessionToken) {
+    console.debug(`[API] No session token available - request will not have X-Session-Token header`);
   }
 
   const url = buildApiUrl(params);
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout (increased from 10s)
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
   try {
     const response = await fetch(url, {
-      credentials: "include",
       ...init,
       headers,
       signal: controller.signal,
     });
 
-    // Extract and store session ID from Set-Cookie header if present
-    const setCookieHeader = response.headers.get("set-cookie");
-    if (setCookieHeader) {
-      const sessionMatch = setCookieHeader.match(/PHPSESSID=([^;]+)/);
-      if (sessionMatch && sessionMatch[1]) {
-        setStoredSessionId(sessionMatch[1]);
-        console.log(`[API] Extracted and stored session ID from response`);
-      }
-    } else if (params?.action === "login" || params?.action === "me") {
-      // For cross-origin requests, we may not be able to read Set-Cookie header
-      // The browser still receives and stores it automatically with credentials: "include"
-      console.log(`[API] No Set-Cookie header accessible (may be CORS-restricted, but browser is handling it)`);
+    // Check for session token in response headers
+    const responseSessionToken = response.headers.get("X-Session-Token");
+    if (responseSessionToken && responseSessionToken !== sessionToken) {
+      setSessionToken(responseSessionToken);
+      console.log(`[API] Received new session token from server`);
     }
 
     const data = await response.json().catch(() => null);
 
     if (!response.ok) {
       const errorMessage = data?.message || data?.error || `HTTP ${response.status}`;
-      console.error(`[API] Request failed: ${params?.action || 'unknown'} - Status: ${response.status} - ${errorMessage}`);
-      console.error(`[API] Response data:`, JSON.stringify(data, null, 2));
-      console.error(`[API] Request URL:`, url);
-      console.error(`[API] Request headers:`, Object.fromEntries(headers.entries()));
 
-      // Log CORS-related headers for debugging
-      console.error(`[API] Response CORS headers:`, {
-        "Access-Control-Allow-Credentials": response.headers.get("access-control-allow-credentials"),
-        "Access-Control-Allow-Origin": response.headers.get("access-control-allow-origin"),
-      });
+      // 401 on "me" endpoint on initial load is expected when user is not logged in
+      // Only log as error if it's unexpected (not the "me" action or status is not 401)
+      if (response.status === 401 && params?.action === "me") {
+        console.debug(`[API] Expected 401 on me endpoint - user not authenticated yet`);
+      } else {
+        console.error(`[API] Request failed: ${params?.action || 'unknown'} - Status: ${response.status} - ${errorMessage}`);
+        console.error(`[API] Response data:`, JSON.stringify(data, null, 2));
+        console.error(`[API] Request URL:`, url);
+        console.error(`[API] Request headers sent:`, Object.fromEntries(headers.entries()));
+        console.error(`[API] X-Session-Token header:`, headers.get("X-Session-Token") ? "✓ Present" : "✗ Not sent");
+
+        // Log CORS-related headers for debugging
+        console.error(`[API] Response headers:`, {
+          "Access-Control-Allow-Credentials": response.headers.get("access-control-allow-credentials"),
+          "Access-Control-Allow-Origin": response.headers.get("access-control-allow-origin"),
+          "X-Session-Token": response.headers.get("X-Session-Token"),
+        });
+      }
       throw new Error(errorMessage);
     }
 
@@ -138,7 +169,6 @@ export const apiRequest = async <T>(
 export const loginUser = async (email: string, password: string) => {
   console.log("[API] === LOGIN REQUEST START ===");
   console.log("[API] Attempting login for email:", email);
-  console.log("[API] Current stored session ID:", getStoredSessionId());
 
   try {
     const response = await apiRequest<LoginResponse>(
@@ -150,10 +180,22 @@ export const loginUser = async (email: string, password: string) => {
     );
 
     console.log("[API] === LOGIN RESPONSE ===");
-    console.log("[API] Login successful. Response:", response);
-    console.log("[API] Stored session ID after login:", getStoredSessionId());
-    console.log("[API] NOTE: Browser should have received and stored the PHPSESSID cookie");
-    console.log("[API] Browser will automatically send it in future requests with credentials: 'include'");
+    console.log("[API] Login successful. User:", response.user.name);
+    console.log("[API] Full response:", JSON.stringify(response, null, 2));
+
+    // Store session token from response if provided
+    if (response.session_token) {
+      setSessionToken(response.session_token);
+      console.log("[API] ✓ Session token received in response body and stored");
+      console.log("[API] Token:", response.session_token.substring(0, 20) + "...");
+    } else {
+      console.log("[API] ⚠️ Server did NOT return session_token in response body");
+      console.log("[API] Check if backend is returning: { \"session_token\": \"...\" }");
+    }
+
+    const storedToken = getSessionToken();
+    console.log("[API] Stored session token available:", storedToken ? `✓ Yes (${storedToken.substring(0, 20)}...)` : "✗ No");
+    console.log("[API] This token will be sent as X-Session-Token header in future requests");
 
     return response;
   } catch (error) {
@@ -165,13 +207,11 @@ export const loginUser = async (email: string, password: string) => {
 export const fetchCurrentUser = async () => {
   try {
     console.log("[API] === ME ENDPOINT REQUEST START ===");
-    console.log("[API] API_BASE_URL:", API_BASE_URL);
-    console.log("[API] Stored session ID:", getStoredSessionId());
+    console.log("[API] Session token available:", getSessionToken() ? "✓ Yes" : "✗ No");
 
     const data = await apiRequest<CurrentUserResponse>(undefined, { action: "me" });
 
     console.log("[API] === ME ENDPOINT RESPONSE ===");
-    console.log("[API] Response data:", data);
 
     // If the response indicates not authenticated, return null
     if (data?.authenticated === false || !data?.user) {
@@ -179,18 +219,18 @@ export const fetchCurrentUser = async () => {
       return null;
     }
 
-    console.log("[API] User authenticated as:", data.user);
+    console.log("[API] User authenticated as:", data.user.name);
     return data.user;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
     // 401 is expected when user is not authenticated - this is not an error condition
     if (errorMessage.includes("Unauthorized") || errorMessage.includes("401")) {
-      console.log("[API] User not authenticated (401 response) - may need to login again");
+      console.log("[API] User not authenticated (401 response)");
       return null;
     }
 
-    console.error("[API] me endpoint error:", errorMessage);
+    console.warn("[API] me endpoint error:", errorMessage);
     // API unavailable, network error - return null gracefully
     return null;
   }
@@ -297,13 +337,13 @@ export const uploadFile = async (file: File, metadata?: Record<string, string>) 
 export const logoutUser = async () => {
   try {
     const response = await apiRequest<LogoutResponse>({ method: "POST" }, { action: "logout" });
-    // Clear stored session ID on logout
-    setStoredSessionId(null);
-    console.log("[API] Session cleared on logout");
+    // Clear session token on logout
+    setSessionToken(null);
+    console.log("[API] Session token cleared on logout");
     return response;
   } catch (error) {
     // Clear session even if logout fails
-    setStoredSessionId(null);
+    setSessionToken(null);
     throw error;
   }
 };

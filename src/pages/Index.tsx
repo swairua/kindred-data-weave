@@ -32,7 +32,7 @@ import {
 import Dashboard from "@/pages/Dashboard";
 import Reports from "@/pages/Reports";
 import Admin from "@/pages/Admin";
-import { fetchCurrentUser, loginUser, logoutUser, type ApiUser, listRecords } from "@/lib/api";
+import { fetchCurrentUser, loginUser, logoutUser, type ApiUser, listRecords, debugAuthState } from "@/lib/api";
 import { registerAllTests } from "@/lib/testRegistration";
 import { registry } from "@/lib/testRegistry";
 
@@ -164,6 +164,12 @@ const Index = ({ initialTab }: IndexProps) => {
   const projectCtx = useMemo(() => ({ projectName, clientName, date: today }), [projectName, clientName, today]);
   const isAuthenticated = authStatus === "authenticated";
 
+  // Expose debug function to window for console access
+  useEffect(() => {
+    (window as any).__debugAuth = debugAuthState;
+    console.log("[Index] Debug tip: Run debugAuthState() in console to check session token status");
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
     let timeoutId: NodeJS.Timeout;
@@ -252,7 +258,12 @@ const Index = ({ initialTab }: IndexProps) => {
 
         // If it's an authentication error, log additional context
         if (errorMsg.includes("401") || errorMsg.includes("Unauthorized")) {
-          console.error("[Index] Authentication error - session may have expired or list endpoint requires re-authentication");
+          console.error("[Index] ⚠️ AUTHENTICATION ERROR on list endpoint");
+          console.error("[Index] This means the session token from login is not being recognized by the server");
+          console.error("[Index] Possible causes:");
+          console.error("[Index]   1. Session token not being returned by login endpoint");
+          console.error("[Index]   2. Backend expecting different header name for token (not X-Session-Token)");
+          console.error("[Index]   3. Backend session token expired or invalid");
           console.log("[Index] Auth status:", authStatus);
           console.log("[Index] Current user:", currentUser);
 
