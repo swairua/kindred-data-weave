@@ -152,6 +152,7 @@ const Index = ({ initialTab }: IndexProps) => {
   );
   const [projectName, setProjectName] = useState("");
   const [clientName, setClientName] = useState("");
+  const [projectDate, setProjectDate] = useState<string | undefined>(undefined);
   const [currentProjectId, setCurrentProjectId] = useState<number | null>(null);
   const [showAdvancedMetadata, setShowAdvancedMetadata] = useState(false);
   const [authStatus, setAuthStatus] = useState<AuthStatus>("checking");
@@ -163,7 +164,7 @@ const Index = ({ initialTab }: IndexProps) => {
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
   const today = new Date().toISOString().split("T")[0];
 
-  const projectCtx = useMemo(() => ({ projectName, clientName, date: today, currentProjectId }), [projectName, clientName, today, currentProjectId]);
+  const projectCtx = useMemo(() => ({ projectName, clientName, date: today, currentProjectId, projectDate }), [projectName, clientName, today, currentProjectId, projectDate]);
   const isAuthenticated = authStatus === "authenticated";
 
   // Expose debug function to window for console access
@@ -333,6 +334,7 @@ const Index = ({ initialTab }: IndexProps) => {
 
     setProjectName(project.name);
     setClientName(project.client_name || "");
+    setProjectDate(project.project_date || undefined);
     setCurrentProjectId(project.id);
     testData.updateProjectMetadata({ projectName: project.name, clientName: project.client_name || "" });
     toast.success(`Loaded project: ${project.name}`);
