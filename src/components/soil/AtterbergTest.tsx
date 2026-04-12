@@ -367,18 +367,19 @@ const persistAtterbergProjectToApi = async ({
 
       if (projectTestResults.length > 0) {
         console.log(`[Atterberg Save] Found ${projectTestResults.length} existing test_results for project ${projectRow.id}, deleting them`);
-        await Promise.all(
+        const deleteResults = await Promise.all(
           projectTestResults.map((row) =>
             retryWithBackoff(() => deleteApiRecord("test_results", row.id))
           )
         );
+        console.log(`[Atterberg Save] Successfully deleted ${deleteResults.length} orphaned records`);
       }
     } catch (cleanupError) {
       console.warn(`[Atterberg Save] Warning: Failed to clean up orphaned test_results:`, cleanupError);
       // Don't fail the entire save operation if cleanup fails, just warn and continue
     }
 
-    // Always create a new test result record (no longer trying to update existing ones)
+    // Always create a new test result record
     const resultPayload = {
       project_id: projectRow.id,
       test_key: "atterberg",
@@ -390,13 +391,18 @@ const persistAtterbergProjectToApi = async ({
       payload_json: payload,
     };
 
-    console.log(`[Atterberg Save] Creating new test result record for project ${projectRow.id}`);
-    const createResponse = await retryWithBackoff(
-      () => createApiRecord("test_results", resultPayload)
-    );
-    console.log(`[Atterberg Save] Successfully created test_results record ID ${createResponse.data?.id}`, createResponse);
-    if (createResponse.last_saved_at) {
-      lastSavedAt = createResponse.last_saved_at;
+    console.log(`[Atterberg Save] Creating new test result record for project ${projectRow.id} with payload:`, resultPayload);
+    try {
+      const createResponse = await retryWithBackoff(
+        () => createApiRecord("test_results", resultPayload)
+      );
+      console.log(`[Atterberg Save] Successfully created test_results record ID ${createResponse.data?.id}`, createResponse);
+      if (createResponse.last_saved_at) {
+        lastSavedAt = createResponse.last_saved_at;
+      }
+    } catch (createError) {
+      console.error(`[Atterberg Save] CRITICAL: Failed to create test_results record:`, createError);
+      throw new Error(`Failed to save test results: ${createError instanceof Error ? createError.message : String(createError)}`);
     }
 
     return lastSavedAt;
