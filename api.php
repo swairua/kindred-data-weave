@@ -559,7 +559,7 @@ try {
         respond([
             'message' => 'Logged in successfully',
             'user_id' => $userId,
-            'session_token' => session_id(),
+            'session_token' => $sessionToken,
             'user' => [
                 'id' => $userId,
                 'email' => $userRow['email'],
