@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { ProjectContext } from "@/context/ProjectContext";
 import { useTestData } from "@/context/TestDataContext";
+import { useSessionKeepAlive } from "@/hooks/useSessionKeepAlive";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -218,6 +219,9 @@ const Index = ({ initialTab }: IndexProps) => {
       clearTimeout(timeoutId);
     };
   }, []);
+
+  // Keep session alive while authenticated
+  useSessionKeepAlive(isAuthenticated);
 
   useEffect(() => {
     console.log("[Index] authStatus changed to:", authStatus);
