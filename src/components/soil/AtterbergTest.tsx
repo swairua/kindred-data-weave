@@ -640,8 +640,8 @@ const AtterbergTest = () => {
 
   const persistedState = useMemo(() => buildPersistedState(computedRecords), [computedRecords]);
   const effectiveProjectLookup = useMemo(
-    () => getAtterbergLookup(project.projectName || projectState.projectName || "Atterberg Limits Testing", project.clientName || projectState.clientName, project.date),
-    [project.clientName, project.date, project.projectName, projectState.clientName, projectState.projectName],
+    () => getAtterbergLookup(project.projectName || projectState.projectName || "Atterberg Limits Testing", project.clientName || projectState.clientName, project.projectDate || project.date),
+    [project.clientName, project.date, project.projectDate, project.projectName, projectState.clientName, projectState.projectName],
   );
 
   useEffect(() => {
