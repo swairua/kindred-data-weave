@@ -408,64 +408,100 @@ const persistAtterbergProjectToApi = async ({
         });
       }
     } else {
-      // No record exists, try to create one
-      console.log(`[Atterberg Save] No existing test_results records found for project ${projectRow.id}, attempting to create new one`);
-      try {
-        const createResponse = await retryWithBackoff(
-          () => createApiRecord("test_results", resultPayload)
-        );
-        console.log(`[Atterberg Save] Successfully created test_results record`, createResponse);
-        if (createResponse.last_saved_at) {
-          lastSavedAt = createResponse.last_saved_at;
-        }
-      } catch (error) {
-        // If duplicate error, another process may have created it while we were saving
-        if (!isDuplicateResultError(error)) {
-          console.error(`[Atterberg Save] Create failed with non-duplicate error:`, error);
-          throw error;
-        }
+      // No record exists initially, but double-check before creating
+      // Search the entire results list for any atterberg record with this project_id
+      console.log(`[Atterberg Save] No matching test_results records found initially for project ${projectRow.id}`);
 
-        console.log(`[Atterberg Save] Create failed with duplicate error, refetching records to find newly created one`);
-        // Refetch latest data and try to update instead
-        // Use higher limit (5000) to ensure we find the duplicate that was just created
-        const latestResultsResponse = await retryWithBackoff(
-          () => listRecords<ApiAtterbergResultRow>("test_results", {
-            limit: 5000,
-            orderBy: "updated_at",
-            direction: "DESC",
-          })
-        );
-        const refetchedResults = getAtterbergResultsForProject(latestResultsResponse.data, projectRow.id);
-        console.log(`[Atterberg Save] Refetched ${refetchedResults.length} test_results records for project ${projectRow.id}`);
+      // Do a careful search through ALL returned results
+      const doubleCheckResults = resultsResponse.data.filter(
+        (row) => row.test_key === "atterberg" && Number(row.project_id) === projectRow.id
+      );
 
-        if (!refetchedResults[0]) {
-          // Still no record found, something is wrong
-          console.error(`[Atterberg Save] Even after refetch, no test_results records found for project ${projectRow.id}`);
-          throw error;
-        }
+      if (doubleCheckResults.length > 0) {
+        // Found it! Update instead of create
+        console.log(`[Atterberg Save] Double-check found ${doubleCheckResults.length} existing test_results records, will update instead of create`);
+        const mostRecent = doubleCheckResults.reduce((prev, curr) => (curr.id > prev.id ? curr : prev));
+        console.log(`[Atterberg Save] Updating existing record ${mostRecent.id}`);
 
-        // Update the most recent record
-        const mostRecent = refetchedResults.reduce((prev, curr) => (curr.id > prev.id ? curr : prev));
-        console.log(`[Atterberg Save] Attempting to update refetched record ${mostRecent.id}`);
         try {
           const updateResponse = await retryWithBackoff(
             () => updateApiRecord("test_results", mostRecent.id, resultPayload)
           );
-          console.log(`[Atterberg Save] Successfully updated refetched test_results record ${mostRecent.id}`, updateResponse);
+          console.log(`[Atterberg Save] Successfully updated test_results record ${mostRecent.id}`, updateResponse);
           if (updateResponse.last_saved_at) {
             lastSavedAt = updateResponse.last_saved_at;
           }
-        } catch (retryUpdateError) {
-          console.error(`[Atterberg Save] Failed to update refetched record ${mostRecent.id}:`, retryUpdateError);
-          throw retryUpdateError;
+        } catch (updateError) {
+          console.error(`[Atterberg Save] Failed to update test_results record ${mostRecent.id}:`, updateError);
+          throw updateError;
         }
 
-        // Clean up duplicates in background
-        if (refetchedResults.length > 1) {
-          const toDelete = refetchedResults.filter((r) => r.id !== mostRecent.id);
+        // Clean up other duplicates in the background
+        if (doubleCheckResults.length > 1) {
+          const toDelete = doubleCheckResults.filter((r) => r.id !== mostRecent.id);
           Promise.allSettled(toDelete.map((row) => deleteApiRecord("test_results", row.id))).catch(() => {
             // Silently ignore cleanup failures
           });
+        }
+      } else {
+        // Confirmed: no record exists, safe to create
+        console.log(`[Atterberg Save] Confirmed no test_results records exist for project ${projectRow.id}, attempting to create new one`);
+        try {
+          const createResponse = await retryWithBackoff(
+            () => createApiRecord("test_results", resultPayload)
+          );
+          console.log(`[Atterberg Save] Successfully created test_results record`, createResponse);
+          if (createResponse.last_saved_at) {
+            lastSavedAt = createResponse.last_saved_at;
+          }
+        } catch (error) {
+          // If duplicate error occurs despite our checks, refetch and update
+          if (!isDuplicateResultError(error)) {
+            console.error(`[Atterberg Save] Create failed with non-duplicate error:`, error);
+            throw error;
+          }
+
+          console.log(`[Atterberg Save] Create failed with duplicate error despite initial checks, refetching to find existing record`);
+          // Refetch latest data and try to update instead
+          const latestResultsResponse = await retryWithBackoff(
+            () => listRecords<ApiAtterbergResultRow>("test_results", {
+              limit: 5000,
+              orderBy: "id",
+              direction: "DESC",
+            })
+          );
+          const refetchedResults = getAtterbergResultsForProject(latestResultsResponse.data, projectRow.id);
+          console.log(`[Atterberg Save] Refetched ${refetchedResults.length} test_results records for project ${projectRow.id}`);
+
+          if (!refetchedResults[0]) {
+            // Still no record found - this shouldn't happen but log and continue
+            console.error(`[Atterberg Save] Could not find existing record after duplicate error. Giving up gracefully.`);
+            return null;
+          }
+
+          // Update the most recent record
+          const mostRecent = refetchedResults.reduce((prev, curr) => (curr.id > prev.id ? curr : prev));
+          console.log(`[Atterberg Save] Attempting to update refetched record ${mostRecent.id}`);
+          try {
+            const updateResponse = await retryWithBackoff(
+              () => updateApiRecord("test_results", mostRecent.id, resultPayload)
+            );
+            console.log(`[Atterberg Save] Successfully updated refetched test_results record ${mostRecent.id}`, updateResponse);
+            if (updateResponse.last_saved_at) {
+              lastSavedAt = updateResponse.last_saved_at;
+            }
+          } catch (retryUpdateError) {
+            console.error(`[Atterberg Save] Failed to update refetched record ${mostRecent.id}:`, retryUpdateError);
+            throw retryUpdateError;
+          }
+
+          // Clean up duplicates in background
+          if (refetchedResults.length > 1) {
+            const toDelete = refetchedResults.filter((r) => r.id !== mostRecent.id);
+            Promise.allSettled(toDelete.map((row) => deleteApiRecord("test_results", row.id))).catch(() => {
+              // Silently ignore cleanup failures
+            });
+          }
         }
       }
     }
