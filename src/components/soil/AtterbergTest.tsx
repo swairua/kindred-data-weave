@@ -211,6 +211,108 @@ const createRecord = (index: number): AtterbergRecord => ({
   results: {},
 });
 
+// Create default sample record with realistic test data for quick testing
+const createDefaultRecord = (index: number): AtterbergRecord => {
+  const recordId = makeId("record");
+
+  // Liquid Limit Test with 2 trials - realistic soil sample data
+  const liquidLimitTest: LiquidLimitTest = {
+    id: makeId("test"),
+    title: `Liquid Limit ${index + 1}`,
+    type: "liquidLimit",
+    isExpanded: true,
+    trials: [
+      {
+        id: makeId("trial"),
+        trialNo: "1",
+        penetration: "20",
+        containerNo: "101",
+        containerWetMass: "25.4",
+        containerDryMass: "18.2",
+        containerMass: "5.0",
+        moisture: "",
+      },
+      {
+        id: makeId("trial"),
+        trialNo: "2",
+        penetration: "28",
+        containerNo: "102",
+        containerWetMass: "28.6",
+        containerDryMass: "19.5",
+        containerMass: "5.2",
+        moisture: "",
+      },
+    ],
+    result: {},
+  };
+
+  // Plastic Limit Test with 2 trials
+  const plasticLimitTest: PlasticLimitTest = {
+    id: makeId("test"),
+    title: `Plastic Limit ${index + 1}`,
+    type: "plasticLimit",
+    isExpanded: true,
+    trials: [
+      {
+        id: makeId("trial"),
+        trialNo: "1",
+        containerNo: "201",
+        containerWetMass: "22.0",
+        containerDryMass: "16.5",
+        containerMass: "4.8",
+        moisture: "",
+      },
+      {
+        id: makeId("trial"),
+        trialNo: "2",
+        containerNo: "202",
+        containerWetMass: "23.4",
+        containerDryMass: "17.2",
+        containerMass: "4.9",
+        moisture: "",
+      },
+    ],
+    result: {},
+  };
+
+  // Shrinkage Limit Test with 2 trials
+  const shrinkageLimitTest: ShrinkageLimitTest = {
+    id: makeId("test"),
+    title: `Linear Shrinkage ${index + 1}`,
+    type: "shrinkageLimit",
+    isExpanded: true,
+    trials: [
+      {
+        id: makeId("trial"),
+        trialNo: "1",
+        initialLength: "140",
+        finalLength: "125",
+      },
+      {
+        id: makeId("trial"),
+        trialNo: "2",
+        initialLength: "140",
+        finalLength: "124",
+      },
+    ],
+    result: {},
+  };
+
+  return {
+    id: recordId,
+    title: `Record ${index + 1}`,
+    label: `Sample ${index + 1}`,
+    note: "Sample soil specimen",
+    isExpanded: true,
+    tests: [liquidLimitTest, plasticLimitTest, shrinkageLimitTest],
+    results: {},
+    sampleNumber: `00${index + 1}`,
+    dateSubmitted: new Date().toISOString().split("T")[0],
+    dateTested: new Date().toISOString().split("T")[0],
+    testedBy: "Lab Technician",
+  };
+};
+
 const buildPersistedState = (records: ComputedRecord[]): AtterbergProjectState => ({
   records: records.map(({ dataPoints, completedTests, ...record }) => record),
 });
@@ -495,7 +597,14 @@ const updateTrialsForType = (test: AtterbergTest, trials: AtterbergTest["trials"
 
 const AtterbergTest = () => {
   const project = useProject();
-  const [projectState, setProjectState] = useState<AtterbergProjectState>({ records: [] });
+  // Initialize with 3 sample records containing complete test data for quick testing
+  const [projectState, setProjectState] = useState<AtterbergProjectState>({
+    records: [
+      createDefaultRecord(0),
+      createDefaultRecord(1),
+      createDefaultRecord(2),
+    ],
+  });
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const [smokeCheckStatus, setSmokeCheckStatus] = useState<SmokeCheckStatus | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
