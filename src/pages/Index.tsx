@@ -390,8 +390,8 @@ const Index = ({ initialTab }: IndexProps) => {
                   <FlaskConical className="h-5 w-5 text-primary-foreground" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-foreground tracking-tight">Engineering Material Testing</h1>
-                  <p className="text-xs text-muted-foreground">Laboratory Test Data Management</p>
+                  <h1 className="text-xl font-bold text-foreground tracking-tight">Cransfield Materials Testing Center</h1>
+                  <p className="text-xs text-muted-foreground">Quality Assurance</p>
                 </div>
               </div>
 
