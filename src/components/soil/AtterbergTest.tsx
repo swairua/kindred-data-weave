@@ -267,9 +267,10 @@ const isDuplicateResultError = (error: unknown) => error instanceof Error && /du
 
 const loadAtterbergProjectFromApi = async (lookup: AtterbergProjectLookup) => {
   try {
+    // Increased limit from 1000 to 5000 to reduce chance of missing existing records
     const [projectsResponse, resultsResponse] = await Promise.all([
-      listRecords<ApiProjectRow>("projects", { limit: 1000, orderBy: "updated_at", direction: "DESC" }),
-      listRecords<ApiAtterbergResultRow>("test_results", { limit: 1000, orderBy: "updated_at", direction: "DESC" }),
+      listRecords<ApiProjectRow>("projects", { limit: 5000, orderBy: "updated_at", direction: "DESC" }),
+      listRecords<ApiAtterbergResultRow>("test_results", { limit: 5000, orderBy: "updated_at", direction: "DESC" }),
     ]);
 
     if (!hasLookupCriteria(lookup)) {
@@ -309,10 +310,11 @@ const persistAtterbergProjectToApi = async ({
 }): Promise<string | null> => {
   try {
     // Wrap the initial API calls with retry logic
+    // Increased limit from 1000 to 5000 to reduce chance of missing existing records
     const [projectsResponse, resultsResponse] = await retryWithBackoff(
       () => Promise.all([
-        listRecords<ApiProjectRow>("projects", { limit: 1000, orderBy: "updated_at", direction: "DESC" }),
-        listRecords<ApiAtterbergResultRow>("test_results", { limit: 1000, orderBy: "updated_at", direction: "DESC" }),
+        listRecords<ApiProjectRow>("projects", { limit: 5000, orderBy: "updated_at", direction: "DESC" }),
+        listRecords<ApiAtterbergResultRow>("test_results", { limit: 5000, orderBy: "updated_at", direction: "DESC" }),
       ])
     );
 
@@ -420,9 +422,10 @@ const persistAtterbergProjectToApi = async ({
 
         console.log(`[Atterberg Save] Create failed with duplicate error, refetching records to find newly created one`);
         // Refetch latest data and try to update instead
+        // Use higher limit (5000) to ensure we find the duplicate that was just created
         const latestResultsResponse = await retryWithBackoff(
           () => listRecords<ApiAtterbergResultRow>("test_results", {
-            limit: 1000,
+            limit: 5000,
             orderBy: "updated_at",
             direction: "DESC",
           })
@@ -489,9 +492,10 @@ const saveAtterbergProjectToApi = (args: {
 
 const clearAtterbergProjectFromApi = async (lookup: AtterbergProjectLookup) => {
   try {
+    // Increased limit from 1000 to 5000 to reduce chance of missing records
     const [projectsResponse, resultsResponse] = await Promise.all([
-      listRecords<ApiProjectRow>("projects", { limit: 1000, orderBy: "updated_at", direction: "DESC" }),
-      listRecords<ApiAtterbergResultRow>("test_results", { limit: 1000, orderBy: "updated_at", direction: "DESC" }),
+      listRecords<ApiProjectRow>("projects", { limit: 5000, orderBy: "updated_at", direction: "DESC" }),
+      listRecords<ApiAtterbergResultRow>("test_results", { limit: 5000, orderBy: "updated_at", direction: "DESC" }),
     ]);
 
     let resultRows: ApiAtterbergResultRow[] = [];
