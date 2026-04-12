@@ -301,12 +301,14 @@ const persistAtterbergProjectToApi = async ({
   dataPoints,
   status,
   keyResults,
+  projectId,
 }: {
   lookup: AtterbergProjectLookup;
   payload: AtterbergExportPayload;
   dataPoints: number;
   status: string;
   keyResults: Array<{ label: string; value: string }>;
+  projectId?: number | null;
 }): Promise<string | null> => {
   try {
     // Wrap the initial API calls with retry logic
@@ -318,9 +320,12 @@ const persistAtterbergProjectToApi = async ({
       ])
     );
 
-    let projectRow = hasLookupCriteria(lookup)
-      ? projectsResponse.data.find((row) => matchesProjectLookup(row, lookup)) ?? null
-      : projectsResponse.data[0] ?? null;
+    // If projectId is provided, use it directly; otherwise use lookup-based matching
+    let projectRow = projectId
+      ? projectsResponse.data.find((row) => row.id === projectId) ?? null
+      : hasLookupCriteria(lookup)
+        ? projectsResponse.data.find((row) => matchesProjectLookup(row, lookup)) ?? null
+        : projectsResponse.data[0] ?? null;
     const projectName = normalizeLookupValue(payload.project.title) || "Atterberg Limits Testing";
     const clientName = normalizeLookupValue(payload.project.clientName);
     const projectDate = normalizeLookupValue(payload.project.date);
@@ -484,6 +489,7 @@ const saveAtterbergProjectToApi = (args: {
   dataPoints: number;
   status: string;
   keyResults: Array<{ label: string; value: string }>;
+  projectId?: number | null;
 }) => {
   const queuedSave = atterbergSaveQueue.then(() => persistAtterbergProjectToApi(args), () => persistAtterbergProjectToApi(args));
   atterbergSaveQueue = queuedSave.then(() => undefined, () => undefined);
@@ -814,6 +820,7 @@ const AtterbergTest = () => {
         dataPoints: totalDataPoints,
         status,
         keyResults: aggregateResults,
+        projectId: project.currentProjectId,
       });
 
       setSaveStatus("saved");
@@ -853,7 +860,7 @@ const AtterbergTest = () => {
     } finally {
       isSavingRef.current = false;
     }
-  }, [persistedState, effectiveProjectLookup, aggregateResults, status, totalDataPoints]);
+  }, [persistedState, effectiveProjectLookup, aggregateResults, status, totalDataPoints, project.currentProjectId]);
 
   const navigate = useNavigate();
 
@@ -866,33 +873,6 @@ const AtterbergTest = () => {
     }, 500);
   }, [handleSave, navigate]);
 
-  // Auto-save effect with debounce (500ms delay)
-  // This ensures tests are automatically saved to the API as the user works
-  useEffect(() => {
-    // Don't auto-save until component is hydrated
-    if (!hydratedRef.current) {
-      console.log("[AutoSave] Skipping auto-save: component not hydrated yet");
-      return;
-    }
-
-    // Don't auto-save if there are no records
-    if (projectState.records.length === 0) {
-      return;
-    }
-
-    // Set up debounce timer for auto-save
-    const debounceTimer = setTimeout(() => {
-      console.log("[AutoSave] Debounce complete, triggering auto-save");
-      handleSave();
-    }, 500); // 500ms debounce delay
-
-    // Cleanup timer on unmount or when dependencies change
-    return () => {
-      if (debounceTimer) {
-        clearTimeout(debounceTimer);
-      }
-    };
-  }, [projectState.records, handleSave]);
 
   const handleClearAll = useCallback(async () => {
     try {
