@@ -212,7 +212,7 @@ const Index = ({ initialTab }: IndexProps) => {
         setCurrentUser(null);
         setAuthStatus("unauthenticated");
       }
-    }, 5000);
+    }, 3000);
 
     return () => {
       isMounted = false;
