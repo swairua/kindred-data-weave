@@ -873,41 +873,6 @@ const AtterbergTest = () => {
     }, 500);
   }, [handleSave, navigate]);
 
-  // Auto-save effect with debounce (500ms delay)
-  // This ensures tests are automatically saved to the API as the user works
-  useEffect(() => {
-    // Don't auto-save until component is hydrated
-    if (!hydratedRef.current) {
-      console.log("[AutoSave] Skipping auto-save: component not hydrated yet");
-      return;
-    }
-
-    // Don't auto-save if there are no records
-    if (projectState.records.length === 0) {
-      console.log("[AutoSave] Skipping auto-save: no records");
-      return;
-    }
-
-    // Don't auto-save if project name has not been entered
-    const projectNameValue = project.projectName || projectState.projectName;
-    if (!projectNameValue || projectNameValue.trim() === "") {
-      console.log("[AutoSave] Skipping auto-save: project name not entered");
-      return;
-    }
-
-    // Set up debounce timer for auto-save
-    const debounceTimer = setTimeout(() => {
-      console.log("[AutoSave] Debounce complete, triggering auto-save");
-      handleSave();
-    }, 500); // 500ms debounce delay
-
-    // Cleanup timer on unmount or when dependencies change
-    return () => {
-      if (debounceTimer) {
-        clearTimeout(debounceTimer);
-      }
-    };
-  }, [projectState.records, handleSave, project.projectName, projectState.projectName]);
 
   const handleClearAll = useCallback(async () => {
     try {
