@@ -26,7 +26,8 @@ if (in_array($origin, $allowed_origins, true) || $isLovablePreview || $isBuilder
     header('Access-Control-Allow-Credentials: true');
 }
 
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Session-Token');
+header('Access-Control-Expose-Headers: X-Session-Token');
 header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
 
 // Database connection for session handling
@@ -96,19 +97,23 @@ class DatabaseSessionHandler implements SessionHandlerInterface
                 $userId = (int) $tempData['user_id'];
             }
 
-            // Default to 0 for unauthenticated sessions (user_id is NOT NULL)
-            $userIdValue = $userId ?? 0;
-
-            // Insert or update session with user_id
-            $sql = "INSERT INTO `sessions` (session_id, session_data, expires_at, updated_at, user_id)
-                    VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 30 MINUTE), NOW(), ?)
-                    ON DUPLICATE KEY UPDATE session_data = ?, updated_at = NOW(), expires_at = DATE_ADD(NOW(), INTERVAL 30 MINUTE), user_id = ?";
-            $stmt = $this->conn->prepare($sql);
-            if (!$stmt) {
-                return false;
+            // Use NULL for unauthenticated sessions (user_id is nullable)
+            if ($userId !== null) {
+                $sql = "INSERT INTO `sessions` (session_id, session_data, expires_at, updated_at, user_id)
+                        VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 30 MINUTE), NOW(), ?)
+                        ON DUPLICATE KEY UPDATE session_data = ?, updated_at = NOW(), expires_at = DATE_ADD(NOW(), INTERVAL 30 MINUTE), user_id = ?";
+                $stmt = $this->conn->prepare($sql);
+                if (!$stmt) return false;
+                $stmt->bind_param('ssisi', $id, $data, $userId, $data, $userId);
+            } else {
+                $sql = "INSERT INTO `sessions` (session_id, session_data, expires_at, updated_at, user_id)
+                        VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 30 MINUTE), NOW(), NULL)
+                        ON DUPLICATE KEY UPDATE session_data = ?, updated_at = NOW(), expires_at = DATE_ADD(NOW(), INTERVAL 30 MINUTE), user_id = NULL";
+                $stmt = $this->conn->prepare($sql);
+                if (!$stmt) return false;
+                $stmt->bind_param('sss', $id, $data, $data);
             }
 
-            $stmt->bind_param('ssisi', $id, $data, $userIdValue, $data, $userIdValue);
             $stmt->execute();
             $stmt->close();
 
@@ -167,6 +172,12 @@ session_set_cookie_params([
 $sessionDb = createSessionDb();
 $sessionHandler = new DatabaseSessionHandler($sessionDb);
 session_set_save_handler($sessionHandler, true);
+
+// Restore session from X-Session-Token header (cross-origin cookie alternative)
+$incomingToken = $_SERVER['HTTP_X_SESSION_TOKEN'] ?? '';
+if ($incomingToken && preg_match('/^[a-zA-Z0-9,-]{22,256}$/', $incomingToken)) {
+    session_id($incomingToken);
+}
 session_start();
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -535,9 +546,10 @@ try {
             respond(['error' => 'Invalid email or password'], 401);
         }
 
-        // Create session - just set the user_id and let the session handler save it
+        // Create session - set user_id and capture session token
         $userId = (int) $userRow['id'];
         $_SESSION['user_id'] = $userId;
+        $sessionToken = session_id();
 
         // CRITICAL: Force session to be written to database before responding
         error_log("SESSION WRITE: Calling session_write_close() before login response");
@@ -547,6 +559,7 @@ try {
         respond([
             'message' => 'Logged in successfully',
             'user_id' => $userId,
+            'session_token' => $sessionToken,
             'user' => [
                 'id' => $userId,
                 'email' => $userRow['email'],
