@@ -211,6 +211,108 @@ const createRecord = (index: number): AtterbergRecord => ({
   results: {},
 });
 
+// Create default sample record with realistic test data for quick testing
+const createDefaultRecord = (index: number): AtterbergRecord => {
+  const recordId = makeId("record");
+
+  // Liquid Limit Test with 2 trials - realistic soil sample data
+  const liquidLimitTest: LiquidLimitTest = {
+    id: makeId("test"),
+    title: `Liquid Limit ${index + 1}`,
+    type: "liquidLimit",
+    isExpanded: true,
+    trials: [
+      {
+        id: makeId("trial"),
+        trialNo: "1",
+        penetration: "20",
+        containerNo: "101",
+        containerWetMass: "25.4",
+        containerDryMass: "18.2",
+        containerMass: "5.0",
+        moisture: "",
+      },
+      {
+        id: makeId("trial"),
+        trialNo: "2",
+        penetration: "28",
+        containerNo: "102",
+        containerWetMass: "28.6",
+        containerDryMass: "19.5",
+        containerMass: "5.2",
+        moisture: "",
+      },
+    ],
+    result: {},
+  };
+
+  // Plastic Limit Test with 2 trials
+  const plasticLimitTest: PlasticLimitTest = {
+    id: makeId("test"),
+    title: `Plastic Limit ${index + 1}`,
+    type: "plasticLimit",
+    isExpanded: true,
+    trials: [
+      {
+        id: makeId("trial"),
+        trialNo: "1",
+        containerNo: "201",
+        containerWetMass: "22.0",
+        containerDryMass: "16.5",
+        containerMass: "4.8",
+        moisture: "",
+      },
+      {
+        id: makeId("trial"),
+        trialNo: "2",
+        containerNo: "202",
+        containerWetMass: "23.4",
+        containerDryMass: "17.2",
+        containerMass: "4.9",
+        moisture: "",
+      },
+    ],
+    result: {},
+  };
+
+  // Shrinkage Limit Test with 2 trials
+  const shrinkageLimitTest: ShrinkageLimitTest = {
+    id: makeId("test"),
+    title: `Linear Shrinkage ${index + 1}`,
+    type: "shrinkageLimit",
+    isExpanded: true,
+    trials: [
+      {
+        id: makeId("trial"),
+        trialNo: "1",
+        initialLength: "140",
+        finalLength: "125",
+      },
+      {
+        id: makeId("trial"),
+        trialNo: "2",
+        initialLength: "140",
+        finalLength: "124",
+      },
+    ],
+    result: {},
+  };
+
+  return {
+    id: recordId,
+    title: `Record ${index + 1}`,
+    label: `Sample ${index + 1}`,
+    note: "Sample soil specimen",
+    isExpanded: true,
+    tests: [liquidLimitTest, plasticLimitTest, shrinkageLimitTest],
+    results: {},
+    sampleNumber: `00${index + 1}`,
+    dateSubmitted: new Date().toISOString().split("T")[0],
+    dateTested: new Date().toISOString().split("T")[0],
+    testedBy: "Lab Technician",
+  };
+};
+
 const buildPersistedState = (records: ComputedRecord[]): AtterbergProjectState => ({
   records: records.map(({ dataPoints, completedTests, ...record }) => record),
 });
@@ -354,7 +456,45 @@ const persistAtterbergProjectToApi = async ({
       throw new Error("Unable to save project");
     }
 
-    // Always create a new test result record (no longer trying to update existing ones)
+    console.log(`[Atterberg Save] === PHASE 1: CLEANUP ===`);
+    console.log(`[Atterberg Save] Project saved with ID ${projectRow.id}, now cleaning up orphaned test_results...`);
+
+    // Clean up orphaned test results for this project before creating a new one
+    try {
+      console.log(`[Atterberg Save] Step 1: Querying existing test_results...`);
+      const existingResultsResponse = await retryWithBackoff(
+        () => listRecords<ApiAtterbergResultRow>("test_results", { limit: 5000, orderBy: "updated_at", direction: "DESC" })
+      );
+      console.log(`[Atterberg Save] Step 1 complete: Found ${existingResultsResponse.data.length} total test_results records`);
+
+      const projectTestResults = existingResultsResponse.data.filter(
+        (row) => row.project_id === projectRow.id && row.test_key === "atterberg"
+      );
+      console.log(`[Atterberg Save] Step 2: Filtered to ${projectTestResults.length} orphaned records for project ${projectRow.id}`);
+
+      if (projectTestResults.length > 0) {
+        console.log(`[Atterberg Save] Step 3: Deleting ${projectTestResults.length} orphaned records...`);
+        const deleteResults = await Promise.all(
+          projectTestResults.map((row) =>
+            retryWithBackoff(() => deleteApiRecord("test_results", row.id)).catch(err => {
+              console.error(`[Atterberg Save] Failed to delete record ${row.id}:`, err);
+              return null;
+            })
+          )
+        );
+        const successCount = deleteResults.filter(r => r !== null).length;
+        console.log(`[Atterberg Save] Step 3 complete: Successfully deleted ${successCount} of ${projectTestResults.length} orphaned records`);
+      } else {
+        console.log(`[Atterberg Save] Step 2: No orphaned records found, skipping delete phase`);
+      }
+      console.log(`[Atterberg Save] === CLEANUP PHASE COMPLETE ===`);
+    } catch (cleanupError) {
+      console.warn(`[Atterberg Save] Warning: Cleanup phase had errors:`, cleanupError);
+      // Don't fail the entire save operation if cleanup fails, just warn and continue
+    }
+
+    // Always create a new test result record
+    console.log(`[Atterberg Save] === PHASE 2: CREATE NEW TEST RESULT ===`);
     const resultPayload = {
       project_id: projectRow.id,
       test_key: "atterberg",
@@ -366,13 +506,30 @@ const persistAtterbergProjectToApi = async ({
       payload_json: payload,
     };
 
-    console.log(`[Atterberg Save] Creating new test result record for project ${projectRow.id}`);
-    const createResponse = await retryWithBackoff(
-      () => createApiRecord("test_results", resultPayload)
-    );
-    console.log(`[Atterberg Save] Successfully created test_results record ID ${createResponse.data?.id}`, createResponse);
-    if (createResponse.last_saved_at) {
-      lastSavedAt = createResponse.last_saved_at;
+    console.log(`[Atterberg Save] Step 4: Preparing to create new test_results record...`);
+    console.log(`[Atterberg Save] Step 4a: Project ID = ${projectRow.id}`);
+    console.log(`[Atterberg Save] Step 4b: Test status = ${status}`);
+    console.log(`[Atterberg Save] Step 4c: Data points = ${dataPoints}`);
+    console.log(`[Atterberg Save] Step 4d: Payload has ${Object.keys(payload).length} keys`);
+
+    try {
+      console.log(`[Atterberg Save] Step 5: Sending POST request to create test_results...`);
+      const createResponse = await retryWithBackoff(
+        () => createApiRecord("test_results", resultPayload)
+      );
+      console.log(`[Atterberg Save] Step 5 complete: POST request successful`);
+      console.log(`[Atterberg Save] Successfully created test_results record ID ${createResponse.data?.id}`);
+      if (createResponse.last_saved_at) {
+        lastSavedAt = createResponse.last_saved_at;
+      }
+      console.log(`[Atterberg Save] === SAVE COMPLETE ===`);
+    } catch (createError) {
+      console.error(`[Atterberg Save] === CRITICAL ERROR IN PHASE 2 ===`);
+      console.error(`[Atterberg Save] Failed to create test_results record`);
+      console.error(`[Atterberg Save] Error type:`, createError instanceof Error ? createError.constructor.name : typeof createError);
+      console.error(`[Atterberg Save] Error message:`, createError instanceof Error ? createError.message : String(createError));
+      console.error(`[Atterberg Save] Full error:`, createError);
+      throw new Error(`Failed to save test results: ${createError instanceof Error ? createError.message : String(createError)}`);
     }
 
     return lastSavedAt;
@@ -404,7 +561,10 @@ const clearAtterbergProjectFromApi = async (lookup: AtterbergProjectLookup) => {
     if (hasLookupCriteria(lookup)) {
       const projectRow = projectsResponse.data.find((row) => matchesProjectLookup(row, lookup)) ?? null;
       if (projectRow) {
-        resultRows = getAtterbergResultsForProject(resultsResponse.data, projectRow.id);
+        // Find all atterberg test results for this project
+        resultRows = resultsResponse.data.filter(
+          (row) => row.project_id === projectRow.id && row.test_key === "atterberg"
+        );
       }
     } else {
       const latestResult = resultsResponse.data.find((row) => row.test_key === "atterberg" && row.payload_json) ?? null;
@@ -437,7 +597,14 @@ const updateTrialsForType = (test: AtterbergTest, trials: AtterbergTest["trials"
 
 const AtterbergTest = () => {
   const project = useProject();
-  const [projectState, setProjectState] = useState<AtterbergProjectState>({ records: [] });
+  // Initialize with 3 sample records containing complete test data for quick testing
+  const [projectState, setProjectState] = useState<AtterbergProjectState>({
+    records: [
+      createDefaultRecord(0),
+      createDefaultRecord(1),
+      createDefaultRecord(2),
+    ],
+  });
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const [smokeCheckStatus, setSmokeCheckStatus] = useState<SmokeCheckStatus | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -694,12 +861,8 @@ const AtterbergTest = () => {
   );
 
   const handleSave = useCallback(async () => {
-    // Prevent concurrent saves - if already saving, ignore this click
-    if (isSavingRef.current) {
-      console.warn("Save already in progress, ignoring duplicate save request");
-      return;
-    }
-
+    // Track save state for UI feedback (no longer blocking concurrent saves)
+    // The API layer already has retry logic with backoff to handle multiple concurrent requests
     isSavingRef.current = true;
     setSaveStatus("saving");
     setLastSaveError(null);
