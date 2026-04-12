@@ -28,6 +28,22 @@ export const getStoredSessionId = (): string | null => {
   return getSessionToken();
 };
 
+// Debug function - can be called from browser console
+export const debugAuthState = () => {
+  const token = getSessionToken();
+  console.log("[API] === AUTH STATE DEBUG ===");
+  console.log("[API] Session token stored:", token ? `✓ Yes` : "✗ No");
+  if (token) {
+    console.log("[API] Token value:", token);
+    console.log("[API] Token length:", token.length);
+  }
+  console.log("[API] API Base URL:", API_BASE_URL);
+  console.log("[API] localStorage contents:", {
+    [SESSION_STORAGE_KEY]: localStorage.getItem(SESSION_STORAGE_KEY) || "(empty)",
+  });
+  console.log("[API] For next request, header will be:", token ? `X-Session-Token: ${token}` : "X-Session-Token: (not sent)");
+};
+
 export interface ApiUser {
   id: number;
   email: string;
@@ -83,7 +99,9 @@ export const apiRequest = async <T>(
   const sessionToken = getSessionToken();
   if (sessionToken && !headers.has("X-Session-Token")) {
     headers.set("X-Session-Token", sessionToken);
-    console.debug(`[API] Sending session token with request`);
+    console.debug(`[API] Session token added to X-Session-Token header`);
+  } else if (!sessionToken) {
+    console.debug(`[API] No session token available - request will not have X-Session-Token header`);
   }
 
   const url = buildApiUrl(params);
@@ -117,12 +135,14 @@ export const apiRequest = async <T>(
         console.error(`[API] Request failed: ${params?.action || 'unknown'} - Status: ${response.status} - ${errorMessage}`);
         console.error(`[API] Response data:`, JSON.stringify(data, null, 2));
         console.error(`[API] Request URL:`, url);
-        console.error(`[API] Request headers:`, Object.fromEntries(headers.entries()));
+        console.error(`[API] Request headers sent:`, Object.fromEntries(headers.entries()));
+        console.error(`[API] X-Session-Token header:`, headers.get("X-Session-Token") ? "✓ Present" : "✗ Not sent");
 
         // Log CORS-related headers for debugging
-        console.error(`[API] Response CORS headers:`, {
+        console.error(`[API] Response headers:`, {
           "Access-Control-Allow-Credentials": response.headers.get("access-control-allow-credentials"),
           "Access-Control-Allow-Origin": response.headers.get("access-control-allow-origin"),
+          "X-Session-Token": response.headers.get("X-Session-Token"),
         });
       }
       throw new Error(errorMessage);
@@ -161,17 +181,21 @@ export const loginUser = async (email: string, password: string) => {
 
     console.log("[API] === LOGIN RESPONSE ===");
     console.log("[API] Login successful. User:", response.user.name);
+    console.log("[API] Full response:", JSON.stringify(response, null, 2));
 
     // Store session token from response if provided
     if (response.session_token) {
       setSessionToken(response.session_token);
-      console.log("[API] Session token received from server and stored");
+      console.log("[API] ✓ Session token received in response body and stored");
+      console.log("[API] Token:", response.session_token.substring(0, 20) + "...");
     } else {
-      console.log("[API] Server did not return session_token in response body (may be in headers)");
-      console.log("[API] Session token should be in X-Session-Token header");
+      console.log("[API] ⚠️ Server did NOT return session_token in response body");
+      console.log("[API] Check if backend is returning: { \"session_token\": \"...\" }");
     }
 
-    console.log("[API] Session token available:", getSessionToken() ? "✓ Yes" : "✗ No");
+    const storedToken = getSessionToken();
+    console.log("[API] Stored session token available:", storedToken ? `✓ Yes (${storedToken.substring(0, 20)}...)` : "✗ No");
+    console.log("[API] This token will be sent as X-Session-Token header in future requests");
 
     return response;
   } catch (error) {

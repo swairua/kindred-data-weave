@@ -32,7 +32,7 @@ import {
 import Dashboard from "@/pages/Dashboard";
 import Reports from "@/pages/Reports";
 import Admin from "@/pages/Admin";
-import { fetchCurrentUser, loginUser, logoutUser, type ApiUser, listRecords } from "@/lib/api";
+import { fetchCurrentUser, loginUser, logoutUser, type ApiUser, listRecords, debugAuthState } from "@/lib/api";
 import { registerAllTests } from "@/lib/testRegistration";
 import { registry } from "@/lib/testRegistry";
 
@@ -163,6 +163,12 @@ const Index = ({ initialTab }: IndexProps) => {
 
   const projectCtx = useMemo(() => ({ projectName, clientName, date: today }), [projectName, clientName, today]);
   const isAuthenticated = authStatus === "authenticated";
+
+  // Expose debug function to window for console access
+  useEffect(() => {
+    (window as any).__debugAuth = debugAuthState;
+    console.log("[Index] Debug tip: Run debugAuthState() in console to check session token status");
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
