@@ -212,7 +212,7 @@ const Index = ({ initialTab }: IndexProps) => {
         setCurrentUser(null);
         setAuthStatus("unauthenticated");
       }
-    }, 5000);
+    }, 3000);
 
     return () => {
       isMounted = false;
@@ -386,12 +386,16 @@ const Index = ({ initialTab }: IndexProps) => {
           <div className="container max-w-6xl mx-auto px-4 py-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center">
-                  <FlaskConical className="h-5 w-5 text-primary-foreground" />
+                <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center overflow-hidden">
+                  <img
+                    src="https://cdn.builder.io/api/v1/image/assets%2Fedb7c735e72a41328e7ab97a48a7676d%2Fe8eac870f9c84f0c869c7c6ece6e38e5?format=webp&width=800&height=1200"
+                    alt="Cransfield Materials Testing Center"
+                    className="h-full w-full object-contain"
+                  />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-foreground tracking-tight">Engineering Material Testing</h1>
-                  <p className="text-xs text-muted-foreground">Laboratory Test Data Management</p>
+                  <h1 className="text-xl font-bold text-foreground tracking-tight">Cransfield Materials Testing Center</h1>
+                  <p className="text-xs text-muted-foreground">Quality Assurance</p>
                 </div>
               </div>
 
