@@ -354,32 +354,45 @@ const persistAtterbergProjectToApi = async ({
       throw new Error("Unable to save project");
     }
 
+    console.log(`[Atterberg Save] === PHASE 1: CLEANUP ===`);
+    console.log(`[Atterberg Save] Project saved with ID ${projectRow.id}, now cleaning up orphaned test_results...`);
+
     // Clean up orphaned test results for this project before creating a new one
-    console.log(`[Atterberg Save] Cleaning up existing test_results for project ${projectRow.id}`);
     try {
+      console.log(`[Atterberg Save] Step 1: Querying existing test_results...`);
       const existingResultsResponse = await retryWithBackoff(
         () => listRecords<ApiAtterbergResultRow>("test_results", { limit: 5000, orderBy: "updated_at", direction: "DESC" })
       );
+      console.log(`[Atterberg Save] Step 1 complete: Found ${existingResultsResponse.data.length} total test_results records`);
 
       const projectTestResults = existingResultsResponse.data.filter(
         (row) => row.project_id === projectRow.id && row.test_key === "atterberg"
       );
+      console.log(`[Atterberg Save] Step 2: Filtered to ${projectTestResults.length} orphaned records for project ${projectRow.id}`);
 
       if (projectTestResults.length > 0) {
-        console.log(`[Atterberg Save] Found ${projectTestResults.length} existing test_results for project ${projectRow.id}, deleting them`);
+        console.log(`[Atterberg Save] Step 3: Deleting ${projectTestResults.length} orphaned records...`);
         const deleteResults = await Promise.all(
           projectTestResults.map((row) =>
-            retryWithBackoff(() => deleteApiRecord("test_results", row.id))
+            retryWithBackoff(() => deleteApiRecord("test_results", row.id)).catch(err => {
+              console.error(`[Atterberg Save] Failed to delete record ${row.id}:`, err);
+              return null;
+            })
           )
         );
-        console.log(`[Atterberg Save] Successfully deleted ${deleteResults.length} orphaned records`);
+        const successCount = deleteResults.filter(r => r !== null).length;
+        console.log(`[Atterberg Save] Step 3 complete: Successfully deleted ${successCount} of ${projectTestResults.length} orphaned records`);
+      } else {
+        console.log(`[Atterberg Save] Step 2: No orphaned records found, skipping delete phase`);
       }
+      console.log(`[Atterberg Save] === CLEANUP PHASE COMPLETE ===`);
     } catch (cleanupError) {
-      console.warn(`[Atterberg Save] Warning: Failed to clean up orphaned test_results:`, cleanupError);
+      console.warn(`[Atterberg Save] Warning: Cleanup phase had errors:`, cleanupError);
       // Don't fail the entire save operation if cleanup fails, just warn and continue
     }
 
     // Always create a new test result record
+    console.log(`[Atterberg Save] === PHASE 2: CREATE NEW TEST RESULT ===`);
     const resultPayload = {
       project_id: projectRow.id,
       test_key: "atterberg",
@@ -391,17 +404,29 @@ const persistAtterbergProjectToApi = async ({
       payload_json: payload,
     };
 
-    console.log(`[Atterberg Save] Creating new test result record for project ${projectRow.id} with payload:`, resultPayload);
+    console.log(`[Atterberg Save] Step 4: Preparing to create new test_results record...`);
+    console.log(`[Atterberg Save] Step 4a: Project ID = ${projectRow.id}`);
+    console.log(`[Atterberg Save] Step 4b: Test status = ${status}`);
+    console.log(`[Atterberg Save] Step 4c: Data points = ${dataPoints}`);
+    console.log(`[Atterberg Save] Step 4d: Payload has ${Object.keys(payload).length} keys`);
+
     try {
+      console.log(`[Atterberg Save] Step 5: Sending POST request to create test_results...`);
       const createResponse = await retryWithBackoff(
         () => createApiRecord("test_results", resultPayload)
       );
-      console.log(`[Atterberg Save] Successfully created test_results record ID ${createResponse.data?.id}`, createResponse);
+      console.log(`[Atterberg Save] Step 5 complete: POST request successful`);
+      console.log(`[Atterberg Save] Successfully created test_results record ID ${createResponse.data?.id}`);
       if (createResponse.last_saved_at) {
         lastSavedAt = createResponse.last_saved_at;
       }
+      console.log(`[Atterberg Save] === SAVE COMPLETE ===`);
     } catch (createError) {
-      console.error(`[Atterberg Save] CRITICAL: Failed to create test_results record:`, createError);
+      console.error(`[Atterberg Save] === CRITICAL ERROR IN PHASE 2 ===`);
+      console.error(`[Atterberg Save] Failed to create test_results record`);
+      console.error(`[Atterberg Save] Error type:`, createError instanceof Error ? createError.constructor.name : typeof createError);
+      console.error(`[Atterberg Save] Error message:`, createError instanceof Error ? createError.message : String(createError));
+      console.error(`[Atterberg Save] Full error:`, createError);
       throw new Error(`Failed to save test results: ${createError instanceof Error ? createError.message : String(createError)}`);
     }
 
