@@ -13,5 +13,8 @@ ALTER TABLE `sessions` ADD COLUMN `session_data` LONGTEXT DEFAULT '' AFTER `sess
 -- Optional: Create an index on expires_at for the garbage collection query
 CREATE INDEX `idx_expires_at` ON `sessions` (`expires_at`);
 
+-- Allow unauthenticated sessions (user not logged in yet)
+ALTER TABLE `sessions` MODIFY COLUMN `user_id` INT NULL DEFAULT NULL;
+
 -- Display the table structure to verify
 DESCRIBE `sessions`;
