@@ -16,6 +16,7 @@ interface AtterbergPDFOptions {
   date?: string;
   projectState: AtterbergProjectState;
   records: AtterbergRecord[];
+  skipDownload?: boolean;
 }
 
 const COLORS = {
@@ -726,7 +727,9 @@ function drawRecordPage(
   }
 }
 
-export const generateAtterbergPDF = async (options: AtterbergPDFOptions) => {
+export const generateAtterbergPDF = async (
+  options: AtterbergPDFOptions
+): Promise<Blob | void> => {
   // Fetch images in parallel with PDF setup
   const images = await fetchAdminImagesAsBase64();
 
@@ -750,5 +753,11 @@ export const generateAtterbergPDF = async (options: AtterbergPDFOptions) => {
     doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, pageHeight - 6);
   }
 
-  doc.save(`Atterberg_Limits_${(options.projectName || "export").replace(/\s+/g, "_")}.pdf`);
+  const fileName = `Atterberg_Limits_${(options.projectName || "export").replace(/\s+/g, "_")}.pdf`;
+
+  if (options.skipDownload) {
+    return doc.output("blob");
+  }
+
+  doc.save(fileName);
 };

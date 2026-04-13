@@ -15,6 +15,7 @@ interface ExportOptions {
   date?: string;
   projectState: AtterbergProjectState;
   records: AtterbergRecord[];
+  skipDownload?: boolean;
 }
 
 const thin: Partial<ExcelJS.Border> = { style: "thin" };
@@ -65,8 +66,11 @@ const extractBase64FromDataUrl = (dataUrl: string): string => {
   return result;
 };
 
-export const generateAtterbergXLSX = async (options: ExportOptions) => {
-  const { projectName, clientName, projectState, records } = options;
+export const generateAtterbergXLSX = async (
+  options: ExportOptions
+): Promise<Blob | void> => {
+  const { projectName, clientName, projectState, records, skipDownload } =
+    options;
 
   const wb = new ExcelJS.Workbook();
   wb.creator = "Lab Data Craft";
@@ -571,6 +575,11 @@ export const generateAtterbergXLSX = async (options: ExportOptions) => {
   const blob = new Blob([buffer], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
+
+  if (skipDownload) {
+    return blob;
+  }
+
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
