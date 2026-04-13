@@ -44,30 +44,59 @@ const listAdminImagePaths = async (): Promise<AdminImagePaths> => {
 
 const imagePathToBase64 = async (filePath: string): Promise<string | undefined> => {
   const imageUrl = getAdminImageUrl(filePath);
-  console.log("Converting image to base64:", { filePath, imageUrl });
+  const sessionToken = localStorage.getItem("lab_session_token");
+
+  console.log("Converting image to base64:", {
+    filePath,
+    imageUrl,
+    hasSessionToken: !!sessionToken,
+    tokenLength: sessionToken?.length || 0
+  });
 
   try {
-    // Try Fetch API approach first (works better with CORS)
+    // Fetch with proper credentials and session token
     const response = await fetch(imageUrl, {
+      method: "GET",
       headers: {
-        "X-Session-Token": localStorage.getItem("lab_session_token") || "",
+        "X-Session-Token": sessionToken || "",
+        "Accept": "image/*",
       },
+      credentials: "include",
     });
 
     if (!response.ok) {
-      console.error("Failed to fetch image:", { status: response.status, statusText: response.statusText });
+      console.error("Failed to fetch image:", {
+        status: response.status,
+        statusText: response.statusText,
+        url: imageUrl,
+        hasSessionToken: !!sessionToken
+      });
       return undefined;
     }
 
     const blob = await response.blob();
-    console.log("Image fetched as blob:", { size: blob.size, type: blob.type });
+    console.log("Image fetched as blob:", {
+      size: blob.size,
+      type: blob.type,
+      filename: filePath
+    });
+
+    // Validate blob size
+    if (blob.size === 0) {
+      console.error("Downloaded image is empty:", { filePath });
+      return undefined;
+    }
 
     // Convert blob to base64 data URL
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = () => {
         const dataUrl = reader.result as string;
-        console.log("Image converted to base64 data URL successfully:", { length: dataUrl.length });
+        console.log("Image converted to base64 data URL successfully:", {
+          length: dataUrl.length,
+          filename: filePath,
+          isDataUrl: dataUrl.startsWith("data:")
+        });
         resolve(dataUrl);
       };
       reader.onerror = (error) => {
@@ -77,7 +106,11 @@ const imagePathToBase64 = async (filePath: string): Promise<string | undefined> 
       reader.readAsDataURL(blob);
     });
   } catch (error) {
-    console.error("Error in imagePathToBase64:", error);
+    console.error("Error in imagePathToBase64:", {
+      error: error instanceof Error ? error.message : error,
+      filePath,
+      imageUrl
+    });
     return undefined;
   }
 };
@@ -92,7 +125,15 @@ export async function fetchAdminImagesAsBase64(): Promise<AdminImages> {
   const images: AdminImages = {};
 
   try {
+    console.log("[ImageFetch] Starting to fetch admin images for export...");
     const latest = await listAdminImagePaths();
+
+    console.log("[ImageFetch] Admin image paths retrieved:", {
+      hasLogo: !!latest.logo,
+      hasContacts: !!latest.contacts,
+      hasStamp: !!latest.stamp,
+      paths: latest
+    });
 
     // Log which images exist
     if (!latest.logo && !latest.contacts && !latest.stamp) {
@@ -109,13 +150,16 @@ export async function fetchAdminImagesAsBase64(): Promise<AdminImages> {
     images.contacts = contacts;
     images.stamp = stamp;
 
-    console.log("✓ Admin images fetched successfully:", {
+    console.log("[ImageFetch] ✓ Admin images fetched successfully:", {
       hasLogo: !!logo,
       hasContacts: !!contacts,
       hasStamp: !!stamp,
+      logoSize: logo?.length || 0,
+      contactsSize: contacts?.length || 0,
+      stampSize: stamp?.length || 0,
     });
   } catch (error) {
-    console.error("Error in fetchAdminImagesAsBase64:", error);
+    console.error("[ImageFetch] Error in fetchAdminImagesAsBase64:", error);
     // Silently fail – images are optional
   }
 

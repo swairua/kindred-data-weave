@@ -221,8 +221,8 @@ const Index = ({ initialTab }: IndexProps) => {
     };
   }, []);
 
-  // Keep session alive while authenticated
-  useSessionKeepAlive(isAuthenticated);
+  // Keep session alive while authenticated (disabled per user request - no auto-logout)
+  useSessionKeepAlive(false);
 
   useEffect(() => {
     console.log("[Index] authStatus changed to:", authStatus);
