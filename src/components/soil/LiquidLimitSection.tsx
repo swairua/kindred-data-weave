@@ -1,9 +1,10 @@
 import { useMemo } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Info } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tooltip as UITooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import type { LiquidLimitTrial } from "@/context/TestDataContext";
 import {
   getLiquidLimitGraphData,
@@ -28,6 +29,25 @@ const createTrial = (index: number): LiquidLimitTrial => ({
   penetration: "",
   moisture: "",
 });
+
+interface TooltipHeaderProps {
+  label: string;
+  tooltip: string;
+}
+
+const TooltipHeader = ({ label, tooltip }: TooltipHeaderProps) => (
+  <UITooltip>
+    <TooltipTrigger asChild>
+      <span className="flex items-center gap-1 cursor-help">
+        {label}
+        <Info className="h-3.5 w-3.5 text-muted-foreground" />
+      </span>
+    </TooltipTrigger>
+    <TooltipContent side="top" className="max-w-xs">
+      {tooltip}
+    </TooltipContent>
+  </UITooltip>
+);
 
 const LiquidLimitSection = ({ trials, result, onChangeTrials }: LiquidLimitSectionProps) => {
   const graphData = useMemo(() => getLiquidLimitGraphData(trials), [trials]);
@@ -71,14 +91,30 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials }: LiquidLimitSecti
             <thead>
               <tr className="bg-muted border-b">
                 <th className="px-2 py-2 text-left font-medium text-muted-foreground w-14">Trial</th>
-                <th className="px-2 py-2 text-left font-medium text-muted-foreground w-16">Cont. No</th>
-                <th className="px-2 py-2 text-left font-medium text-muted-foreground">Pen. (mm)</th>
-                <th className="px-2 py-2 text-left font-medium text-muted-foreground">Cont+Wet (g)</th>
-                <th className="px-2 py-2 text-left font-medium text-muted-foreground">Cont+Dry (g)</th>
-                <th className="px-2 py-2 text-left font-medium text-muted-foreground">Cont. (g)</th>
-                <th className="px-2 py-2 text-left font-medium text-muted-foreground">Wt Water (g)</th>
-                <th className="px-2 py-2 text-left font-medium text-muted-foreground">Wt Dry (g)</th>
-                <th className="px-2 py-2 text-left font-medium text-muted-foreground">MC (%)</th>
+                <th className="px-2 py-2 text-left font-medium text-muted-foreground w-16">
+                  <TooltipHeader label="Cont. No" tooltip="Container Number" />
+                </th>
+                <th className="px-2 py-2 text-left font-medium text-muted-foreground">
+                  <TooltipHeader label="Pen. (mm)" tooltip="Penetration in millimeters" />
+                </th>
+                <th className="px-2 py-2 text-left font-medium text-muted-foreground">
+                  <TooltipHeader label="Cont+Wet (g)" tooltip="Weight of container + wet soil (grams)" />
+                </th>
+                <th className="px-2 py-2 text-left font-medium text-muted-foreground">
+                  <TooltipHeader label="Cont+Dry (g)" tooltip="Weight of container + dry soil (grams)" />
+                </th>
+                <th className="px-2 py-2 text-left font-medium text-muted-foreground">
+                  <TooltipHeader label="Cont. (g)" tooltip="Weight of empty container (grams)" />
+                </th>
+                <th className="px-2 py-2 text-left font-medium text-muted-foreground">
+                  <TooltipHeader label="Wt Water (g)" tooltip="Weight of water (wet soil − dry soil) in grams" />
+                </th>
+                <th className="px-2 py-2 text-left font-medium text-muted-foreground">
+                  <TooltipHeader label="Wt Dry (g)" tooltip="Weight of dry soil (grams)" />
+                </th>
+                <th className="px-2 py-2 text-left font-medium text-muted-foreground">
+                  <TooltipHeader label="MC (%)" tooltip="Moisture Content as percentage of dry soil mass" />
+                </th>
                 <th className="w-10" />
               </tr>
             </thead>
