@@ -12,7 +12,9 @@ type AdminImagePaths = Partial<Record<AdminImageType, string>>;
 
 const getAdminImageUrl = (path: string) => {
   const apiUrl = new URL(buildApiUrl());
-  return new URL(path, apiUrl.origin).toString();
+  const imageUrl = new URL(path, apiUrl.origin).toString();
+  console.log("Constructed image URL:", { path, apiOrigin: apiUrl.origin, fullUrl: imageUrl });
+  return imageUrl;
 };
 
 const listAdminImagePaths = async (): Promise<AdminImagePaths> => {
@@ -22,6 +24,8 @@ const listAdminImagePaths = async (): Promise<AdminImagePaths> => {
     const response = await listRecords<AdminImageRow>("admin_images");
     const rows: AdminImageRow[] = response.data || [];
 
+    console.log("Admin images fetched from DB:", { rowCount: rows.length, rows });
+
     for (const row of rows) {
       if (row.image_type === "logo" || row.image_type === "contacts" || row.image_type === "stamp") {
         if (!latest[row.image_type]) {
@@ -29,8 +33,9 @@ const listAdminImagePaths = async (): Promise<AdminImagePaths> => {
         }
       }
     }
+    console.log("Admin image paths extracted:", latest);
   } catch (error) {
-    console.debug("Failed to fetch admin image paths:", error instanceof Error ? error.message : error);
+    console.error("Failed to fetch admin image paths:", error instanceof Error ? error.message : error);
     // Silently fail - images are optional
   }
 
@@ -38,47 +43,43 @@ const listAdminImagePaths = async (): Promise<AdminImagePaths> => {
 };
 
 const imagePathToBase64 = async (filePath: string): Promise<string | undefined> => {
-  if (typeof document === "undefined") {
+  const imageUrl = getAdminImageUrl(filePath);
+  console.log("Converting image to base64:", { filePath, imageUrl });
+
+  try {
+    // Try Fetch API approach first (works better with CORS)
+    const response = await fetch(imageUrl, {
+      headers: {
+        "X-Session-Token": localStorage.getItem("lab_session_token") || "",
+      },
+    });
+
+    if (!response.ok) {
+      console.error("Failed to fetch image:", { status: response.status, statusText: response.statusText });
+      return undefined;
+    }
+
+    const blob = await response.blob();
+    console.log("Image fetched as blob:", { size: blob.size, type: blob.type });
+
+    // Convert blob to base64 data URL
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        console.log("Image converted to base64 data URL successfully:", { length: dataUrl.length });
+        resolve(dataUrl);
+      };
+      reader.onerror = (error) => {
+        console.error("Error reading blob as base64:", error);
+        resolve(undefined);
+      };
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.error("Error in imagePathToBase64:", error);
     return undefined;
   }
-
-  const imageUrl = getAdminImageUrl(filePath);
-
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.decoding = "async";
-
-    img.onload = () => {
-      try {
-        const width = img.naturalWidth || img.width;
-        const height = img.naturalHeight || img.height;
-
-        if (!width || !height) {
-          resolve(undefined);
-          return;
-        }
-
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          resolve(undefined);
-          return;
-        }
-
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/png"));
-      } catch {
-        resolve(undefined);
-      }
-    };
-
-    img.onerror = () => resolve(undefined);
-    img.src = imageUrl;
-  });
 };
 
 /**
@@ -92,6 +93,12 @@ export async function fetchAdminImagesAsBase64(): Promise<AdminImages> {
 
   try {
     const latest = await listAdminImagePaths();
+
+    // Log which images exist
+    if (!latest.logo && !latest.contacts && !latest.stamp) {
+      console.warn("⚠️ No admin images found in database. Please upload logo, contacts, and stamp from Admin > Media Library");
+    }
+
     const [logo, contacts, stamp] = await Promise.all([
       latest.logo ? imagePathToBase64(latest.logo) : Promise.resolve(undefined),
       latest.contacts ? imagePathToBase64(latest.contacts) : Promise.resolve(undefined),
@@ -101,7 +108,14 @@ export async function fetchAdminImagesAsBase64(): Promise<AdminImages> {
     images.logo = logo;
     images.contacts = contacts;
     images.stamp = stamp;
-  } catch {
+
+    console.log("✓ Admin images fetched successfully:", {
+      hasLogo: !!logo,
+      hasContacts: !!contacts,
+      hasStamp: !!stamp,
+    });
+  } catch (error) {
+    console.error("Error in fetchAdminImagesAsBase64:", error);
     // Silently fail – images are optional
   }
 
