@@ -197,5 +197,4 @@ export const ExportPreviewModal: React.FC<ExportPreviewModalProps> = ({
   );
 };
 
-export { ExportPreviewModal as default };
 export { ExportPreviewModal };
