@@ -1,64 +1,78 @@
 
 
-## Fix: Authentication Broken — Session Token Not Exchanged
+## Fix Build Errors + Expand Liquid Limit to 4 Default Trials
 
-### Root Cause (3 issues)
+### Part 1: Fix Build Errors
 
-1. **Login never returns `session_token`** — The client expects `session_token` in the login response body and stores it in localStorage. The backend never sends it.
+**File: `src/components/soil/AtterbergTest.tsx`**
 
-2. **Backend ignores `X-Session-Token` header** — The client sends auth via `X-Session-Token` header, but the backend only reads `PHPSESSID` cookies. Cross-origin cookies are blocked between `*.lovableproject.com` and `lab.wayrus.co.ke`, so every request after login is unauthenticated.
-
-3. **FK constraint on `user_id=0`** — The previous fix defaults `user_id` to `0`, but there's a foreign key `fk_sessions_user` referencing `users(id)`. No user with `id=0` exists, so session writes fail.
-
-4. **CORS missing `X-Session-Token`** — Line 29 allows `Content-Type, Authorization` but not `X-Session-Token`.
-
-### Changes
-
-**`api.php` — 4 fixes:**
-
-1. **Add `X-Session-Token` to CORS allowed headers** (line 29):
-   ```php
-   header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Session-Token');
-   header('Access-Control-Expose-Headers: X-Session-Token');
-   ```
-
-2. **Before `session_start()`, check for `X-Session-Token` header and use it as session ID** (~line 170):
-   ```php
-   $incomingToken = $_SERVER['HTTP_X_SESSION_TOKEN'] ?? '';
-   if ($incomingToken && preg_match('/^[a-zA-Z0-9,-]{22,256}$/', $incomingToken)) {
-       session_id($incomingToken);
-   }
-   session_start();
-   ```
-
-3. **In login response, return `session_token: session_id()`** (~line 547):
-   ```php
-   respond([
-       'message' => 'Logged in successfully',
-       'user_id' => $userId,
-       'session_token' => session_id(),
-       'user' => [ ... ],
-   ]);
-   ```
-
-4. **Fix session write FK error** — make `user_id` nullable and use `NULL` instead of `0`:
-   - In `DatabaseSessionHandler::write()`, change `$userId ?? 0` to just `$userId` and use conditional binding for NULL
-   - Or simpler: drop the FK constraint since `user_id=0` has no matching user
-
-**`migrate_sessions_table.sql` — DB fix:**
-```sql
-ALTER TABLE `sessions` DROP FOREIGN KEY `fk_sessions_user`;
-ALTER TABLE `sessions` MODIFY COLUMN `user_id` INT NULL DEFAULT NULL;
-ALTER TABLE `sessions` ADD CONSTRAINT `fk_sessions_user` 
-  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL;
+**Fix 1 (line 27-35):** Add missing type imports from `@/context/TestDataContext`:
+```typescript
+import {
+  // existing imports...
+  type LiquidLimitTest,
+  type PlasticLimitTest,
+  type ShrinkageLimitTest,
+} from "@/context/TestDataContext";
 ```
-This re-adds the FK but allows NULL, so unauthenticated sessions work.
 
-### Flow After Fix
+**Fix 2 (line 518):** Add generic type to `createApiRecord`:
+```typescript
+const createResponse = await retryWithBackoff(
+  () => createApiRecord<{ id: number }>("test_results", resultPayload)
+);
+```
 
-1. User logs in → backend returns `session_token: "abc123..."` in response body
-2. Client stores token in localStorage
-3. All subsequent requests include `X-Session-Token: abc123...` header
-4. Backend calls `session_id("abc123...")` before `session_start()`, restoring the session
-5. `$_SESSION['user_id']` is available → authentication works
+### Part 2: Expand Default Liquid Limit Trials to 4
+
+**File: `src/components/soil/AtterbergTest.tsx` (lines 224-245)**
+
+Replace the 2 default liquid limit trials with 4 trials using realistic data that produces a curved (non-linear) graph. Based on the Master Excel reference, the cone penetration test typically uses 4 trials with penetration values spanning a range around 20mm (e.g., 15mm, 18mm, 22mm, 27mm) with corresponding moisture values that follow a natural curve:
+
+```typescript
+trials: [
+  {
+    id: makeId("trial"), trialNo: "1",
+    penetration: "15", containerNo: "101",
+    containerWetMass: "23.8", containerDryMass: "17.6", containerMass: "5.0",
+    moisture: "",
+  },
+  {
+    id: makeId("trial"), trialNo: "2",
+    penetration: "18", containerNo: "102",
+    containerWetMass: "25.1", containerDryMass: "18.0", containerMass: "5.1",
+    moisture: "",
+  },
+  {
+    id: makeId("trial"), trialNo: "3",
+    penetration: "22", containerNo: "103",
+    containerWetMass: "27.3", containerDryMass: "18.8", containerMass: "5.0",
+    moisture: "",
+  },
+  {
+    id: makeId("trial"), trialNo: "4",
+    penetration: "27", containerNo: "104",
+    containerWetMass: "29.8", containerDryMass: "19.6", containerMass: "5.2",
+    moisture: "",
+  },
+],
+```
+
+The mass values are chosen so the computed moisture contents form a natural curve (not a straight line) when plotted against penetration. This gives approximately:
+- Trial 1: ~49.2% at 15mm
+- Trial 2: ~55.0% at 18mm  
+- Trial 3: ~61.6% at 22mm
+- Trial 4: ~70.8% at 27mm
+
+### Part 3: Update Minimum Trials for Graph Display
+
+**File: `src/components/soil/LiquidLimitSection.tsx` (line 203)**
+
+No change needed — the graph already shows when `graphData.length >= 2`, which is correct since 2 points is the mathematical minimum. With 4 default trials, the graph will naturally show a curve.
+
+### Summary
+
+| File | Change |
+|------|--------|
+| `AtterbergTest.tsx` | Add 3 missing type imports; add generic to `createApiRecord`; expand LL trials from 2 to 4 |
 
