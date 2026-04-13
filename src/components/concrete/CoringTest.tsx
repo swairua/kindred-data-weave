@@ -66,7 +66,7 @@ const CoringTest = () => {
   const tableData = { headers: ["Core ID", "Diameter (mm)", "Length (mm)", "L/D", "Load (kN)", "Core Strength (MPa)", "Corrected (MPa)"], rows: rows.map(r => [r.coreId, r.diameter, r.length || "—", getLDRatio(r) || "—", r.load || "—", getCoreStrength(r) || "—", getCorrectedStrength(r) || "—"]) };
 
   return (
-    <TestSection title="Coring Test" onSave={() => {}} onClear={() => setRows([{ coreId: "CR1", diameter: "75", length: "", load: "" }])} onExportPDF={() => generateTestPDF({ title: "Coring Test", ...project, tables: [tableData] })} onExportCSV={() => generateTestCSV({ title: "Coring Test", ...project, tables: [tableData] })}>
+    <TestSection title="Coring Test" onSave={() => {}} onClear={() => setRows([{ coreId: "CR1", diameter: "75", length: "", load: "" }])} onExportPDF={() => generateTestPDF({ title: "Coring Test", ...project, tables: [tableData] })}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Core ID</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Dia (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Length (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">L/D</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Load (kN)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Strength</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Corrected</th><th className="w-10"></th></tr></thead>

@@ -61,7 +61,7 @@ const CBRTest = () => {
   };
 
   return (
-    <TestSection title="CBR (California Bearing Ratio)" onSave={() => {}} onClear={() => setRows([{ penetration: "", load: "" }])} onExportPDF={exportPDF} onExportCSV={() => generateTestCSV({ title: "CBR (California Bearing Ratio)", ...project, tables: [{ headers: ["Penetration (mm)", "Load (kN)", "CBR (%)"], rows: rows.map(r => [r.penetration, r.load || "—", getCBR(r.penetration, r.load) || "—"]) }] })}>
+    <TestSection title="CBR (California Bearing Ratio)" onSave={() => {}} onClear={() => setRows([{ penetration: "", load: "" }])} onExportPDF={exportPDF}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Penetration (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Load (kN)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">CBR (%)</th><th className="w-10"></th></tr></thead>

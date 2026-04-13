@@ -87,7 +87,7 @@ const GradingTest = () => {
   };
 
   return (
-    <TestSection title="Grading (Sieve Analysis)" onSave={() => {}} onClear={() => setRows(defaultRows)} onExportPDF={exportPDF} onExportCSV={() => generateTestCSV({ title: "Grading (Sieve Analysis)", ...project, tables: [{ headers: ["Sieve Size (mm)", "Weight Retained (g)", "% Passing"], rows: rows.map((r, i) => [r.sieveSize, r.weightRetained || "—", getPercentPassing(i) || "—"]) }] })}>
+    <TestSection title="Grading (Sieve Analysis)" onSave={() => {}} onClear={() => setRows(defaultRows)} onExportPDF={exportPDF}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>

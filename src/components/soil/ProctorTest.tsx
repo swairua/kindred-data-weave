@@ -59,7 +59,7 @@ const ProctorTest = () => {
   };
 
   return (
-    <TestSection title="Proctor Test" onSave={() => {}} onClear={() => setRows([{ moisture: "", dryDensity: "" }])} onExportPDF={exportPDF} onExportCSV={() => generateTestCSV({ title: `Proctor Test (${type === "standard" ? "Standard" : "Modified"})`, ...project, tables: [{ headers: ["Point", "Moisture Content (%)", "Dry Density (kg/m³)"], rows: rows.map((r, i) => [String(i + 1), r.moisture || "—", r.dryDensity || "—"]) }] })}>
+    <TestSection title="Proctor Test" onSave={() => {}} onClear={() => setRows([{ moisture: "", dryDensity: "" }])} onExportPDF={exportPDF}>
       <div className="mb-4 max-w-xs">
         <Label className="text-xs text-muted-foreground mb-1.5 block">Test Type</Label>
         <Select value={type} onValueChange={setType}>

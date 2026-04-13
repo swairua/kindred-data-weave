@@ -64,7 +64,7 @@ const ConcreteCubesTest = () => {
   const tableData = { headers: ["Cube ID", "Age (days)", "Size (mm)", "Mass (g)", "Load (kN)", "Strength (MPa)", "Density (kg/m³)"], rows: rows.map(r => [r.cubeId, r.age, r.size, r.mass || "—", r.load || "—", getStrength(r) || "—", getDensity(r) || "—"]) };
 
   return (
-    <TestSection title="Concrete Cubes" onSave={() => {}} onClear={() => setRows([{ cubeId: "C1", age: "7", load: "", size: "150", mass: "" }])} onExportPDF={() => generateTestPDF({ title: "Concrete Cubes", ...project, tables: [tableData] })} onExportCSV={() => generateTestCSV({ title: "Concrete Cubes", ...project, tables: [tableData] })}>
+    <TestSection title="Concrete Cubes" onSave={() => {}} onClear={() => setRows([{ cubeId: "C1", age: "7", load: "", size: "150", mass: "" }])} onExportPDF={() => generateTestPDF({ title: "Concrete Cubes", ...project, tables: [tableData] })}>
       <div className="flex items-center gap-3 mb-4">
         <Label className="text-xs text-muted-foreground whitespace-nowrap">Target Grade (MPa)</Label>
         <Select value={gradeTarget} onValueChange={setGradeTarget}>
