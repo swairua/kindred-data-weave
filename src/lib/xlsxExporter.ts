@@ -48,6 +48,13 @@ const num = (v: string | undefined): number | null => {
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+// Helper to extract base64 string from data URL
+const extractBase64FromDataUrl = (dataUrl: string): string => {
+  if (!dataUrl) return "";
+  const match = dataUrl.match(/^data:image\/\w+;base64,(.+)$/);
+  return match ? match[1] : dataUrl;
+};
+
 export const generateAtterbergXLSX = async (options: ExportOptions) => {
   const { projectName, clientName, projectState, records } = options;
 
@@ -82,47 +89,50 @@ export const generateAtterbergXLSX = async (options: ExportOptions) => {
     let imageStartRow = 1;
     if (images.logo) {
       try {
+        const base64String = extractBase64FromDataUrl(images.logo);
         const logoId = wb.addImage({
-          base64: images.logo,
+          base64: base64String,
           extension: "png",
         });
         ws.addImage(logoId, {
           tl: { col: 0, row: 0 }, // Top-left at A1
           ext: { width: 80, height: 24 },
         });
-      } catch {
-        // Skip if image fails to load
+      } catch (error) {
+        console.debug("Failed to add logo image:", error instanceof Error ? error.message : error);
       }
     }
 
     if (images.contacts) {
       try {
+        const base64String = extractBase64FromDataUrl(images.contacts);
         const contactsId = wb.addImage({
-          base64: images.contacts,
+          base64: base64String,
           extension: "png",
         });
         ws.addImage(contactsId, {
           tl: { col: 3, row: 0 }, // Top-right at D1
           ext: { width: 80, height: 24 },
         });
-      } catch {
-        // Skip if image fails to load
+      } catch (error) {
+        console.debug("Failed to add contacts image:", error instanceof Error ? error.message : error);
       }
     }
 
     // Add stamp image below logo
     if (images.stamp) {
       try {
+        const base64String = extractBase64FromDataUrl(images.stamp);
         const stampId = wb.addImage({
-          base64: images.stamp,
+          base64: base64String,
           extension: "png",
         });
         ws.addImage(stampId, {
           tl: { col: 0, row: 6 }, // A7
           ext: { width: 50, height: 24 },
         });
-      } catch {
-        // Skip if image fails to load
+      } catch (error) {
+        console.debug("Failed to add stamp image:", error instanceof Error ? error.message : error);
       }
     }
 
