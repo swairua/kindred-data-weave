@@ -107,13 +107,13 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials }: LiquidLimitSecti
                   <TooltipHeader label="Cont. (g)" tooltip="Weight of empty container (grams)" />
                 </th>
                 <th className="px-2 py-2 text-left font-medium text-muted-foreground">
-                  <TooltipHeader label="Wt Water (g)" tooltip="Weight of water (wet soil − dry soil) in grams" />
+                  <TooltipHeader label="Wt Water (g)" tooltip="Weight of water (auto-calculated) | Formula: Cont+Wet (g) − Cont+Dry (g)" />
                 </th>
                 <th className="px-2 py-2 text-left font-medium text-muted-foreground">
-                  <TooltipHeader label="Wt Dry (g)" tooltip="Weight of dry soil (grams)" />
+                  <TooltipHeader label="Wt Dry (g)" tooltip="Weight of dry soil (auto-calculated) | Formula: Cont+Dry (g) − Cont. (g)" />
                 </th>
                 <th className="px-2 py-2 text-left font-medium text-muted-foreground">
-                  <TooltipHeader label="MC (%)" tooltip="Moisture Content as percentage of dry soil mass" />
+                  <TooltipHeader label="MC (%)" tooltip="Moisture Content as percentage of dry soil mass (auto-calculated) | Formula: (Wt Water / Wt Dry) × 100" />
                 </th>
                 <th className="w-10" />
               </tr>
