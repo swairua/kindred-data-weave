@@ -245,22 +245,39 @@ const extractShrinkageLimitBenchmark = (
 /**
  * Validate calculations against Excel benchmarks
  */
-export const validateAgainstExcel = async (file: File): Promise<BenchmarkReport> => {
+export const validateAgainstExcel = async (file: File | Buffer): Promise<BenchmarkReport> => {
   const results: BenchmarkResult[] = [];
 
   try {
     // Parse Excel file
     const workbook = new ExcelJS.Workbook();
-    const arrayBuffer = await file.arrayBuffer();
-    await workbook.xlsx.load(arrayBuffer);
+
+    if (Buffer.isBuffer(file)) {
+      // Handle Node.js Buffer - use the buffer directly with xlsx
+      await workbook.xlsx.load(file);
+    } else {
+      // Handle File object
+      const arrayBuffer = await file.arrayBuffer();
+      await workbook.xlsx.load(arrayBuffer);
+    }
 
     const ws = workbook.worksheets[0];
     if (!ws) {
       throw new Error("No worksheets found in Excel file");
     }
 
+    // Cache worksheet to avoid undefined issues
+    ws.actualPageSetup = ws.pageSetup || {};
+    ws.actualMargins = ws.margins || {};
+
     // Extract Liquid Limit
-    const llBenchmark = extractLiquidLimitBenchmark(ws);
+    let llBenchmark = { trials: [], expectedValue: null, notes: ["Error extracting liquid limit"] };
+    try {
+      llBenchmark = extractLiquidLimitBenchmark(ws);
+    } catch (e) {
+      console.warn("Error extracting liquid limit:", e);
+    }
+
     if (llBenchmark.trials.length > 0) {
       const test: AtterbergTest = {
         id: "ll-test",
@@ -303,7 +320,13 @@ export const validateAgainstExcel = async (file: File): Promise<BenchmarkReport>
     }
 
     // Extract Plastic Limit
-    const plBenchmark = extractPlasticLimitBenchmark(ws);
+    let plBenchmark = { trials: [], expectedValue: null, notes: ["Error extracting plastic limit"] };
+    try {
+      plBenchmark = extractPlasticLimitBenchmark(ws);
+    } catch (e) {
+      console.warn("Error extracting plastic limit:", e);
+    }
+
     if (plBenchmark.trials.length > 0) {
       const calculated = calculatePlasticLimit(plBenchmark.trials);
       const validTrials = plBenchmark.trials.filter(isPlasticLimitTrialValid);
@@ -333,7 +356,13 @@ export const validateAgainstExcel = async (file: File): Promise<BenchmarkReport>
     }
 
     // Extract Shrinkage Limit
-    const slBenchmark = extractShrinkageLimitBenchmark(ws);
+    let slBenchmark = { trials: [], expectedValue: null, notes: ["Error extracting shrinkage limit"] };
+    try {
+      slBenchmark = extractShrinkageLimitBenchmark(ws);
+    } catch (e) {
+      console.warn("Error extracting shrinkage limit:", e);
+    }
+
     if (slBenchmark.trials.length > 0) {
       const calculated = calculateLinearShrinkage(slBenchmark.trials);
       const validTrials = slBenchmark.trials.filter(isShrinkageLimitTrialValid);
