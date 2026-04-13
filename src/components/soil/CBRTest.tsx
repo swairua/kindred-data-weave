@@ -11,6 +11,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Label } from "@/components/ui/label";
 import { useTestReport } from "@/hooks/useTestReport";
+import { captureChartAsBase64 } from "@/lib/chartCapture";
 
 const STANDARD_LOAD_2_5 = 13.24;
 const STANDARD_LOAD_5_0 = 19.96;
@@ -53,10 +54,19 @@ const CBRTest = () => {
 
   const chartConfig = { load: { label: "Load (kN)", color: "hsl(var(--primary))" } };
 
-  const exportPDF = () => {
+  const exportPDF = async () => {
+    let chartImages = {};
+    if (chartData.length >= 2) {
+      const chartBase64 = await captureChartAsBase64("cbr-chart");
+      if (chartBase64) {
+        chartImages = { "Penetration vs Load Curve": chartBase64 };
+      }
+    }
+
     generateTestPDF({
       title: "CBR (California Bearing Ratio)", ...project,
       tables: [{ headers: ["Penetration (mm)", "Load (kN)", "CBR (%)"], rows: rows.map(r => [r.penetration, r.load || "—", getCBR(r.penetration, r.load) || "—"]) }],
+      chartImages,
     });
   };
 
@@ -82,7 +92,7 @@ const CBRTest = () => {
       {chartData.length >= 2 && (
         <div className="mt-6">
           <Label className="text-xs text-muted-foreground mb-2 block">Penetration vs Load Curve</Label>
-          <ChartContainer config={chartConfig} className="h-[300px] w-full">
+          <ChartContainer id="cbr-chart" config={chartConfig} className="h-[300px] w-full">
             <LineChart data={chartData} margin={{ top: 10, right: 20, bottom: 20, left: 10 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="penetration" type="number" domain={["dataMin", "dataMax"]} label={{ value: "Penetration (mm)", position: "insideBottom", offset: -10, className: "fill-muted-foreground text-xs" }} />

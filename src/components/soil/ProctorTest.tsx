@@ -11,6 +11,8 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine } from "rec
 import { useTestReport } from "@/hooks/useTestReport";
 import { generateTestPDF } from "@/lib/pdfGenerator";
 import { generateTestCSV } from "@/lib/csvExporter";
+import { generateTestExcel } from "@/lib/genericExcelExporter";
+import { captureChartAsBase64 } from "@/lib/chartCapture";
 
 interface Row { moisture: string; dryDensity: string }
 
@@ -47,7 +49,15 @@ const ProctorTest = () => {
     const next = [...rows]; next[i] = { ...next[i], [field]: val }; setRows(next);
   };
 
-  const exportPDF = () => {
+  const exportPDF = async () => {
+    let chartImages = {};
+    if (chartData.length >= 2) {
+      const chartBase64 = await captureChartAsBase64("proctor-chart");
+      if (chartBase64) {
+        chartImages = { "Proctor Curve": chartBase64 };
+      }
+    }
+
     generateTestPDF({
       title: `Proctor Test (${type === "standard" ? "Standard" : "Modified"})`,
       ...project,
@@ -55,6 +65,7 @@ const ProctorTest = () => {
         headers: ["Point", "Moisture Content (%)", "Dry Density (kg/m³)"],
         rows: rows.map((r, i) => [String(i + 1), r.moisture || "—", r.dryDensity || "—"]),
       }],
+      chartImages,
     });
   };
 
@@ -90,7 +101,7 @@ const ProctorTest = () => {
       {chartData.length >= 2 && (
         <div className="mt-6">
           <Label className="text-xs text-muted-foreground mb-2 block">Proctor Curve</Label>
-          <ChartContainer config={chartConfig} className="h-[300px] w-full">
+          <ChartContainer id="proctor-chart" config={chartConfig} className="h-[300px] w-full">
             <LineChart data={chartData} margin={{ top: 10, right: 20, bottom: 20, left: 10 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="moisture" type="number" domain={["dataMin - 1", "dataMax + 1"]} label={{ value: "Moisture Content (%)", position: "insideBottom", offset: -10, className: "fill-muted-foreground text-xs" }} />

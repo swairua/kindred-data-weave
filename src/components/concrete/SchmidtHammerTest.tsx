@@ -11,6 +11,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Label } from "@/components/ui/label";
 import { useTestReport } from "@/hooks/useTestReport";
+import { captureChartAsBase64 } from "@/lib/chartCapture";
 
 interface Row { location: string; r1: string; r2: string; r3: string; r4: string; r5: string }
 
@@ -55,8 +56,20 @@ const SchmidtHammerTest = () => {
 
   const tableData = { headers: ["Location", "R1", "R2", "R3", "R4", "R5", "Avg Rebound", "Est. Strength (MPa)"], rows: rows.map(r => { const avg = getAvgRebound(r); return [r.location, r.r1 || "—", r.r2 || "—", r.r3 || "—", r.r4 || "—", r.r5 || "—", avg || "—", avg ? getEstStrength(avg) : "—"]; }) };
 
+  const exportPDF = async () => {
+    let chartImages = {};
+    if (chartData.length >= 1) {
+      const chartBase64 = await captureChartAsBase64("schmidt-chart");
+      if (chartBase64) {
+        chartImages = { "Rebound & Estimated Strength": chartBase64 };
+      }
+    }
+
+    generateTestPDF({ title: "Schmidt Hammer Test", ...project, tables: [tableData], chartImages });
+  };
+
   return (
-    <TestSection title="Schmidt Hammer (Rebound) Test" onSave={() => {}} onClear={() => setRows([{ location: "L1", r1: "", r2: "", r3: "", r4: "", r5: "" }])} onExportPDF={() => generateTestPDF({ title: "Schmidt Hammer Test", ...project, tables: [tableData] })}>
+    <TestSection title="Schmidt Hammer (Rebound) Test" onSave={() => {}} onClear={() => setRows([{ location: "L1", r1: "", r2: "", r3: "", r4: "", r5: "" }])} onExportPDF={exportPDF}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Location</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R1</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R2</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R3</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R4</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R5</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Avg R</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Est. MPa</th><th className="w-10"></th></tr></thead>
@@ -83,7 +96,7 @@ const SchmidtHammerTest = () => {
       {chartData.length >= 1 && (
         <div className="mt-6">
           <Label className="text-xs text-muted-foreground mb-2 block">Rebound & Estimated Strength</Label>
-          <ChartContainer config={chartConfig} className="h-[300px] w-full">
+          <ChartContainer id="schmidt-chart" config={chartConfig} className="h-[300px] w-full">
             <BarChart data={chartData} margin={{ top: 10, right: 20, bottom: 20, left: 10 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" label={{ value: "Location", position: "insideBottom", offset: -10, className: "fill-muted-foreground text-xs" }} />

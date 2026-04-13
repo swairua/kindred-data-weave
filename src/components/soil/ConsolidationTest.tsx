@@ -10,6 +10,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Label } from "@/components/ui/label";
 import { useTestReport } from "@/hooks/useTestReport";
+import { captureChartAsBase64 } from "@/lib/chartCapture";
 
 interface Row { time: string; settlement: string }
 
@@ -35,8 +36,16 @@ const ConsolidationTest = () => {
   }, [chartData]);
   useTestReport("consolidation", filledConsol, consolResults);
 
-  const exportPDF = () => {
-    generateTestPDF({ title: "Consolidation Test", ...project, tables: [{ headers: ["Time (min)", "Settlement (mm)"], rows: rows.map(r => [r.time || "—", r.settlement || "—"]) }] });
+  const exportPDF = async () => {
+    let chartImages = {};
+    if (chartData.length >= 2) {
+      const chartBase64 = await captureChartAsBase64("consolidation-chart");
+      if (chartBase64) {
+        chartImages = { "Time–Settlement Curve": chartBase64 };
+      }
+    }
+
+    generateTestPDF({ title: "Consolidation Test", ...project, tables: [{ headers: ["Time (min)", "Settlement (mm)"], rows: rows.map(r => [r.time || "—", r.settlement || "—"]) }], chartImages });
   };
 
   return (
@@ -60,7 +69,7 @@ const ConsolidationTest = () => {
       {chartData.length >= 2 && (
         <div className="mt-6">
           <Label className="text-xs text-muted-foreground mb-2 block">Time–Settlement Curve</Label>
-          <ChartContainer config={chartConfig} className="h-[300px] w-full">
+          <ChartContainer id="consolidation-chart" config={chartConfig} className="h-[300px] w-full">
             <LineChart data={chartData} margin={{ top: 10, right: 20, bottom: 20, left: 10 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="time" type="number" domain={["dataMin", "dataMax"]} label={{ value: "Time (min)", position: "insideBottom", offset: -10, className: "fill-muted-foreground text-xs" }} />

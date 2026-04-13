@@ -11,6 +11,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Label } from "@/components/ui/label";
 import { useTestReport } from "@/hooks/useTestReport";
+import { captureChartAsBase64 } from "@/lib/chartCapture";
 
 interface Row {
   sieveSize: string;
@@ -75,7 +76,15 @@ const GradingTest = () => {
   ], [totalWeight]);
   useTestReport("grading", filledGrading, gradingResults);
 
-  const exportPDF = () => {
+  const exportPDF = async () => {
+    let chartImages = {};
+    if (chartData.length >= 2) {
+      const chartBase64 = await captureChartAsBase64("grading-chart");
+      if (chartBase64) {
+        chartImages = { "Particle Size Distribution Curve": chartBase64 };
+      }
+    }
+
     generateTestPDF({
       title: "Grading (Sieve Analysis)",
       ...project,
@@ -83,6 +92,7 @@ const GradingTest = () => {
         headers: ["Sieve Size (mm)", "Weight Retained (g)", "% Passing"],
         rows: rows.map((r, i) => [r.sieveSize, r.weightRetained || "—", getPercentPassing(i) || "—"]),
       }],
+      chartImages,
     });
   };
 
@@ -127,7 +137,7 @@ const GradingTest = () => {
       {chartData.length >= 2 && (
         <div className="mt-6">
           <Label className="text-xs text-muted-foreground mb-2 block">Particle Size Distribution Curve</Label>
-          <ChartContainer config={chartConfig} className="h-[300px] w-full">
+          <ChartContainer id="grading-chart" config={chartConfig} className="h-[300px] w-full">
             <LineChart data={chartData} margin={{ top: 10, right: 20, bottom: 20, left: 10 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis

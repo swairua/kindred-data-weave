@@ -12,6 +12,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine } from "recha
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTestReport } from "@/hooks/useTestReport";
+import { captureChartAsBase64 } from "@/lib/chartCapture";
 
 interface Row { cubeId: string; age: string; load: string; size: string; mass: string }
 
@@ -63,8 +64,20 @@ const ConcreteCubesTest = () => {
 
   const tableData = { headers: ["Cube ID", "Age (days)", "Size (mm)", "Mass (g)", "Load (kN)", "Strength (MPa)", "Density (kg/m³)"], rows: rows.map(r => [r.cubeId, r.age, r.size, r.mass || "—", r.load || "—", getStrength(r) || "—", getDensity(r) || "—"]) };
 
+  const exportPDF = async () => {
+    let chartImages = {};
+    if (chartData.length >= 1) {
+      const chartBase64 = await captureChartAsBase64("cubes-chart");
+      if (chartBase64) {
+        chartImages = { "Cube Strengths vs Target Grade": chartBase64 };
+      }
+    }
+
+    generateTestPDF({ title: "Concrete Cubes", ...project, tables: [tableData], chartImages });
+  };
+
   return (
-    <TestSection title="Concrete Cubes" onSave={() => {}} onClear={() => setRows([{ cubeId: "C1", age: "7", load: "", size: "150", mass: "" }])} onExportPDF={() => generateTestPDF({ title: "Concrete Cubes", ...project, tables: [tableData] })}>
+    <TestSection title="Concrete Cubes" onSave={() => {}} onClear={() => setRows([{ cubeId: "C1", age: "7", load: "", size: "150", mass: "" }])} onExportPDF={exportPDF}>
       <div className="flex items-center gap-3 mb-4">
         <Label className="text-xs text-muted-foreground whitespace-nowrap">Target Grade (MPa)</Label>
         <Select value={gradeTarget} onValueChange={setGradeTarget}>
@@ -101,7 +114,7 @@ const ConcreteCubesTest = () => {
       {chartData.length >= 1 && (
         <div className="mt-6">
           <Label className="text-xs text-muted-foreground mb-2 block">Cube Strengths vs Target Grade</Label>
-          <ChartContainer config={chartConfig} className="h-[300px] w-full">
+          <ChartContainer id="cubes-chart" config={chartConfig} className="h-[300px] w-full">
             <BarChart data={chartData} margin={{ top: 10, right: 20, bottom: 20, left: 10 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" label={{ value: "Cube", position: "insideBottom", offset: -10, className: "fill-muted-foreground text-xs" }} />
