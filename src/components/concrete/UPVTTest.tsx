@@ -59,7 +59,7 @@ const UPVTTest = () => {
   const tableData = { headers: ["ID", "Path Length (mm)", "Transit Time (µs)", "Velocity (km/s)", "Quality"], rows: rows.map(r => { const v = getVelocity(r); return [r.id, r.pathLength || "—", r.transitTime || "—", v || "—", v ? getQuality(parseFloat(v)) : "—"]; }) };
 
   return (
-    <TestSection title="Ultrasonic Pulse Velocity Test (UPVT)" onSave={() => {}} onClear={() => setRows([{ id: "U1", pathLength: "", transitTime: "" }])} onExportPDF={() => generateTestPDF({ title: "UPVT", ...project, tables: [tableData] })} onExportCSV={() => generateTestCSV({ title: "UPVT", ...project, tables: [tableData] })}>
+    <TestSection title="Ultrasonic Pulse Velocity Test (UPVT)" onSave={() => {}} onClear={() => setRows([{ id: "U1", pathLength: "", transitTime: "" }])} onExportPDF={() => generateTestPDF({ title: "UPVT", ...project, tables: [tableData] })}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">ID</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Path Length (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Transit Time (µs)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Velocity (km/s)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Quality</th><th className="w-10"></th></tr></thead>

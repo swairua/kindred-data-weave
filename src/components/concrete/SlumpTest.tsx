@@ -24,7 +24,7 @@ const SlumpTest = () => {
   };
 
   return (
-    <TestSection title="Slump Test" onSave={() => {}} onClear={() => { setSlump(""); setRemarks(""); }} onExportPDF={exportPDF} onExportCSV={() => generateTestCSV({ title: "Slump Test", ...project, fields: [{ label: "Slump Value (mm)", value: slump }, { label: "Remarks", value: remarks }] })}>
+    <TestSection title="Slump Test" onSave={() => {}} onClear={() => { setSlump(""); setRemarks(""); }} onExportPDF={exportPDF}>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground">Slump Value (mm)</Label>

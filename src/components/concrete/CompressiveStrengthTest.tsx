@@ -52,7 +52,7 @@ const CompressiveStrengthTest = () => {
   };
 
   return (
-    <TestSection title="Compressive Strength (Cube Test)" onSave={() => {}} onClear={() => setRows([{ cubeId: "", load: "", width: "150", height: "150" }])} onExportPDF={exportPDF} onExportCSV={() => generateTestCSV({ title: "Compressive Strength (Cube Test)", ...project, tables: [{ headers: ["Cube ID", "Load (kN)", "Width (mm)", "Height (mm)", "Strength (MPa)"], rows: rows.map(r => [r.cubeId, r.load || "—", r.width, r.height, getStrength(r) || "—"]) }] })}>
+    <TestSection title="Compressive Strength (Cube Test)" onSave={() => {}} onClear={() => setRows([{ cubeId: "", load: "", width: "150", height: "150" }])} onExportPDF={exportPDF}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Cube ID</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Load (kN)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Width (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Height (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Strength (MPa)</th><th className="w-10"></th></tr></thead>
