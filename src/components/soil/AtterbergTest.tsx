@@ -67,6 +67,7 @@ import {
   type AtterbergExportPayload,
 } from "@/lib/jsonExporter";
 import { generateAtterbergXLSX } from "@/lib/xlsxExporter";
+import { ExportPreviewModal, type ExportPreviewData } from "@/components/ExportPreviewModal";
 
 const STORAGE_KEY = "atterbergProjectState";
 
@@ -633,6 +634,9 @@ const AtterbergTest = () => {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [lastSaveError, setLastSaveError] = useState<string | null>(null);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [previewData, setPreviewData] = useState<ExportPreviewData | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const saveStatusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hydratedRef = useRef(false);
   const loadAttemptedRef = useRef(false);
@@ -1034,13 +1038,35 @@ const AtterbergTest = () => {
       return false;
     }
 
-    await generateAtterbergPDF({
-      projectName: project.projectName,
-      clientName: project.clientName || projectState.clientName,
-      date: project.date,
-      projectState,
-      records: computedRecords,
-    });
+    setIsPreviewLoading(true);
+    try {
+      const blob = await generateAtterbergPDF({
+        projectName: project.projectName,
+        clientName: project.clientName || projectState.clientName,
+        date: project.date,
+        projectState,
+        records: computedRecords,
+        skipDownload: true,
+      });
+
+      if (blob) {
+        setPreviewData({
+          type: "pdf",
+          fileName: `Atterberg_Limits_${(project.projectName || "export").replace(/\s+/g, "_")}.pdf`,
+          blob,
+          summary: {
+            title: "Atterberg Limits Testing",
+            projectName: project.projectName,
+            clientName: project.clientName || projectState.clientName,
+            date: project.date,
+            pageCount: computedRecords.length,
+          },
+        });
+        setPreviewModalOpen(true);
+      }
+    } finally {
+      setIsPreviewLoading(false);
+    }
 
     return true;
   }, [computedRecords, project.clientName, project.date, project.projectName, projectState]);
@@ -1145,13 +1171,35 @@ const AtterbergTest = () => {
       return false;
     }
 
-    await generateAtterbergXLSX({
-      projectName: project.projectName,
-      clientName: project.clientName || projectState.clientName,
-      date: project.date,
-      projectState,
-      records: computedRecords,
-    });
+    setIsPreviewLoading(true);
+    try {
+      const blob = await generateAtterbergXLSX({
+        projectName: project.projectName,
+        clientName: project.clientName || projectState.clientName,
+        date: project.date,
+        projectState,
+        records: computedRecords,
+        skipDownload: true,
+      });
+
+      if (blob) {
+        setPreviewData({
+          type: "excel",
+          fileName: `Atterberg_Limits_${(project.projectName || "export").replace(/\s+/g, "_")}.xlsx`,
+          blob,
+          summary: {
+            title: "Atterberg Limits Testing",
+            projectName: project.projectName,
+            clientName: project.clientName || projectState.clientName,
+            date: project.date,
+            rowCount: computedRecords.length,
+          },
+        });
+        setPreviewModalOpen(true);
+      }
+    } finally {
+      setIsPreviewLoading(false);
+    }
 
     return true;
   }, [computedRecords, project.clientName, project.date, project.projectName, projectState]);
@@ -1364,6 +1412,13 @@ const AtterbergTest = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ExportPreviewModal
+        open={previewModalOpen}
+        onOpenChange={setPreviewModalOpen}
+        data={previewData}
+        isLoading={isPreviewLoading}
+      />
     </>
   );
 };
