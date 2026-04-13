@@ -50,9 +50,19 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 
 // Helper to extract base64 string from data URL
 const extractBase64FromDataUrl = (dataUrl: string): string => {
-  if (!dataUrl) return "";
+  if (!dataUrl) {
+    console.warn("Empty dataUrl passed to extractBase64FromDataUrl");
+    return "";
+  }
   const match = dataUrl.match(/^data:image\/\w+;base64,(.+)$/);
-  return match ? match[1] : dataUrl;
+  const result = match ? match[1] : dataUrl;
+  console.log("Extracted base64:", {
+    dataUrlLength: dataUrl.length,
+    isDataUrl: dataUrl.startsWith("data:"),
+    resultLength: result.length,
+    extracted: match ? "yes" : "no (using as-is)"
+  });
+  return result;
 };
 
 export const generateAtterbergXLSX = async (options: ExportOptions) => {
@@ -64,6 +74,14 @@ export const generateAtterbergXLSX = async (options: ExportOptions) => {
 
   // Fetch admin images once for all records
   const images = await fetchAdminImagesAsBase64();
+  console.log("Fetched admin images for export:", {
+    hasLogo: !!images.logo,
+    hasContacts: !!images.contacts,
+    hasStamp: !!images.stamp,
+    logoLength: images.logo?.length || 0,
+    contactsLength: images.contacts?.length || 0,
+    stampLength: images.stamp?.length || 0,
+  });
 
   for (const record of records) {
     const sheetName = (record.label || record.title || "Record").substring(0, 31);
@@ -89,6 +107,7 @@ export const generateAtterbergXLSX = async (options: ExportOptions) => {
     let imageStartRow = 1;
     if (images.logo) {
       try {
+        console.log("Adding logo image to worksheet");
         const base64String = extractBase64FromDataUrl(images.logo);
         const logoId = wb.addImage({
           base64: base64String,
@@ -98,13 +117,17 @@ export const generateAtterbergXLSX = async (options: ExportOptions) => {
           tl: { col: 0, row: 0 }, // Top-left at A1
           ext: { width: 80, height: 24 },
         });
+        console.log("Logo image added successfully");
       } catch (error) {
-        console.debug("Failed to add logo image:", error instanceof Error ? error.message : error);
+        console.error("Failed to add logo image:", error instanceof Error ? error.message : error);
       }
+    } else {
+      console.warn("No logo image found to add");
     }
 
     if (images.contacts) {
       try {
+        console.log("Adding contacts image to worksheet");
         const base64String = extractBase64FromDataUrl(images.contacts);
         const contactsId = wb.addImage({
           base64: base64String,
@@ -114,14 +137,18 @@ export const generateAtterbergXLSX = async (options: ExportOptions) => {
           tl: { col: 3, row: 0 }, // Top-right at D1
           ext: { width: 80, height: 24 },
         });
+        console.log("Contacts image added successfully");
       } catch (error) {
-        console.debug("Failed to add contacts image:", error instanceof Error ? error.message : error);
+        console.error("Failed to add contacts image:", error instanceof Error ? error.message : error);
       }
+    } else {
+      console.warn("No contacts image found to add");
     }
 
     // Add stamp image below logo
     if (images.stamp) {
       try {
+        console.log("Adding stamp image to worksheet");
         const base64String = extractBase64FromDataUrl(images.stamp);
         const stampId = wb.addImage({
           base64: base64String,
@@ -131,9 +158,12 @@ export const generateAtterbergXLSX = async (options: ExportOptions) => {
           tl: { col: 0, row: 6 }, // A7
           ext: { width: 50, height: 24 },
         });
+        console.log("Stamp image added successfully");
       } catch (error) {
-        console.debug("Failed to add stamp image:", error instanceof Error ? error.message : error);
+        console.error("Failed to add stamp image:", error instanceof Error ? error.message : error);
       }
+    } else {
+      console.warn("No stamp image found to add");
     }
 
     // Row 10: Title (moved down to accommodate images)
