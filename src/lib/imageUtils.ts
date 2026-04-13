@@ -12,7 +12,9 @@ type AdminImagePaths = Partial<Record<AdminImageType, string>>;
 
 const getAdminImageUrl = (path: string) => {
   const apiUrl = new URL(buildApiUrl());
-  return new URL(path, apiUrl.origin).toString();
+  const imageUrl = new URL(path, apiUrl.origin).toString();
+  console.log("Constructed image URL:", { path, apiOrigin: apiUrl.origin, fullUrl: imageUrl });
+  return imageUrl;
 };
 
 const listAdminImagePaths = async (): Promise<AdminImagePaths> => {
@@ -41,60 +43,43 @@ const listAdminImagePaths = async (): Promise<AdminImagePaths> => {
 };
 
 const imagePathToBase64 = async (filePath: string): Promise<string | undefined> => {
-  if (typeof document === "undefined") {
-    console.warn("Document is undefined, cannot convert image to base64");
-    return undefined;
-  }
-
   const imageUrl = getAdminImageUrl(filePath);
   console.log("Converting image to base64:", { filePath, imageUrl });
 
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.decoding = "async";
+  try {
+    // Try Fetch API approach first (works better with CORS)
+    const response = await fetch(imageUrl, {
+      headers: {
+        "X-Session-Token": localStorage.getItem("lab_session_token") || "",
+      },
+    });
 
-    img.onload = () => {
-      try {
-        const width = img.naturalWidth || img.width;
-        const height = img.naturalHeight || img.height;
+    if (!response.ok) {
+      console.error("Failed to fetch image:", { status: response.status, statusText: response.statusText });
+      return undefined;
+    }
 
-        console.log("Image loaded successfully:", { width, height });
+    const blob = await response.blob();
+    console.log("Image fetched as blob:", { size: blob.size, type: blob.type });
 
-        if (!width || !height) {
-          console.warn("Image dimensions invalid:", { width, height });
-          resolve(undefined);
-          return;
-        }
-
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          console.warn("Could not get canvas context");
-          resolve(undefined);
-          return;
-        }
-
-        ctx.drawImage(img, 0, 0, width, height);
-        const dataUrl = canvas.toDataURL("image/png");
-        console.log("Image converted to base64 data URL successfully");
+    // Convert blob to base64 data URL
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        console.log("Image converted to base64 data URL successfully:", { length: dataUrl.length });
         resolve(dataUrl);
-      } catch (error) {
-        console.error("Error converting image to base64:", error);
+      };
+      reader.onerror = (error) => {
+        console.error("Error reading blob as base64:", error);
         resolve(undefined);
-      }
-    };
-
-    img.onerror = (error) => {
-      console.error("Error loading image:", { filePath, imageUrl, error });
-      resolve(undefined);
-    };
-
-    img.src = imageUrl;
-  });
+      };
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.error("Error in imagePathToBase64:", error);
+    return undefined;
+  }
 };
 
 /**
