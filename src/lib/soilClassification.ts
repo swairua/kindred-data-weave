@@ -3,6 +3,9 @@ import type { CalculatedResults } from "@/context/TestDataContext";
 /**
  * USCS (Unified Soil Classification System) Classification
  * Based on grain size distribution and Atterberg limits
+ * 
+ * Core rule: Above A-line = Clay (C), Below = Silt (M), LL=50 splits Low (L) and High (H)
+ * A-Line equation: PI = 0.73(LL - 20)
  */
 
 export interface GrainSizeDistribution {
@@ -21,6 +24,17 @@ export interface ClassificationResults {
 }
 
 /**
+ * USCS description lookup matching Excel formula
+ */
+const uscsDescriptionMap: Record<string, string> = {
+  ML: "SILT OF LOW OF PLASTICITY",
+  MH: "SILT OF HIGH OF PLASTICITY",
+  "CL-ML": "SILTY CLAY OF LOW OF PLASTICITY",
+  CL: "CLAY OF LOW OF PLASTICITY",
+  CH: "CLAY OF HIGH OF PLASTICITY",
+};
+
+/**
  * Determine soil classification based on grain size and Atterberg limits
  */
 export const classifySoilUSCS = (
@@ -30,37 +44,29 @@ export const classifySoilUSCS = (
   const { gravel, sand, fines } = grainSize;
   const { liquidLimit, plasticLimit, plasticityIndex } = atterberg;
 
-  // Determine major classification
-  if (fines > 50) {
-    // Fine-grained soil
+  // ≥50% passing No. 200 → Fine-grained
+  if (fines >= 50) {
     return classifyFineGrained(liquidLimit, plasticityIndex);
   } else if (sand > gravel) {
-    // Sand-dominated
     return classifySand(sand, fines, liquidLimit, plasticityIndex);
   } else {
-    // Gravel-dominated
     return classifyGravel(gravel, fines, liquidLimit, plasticityIndex);
   }
 };
 
 const classifyFineGrained = (ll: number | undefined, pi: number | undefined): ClassificationResults => {
-  // Handle non-plastic soils (PI ≈ 0 or undefined)
   const isNonPlastic = pi === undefined || pi === 0 || pi < 0.5;
 
   if (isNonPlastic) {
     return {
       uscsGroup: "Non-plastic fines",
       uscsSymbol: "ML",
-      uscsDescription: "Non-plastic silt or fine sand",
+      uscsDescription: uscsDescriptionMap["ML"],
       aashtoGroup: "A-4",
       aashtoDescription: "Non-plastic silty soil",
       classification: "fine-grained",
     };
   }
-
-  // A-line: PI = 0.73(LL - 20)
-  const alineValue = ll !== undefined ? 0.73 * (ll - 20) : undefined;
-  const aboveLine = pi !== undefined && alineValue !== undefined && pi > alineValue;
 
   if (ll === undefined || pi === undefined) {
     return {
@@ -73,62 +79,75 @@ const classifyFineGrained = (ll: number | undefined, pi: number | undefined): Cl
     };
   }
 
+  // A-line: PI = 0.73(LL - 20)
+  const aLineValue = 0.73 * (ll - 20);
+  const aboveLine = pi > aLineValue;
+
   if (ll < 50) {
-    // Low compressibility
+    // Low plasticity
+    if (aboveLine && pi >= 4 && pi <= 7) {
+      // Hatched zone — dual symbol
+      return {
+        uscsGroup: "Inorganic",
+        uscsSymbol: "CL-ML",
+        uscsDescription: uscsDescriptionMap["CL-ML"],
+        aashtoGroup: "A-4",
+        aashtoDescription: "Silty clay soil",
+        classification: "fine-grained",
+      };
+    }
     if (aboveLine) {
       return {
         uscsGroup: "Inorganic",
         uscsSymbol: "CL",
-        uscsDescription: "Lean clay (low compressibility)",
+        uscsDescription: uscsDescriptionMap["CL"],
         aashtoGroup: "A-6",
         aashtoDescription: "Clayey soil",
         classification: "fine-grained",
       };
-    } else {
-      return {
-        uscsGroup: "Inorganic",
-        uscsSymbol: "ML",
-        uscsDescription: "Silt (low compressibility)",
-        aashtoGroup: "A-4 or A-5",
-        aashtoDescription: "Silty soil",
-        classification: "fine-grained",
-      };
     }
+    return {
+      uscsGroup: "Inorganic",
+      uscsSymbol: "ML",
+      uscsDescription: uscsDescriptionMap["ML"],
+      aashtoGroup: "A-4 or A-5",
+      aashtoDescription: "Silty soil",
+      classification: "fine-grained",
+    };
   } else {
-    // High compressibility
+    // High plasticity (LL ≥ 50)
     if (aboveLine) {
       return {
         uscsGroup: "Inorganic",
         uscsSymbol: "CH",
-        uscsDescription: "Fat clay (high compressibility)",
+        uscsDescription: uscsDescriptionMap["CH"],
         aashtoGroup: "A-7-6",
         aashtoDescription: "Highly plastic soil",
         classification: "fine-grained",
       };
-    } else {
-      return {
-        uscsGroup: "Inorganic",
-        uscsSymbol: "MH",
-        uscsDescription: "Elastic silt (high compressibility)",
-        aashtoGroup: "A-7-5",
-        aashtoDescription: "Elastic silty soil",
-        classification: "fine-grained",
-      };
     }
+    return {
+      uscsGroup: "Inorganic",
+      uscsSymbol: "MH",
+      uscsDescription: uscsDescriptionMap["MH"],
+      aashtoGroup: "A-7-5",
+      aashtoDescription: "Elastic silty soil",
+      classification: "fine-grained",
+    };
   }
 };
 
+/**
+ * Coarse-grained: Sand-dominated
+ * For fines > 12%, use A-line position to determine clayey vs silty
+ */
 const classifySand = (
   sand: number,
   fines: number,
   ll: number | undefined,
   pi: number | undefined,
 ): ClassificationResults => {
-  const wellGraded = false; // Would need Cu and Cc parameters
-  const silty = fines > 12 && fines <= 50;
-  const clayey = !silty && fines > 12;
-
-  if (!silty && !clayey) {
+  if (fines <= 12) {
     return {
       uscsGroup: "Clean sand",
       uscsSymbol: "SP/SW",
@@ -139,38 +158,40 @@ const classifySand = (
     };
   }
 
-  if (silty) {
-    const aboveLine = ll !== undefined && pi !== undefined && pi > 0.73 * (ll - 20);
+  // Fines > 12% — use A-line to determine clayey vs silty
+  const aboveLine = ll !== undefined && pi !== undefined && pi > 0.73 * (ll - 20);
+
+  if (aboveLine) {
     return {
-      uscsGroup: "Silty sand",
-      uscsSymbol: aboveLine ? "SC" : "SM",
-      uscsDescription: aboveLine ? "Silty sand with clay" : "Silty sand",
-      aashtoGroup: "A-2-4 or A-2-5",
-      aashtoDescription: "Sandy silt",
+      uscsGroup: "Clayey sand",
+      uscsSymbol: "SC",
+      uscsDescription: "Clayey sand",
+      aashtoGroup: "A-2-6 or A-2-7",
+      aashtoDescription: "Sandy clay",
       classification: "coarse-grained",
     };
   }
-
   return {
-    uscsGroup: "Clayey sand",
-    uscsSymbol: "SC",
-    uscsDescription: "Clayey sand",
-    aashtoGroup: "A-2-6 or A-2-7",
-    aashtoDescription: "Sandy clay",
+    uscsGroup: "Silty sand",
+    uscsSymbol: "SM",
+    uscsDescription: "Silty sand",
+    aashtoGroup: "A-2-4 or A-2-5",
+    aashtoDescription: "Sandy silt",
     classification: "coarse-grained",
   };
 };
 
+/**
+ * Coarse-grained: Gravel-dominated
+ * For fines > 12%, use A-line position to determine clayey vs silty
+ */
 const classifyGravel = (
   gravel: number,
   fines: number,
   ll: number | undefined,
   pi: number | undefined,
 ): ClassificationResults => {
-  const silty = fines > 12 && fines <= 50;
-  const clayey = !silty && fines > 12;
-
-  if (!silty && !clayey) {
+  if (fines <= 12) {
     return {
       uscsGroup: "Clean gravel",
       uscsSymbol: "GP/GW",
@@ -181,30 +202,32 @@ const classifyGravel = (
     };
   }
 
-  if (silty) {
+  // Fines > 12% — use A-line
+  const aboveLine = ll !== undefined && pi !== undefined && pi > 0.73 * (ll - 20);
+
+  if (aboveLine) {
     return {
-      uscsGroup: "Silty gravel",
-      uscsSymbol: "GM",
-      uscsDescription: "Silty gravel",
-      aashtoGroup: "A-1 or A-2-5",
-      aashtoDescription: "Gravelly silt",
+      uscsGroup: "Clayey gravel",
+      uscsSymbol: "GC",
+      uscsDescription: "Clayey gravel",
+      aashtoGroup: "A-2-6",
+      aashtoDescription: "Gravelly clay",
       classification: "coarse-grained",
     };
   }
-
   return {
-    uscsGroup: "Clayey gravel",
-    uscsSymbol: "GC",
-    uscsDescription: "Clayey gravel",
-    aashtoGroup: "A-2-6",
-    aashtoDescription: "Gravelly clay",
+    uscsGroup: "Silty gravel",
+    uscsSymbol: "GM",
+    uscsDescription: "Silty gravel",
+    aashtoGroup: "A-1 or A-2-5",
+    aashtoDescription: "Gravelly silt",
     classification: "coarse-grained",
   };
 };
 
 /**
  * AASHTO Classification
- * Simplified AASHTO classification based on grain size and Atterberg limits
+ * With proper A-7 subgrouping: PI ≤ LL-30 → A-7-5; PI > LL-30 → A-7-6
  */
 export const classifySoilAASHTO = (
   grainSize: GrainSizeDistribution,
@@ -213,25 +236,28 @@ export const classifySoilAASHTO = (
   const { fines } = grainSize;
   const { liquidLimit = 0, plasticityIndex = 0 } = atterberg;
 
+  // Granular materials (≤35% passing No. 200)
   if (fines <= 35) {
-    return plasticityIndex <= 6 ? "A-1" : "A-3";
-  } else if (fines <= 35) {
-    return plasticityIndex <= 10 ? "A-2-4" : "A-2-5";
-  } else if (fines > 35 && fines < 75) {
-    if (liquidLimit < 40) {
-      return plasticityIndex <= 10 ? "A-4" : "A-5";
-    } else {
-      return plasticityIndex <= 16 ? "A-6" : "A-7-5";
+    if (plasticityIndex <= 6) {
+      return liquidLimit <= 40 ? "A-1-a" : "A-1-b";
     }
-  } else {
-    if (liquidLimit < 40) {
-      return "A-4";
-    } else if (plasticityIndex <= 16) {
-      return "A-7-5";
-    } else {
-      return "A-7-6";
+    if (plasticityIndex <= 10) {
+      return liquidLimit <= 40 ? "A-2-4" : "A-2-5";
     }
+    return liquidLimit <= 40 ? "A-2-6" : "A-2-7";
   }
+
+  // Silt-clay materials (>35% passing No. 200)
+  if (liquidLimit <= 40) {
+    return plasticityIndex <= 10 ? "A-4" : "A-6";
+  }
+
+  if (plasticityIndex <= 10) {
+    return "A-5";
+  }
+
+  // A-7 subgroup: PI ≤ LL - 30 → A-7-5; PI > LL - 30 → A-7-6
+  return plasticityIndex <= (liquidLimit - 30) ? "A-7-5" : "A-7-6";
 };
 
 /**
@@ -241,72 +267,56 @@ export const calculatePlasticityChart = (
   liquidLimit: number | undefined,
   plasticityIndex: number | undefined,
 ): { classification: string; characteristics: string[]; nonPlastic: boolean } | null => {
-  // Handle missing data
-  if (liquidLimit === undefined) {
-    return null;
-  }
+  if (liquidLimit === undefined) return null;
 
-  const characteristics: string[] = [];
   const isNonPlastic = plasticityIndex === undefined || plasticityIndex === 0 || plasticityIndex < 0.5;
 
-  // Handle non-plastic soils
   if (isNonPlastic) {
-    characteristics.push("Non-plastic material");
-    if (liquidLimit < 30) {
-      characteristics.push("Low liquid limit");
-    } else if (liquidLimit < 50) {
-      characteristics.push("Intermediate liquid limit");
-    } else {
-      characteristics.push("High liquid limit");
-    }
+    const characteristics: string[] = ["Non-plastic material"];
+    if (liquidLimit < 30) characteristics.push("Low liquid limit");
+    else if (liquidLimit < 50) characteristics.push("Intermediate liquid limit");
+    else characteristics.push("High liquid limit");
     return {
-      classification: "Non-plastic silt or fine-grained soil (ML)",
+      classification: uscsDescriptionMap["ML"],
       characteristics,
       nonPlastic: true,
     };
   }
 
-  const characteristics_list: string[] = [];
+  const characteristics: string[] = [];
 
   // LL thresholds
-  if (liquidLimit < 30) {
-    characteristics_list.push("Low liquid limit");
-  } else if (liquidLimit < 50) {
-    characteristics_list.push("Intermediate liquid limit");
-  } else {
-    characteristics_list.push("High liquid limit");
-  }
+  if (liquidLimit < 30) characteristics.push("Low liquid limit");
+  else if (liquidLimit < 50) characteristics.push("Intermediate liquid limit");
+  else characteristics.push("High liquid limit");
 
   // PI thresholds
-  if (plasticityIndex < 5) {
-    characteristics_list.push("Low plasticity");
-  } else if (plasticityIndex < 15) {
-    characteristics_list.push("Medium plasticity");
-  } else {
-    characteristics_list.push("High plasticity");
-  }
+  if (plasticityIndex < 5) characteristics.push("Low plasticity");
+  else if (plasticityIndex < 15) characteristics.push("Medium plasticity");
+  else characteristics.push("High plasticity");
 
   // A-line position
   const aLineValue = 0.73 * (liquidLimit - 20);
   const aboveLine = plasticityIndex > aLineValue;
 
-  let classification = "Unknown";
+  let symbol: string;
   if (liquidLimit < 50) {
-    classification = aboveLine ? "Lean Clay (CL)" : "Silt (ML)";
+    if (aboveLine && plasticityIndex >= 4 && plasticityIndex <= 7) symbol = "CL-ML";
+    else if (aboveLine) symbol = "CL";
+    else symbol = "ML";
   } else {
-    classification = aboveLine ? "Fat Clay (CH)" : "Elastic Silt (MH)";
+    symbol = aboveLine ? "CH" : "MH";
   }
 
   return {
-    classification,
-    characteristics: characteristics_list,
+    classification: uscsDescriptionMap[symbol] || symbol,
+    characteristics,
     nonPlastic: false,
   };
 };
 
 /**
  * Validate soil classification requirements
- * Note: Non-plastic soils (PI = 0) are valid and don't require plastic limit
  */
 export const validateClassificationData = (
   grainSize: GrainSizeDistribution | null,
@@ -334,21 +344,15 @@ export const validateClassificationData = (
     missing.push("Liquid Limit (or indication of non-plastic material)");
   }
 
-  // For non-plastic soils, plastic limit is not required
   if (!isNonPlastic && !atterberg.plasticLimit) {
     missing.push("Plastic Limit");
   }
 
-  // Warn if soil appears to be non-plastic but has both LL and PL
   if (isNonPlastic && atterberg.liquidLimit && atterberg.plasticLimit) {
     warnings.push("Soil is classified as non-plastic (PI ≈ 0)");
   }
 
-  return {
-    valid: missing.length === 0,
-    missingData: missing,
-    warnings,
-  };
+  return { valid: missing.length === 0, missingData: missing, warnings };
 };
 
 /**
@@ -358,13 +362,8 @@ export const calculateBehaviorIndex = (
   atterberg: CalculatedResults,
 ): { index: number; behavior: string } | null => {
   const { liquidLimit, plasticityIndex } = atterberg;
+  if (!liquidLimit || !plasticityIndex) return null;
 
-  if (!liquidLimit || !plasticityIndex) {
-    return null;
-  }
-
-  // Behavior Index = (LL - 20)(PI - 0)/0.73
-  // This is essentially the plasticity index relative to A-line
   const index = (liquidLimit - 20) * plasticityIndex / 0.73;
 
   let behavior = "";
