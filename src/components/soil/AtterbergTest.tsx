@@ -29,8 +29,11 @@ import {
   type AtterbergRecord,
   type AtterbergTest,
   type AtterbergTestType,
+  type LiquidLimitTest,
   type LiquidLimitTrial,
+  type PlasticLimitTest,
   type PlasticLimitTrial,
+  type ShrinkageLimitTest,
   type ShrinkageLimitTrial,
 } from "@/context/TestDataContext";
 import { generateTestCSV } from "@/lib/csvExporter";
@@ -225,20 +228,40 @@ const createDefaultRecord = (index: number): AtterbergRecord => {
       {
         id: makeId("trial"),
         trialNo: "1",
-        penetration: "20",
+        penetration: "15",
         containerNo: "101",
-        containerWetMass: "25.4",
-        containerDryMass: "18.2",
+        containerWetMass: "23.8",
+        containerDryMass: "17.6",
         containerMass: "5.0",
         moisture: "",
       },
       {
         id: makeId("trial"),
         trialNo: "2",
-        penetration: "28",
+        penetration: "18",
         containerNo: "102",
-        containerWetMass: "28.6",
-        containerDryMass: "19.5",
+        containerWetMass: "25.1",
+        containerDryMass: "18.0",
+        containerMass: "5.1",
+        moisture: "",
+      },
+      {
+        id: makeId("trial"),
+        trialNo: "3",
+        penetration: "22",
+        containerNo: "103",
+        containerWetMass: "27.3",
+        containerDryMass: "18.8",
+        containerMass: "5.0",
+        moisture: "",
+      },
+      {
+        id: makeId("trial"),
+        trialNo: "4",
+        penetration: "27",
+        containerNo: "104",
+        containerWetMass: "29.8",
+        containerDryMass: "19.6",
         containerMass: "5.2",
         moisture: "",
       },
@@ -515,7 +538,7 @@ const persistAtterbergProjectToApi = async ({
     try {
       console.log(`[Atterberg Save] Step 5: Sending POST request to create test_results...`);
       const createResponse = await retryWithBackoff(
-        () => createApiRecord("test_results", resultPayload)
+        () => createApiRecord<{ id: number }>("test_results", resultPayload)
       );
       console.log(`[Atterberg Save] Step 5 complete: POST request successful`);
       console.log(`[Atterberg Save] Successfully created test_results record ID ${createResponse.data?.id}`);
