@@ -1,7 +1,7 @@
 import { ReactNode, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, CheckCircle2, ChevronDown, ChevronRight, FileDown, FileSpreadsheet, FlaskConical, Loader2, Save, Sheet, Trash2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, ChevronDown, ChevronRight, FileDown, FlaskConical, Loader2, Save, Sheet, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 type SmokeCheckItemStatus = "idle" | "running" | "success" | "error";
@@ -21,7 +21,6 @@ interface TestSectionProps {
   onFinalSave?: () => void | Promise<void>;
   onClear?: () => void;
   onExportPDF?: () => boolean | void | Promise<boolean | void>;
-  onExportCSV?: () => boolean | void;
   onExportXLSX?: () => boolean | void | Promise<boolean | void>;
   onExportSmokeCheck?: () => boolean | void | Promise<boolean | void>;
   exportSmokeCheckDisabled?: boolean;
@@ -31,7 +30,7 @@ interface TestSectionProps {
   lastSaveError?: string | null;
 }
 
-const TestSection = ({ title, children, onSave, onFinalSave, onClear, onExportPDF, onExportCSV, onExportXLSX, onExportSmokeCheck, exportSmokeCheckDisabled, smokeCheckStatus, saveStatus = "idle", lastSavedAt, lastSaveError }: TestSectionProps) => {
+const TestSection = ({ title, children, onSave, onFinalSave, onClear, onExportPDF, onExportXLSX, onExportSmokeCheck, exportSmokeCheckDisabled, smokeCheckStatus, saveStatus = "idle", lastSavedAt, lastSaveError }: TestSectionProps) => {
   const [open, setOpen] = useState(false);
 
   return (
@@ -68,18 +67,6 @@ const TestSection = ({ title, children, onSave, onFinalSave, onClear, onExportPD
                 }}
               >
                 <Sheet className="h-3.5 w-3.5 mr-1" /> Excel
-              </Button>
-            )}
-            {onExportCSV && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  const exported = onExportCSV();
-                  if (exported !== false) toast.success(`${title} CSV downloaded`);
-                }}
-              >
-                <FileSpreadsheet className="h-3.5 w-3.5 mr-1" /> CSV
               </Button>
             )}
             {onExportPDF && (
