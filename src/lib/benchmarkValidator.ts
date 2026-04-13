@@ -252,13 +252,20 @@ export const validateAgainstExcel = async (file: File | Buffer): Promise<Benchma
     // Parse Excel file
     const workbook = new ExcelJS.Workbook();
 
-    if (Buffer.isBuffer(file)) {
-      // Handle Node.js Buffer - use the buffer directly with xlsx
-      await workbook.xlsx.load(file);
-    } else {
-      // Handle File object
-      const arrayBuffer = await file.arrayBuffer();
-      await workbook.xlsx.load(arrayBuffer);
+    try {
+      if (Buffer.isBuffer(file)) {
+        // Handle Node.js Buffer - use the buffer directly with xlsx
+        await workbook.xlsx.load(file);
+      } else {
+        // Handle File object
+        const arrayBuffer = await file.arrayBuffer();
+        await workbook.xlsx.load(arrayBuffer);
+      }
+    } catch (loadError) {
+      // If normal load fails, try with error handling enabled
+      throw new Error(
+        `Failed to load Excel file: ${loadError instanceof Error ? loadError.message : String(loadError)}`
+      );
     }
 
     const ws = workbook.worksheets[0];
@@ -266,9 +273,21 @@ export const validateAgainstExcel = async (file: File | Buffer): Promise<Benchma
       throw new Error("No worksheets found in Excel file");
     }
 
-    // Cache worksheet to avoid undefined issues
-    ws.actualPageSetup = ws.pageSetup || {};
-    ws.actualMargins = ws.margins || {};
+    // Initialize worksheet properties to avoid undefined access errors
+    try {
+      if (!ws.pageSetup) {
+        ws.pageSetup = {};
+      }
+      if (!ws.margins) {
+        ws.margins = {};
+      }
+      if (!ws.printArea) {
+        ws.printArea = null;
+      }
+    } catch (e) {
+      // Some worksheets might not allow property initialization
+      console.warn("Warning: Could not initialize worksheet properties:", e);
+    }
 
     // Extract Liquid Limit
     let llBenchmark = { trials: [], expectedValue: null, notes: ["Error extracting liquid limit"] };
