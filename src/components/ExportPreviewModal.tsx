@@ -196,5 +196,3 @@ export const ExportPreviewModal: React.FC<ExportPreviewModalProps> = ({
     </Dialog>
   );
 };
-
-export { ExportPreviewModal };
