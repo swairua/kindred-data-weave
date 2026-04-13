@@ -47,21 +47,52 @@ const getULineData = (minLL: number, maxLL: number) => {
 };
 
 /**
+ * USCS description mapping for fine-grained soils
+ */
+const uscsDescriptionMap: Record<string, string> = {
+  ML: "Silt of Low Plasticity",
+  MH: "Silt of High Plasticity",
+  "CL-ML": "Silty Clay of Low Plasticity",
+  CL: "Clay of Low Plasticity",
+  CH: "Clay of High Plasticity",
+};
+
+/**
+ * Get USCS classification code based on LL and PI
+ */
+const getUSCSCode = (ll: number, pi: number): string => {
+  if (pi < 0 || pi === 0) return "ML"; // Non-plastic
+
+  const aLineValue = 0.73 * (ll - 20);
+  const aboveLine = pi > aLineValue;
+
+  if (ll < 50) {
+    // Low plasticity
+    if (aboveLine && pi >= 4 && pi <= 7) {
+      return "CL-ML"; // Hatched zone
+    }
+    if (aboveLine) {
+      return "CL";
+    }
+    return "ML";
+  } else {
+    // High plasticity
+    return aboveLine ? "CH" : "MH";
+  }
+};
+
+/**
  * Classify soil based on LL and PI using ASTM D2487 / BS 1377
+ * Returns full descriptive label with code
  */
 const getSoilClassification = (ll: number | null, pi: number | null): string => {
   if (ll === null || pi === null) return "No data";
   if (pi < 0) return "Non-plastic";
   if (pi === 0) return "Non-plastic";
-  if (ll < 50) {
-    if (pi < 4) return "Silt (ML)";
-    if (pi <= 0.73 * (ll - 20)) return "Silt (ML)";
-    return "Clay (CL)";
-  } else {
-    if (pi < 4) return "Silt (MH)";
-    if (pi <= 0.73 * (ll - 20)) return "Silt (MH)";
-    return "Clay (CH)";
-  }
+
+  const code = getUSCSCode(ll, pi);
+  const description = uscsDescriptionMap[code] || code;
+  return `${description} (${code})`;
 };
 
 const PlasticityChart: React.FC<PlasticityChartProps> = ({ liquidLimit, plasticityIndex, samples = [] }) => {
