@@ -15,6 +15,9 @@ interface PDFData {
     headers: string[];
     rows: string[][];
   }[];
+  chartImages?: { [key: string]: string }; // Base64 encoded chart images
+  logoImage?: string; // Base64 encoded logo
+  stampImage?: string; // Base64 encoded stamp
 }
 
 const COLORS = {
@@ -204,6 +207,47 @@ export const generateTestPDF = (data: PDFData) => {
       });
 
       y = (doc as any).lastAutoTable.finalY + 10;
+    }
+  }
+
+  // Chart images section
+  if (data.chartImages && Object.keys(data.chartImages).length > 0) {
+    // Add new page if not enough space
+    if (y > 200) {
+      doc.addPage();
+      y = addProfessionalHeader(doc, data);
+    }
+
+    doc.setDrawColor(...COLORS.border);
+    doc.line(14, y, pageWidth - 14, y);
+    y += 8;
+
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...COLORS.primary);
+    doc.text("Charts & Graphs", 14, y);
+    y += 10;
+
+    for (const [chartName, chartBase64] of Object.entries(data.chartImages)) {
+      if (chartBase64) {
+        try {
+          // Check if we need a new page for this chart
+          if (y > 180) {
+            doc.addPage();
+            y = addProfessionalHeader(doc, data);
+          }
+
+          // Convert base64 to image data if needed
+          const imageData = chartBase64.startsWith("data:") ? chartBase64 : `data:image/png;base64,${chartBase64}`;
+          const imgWidth = pageWidth - 28; // Leave margins
+          const imgHeight = (imgWidth * 3) / 4; // 4:3 aspect ratio
+
+          doc.addImage(imageData, "PNG", 14, y, imgWidth, imgHeight);
+          y += imgHeight + 8;
+        } catch (error) {
+          console.error(`Failed to add chart image (${chartName}):`, error);
+        }
+      }
     }
   }
 

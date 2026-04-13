@@ -10,6 +10,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Line } from "recharts";
 import { Label } from "@/components/ui/label";
 import { useTestReport } from "@/hooks/useTestReport";
+import { captureChartAsBase64 } from "@/lib/chartCapture";
 
 interface Row { normalStress: string; shearStress: string }
 
@@ -62,8 +63,16 @@ const ShearTest = () => {
   ], [envelope]);
   useTestReport("shear", filledShear, shearResults);
 
-  const exportPDF = () => {
-    generateTestPDF({ title: "Shear Test", ...project, tables: [{ headers: ["Normal Stress (kPa)", "Shear Stress (kPa)"], rows: rows.map(r => [r.normalStress || "—", r.shearStress || "—"]) }] });
+  const exportPDF = async () => {
+    let chartImages = {};
+    if (chartData.length >= 2) {
+      const chartBase64 = await captureChartAsBase64("shear-chart");
+      if (chartBase64) {
+        chartImages = { "Mohr-Coulomb Failure Envelope": chartBase64 };
+      }
+    }
+
+    generateTestPDF({ title: "Shear Test", ...project, tables: [{ headers: ["Normal Stress (kPa)", "Shear Stress (kPa)"], rows: rows.map(r => [r.normalStress || "—", r.shearStress || "—"]) }], chartImages });
   };
 
   return (
@@ -87,7 +96,7 @@ const ShearTest = () => {
       {chartData.length >= 2 && (
         <div className="mt-6">
           <Label className="text-xs text-muted-foreground mb-2 block">Mohr-Coulomb Failure Envelope</Label>
-          <ChartContainer config={chartConfig} className="h-[300px] w-full">
+          <ChartContainer id="shear-chart" config={chartConfig} className="h-[300px] w-full">
             <ScatterChart margin={{ top: 10, right: 20, bottom: 20, left: 10 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="normalStress" type="number" name="Normal Stress" domain={[0, "dataMax + 20"]} label={{ value: "Normal Stress (kPa)", position: "insideBottom", offset: -10, className: "fill-muted-foreground text-xs" }} />

@@ -11,6 +11,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Label } from "@/components/ui/label";
 import { useTestReport } from "@/hooks/useTestReport";
+import { captureChartAsBase64 } from "@/lib/chartCapture";
 
 interface Row { cubeId: string; load: string; width: string; height: string }
 
@@ -47,8 +48,16 @@ const CompressiveStrengthTest = () => {
   ], [avgStrength, strengths.length]);
   useTestReport("compressive", strengths.length, compResults);
 
-  const exportPDF = () => {
-    generateTestPDF({ title: "Compressive Strength (Cube Test)", ...project, tables: [{ headers: ["Cube ID", "Load (kN)", "Width (mm)", "Height (mm)", "Strength (MPa)"], rows: rows.map(r => [r.cubeId, r.load || "—", r.width, r.height, getStrength(r) || "—"]) }] });
+  const exportPDF = async () => {
+    let chartImages = {};
+    if (chartData.length >= 1) {
+      const chartBase64 = await captureChartAsBase64("compressive-chart");
+      if (chartBase64) {
+        chartImages = { "Cube Compressive Strengths": chartBase64 };
+      }
+    }
+
+    generateTestPDF({ title: "Compressive Strength (Cube Test)", ...project, tables: [{ headers: ["Cube ID", "Load (kN)", "Width (mm)", "Height (mm)", "Strength (MPa)"], rows: rows.map(r => [r.cubeId, r.load || "—", r.width, r.height, getStrength(r) || "—"]) }], chartImages });
   };
 
   return (
@@ -75,7 +84,7 @@ const CompressiveStrengthTest = () => {
       {chartData.length >= 1 && (
         <div className="mt-6">
           <Label className="text-xs text-muted-foreground mb-2 block">Cube Compressive Strengths</Label>
-          <ChartContainer config={chartConfig} className="h-[300px] w-full">
+          <ChartContainer id="compressive-chart" config={chartConfig} className="h-[300px] w-full">
             <BarChart data={chartData} margin={{ top: 10, right: 20, bottom: 20, left: 10 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" label={{ value: "Cube ID", position: "insideBottom", offset: -10, className: "fill-muted-foreground text-xs" }} />

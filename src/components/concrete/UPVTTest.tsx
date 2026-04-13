@@ -11,6 +11,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Label } from "@/components/ui/label";
 import { useTestReport } from "@/hooks/useTestReport";
+import { captureChartAsBase64 } from "@/lib/chartCapture";
 
 interface Row { id: string; pathLength: string; transitTime: string }
 
@@ -58,8 +59,20 @@ const UPVTTest = () => {
 
   const tableData = { headers: ["ID", "Path Length (mm)", "Transit Time (µs)", "Velocity (km/s)", "Quality"], rows: rows.map(r => { const v = getVelocity(r); return [r.id, r.pathLength || "—", r.transitTime || "—", v || "—", v ? getQuality(parseFloat(v)) : "—"]; }) };
 
+  const exportPDF = async () => {
+    let chartImages = {};
+    if (chartData.length >= 1) {
+      const chartBase64 = await captureChartAsBase64("upvt-chart");
+      if (chartBase64) {
+        chartImages = { "Pulse Velocity Comparison": chartBase64 };
+      }
+    }
+
+    generateTestPDF({ title: "UPVT", ...project, tables: [tableData], chartImages });
+  };
+
   return (
-    <TestSection title="Ultrasonic Pulse Velocity Test (UPVT)" onSave={() => {}} onClear={() => setRows([{ id: "U1", pathLength: "", transitTime: "" }])} onExportPDF={() => generateTestPDF({ title: "UPVT", ...project, tables: [tableData] })}>
+    <TestSection title="Ultrasonic Pulse Velocity Test (UPVT)" onSave={() => {}} onClear={() => setRows([{ id: "U1", pathLength: "", transitTime: "" }])} onExportPDF={exportPDF}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">ID</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Path Length (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Transit Time (µs)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Velocity (km/s)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Quality</th><th className="w-10"></th></tr></thead>
@@ -85,7 +98,7 @@ const UPVTTest = () => {
       {chartData.length >= 1 && (
         <div className="mt-6">
           <Label className="text-xs text-muted-foreground mb-2 block">Pulse Velocity Comparison</Label>
-          <ChartContainer config={chartConfig} className="h-[300px] w-full">
+          <ChartContainer id="upvt-chart" config={chartConfig} className="h-[300px] w-full">
             <BarChart data={chartData} margin={{ top: 10, right: 20, bottom: 20, left: 10 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" label={{ value: "Sample", position: "insideBottom", offset: -10, className: "fill-muted-foreground text-xs" }} />

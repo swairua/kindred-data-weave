@@ -11,6 +11,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Label } from "@/components/ui/label";
 import { useTestReport } from "@/hooks/useTestReport";
+import { captureChartAsBase64 } from "@/lib/chartCapture";
 
 interface Row { coreId: string; diameter: string; length: string; load: string }
 
@@ -65,8 +66,20 @@ const CoringTest = () => {
 
   const tableData = { headers: ["Core ID", "Diameter (mm)", "Length (mm)", "L/D", "Load (kN)", "Core Strength (MPa)", "Corrected (MPa)"], rows: rows.map(r => [r.coreId, r.diameter, r.length || "—", getLDRatio(r) || "—", r.load || "—", getCoreStrength(r) || "—", getCorrectedStrength(r) || "—"]) };
 
+  const exportPDF = async () => {
+    let chartImages = {};
+    if (chartData.length >= 1) {
+      const chartBase64 = await captureChartAsBase64("coring-chart");
+      if (chartBase64) {
+        chartImages = { "Corrected Core Strengths": chartBase64 };
+      }
+    }
+
+    generateTestPDF({ title: "Coring Test", ...project, tables: [tableData], chartImages });
+  };
+
   return (
-    <TestSection title="Coring Test" onSave={() => {}} onClear={() => setRows([{ coreId: "CR1", diameter: "75", length: "", load: "" }])} onExportPDF={() => generateTestPDF({ title: "Coring Test", ...project, tables: [tableData] })}>
+    <TestSection title="Coring Test" onSave={() => {}} onClear={() => setRows([{ coreId: "CR1", diameter: "75", length: "", load: "" }])} onExportPDF={exportPDF}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Core ID</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Dia (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Length (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">L/D</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Load (kN)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Strength</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Corrected</th><th className="w-10"></th></tr></thead>
@@ -91,7 +104,7 @@ const CoringTest = () => {
       {chartData.length >= 1 && (
         <div className="mt-6">
           <Label className="text-xs text-muted-foreground mb-2 block">Corrected Core Strengths</Label>
-          <ChartContainer config={chartConfig} className="h-[300px] w-full">
+          <ChartContainer id="coring-chart" config={chartConfig} className="h-[300px] w-full">
             <BarChart data={chartData} margin={{ top: 10, right: 20, bottom: 20, left: 10 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" label={{ value: "Core ID", position: "insideBottom", offset: -10, className: "fill-muted-foreground text-xs" }} />
