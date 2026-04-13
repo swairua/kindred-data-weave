@@ -375,6 +375,24 @@ function drawRecordPage(
 
   y += 3;
 
+  // ── Record notes (if present) ──
+  if (record.note && record.note.trim()) {
+    doc.setFillColor(...COLORS.headerBg);
+    doc.roundedRect(margin, y, contentW, 8, 1, 1, "F");
+    doc.setFontSize(7.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...COLORS.primary);
+    doc.text("Notes", margin + 2, y + 5);
+    y += 9;
+
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...COLORS.dark);
+    const splitNote = doc.splitTextToSize(record.note, contentW - 4);
+    doc.text(splitNote, margin + 2, y);
+    y += Math.max(splitNote.length * 3, 8) + 3;
+  }
+
   // ── Find tests ──
   const llTest = record.tests.find((t) => t.type === "liquidLimit");
   const plTest = record.tests.find((t) => t.type === "plasticLimit");
@@ -384,15 +402,7 @@ function drawRecordPage(
   const plTrials = (plTest?.type === "plasticLimit" ? plTest.trials : []) as PlasticLimitTrial[];
   const slTrials = (slTest?.type === "shrinkageLimit" ? slTest.trials : []) as ShrinkageLimitTrial[];
 
-  // ── Data table ──
-  const maxLL = Math.min(llTrials.length, 5);
-  const maxPL = Math.min(plTrials.length, 2);
-
-  const colHeaders = [""];
-  for (let i = 0; i < maxLL; i++) colHeaders.push(`LL ${i + 1}`);
-  for (let i = 0; i < maxPL; i++) colHeaders.push(`PL ${i + 1}`);
-  while (colHeaders.length < 8) colHeaders.push("");
-
+  // ── Data table - handle unlimited trials with pagination ──
   const dataLabels = [
     "Container No",
     "Penetration (mm)",
@@ -404,87 +414,149 @@ function drawRecordPage(
     "Moisture Content (%)",
   ];
 
-  const dataRows: string[][] = dataLabels.map((label, i) => {
-    const row = [label];
+  const trialsPerTable = 6; // Trials to show per table
 
-    for (let t = 0; t < maxLL; t++) {
-      const trial = llTrials[t];
-      const wet = num(trial.containerWetMass);
-      const dry = num(trial.containerDryMass);
-      const cont = num(trial.containerMass);
-      switch (i) {
-        case 0: row.push(trial.containerNo || "-"); break;
-        case 1: row.push(fmt(num(trial.penetration))); break;
-        case 2: row.push(fmt(wet)); break;
-        case 3: row.push(fmt(dry)); break;
-        case 4: row.push(fmt(cont)); break;
-        case 5: row.push(wet !== null && dry !== null ? fmt(round2(wet - dry)) : "-"); break;
-        case 6: row.push(dry !== null && cont !== null ? fmt(round2(dry - cont)) : "-"); break;
-        case 7: {
-          const mc = calculateMoistureFromMass(trial.containerWetMass, trial.containerDryMass, trial.containerMass);
-          row.push(mc ? String(round2(Number(mc))) : "-");
-          break;
-        }
-      }
+  // Create tables for LL trials
+  let tableCount = 0;
+  for (let startIdx = 0; startIdx < llTrials.length; startIdx += trialsPerTable) {
+    const endIdx = Math.min(startIdx + trialsPerTable, llTrials.length);
+    const trialsInThisTable = llTrials.slice(startIdx, endIdx);
+
+    // Check if we need a page break
+    if (tableCount > 0 && y > ph - 80) {
+      doc.addPage();
+      y = 20;
     }
 
-    for (let t = 0; t < maxPL; t++) {
-      const trial = plTrials[t];
-      const wet = num(trial.containerWetMass);
-      const dry = num(trial.containerDryMass);
-      const cont = num(trial.containerMass);
-      switch (i) {
-        case 0: row.push(trial.containerNo || "-"); break;
-        case 1: row.push("-"); break;
-        case 2: row.push(fmt(wet)); break;
-        case 3: row.push(fmt(dry)); break;
-        case 4: row.push(fmt(cont)); break;
-        case 5: row.push(wet !== null && dry !== null ? fmt(round2(wet - dry)) : "-"); break;
-        case 6: row.push(dry !== null && cont !== null ? fmt(round2(dry - cont)) : "-"); break;
-        case 7: {
-          const mc = calculateMoistureFromMass(trial.containerWetMass, trial.containerDryMass, trial.containerMass);
-          row.push(mc ? String(round2(Number(mc))) : "-");
-          break;
+    // Table header
+    const colHeaders = [""];
+    for (let i = 0; i < trialsInThisTable.length; i++) colHeaders.push(`LL ${startIdx + i + 1}`);
+
+    const dataRows: string[][] = dataLabels.map((label, i) => {
+      const row = [label];
+      for (const trial of trialsInThisTable) {
+        const wet = num(trial.containerWetMass);
+        const dry = num(trial.containerDryMass);
+        const cont = num(trial.containerMass);
+        switch (i) {
+          case 0: row.push(trial.containerNo || "-"); break;
+          case 1: row.push(fmt(num(trial.penetration))); break;
+          case 2: row.push(fmt(wet)); break;
+          case 3: row.push(fmt(dry)); break;
+          case 4: row.push(fmt(cont)); break;
+          case 5: row.push(wet !== null && dry !== null ? fmt(round2(wet - dry)) : "-"); break;
+          case 6: row.push(dry !== null && cont !== null ? fmt(round2(dry - cont)) : "-"); break;
+          case 7: {
+            const mc = calculateMoistureFromMass(trial.containerWetMass, trial.containerDryMass, trial.containerMass);
+            row.push(mc ? String(round2(Number(mc))) : "-");
+            break;
+          }
         }
       }
+      return row;
+    });
+
+    autoTable(doc, {
+      startY: y,
+      head: [colHeaders],
+      body: dataRows,
+      theme: "grid",
+      headStyles: {
+        fillColor: COLORS.headerBg,
+        textColor: COLORS.dark,
+        fontStyle: "bold",
+        fontSize: 6.5,
+        cellPadding: 1.5,
+        halign: "center",
+      },
+      bodyStyles: { fontSize: 7, cellPadding: 1.5, halign: "center" },
+      columnStyles: {
+        0: { cellWidth: 36, halign: "left", fontStyle: "bold", fontSize: 7 },
+      },
+      alternateRowStyles: { fillColor: COLORS.lightBg },
+      margin: { left: margin, right: margin },
+      styles: { overflow: "linebreak" as const, lineColor: COLORS.border, lineWidth: 0.3 },
+      didParseCell: (data: any) => {
+        if (data.section === "body" && data.row.index === 7) {
+          data.cell.styles.fontStyle = "bold";
+          data.cell.styles.fillColor = [235, 242, 250];
+        }
+      },
+    });
+
+    y = (doc as any).lastAutoTable.finalY + 2;
+    tableCount++;
+  }
+
+  // Create tables for PL trials
+  for (let startIdx = 0; startIdx < plTrials.length; startIdx += trialsPerTable) {
+    const endIdx = Math.min(startIdx + trialsPerTable, plTrials.length);
+    const trialsInThisTable = plTrials.slice(startIdx, endIdx);
+
+    // Check if we need a page break
+    if (y > ph - 80) {
+      doc.addPage();
+      y = 20;
     }
 
-    while (row.length < colHeaders.length) row.push("-");
-    return row;
-  });
+    // Table header
+    const colHeaders = [""];
+    for (let i = 0; i < trialsInThisTable.length; i++) colHeaders.push(`PL ${startIdx + i + 1}`);
 
-  const firstColW = 36;
-  const dataColW = (contentW - firstColW) / (colHeaders.length - 1);
-
-  autoTable(doc, {
-    startY: y,
-    head: [colHeaders],
-    body: dataRows,
-    theme: "grid",
-    headStyles: {
-      fillColor: COLORS.headerBg,
-      textColor: COLORS.dark,
-      fontStyle: "bold",
-      fontSize: 6.5,
-      cellPadding: 1.5,
-      halign: "center",
-    },
-    bodyStyles: { fontSize: 7, cellPadding: 1.5, halign: "center" },
-    columnStyles: {
-      0: { cellWidth: firstColW, halign: "left", fontStyle: "bold", fontSize: 7 },
-    },
-    alternateRowStyles: { fillColor: COLORS.lightBg },
-    margin: { left: margin, right: margin },
-    styles: { overflow: "linebreak" as const, lineColor: COLORS.border, lineWidth: 0.3 },
-    didParseCell: (data: any) => {
-      if (data.section === "body" && data.row.index === 7) {
-        data.cell.styles.fontStyle = "bold";
-        data.cell.styles.fillColor = [235, 242, 250];
+    const dataRows: string[][] = dataLabels.map((label, i) => {
+      const row = [label];
+      for (const trial of trialsInThisTable) {
+        const wet = num(trial.containerWetMass);
+        const dry = num(trial.containerDryMass);
+        const cont = num(trial.containerMass);
+        switch (i) {
+          case 0: row.push(trial.containerNo || "-"); break;
+          case 1: row.push("-"); break;
+          case 2: row.push(fmt(wet)); break;
+          case 3: row.push(fmt(dry)); break;
+          case 4: row.push(fmt(cont)); break;
+          case 5: row.push(wet !== null && dry !== null ? fmt(round2(wet - dry)) : "-"); break;
+          case 6: row.push(dry !== null && cont !== null ? fmt(round2(dry - cont)) : "-"); break;
+          case 7: {
+            const mc = calculateMoistureFromMass(trial.containerWetMass, trial.containerDryMass, trial.containerMass);
+            row.push(mc ? String(round2(Number(mc))) : "-");
+            break;
+          }
+        }
       }
-    },
-  });
+      return row;
+    });
 
-  y = (doc as any).lastAutoTable.finalY + 2;
+    autoTable(doc, {
+      startY: y,
+      head: [colHeaders],
+      body: dataRows,
+      theme: "grid",
+      headStyles: {
+        fillColor: COLORS.headerBg,
+        textColor: COLORS.dark,
+        fontStyle: "bold",
+        fontSize: 6.5,
+        cellPadding: 1.5,
+        halign: "center",
+      },
+      bodyStyles: { fontSize: 7, cellPadding: 1.5, halign: "center" },
+      columnStyles: {
+        0: { cellWidth: 36, halign: "left", fontStyle: "bold", fontSize: 7 },
+      },
+      alternateRowStyles: { fillColor: COLORS.lightBg },
+      margin: { left: margin, right: margin },
+      styles: { overflow: "linebreak" as const, lineColor: COLORS.border, lineWidth: 0.3 },
+      didParseCell: (data: any) => {
+        if (data.section === "body" && data.row.index === 7) {
+          data.cell.styles.fontStyle = "bold";
+          data.cell.styles.fillColor = [235, 242, 250];
+        }
+      },
+    });
+
+    y = (doc as any).lastAutoTable.finalY + 2;
+  }
 
   // ── Plastic Limit result row ──
   doc.setDrawColor(...COLORS.border);

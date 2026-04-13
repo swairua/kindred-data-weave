@@ -168,6 +168,21 @@ export const generateAtterbergXLSX = async (options: ExportOptions) => {
     ws.mergeCells("B17:K17");
     for (let c = 2; c <= 11; c++) setCell(ws, 17, c, null, dataFont, allThin);
 
+    // Row 18: Record notes (if present)
+    let dataStartRow = 18;
+    if (record.note && record.note.trim()) {
+      ws.mergeCells("B18:K18");
+      setCell(ws, 18, 2, "Notes:", labelFont, allThin);
+      ws.mergeCells("B19:K21");
+      const noteCell = ws.getCell("B19");
+      noteCell.value = record.note;
+      noteCell.font = valueFont;
+      noteCell.border = allThin;
+      noteCell.alignment = { vertical: "top", horizontal: "left", wrapText: true };
+      ws.getRow(19).height = 20;
+      dataStartRow = 22;
+    }
+
     // Find LL, PL, SL tests
     const llTest = record.tests.find((t) => t.type === "liquidLimit");
     const plTest = record.tests.find((t) => t.type === "plasticLimit");
@@ -177,7 +192,7 @@ export const generateAtterbergXLSX = async (options: ExportOptions) => {
     const plTrials = (plTest?.type === "plasticLimit" ? plTest.trials : []) as PlasticLimitTrial[];
     const slTrials = (slTest?.type === "shrinkageLimit" ? slTest.trials : []) as ShrinkageLimitTrial[];
 
-    // Data table rows 18-25 (LL data, up to 7 columns E-K)
+    // Data table - support unlimited trials
     const dataLabels = [
       "Container No",
       "Penetration (mm)",
@@ -189,168 +204,282 @@ export const generateAtterbergXLSX = async (options: ExportOptions) => {
       "Moisture Content (%)",
     ];
 
-    for (let i = 0; i < dataLabels.length; i++) {
-      const row = 18 + i;
-      ws.mergeCells(row, 2, row, 4);
-      setCell(ws, row, 2, dataLabels[i], dataBoldFont, allThin);
+    // Calculate total trials width needed
+    const totalLLTrials = llTrials.length;
+    const totalPLTrials = plTrials.length;
+    const trialsPerRow = 5; // Trials per row to keep columns reasonable
+    const llRowsNeeded = Math.ceil(totalLLTrials / trialsPerRow);
+    const plRowsNeeded = Math.ceil(totalPLTrials / trialsPerRow);
 
-      // Fill LL trial data in columns E(5) through K(11)
-      const maxTrials = Math.min(llTrials.length, 5); // 5 LL trials max in cols E-I
-      for (let t = 0; t < maxTrials; t++) {
-        const col = 5 + t;
-        const trial = llTrials[t];
-        const wet = num(trial.containerWetMass);
-        const dry = num(trial.containerDryMass);
-        const cont = num(trial.containerMass);
+    let currentDataRow = dataStartRow;
 
-        switch (i) {
-          case 0: // Container No
-            setCell(ws, row, col, trial.containerNo || "", dataFont, allThin);
-            break;
-          case 1: // Penetration
-            setCell(ws, row, col, num(trial.penetration), dataBoldFont, allThin);
-            break;
-          case 2: // Cont + Wet
-            setCell(ws, row, col, wet, dataFont, allThin);
-            break;
-          case 3: // Cont + Dry
-            setCell(ws, row, col, dry, dataFont, allThin);
-            break;
-          case 4: // Container
-            setCell(ws, row, col, cont, dataFont, allThin);
-            break;
-          case 5: // Wt Moisture (calculated)
-            if (wet !== null && dry !== null) {
-              setCell(ws, row, col, round2(wet - dry), dataFont, allThin);
-            } else {
-              setCell(ws, row, col, "-", dataFont, allThin);
-            }
-            break;
-          case 6: // Wt Dry Soil (calculated)
-            if (dry !== null && cont !== null) {
-              setCell(ws, row, col, round2(dry - cont), dataFont, allThin);
-            } else {
-              setCell(ws, row, col, "-", dataFont, allThin);
-            }
-            break;
-          case 7: // Moisture %
-          {
-            const mc = calculateMoistureFromMass(trial.containerWetMass, trial.containerDryMass, trial.containerMass);
-            setCell(ws, row, col, mc ? Number(mc) : "-", dataBoldFont, allThin);
-            break;
-          }
-        }
-      }
-
-      // PL trials in cols J(10) and K(11)
-      const maxPl = Math.min(plTrials.length, 2);
-      for (let t = 0; t < maxPl; t++) {
-        const col = 10 + t;
-        const trial = plTrials[t];
-        const wet = num(trial.containerWetMass);
-        const dry = num(trial.containerDryMass);
-        const cont = num(trial.containerMass);
-
-        switch (i) {
-          case 0:
-            setCell(ws, row, col, trial.containerNo || "", dataFont, allThin);
-            break;
-          case 1:
-            setCell(ws, row, col, "-", dataFont, allThin);
-            break;
-          case 2:
-            setCell(ws, row, col, wet, dataFont, allThin);
-            break;
-          case 3:
-            setCell(ws, row, col, dry, dataFont, allThin);
-            break;
-          case 4:
-            setCell(ws, row, col, cont, dataFont, allThin);
-            break;
-          case 5:
-            if (wet !== null && dry !== null) {
-              setCell(ws, row, col, round2(wet - dry), dataFont, allThin);
-            } else {
-              setCell(ws, row, col, "-", dataFont, allThin);
-            }
-            break;
-          case 6:
-            if (dry !== null && cont !== null) {
-              setCell(ws, row, col, round2(dry - cont), dataFont, allThin);
-            } else {
-              setCell(ws, row, col, "-", dataFont, allThin);
-            }
-            break;
-          case 7: {
-            const mc = calculateMoistureFromMass(trial.containerWetMass, trial.containerDryMass, trial.containerMass);
-            setCell(ws, row, col, mc ? Number(mc) : "-", dataBoldFont, allThin);
-            break;
-          }
-        }
-      }
-
-      // Fill empty cells for unused columns
-      for (let col = 5; col <= 11; col++) {
-        const cell = ws.getCell(18 + i, col);
-        if (cell.value === undefined || cell.value === null) {
-          setCell(ws, 18 + i, col, "-", dataFont, allThin);
-        }
-      }
+    // Add LL trials section header if there are trials
+    if (totalLLTrials > 0) {
+      ws.mergeCells(`B${currentDataRow}:K${currentDataRow}`);
+      const headerCell = ws.getCell(`B${currentDataRow}`);
+      headerCell.value = "LIQUID LIMIT TEST";
+      headerCell.font = { ...headerFont, size: 11, color: { argb: "FF2962A3" } };
+      headerCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDCE6F5" } };
+      headerCell.border = allThin;
+      currentDataRow += 1;
     }
 
-    // Row 26: Plastic Limit label + value
-    ws.mergeCells("B26:F26");
-    setCell(ws, 26, 2, "", dataFont, allThin);
-    setCell(ws, 26, 8, "PLASTIC LIMIT", dataBoldFont, allThin);
-    ws.mergeCells("J26:K26");
+    // Add LL trials
+    for (let llRowIdx = 0; llRowIdx < llRowsNeeded; llRowIdx++) {
+      const startTrialIdx = llRowIdx * trialsPerRow;
+      const endTrialIdx = Math.min(startTrialIdx + trialsPerRow, totalLLTrials);
+
+      // Add trial number header row
+      ws.mergeCells(`B${currentDataRow}:D${currentDataRow}`);
+      setCell(ws, currentDataRow, 2, "", dataFont, allThin);
+      for (let t = startTrialIdx; t < endTrialIdx; t++) {
+        const col = 5 + (t - startTrialIdx);
+        const trial = llTrials[t];
+        const headerCell = ws.getCell(currentDataRow, col);
+        headerCell.value = `Trial ${t + 1}${trial.containerNo ? ` (${trial.containerNo})` : ""}`;
+        headerCell.font = { ...dataBoldFont, size: 10 };
+        headerCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0F4FF" } };
+        headerCell.border = allThin;
+        headerCell.alignment = { horizontal: "center" };
+      }
+      for (let col = 5 + (endTrialIdx - startTrialIdx); col <= 11; col++) {
+        const headerCell = ws.getCell(currentDataRow, col);
+        headerCell.border = allThin;
+      }
+      currentDataRow += 1;
+
+      for (let i = 0; i < dataLabels.length; i++) {
+        const row = currentDataRow + i;
+
+        // Label column
+        if (llRowIdx === 0) {
+          ws.mergeCells(row, 2, row, 4);
+          setCell(ws, row, 2, dataLabels[i], dataBoldFont, allThin);
+        } else {
+          // On subsequent rows, add trial number indicator
+          ws.mergeCells(row, 2, row, 4);
+          setCell(ws, row, 2, `${dataLabels[i]} (cont.)`, dataBoldFont, allThin);
+        }
+
+        // Trial data columns
+        for (let t = startTrialIdx; t < endTrialIdx; t++) {
+          const col = 5 + (t - startTrialIdx);
+          const trial = llTrials[t];
+          const wet = num(trial.containerWetMass);
+          const dry = num(trial.containerDryMass);
+          const cont = num(trial.containerMass);
+
+          switch (i) {
+            case 0: // Container No
+              setCell(ws, row, col, trial.containerNo || "", dataFont, allThin);
+              break;
+            case 1: // Penetration
+              setCell(ws, row, col, num(trial.penetration), dataBoldFont, allThin);
+              break;
+            case 2: // Cont + Wet
+              setCell(ws, row, col, wet, dataFont, allThin);
+              break;
+            case 3: // Cont + Dry
+              setCell(ws, row, col, dry, dataFont, allThin);
+              break;
+            case 4: // Container
+              setCell(ws, row, col, cont, dataFont, allThin);
+              break;
+            case 5: // Wt Moisture (calculated)
+              if (wet !== null && dry !== null) {
+                setCell(ws, row, col, round2(wet - dry), dataFont, allThin);
+              } else {
+                setCell(ws, row, col, "-", dataFont, allThin);
+              }
+              break;
+            case 6: // Wt Dry Soil (calculated)
+              if (dry !== null && cont !== null) {
+                setCell(ws, row, col, round2(dry - cont), dataFont, allThin);
+              } else {
+                setCell(ws, row, col, "-", dataFont, allThin);
+              }
+              break;
+            case 7: // Moisture %
+            {
+              const mc = calculateMoistureFromMass(trial.containerWetMass, trial.containerDryMass, trial.containerMass);
+              setCell(ws, row, col, mc ? Number(mc) : "-", dataBoldFont, allThin);
+              break;
+            }
+          }
+        }
+
+        // Fill remaining columns
+        for (let col = 5 + (endTrialIdx - startTrialIdx); col <= 11; col++) {
+          setCell(ws, row, col, "-", dataFont, allThin);
+        }
+      }
+
+      currentDataRow += dataLabels.length + 1;
+    }
+
+    // Add PL trials section header if there are trials
+    if (totalPLTrials > 0) {
+      ws.mergeCells(`B${currentDataRow}:K${currentDataRow}`);
+      const headerCell = ws.getCell(`B${currentDataRow}`);
+      headerCell.value = "PLASTIC LIMIT TEST";
+      headerCell.font = { ...headerFont, size: 11, color: { argb: "FF2962A3" } };
+      headerCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDCE6F5" } };
+      headerCell.border = allThin;
+      currentDataRow += 1;
+    }
+
+    // Add PL trials
+    for (let plRowIdx = 0; plRowIdx < plRowsNeeded; plRowIdx++) {
+      const startTrialIdx = plRowIdx * trialsPerRow;
+      const endTrialIdx = Math.min(startTrialIdx + trialsPerRow, totalPLTrials);
+
+      // Add trial number header row
+      ws.mergeCells(`B${currentDataRow}:D${currentDataRow}`);
+      setCell(ws, currentDataRow, 2, "", dataFont, allThin);
+      for (let t = startTrialIdx; t < endTrialIdx; t++) {
+        const col = 5 + (t - startTrialIdx);
+        const trial = plTrials[t];
+        const headerCell = ws.getCell(currentDataRow, col);
+        headerCell.value = `Trial ${t + 1}${trial.containerNo ? ` (${trial.containerNo})` : ""}`;
+        headerCell.font = { ...dataBoldFont, size: 10 };
+        headerCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0F4FF" } };
+        headerCell.border = allThin;
+        headerCell.alignment = { horizontal: "center" };
+      }
+      for (let col = 5 + (endTrialIdx - startTrialIdx); col <= 11; col++) {
+        const headerCell = ws.getCell(currentDataRow, col);
+        headerCell.border = allThin;
+      }
+      currentDataRow += 1;
+
+      for (let i = 0; i < dataLabels.length; i++) {
+        const row = currentDataRow + i;
+
+        // Label column
+        if (plRowIdx === 0) {
+          ws.mergeCells(row, 2, row, 4);
+          setCell(ws, row, 2, `${dataLabels[i]} (PL)`, dataBoldFont, allThin);
+        } else {
+          ws.mergeCells(row, 2, row, 4);
+          setCell(ws, row, 2, `${dataLabels[i]} (PL cont.)`, dataBoldFont, allThin);
+        }
+
+        // Trial data columns
+        for (let t = startTrialIdx; t < endTrialIdx; t++) {
+          const col = 5 + (t - startTrialIdx);
+          const trial = plTrials[t];
+          const wet = num(trial.containerWetMass);
+          const dry = num(trial.containerDryMass);
+          const cont = num(trial.containerMass);
+
+          switch (i) {
+            case 0:
+              setCell(ws, row, col, trial.containerNo || "", dataFont, allThin);
+              break;
+            case 1:
+              setCell(ws, row, col, "-", dataFont, allThin);
+              break;
+            case 2:
+              setCell(ws, row, col, wet, dataFont, allThin);
+              break;
+            case 3:
+              setCell(ws, row, col, dry, dataFont, allThin);
+              break;
+            case 4:
+              setCell(ws, row, col, cont, dataFont, allThin);
+              break;
+            case 5:
+              if (wet !== null && dry !== null) {
+                setCell(ws, row, col, round2(wet - dry), dataFont, allThin);
+              } else {
+                setCell(ws, row, col, "-", dataFont, allThin);
+              }
+              break;
+            case 6:
+              if (dry !== null && cont !== null) {
+                setCell(ws, row, col, round2(dry - cont), dataFont, allThin);
+              } else {
+                setCell(ws, row, col, "-", dataFont, allThin);
+              }
+              break;
+            case 7: {
+              const mc = calculateMoistureFromMass(trial.containerWetMass, trial.containerDryMass, trial.containerMass);
+              setCell(ws, row, col, mc ? Number(mc) : "-", dataBoldFont, allThin);
+              break;
+            }
+          }
+        }
+
+        // Fill remaining columns
+        for (let col = 5 + (endTrialIdx - startTrialIdx); col <= 11; col++) {
+          setCell(ws, row, col, "-", dataFont, allThin);
+        }
+      }
+
+      currentDataRow += dataLabels.length + 1;
+    }
+
+    // Row for Plastic Limit result
+    currentDataRow += 1;
+    ws.mergeCells(`B${currentDataRow}:F${currentDataRow}`);
+    setCell(ws, currentDataRow, 2, "", dataFont, allThin);
+    setCell(ws, currentDataRow, 8, "PLASTIC LIMIT", dataBoldFont, allThin);
+    ws.mergeCells(`J${currentDataRow}:K${currentDataRow}`);
     const plValue = record.results.plasticLimit;
-    setCell(ws, 26, 10, plValue !== undefined ? plValue : "-", dataBoldFont, allThin);
+    setCell(ws, currentDataRow, 10, plValue !== undefined ? plValue : "-", dataBoldFont, allThin);
 
-    // Linear Shrinkage section (rows 32-35)
-    ws.mergeCells("G32:K32");
-    setCell(ws, 32, 7, "LINEAR SHRINKAGE", dataBoldFont, null);
+    // Linear Shrinkage section
+    let lsRow = currentDataRow + 3;
+    ws.mergeCells(`G${lsRow}:K${lsRow}`);
+    setCell(ws, lsRow, 7, "LINEAR SHRINKAGE", dataBoldFont, null);
 
-    ws.mergeCells("G33:I33");
-    setCell(ws, 33, 7, "Initial length (mm)", dataBoldFont, allThin);
-    ws.mergeCells("J33:K33");
     const slTrial = slTrials[0];
-    setCell(ws, 33, 10, slTrial ? num(slTrial.initialLength) ?? 140 : 140, dataFont, allThin);
+    lsRow += 1;
+    ws.mergeCells(`G${lsRow}:I${lsRow}`);
+    setCell(ws, lsRow, 7, "Initial length (mm)", dataBoldFont, allThin);
+    ws.mergeCells(`J${lsRow}:K${lsRow}`);
+    setCell(ws, lsRow, 10, slTrial ? num(slTrial.initialLength) ?? 140 : 140, dataFont, allThin);
 
-    ws.mergeCells("G34:I34");
-    setCell(ws, 34, 7, "Final length (mm)", dataBoldFont, allThin);
-    ws.mergeCells("J34:K34");
-    setCell(ws, 34, 10, slTrial ? num(slTrial.finalLength) : "-", dataFont, allThin);
+    lsRow += 1;
+    ws.mergeCells(`G${lsRow}:I${lsRow}`);
+    setCell(ws, lsRow, 7, "Final length (mm)", dataBoldFont, allThin);
+    ws.mergeCells(`J${lsRow}:K${lsRow}`);
+    setCell(ws, lsRow, 10, slTrial ? num(slTrial.finalLength) : "-", dataFont, allThin);
 
-    ws.mergeCells("G35:I35");
-    setCell(ws, 35, 7, "Shrinkage (%)", dataBoldFont, allThin);
-    ws.mergeCells("J35:K35");
-    setCell(ws, 35, 10, record.results.linearShrinkage ?? "-", dataFont, allThin);
+    lsRow += 1;
+    ws.mergeCells(`G${lsRow}:I${lsRow}`);
+    setCell(ws, lsRow, 7, "Shrinkage (%)", dataBoldFont, allThin);
+    ws.mergeCells(`J${lsRow}:K${lsRow}`);
+    setCell(ws, lsRow, 10, record.results.linearShrinkage ?? "-", dataFont, allThin);
 
-    // Summary results (rows 40-45)
+    // Summary results
     const summaryLabels: [string, string | number | undefined][] = [
       ["LIQUID LIMIT (%)", record.results.liquidLimit],
       ["PLASTIC LIMIT (%)", record.results.plasticLimit],
       ["PLASTICITY INDEX (%)", record.results.plasticityIndex],
       ["Passing 425 µm (%)", num(record.passing425um)],
-      ["MODULAS OF PLASTICITY", record.results.modulusOfPlasticity],
+      ["MODULUS OF PLASTICITY", record.results.modulusOfPlasticity],
       ["LINEAR SHRINKAGE (%)", record.results.linearShrinkage],
     ];
 
+    let summaryRow = lsRow + 3;
     for (let i = 0; i < summaryLabels.length; i++) {
-      const row = 40 + i;
+      const row = summaryRow + i;
       ws.mergeCells(row, 7, row, 9);
       setCell(ws, row, 7, summaryLabels[i][0], dataBoldFont, allThin);
       ws.mergeCells(row, 10, row, 11);
       setCell(ws, row, 10, summaryLabels[i][1] ?? "-", dataBoldFont, allThin);
     }
 
-    // Soil Classification (rows 47-49)
-    ws.mergeCells("G47:K47");
-    setCell(ws, 47, 7, "SOIL CLASSIFICATION", dataFont, null);
+    // Soil Classification
+    let classRow = summaryRow + summaryLabels.length + 2;
+    ws.mergeCells(`G${classRow}:K${classRow}`);
+    setCell(ws, classRow, 7, "SOIL CLASSIFICATION", dataFont, null);
 
-    ws.mergeCells("G48:G48");
-    setCell(ws, 48, 7, "USCS", dataBoldFont, null);
-    ws.mergeCells("H48:K48");
+    classRow += 1;
+    ws.mergeCells(`G${classRow}:G${classRow}`);
+    setCell(ws, classRow, 7, "USCS", dataBoldFont, null);
+    ws.mergeCells(`H${classRow}:K${classRow}`);
     // Derive USCS from results
     const ll = record.results.liquidLimit;
     const pl = record.results.plasticLimit;
@@ -360,30 +489,32 @@ export const generateAtterbergXLSX = async (options: ExportOptions) => {
       const pi = record.results.plasticityIndex ?? 0;
       if (pi < 4) {
         uscsCode = ll < 50 ? "ML" : "MH";
-        uscsDesc = ll < 50 ? "SILT OF LOW OF PLASTICITY" : "SILT OF HIGH OF PLASTICITY";
+        uscsDesc = ll < 50 ? "SILT OF LOW PLASTICITY" : "SILT OF HIGH PLASTICITY";
       } else if (pi >= 4 && pi < 7) {
         uscsCode = "CL-ML";
-        uscsDesc = "SILTY CLAY OF LOW OF PLASTICITY";
+        uscsDesc = "SILTY CLAY OF LOW PLASTICITY";
       } else {
         uscsCode = ll < 50 ? "CL" : "CH";
-        uscsDesc = ll < 50 ? "CLAY OF LOW OF PLASTICITY" : "CLAY OF HIGH OF PLASTICITY";
+        uscsDesc = ll < 50 ? "CLAY OF LOW PLASTICITY" : "CLAY OF HIGH PLASTICITY";
       }
     }
-    setCell(ws, 48, 8, uscsDesc, dataBoldFont, null);
-    setCell(ws, 48, 11, uscsCode, dataBoldFont, null);
+    setCell(ws, classRow, 8, uscsDesc, dataBoldFont, null);
+    setCell(ws, classRow, 11, uscsCode, dataBoldFont, null);
 
-    setCell(ws, 49, 7, "AASHTO", dataBoldFont, null);
+    classRow += 1;
+    setCell(ws, classRow, 7, "AASHTO", dataBoldFont, null);
 
-    // Footer (row 53)
-    setCell(ws, 53, 2, "Tested by:", dataBoldFont, null);
-    ws.mergeCells("C53:D53");
-    setCell(ws, 53, 3, record.testedBy || "", dataFont, null);
-    ws.mergeCells("E53:F53");
-    setCell(ws, 53, 5, "Date reported", dataBoldFont, null);
-    ws.mergeCells("G53:H53");
-    setCell(ws, 53, 7, projectState.dateReported || "", valueFont, null);
-    ws.mergeCells("I53:K53");
-    setCell(ws, 53, 9, `Checked by: ${projectState.checkedBy || "____________"}`, dataBoldFont, null);
+    // Footer
+    const footerRow = classRow + 4;
+    setCell(ws, footerRow, 2, "Tested by:", dataBoldFont, null);
+    ws.mergeCells(`C${footerRow}:D${footerRow}`);
+    setCell(ws, footerRow, 3, record.testedBy || "", dataFont, null);
+    ws.mergeCells(`E${footerRow}:F${footerRow}`);
+    setCell(ws, footerRow, 5, "Date reported", dataBoldFont, null);
+    ws.mergeCells(`G${footerRow}:H${footerRow}`);
+    setCell(ws, footerRow, 7, projectState.dateReported || "", valueFont, null);
+    ws.mergeCells(`I${footerRow}:K${footerRow}`);
+    setCell(ws, footerRow, 9, `Checked by: ${projectState.checkedBy || "____________"}`, dataBoldFont, null);
 
     // Print setup
     ws.pageSetup = {
