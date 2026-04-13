@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Plus, X } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
 import { generateTestPDF } from "@/lib/pdfGenerator";
-import { generateTestCSV } from "@/lib/csvExporter";
 import { useTestReport } from "@/hooks/useTestReport";
 
 interface Row { depth: string; penetration: string }
@@ -28,7 +27,7 @@ const DCPTest = () => {
   };
 
   return (
-    <TestSection title="DCP (Dynamic Cone Penetrometer)" onSave={() => {}} onClear={() => setRows([{ depth: "", penetration: "" }])} onExportPDF={exportPDF} onExportCSV={() => generateTestCSV({ title: "DCP (Dynamic Cone Penetrometer)", ...project, tables: [{ headers: ["Depth (mm)", "Penetration per Blow (mm/blow)"], rows: rows.map(r => [r.depth || "—", r.penetration || "—"]) }] })}>
+    <TestSection title="DCP (Dynamic Cone Penetrometer)" onSave={() => {}} onClear={() => setRows([{ depth: "", penetration: "" }])} onExportPDF={exportPDF}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Depth (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Penetration per Blow (mm/blow)</th><th className="w-10"></th></tr></thead>

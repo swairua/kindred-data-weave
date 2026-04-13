@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Plus, X } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
 import { generateTestPDF } from "@/lib/pdfGenerator";
-import { generateTestCSV } from "@/lib/csvExporter";
 import { useTestReport } from "@/hooks/useTestReport";
 
 interface Row { depth: string; blowCount: string }
@@ -28,7 +27,7 @@ const SPTTest = () => {
   };
 
   return (
-    <TestSection title="SPT (Standard Penetration Test)" onSave={() => {}} onClear={() => setRows([{ depth: "", blowCount: "" }])} onExportPDF={exportPDF} onExportCSV={() => generateTestCSV({ title: "SPT (Standard Penetration Test)", ...project, tables: [{ headers: ["Depth (m)", "Blow Count (N-value)"], rows: rows.map(r => [r.depth || "—", r.blowCount || "—"]) }] })}>
+    <TestSection title="SPT (Standard Penetration Test)" onSave={() => {}} onClear={() => setRows([{ depth: "", blowCount: "" }])} onExportPDF={exportPDF}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Depth (m)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Blow Count (N-value)</th><th className="w-10"></th></tr></thead>
