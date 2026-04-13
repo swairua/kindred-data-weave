@@ -650,45 +650,35 @@ const Index = ({ initialTab }: IndexProps) => {
                     <CardContent className="p-8">
                       <form className="space-y-6" onSubmit={handleLogin}>
                         {/* Email field */}
-                        <div className="space-y-2.5">
+                        <div className="space-y-2">
                           <Label htmlFor="email" className="text-sm font-semibold text-foreground">
                             Email Address
                           </Label>
-                          <div className="relative">
-                            <Input
-                              id="email"
-                              type="email"
-                              value={email}
-                              onChange={(event) => setEmail(event.target.value)}
-                              placeholder="your@email.com"
-                              autoComplete="email"
-                              className="h-12 px-4 pl-12 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                            />
-                            <svg className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                            </svg>
-                          </div>
+                          <Input
+                            id="email"
+                            type="email"
+                            value={email}
+                            onChange={(event) => setEmail(event.target.value)}
+                            placeholder="your@email.com"
+                            autoComplete="email"
+                            className="h-12 px-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                          />
                         </div>
 
                         {/* Password field */}
-                        <div className="space-y-2.5">
+                        <div className="space-y-2">
                           <Label htmlFor="password" className="text-sm font-semibold text-foreground">
                             Password
                           </Label>
-                          <div className="relative">
-                            <Input
-                              id="password"
-                              type="password"
-                              value={password}
-                              onChange={(event) => setPassword(event.target.value)}
-                              placeholder="••••••••"
-                              autoComplete="current-password"
-                              className="h-12 px-4 pl-12 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                            />
-                            <svg className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                            </svg>
-                          </div>
+                          <Input
+                            id="password"
+                            type="password"
+                            value={password}
+                            onChange={(event) => setPassword(event.target.value)}
+                            placeholder="••••••••"
+                            autoComplete="current-password"
+                            className="h-12 px-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                          />
                         </div>
 
                         {/* Submit button */}
@@ -707,13 +697,10 @@ const Index = ({ initialTab }: IndexProps) => {
                         </Button>
 
                         {/* Divider */}
-                        <div className="relative">
-                          <div className="absolute inset-0 flex items-center">
-                            <div className="w-full border-t border-gray-200 dark:border-gray-700"></div>
-                          </div>
-                          <div className="relative flex justify-center text-sm">
-                            <span className="px-2 bg-white dark:bg-background text-muted-foreground">New to the lab?</span>
-                          </div>
+                        <div className="flex items-center gap-3 my-6">
+                          <div className="flex-1 border-t border-gray-200 dark:border-gray-700"></div>
+                          <span className="text-sm text-muted-foreground">New to the lab?</span>
+                          <div className="flex-1 border-t border-gray-200 dark:border-gray-700"></div>
                         </div>
 
                         {/* Help text */}
