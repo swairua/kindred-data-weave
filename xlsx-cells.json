@@ -1,0 +1,258 @@
+{
+  "cellCount": 63,
+  "sharedStringsCount": 52,
+  "cells": {
+    "B10": {
+      "type": "s",
+      "value": "ATTERBERG LIMITS (BS 1377 PART 2, 4.3 : 1990)"
+    },
+    "B13": {
+      "type": "s",
+      "value": "Client name:"
+    },
+    "E13": {
+      "type": "s",
+      "value": "NILIUS KARANJA"
+    },
+    "B14": {
+      "type": "s",
+      "value": "Project/Site name:"
+    },
+    "E14": {
+      "type": "s",
+      "value": "PROPOSED CONSTRUCTION OF A PERIMETER WALL"
+    },
+    "B15": {
+      "type": "s",
+      "value": "Sampled and submitted by:"
+    },
+    "E15": {
+      "type": "s",
+      "value": "CRANSFIELD"
+    },
+    "F15": {
+      "type": "s",
+      "value": "Date submitted:"
+    },
+    "I15": {
+      "type": "s",
+      "value": "Date tested:"
+    },
+    "Q15": {
+      "type": "s",
+      "value": "-"
+    },
+    "B16": {
+      "type": "s",
+      "value": "Sample ID:"
+    },
+    "E16": {
+      "type": "s",
+      "value": "BH1"
+    },
+    "F16": {
+      "type": "s",
+      "value": "Sample depth (M):"
+    },
+    "H16": {
+      "type": "s",
+      "value": "1.0-6.4"
+    },
+    "I16": {
+      "type": "s",
+      "value": "Sample No:"
+    },
+    "J16": {
+      "type": "s",
+      "value": "-"
+    },
+    "Q16": {
+      "type": "s",
+      "value": "PLASTIC LIMIT"
+    },
+    "Q17": {
+      "type": "s",
+      "value": "PR"
+    },
+    "R17": {
+      "type": "s",
+      "value": "MG"
+    },
+    "B18": {
+      "type": "s",
+      "value": "Container No"
+    },
+    "B19": {
+      "type": "s",
+      "value": "Penetration (mm)"
+    },
+    "J19": {
+      "type": "s",
+      "value": "-"
+    },
+    "K19": {
+      "type": "s",
+      "value": "-"
+    },
+    "B20": {
+      "type": "s",
+      "value": "Wt of Container + Wet Soil (g)"
+    },
+    "B21": {
+      "type": "s",
+      "value": "Wt of Container + Dry Soil (g)"
+    },
+    "B22": {
+      "type": "s",
+      "value": "Wt of Container (g)"
+    },
+    "E22": {
+      "type": "s",
+      "value": "-"
+    },
+    "F22": {
+      "type": "s",
+      "value": "-"
+    },
+    "G22": {
+      "type": "s",
+      "value": "-"
+    },
+    "H22": {
+      "type": "s",
+      "value": "-"
+    },
+    "I22": {
+      "type": "s",
+      "value": "-"
+    },
+    "J22": {
+      "type": "s",
+      "value": "-"
+    },
+    "K22": {
+      "type": "s",
+      "value": "-"
+    },
+    "B23": {
+      "type": "s",
+      "value": "Wt of Moisture (g)"
+    },
+    "B24": {
+      "type": "s",
+      "value": "Wt of Dry Soil (g)"
+    },
+    "M24": {
+      "type": "s",
+      "value": "TR"
+    },
+    "N24": {
+      "type": "s",
+      "value": "DF"
+    },
+    "O24": {
+      "type": "s",
+      "value": "SD"
+    },
+    "P24": {
+      "type": "s",
+      "value": "AS"
+    },
+    "Q24": {
+      "type": "s",
+      "value": "SDF"
+    },
+    "B25": {
+      "type": "s",
+      "value": "Moisture Content (%)"
+    },
+    "H26": {
+      "type": "s",
+      "value": "PLASTIC LIMIT"
+    },
+    "G32": {
+      "type": "s",
+      "value": "LINEAR SHRINKAGE"
+    },
+    "G33": {
+      "type": "s",
+      "value": "Initial length                                 (mm)"
+    },
+    "G34": {
+      "type": "s",
+      "value": "Final length                                   (mm)"
+    },
+    "G35": {
+      "type": "s",
+      "value": "Shrinkage                                           (%)"
+    },
+    "M37": {
+      "type": "s",
+      "value": "A-7-5"
+    },
+    "O37": {
+      "type": "s",
+      "value": "≥"
+    },
+    "M39": {
+      "type": "s",
+      "value": "A-7-6"
+    },
+    "O39": {
+      "type": "s",
+      "value": "≤"
+    },
+    "G40": {
+      "type": "s",
+      "value": "LIQUID LIMIT                                    (%)"
+    },
+    "G41": {
+      "type": "s",
+      "value": "PLASTIC LIMIT                                  (%)"
+    },
+    "G42": {
+      "type": "s",
+      "value": "PLASTICITY INDEX                          (%)"
+    },
+    "G43": {
+      "type": "s",
+      "value": "Passing 425 µm                               (%)"
+    },
+    "G44": {
+      "type": "s",
+      "value": "MODULAS OF PLASTICITY"
+    },
+    "G45": {
+      "type": "s",
+      "value": "LINEAR SHRINKAGE                       (%)"
+    },
+    "G47": {
+      "type": "s",
+      "value": "SOIL CLASSIFICATION"
+    },
+    "G48": {
+      "type": "s",
+      "value": "USCS"
+    },
+    "G49": {
+      "type": "s",
+      "value": "AASHTO"
+    },
+    "B53": {
+      "type": "s",
+      "value": "Tested by:"
+    },
+    "C53": {
+      "type": "s",
+      "value": "JOAN NJOGU"
+    },
+    "E53": {
+      "type": "s",
+      "value": "Date reported"
+    },
+    "I53": {
+      "type": "s",
+      "value": "Checked by:_____________"
+    }
+  }
+}
