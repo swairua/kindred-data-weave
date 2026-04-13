@@ -566,14 +566,14 @@ const Index = ({ initialTab }: IndexProps) => {
               </Card>
             </div>
           ) : !isAuthenticated ? (
-            <div className="min-h-[calc(100vh-200px)] flex items-center justify-center px-4 py-12">
+            <div className="min-h-[calc(100vh-200px)] flex items-center justify-center px-4 py-12 relative">
               {/* Background gradient elements */}
-              <div className="absolute inset-0 -z-10 overflow-hidden">
-                <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-blue-500/10 to-transparent rounded-full blur-3xl"></div>
-                <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-indigo-500/10 to-transparent rounded-full blur-3xl"></div>
+              <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+                <div className="absolute top-1/4 right-0 w-96 h-96 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-full blur-3xl"></div>
+                <div className="absolute bottom-1/4 left-0 w-96 h-96 bg-gradient-to-tr from-indigo-500/5 to-transparent rounded-full blur-3xl"></div>
               </div>
 
-              <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+              <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-8 lg:gap-12 items-center relative z-0">
                 {/* Left side - Branding */}
                 <div className="hidden lg:flex flex-col justify-center space-y-8">
                   <div className="space-y-4">
