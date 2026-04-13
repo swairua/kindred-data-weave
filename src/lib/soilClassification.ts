@@ -24,14 +24,14 @@ export interface ClassificationResults {
 }
 
 /**
- * USCS description lookup matching Excel formula
+ * USCS description lookup with proper descriptive labels
  */
 const uscsDescriptionMap: Record<string, string> = {
-  ML: "SILT OF LOW OF PLASTICITY",
-  MH: "SILT OF HIGH OF PLASTICITY",
-  "CL-ML": "SILTY CLAY OF LOW OF PLASTICITY",
-  CL: "CLAY OF LOW OF PLASTICITY",
-  CH: "CLAY OF HIGH OF PLASTICITY",
+  ML: "Silt of Low Plasticity",
+  MH: "Silt of High Plasticity",
+  "CL-ML": "Silty Clay of Low Plasticity",
+  CL: "Clay of Low Plasticity",
+  CH: "Clay of High Plasticity",
 };
 
 /**
