@@ -69,8 +69,40 @@ const ProctorTest = () => {
     });
   };
 
+  const exportXLSX = async () => {
+    let chartImages = {};
+    if (chartData.length >= 2) {
+      const chartBase64 = await captureChartAsBase64("proctor-chart");
+      if (chartBase64) {
+        chartImages = { "Proctor Curve": chartBase64 };
+      }
+    }
+
+    generateTestExcel({
+      data: {
+        title: `Proctor Test (${type === "standard" ? "Standard" : "Modified"})`,
+        fields: [
+          { label: "Test Type", value: type === "standard" ? "Standard Proctor" : "Modified Proctor" },
+          { label: "Optimum Moisture Content", value: optimum ? `${optimum.moisture}%` : "—" },
+          { label: "Maximum Dry Density", value: optimum ? `${optimum.dryDensity} kg/m³` : "—" },
+        ],
+        tables: [{
+          headers: ["Point", "Moisture Content (%)", "Dry Density (kg/m³)"],
+          rows: rows.map((r, i) => [String(i + 1), r.moisture || "—", r.dryDensity || "—"]),
+        }],
+        chartImages,
+      },
+      projectName: project.projectName,
+      clientName: project.clientName,
+      date: project.date,
+      labOrganization: project.labOrganization,
+      dateReported: project.dateReported,
+      checkedBy: project.checkedBy,
+    });
+  };
+
   return (
-    <TestSection title="Proctor Test" onSave={() => {}} onClear={() => setRows([{ moisture: "", dryDensity: "" }])} onExportPDF={exportPDF}>
+    <TestSection title="Proctor Test" onSave={() => {}} onClear={() => setRows([{ moisture: "", dryDensity: "" }])} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
       <div className="mb-4 max-w-xs">
         <Label className="text-xs text-muted-foreground mb-1.5 block">Test Type</Label>
         <Select value={type} onValueChange={setType}>

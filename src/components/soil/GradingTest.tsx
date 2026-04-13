@@ -7,6 +7,7 @@ import { Plus, X } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
 import { generateTestPDF } from "@/lib/pdfGenerator";
 import { generateTestCSV } from "@/lib/csvExporter";
+import { generateTestExcel } from "@/lib/genericExcelExporter";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Label } from "@/components/ui/label";
@@ -96,8 +97,38 @@ const GradingTest = () => {
     });
   };
 
+  const exportXLSX = async () => {
+    let chartImages = {};
+    if (chartData.length >= 2) {
+      const chartBase64 = await captureChartAsBase64("grading-chart");
+      if (chartBase64) {
+        chartImages = { "Particle Size Distribution Curve": chartBase64 };
+      }
+    }
+
+    generateTestExcel({
+      data: {
+        title: "Grading (Sieve Analysis)",
+        fields: [
+          { label: "Total Weight", value: totalWeight ? `${totalWeight.toFixed(1)} g` : "—" },
+        ],
+        tables: [{
+          headers: ["Sieve Size (mm)", "Weight Retained (g)", "% Passing"],
+          rows: rows.map((r, i) => [r.sieveSize, r.weightRetained || "—", getPercentPassing(i) || "—"]),
+        }],
+        chartImages,
+      },
+      projectName: project.projectName,
+      clientName: project.clientName,
+      date: project.date,
+      labOrganization: project.labOrganization,
+      dateReported: project.dateReported,
+      checkedBy: project.checkedBy,
+    });
+  };
+
   return (
-    <TestSection title="Grading (Sieve Analysis)" onSave={() => {}} onClear={() => setRows(defaultRows)} onExportPDF={exportPDF}>
+    <TestSection title="Grading (Sieve Analysis)" onSave={() => {}} onClear={() => setRows(defaultRows)} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>

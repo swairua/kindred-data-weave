@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useProject } from "@/context/ProjectContext";
 import { generateTestPDF } from "@/lib/pdfGenerator";
 import { generateTestCSV } from "@/lib/csvExporter";
+import { generateTestExcel } from "@/lib/genericExcelExporter";
 import { useTestReport } from "@/hooks/useTestReport";
 
 const SlumpTest = () => {
@@ -23,8 +24,26 @@ const SlumpTest = () => {
     generateTestPDF({ title: "Slump Test", ...project, fields: [{ label: "Slump Value (mm)", value: slump }, { label: "Remarks", value: remarks }] });
   };
 
+  const exportXLSX = () => {
+    generateTestExcel({
+      data: {
+        title: "Slump Test",
+        fields: [
+          { label: "Slump Value (mm)", value: slump || "—" },
+          { label: "Remarks", value: remarks || "—" },
+        ],
+      },
+      projectName: project.projectName,
+      clientName: project.clientName,
+      date: project.date,
+      labOrganization: project.labOrganization,
+      dateReported: project.dateReported,
+      checkedBy: project.checkedBy,
+    });
+  };
+
   return (
-    <TestSection title="Slump Test" onSave={() => {}} onClear={() => { setSlump(""); setRemarks(""); }} onExportPDF={exportPDF}>
+    <TestSection title="Slump Test" onSave={() => {}} onClear={() => { setSlump(""); setRemarks(""); }} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground">Slump Value (mm)</Label>
