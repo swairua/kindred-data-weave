@@ -1,78 +1,80 @@
 
 
-## Fix Build Errors + Expand Liquid Limit to 4 Default Trials
+## Update USCS Soil Classification Logic
 
-### Part 1: Fix Build Errors
+### Analysis from Excel
 
-**File: `src/components/soil/AtterbergTest.tsx`**
+The uploaded Atterberg test shows:
+- **LL = 75.91**, PL = 33.45, **PI = 42.45**
+- USCS result: **CH — "CLAY OF HIGH OF PLASTICITY"**
+- AASHTO: A-7-5 (because PI = 42.45 < LL - 30 = 45.91)
+- 5 liquid limit trials at penetrations: 15.8, 17.9, 20.1, 21.9, 24.3mm
 
-**Fix 1 (line 27-35):** Add missing type imports from `@/context/TestDataContext`:
-```typescript
-import {
-  // existing imports...
-  type LiquidLimitTest,
-  type PlasticLimitTest,
-  type ShrinkageLimitTest,
-} from "@/context/TestDataContext";
+Excel formula for USCS description:
+```
+=IF(symbol="ML", "SILT OF LOW OF PLASTICITY",
+ IF(symbol="MH", "SILT OF HIGH OF PLASTICITY",
+ IF(symbol="CL-ML", "SILTY CLAY OF LOW OF PLASTICITY",
+ IF(symbol="CL", "CLAY OF LOW OF PLASTICITY",
+ IF(symbol="CH", "CLAY OF HIGH OF PLASTICITY", "")))))
 ```
 
-**Fix 2 (line 518):** Add generic type to `createApiRecord`:
+AASHTO A-7 subgroup logic from Excel: `PI ≤ LL - 30 → A-7-5; PI > LL - 30 → A-7-6`
+
+### Changes
+
+**File: `src/lib/soilClassification.ts`**
+
+**1. Fine-grained classification** — update descriptions to match Excel format and add CL-ML dual symbol for the hatched zone (PI 4–7 and above A-line):
+
+| Symbol | Description (current) | Description (updated) |
+|--------|----------------------|----------------------|
+| CL | Lean clay (low compressibility) | CLAY OF LOW OF PLASTICITY |
+| CH | Fat clay (high compressibility) | CLAY OF HIGH OF PLASTICITY |
+| ML | Silt (low compressibility) | SILT OF LOW OF PLASTICITY |
+| MH | Elastic silt (high compressibility) | SILT OF HIGH OF PLASTICITY |
+| CL-ML (new) | — | SILTY CLAY OF LOW OF PLASTICITY |
+
+Add CL-ML: when LL < 50, above A-line, and PI between 4–7.
+
+**2. Fix fines threshold** — change `fines > 50` to `fines >= 50` per USCS standard ("≥50% passing No. 200").
+
+**3. Fix coarse-grained fines logic** — the `classifySand` function has a bug where `clayey = !silty && fines > 12` is impossible (since `silty` already covers `fines > 12`). Fix: for fines > 12%, use A-line position to determine clayey (SC/GC) vs silty (SM/GM).
+
+**4. Fix AASHTO function:**
+- Remove dead branch (line 218 duplicates line 216)
+- Implement proper A-7 subgroup: `PI ≤ LL - 30 → A-7-5; PI > LL - 30 → A-7-6`
+- Add proper A-2 subgroups
+
+**5. Update `calculatePlasticityChart`** — match description format to "CLAY OF HIGH OF PLASTICITY" style.
+
+### Technical Detail
+
 ```typescript
-const createResponse = await retryWithBackoff(
-  () => createApiRecord<{ id: number }>("test_results", resultPayload)
-);
+// Fine-grained classification core logic
+const classifyFineGrained = (ll, pi) => {
+  const aLine = 0.73 * (ll - 20);
+  const aboveLine = pi > aLine;
+
+  if (ll < 50) {
+    if (aboveLine && pi >= 4 && pi <= 7) return "CL-ML"; // hatched zone
+    if (aboveLine) return "CL";
+    return "ML";
+  } else {
+    if (aboveLine) return "CH";
+    return "MH";
+  }
+};
+
+// AASHTO A-7 subgroup
+if (fines > 35 && ll >= 40) {
+  return pi <= (ll - 30) ? "A-7-5" : "A-7-6";
+}
 ```
-
-### Part 2: Expand Default Liquid Limit Trials to 4
-
-**File: `src/components/soil/AtterbergTest.tsx` (lines 224-245)**
-
-Replace the 2 default liquid limit trials with 4 trials using realistic data that produces a curved (non-linear) graph. Based on the Master Excel reference, the cone penetration test typically uses 4 trials with penetration values spanning a range around 20mm (e.g., 15mm, 18mm, 22mm, 27mm) with corresponding moisture values that follow a natural curve:
-
-```typescript
-trials: [
-  {
-    id: makeId("trial"), trialNo: "1",
-    penetration: "15", containerNo: "101",
-    containerWetMass: "23.8", containerDryMass: "17.6", containerMass: "5.0",
-    moisture: "",
-  },
-  {
-    id: makeId("trial"), trialNo: "2",
-    penetration: "18", containerNo: "102",
-    containerWetMass: "25.1", containerDryMass: "18.0", containerMass: "5.1",
-    moisture: "",
-  },
-  {
-    id: makeId("trial"), trialNo: "3",
-    penetration: "22", containerNo: "103",
-    containerWetMass: "27.3", containerDryMass: "18.8", containerMass: "5.0",
-    moisture: "",
-  },
-  {
-    id: makeId("trial"), trialNo: "4",
-    penetration: "27", containerNo: "104",
-    containerWetMass: "29.8", containerDryMass: "19.6", containerMass: "5.2",
-    moisture: "",
-  },
-],
-```
-
-The mass values are chosen so the computed moisture contents form a natural curve (not a straight line) when plotted against penetration. This gives approximately:
-- Trial 1: ~49.2% at 15mm
-- Trial 2: ~55.0% at 18mm  
-- Trial 3: ~61.6% at 22mm
-- Trial 4: ~70.8% at 27mm
-
-### Part 3: Update Minimum Trials for Graph Display
-
-**File: `src/components/soil/LiquidLimitSection.tsx` (line 203)**
-
-No change needed — the graph already shows when `graphData.length >= 2`, which is correct since 2 points is the mathematical minimum. With 4 default trials, the graph will naturally show a curve.
 
 ### Summary
 
 | File | Change |
 |------|--------|
-| `AtterbergTest.tsx` | Add 3 missing type imports; add generic to `createApiRecord`; expand LL trials from 2 to 4 |
+| `src/lib/soilClassification.ts` | Fix fines threshold (≥50), add CL-ML, update descriptions to Excel format, fix coarse-grained A-line logic, fix AASHTO dead branch + A-7 subgroup |
 
