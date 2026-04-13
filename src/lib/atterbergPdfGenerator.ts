@@ -10,6 +10,23 @@ import type {
 import { calculateMoistureFromMass } from "./atterbergCalculations";
 import { fetchAdminImagesAsBase64, type AdminImages } from "./imageUtils";
 
+// Helper to extract base64 string from data URL
+const extractBase64FromDataUrl = (dataUrl: string): string => {
+  if (!dataUrl) {
+    console.warn("Empty dataUrl passed to extractBase64FromDataUrl");
+    return "";
+  }
+  const match = dataUrl.match(/^data:image\/\w+;base64,(.+)$/);
+  const result = match ? match[1] : dataUrl;
+  console.log("Extracted base64 for PDF:", {
+    dataUrlLength: dataUrl.length,
+    isDataUrl: dataUrl.startsWith("data:"),
+    resultLength: result.length,
+    extracted: match ? "yes" : "no (using as-is)"
+  });
+  return result;
+};
+
 interface AtterbergPDFOptions {
   projectName?: string;
   clientName?: string;
@@ -320,14 +337,24 @@ function drawRecordPage(
   if (images.logo || images.contacts) {
     if (images.logo) {
       try {
-        doc.addImage(images.logo, margin, y, contentW * 0.35, headerH);
-      } catch { /* skip */ }
+        console.log("Adding logo image to PDF");
+        const base64String = extractBase64FromDataUrl(images.logo);
+        doc.addImage(base64String, "PNG", margin, y, contentW * 0.35, headerH);
+        console.log("Logo image added successfully");
+      } catch (error) {
+        console.error("Failed to add logo image:", error instanceof Error ? error.message : error);
+      }
     }
     if (images.contacts) {
       try {
+        console.log("Adding contacts image to PDF");
         const contactsW = contentW * 0.35;
-        doc.addImage(images.contacts, pw - margin - contactsW, y, contactsW, headerH);
-      } catch { /* skip */ }
+        const base64String = extractBase64FromDataUrl(images.contacts);
+        doc.addImage(base64String, "PNG", pw - margin - contactsW, y, contactsW, headerH);
+        console.log("Contacts image added successfully");
+      } catch (error) {
+        console.error("Failed to add contacts image:", error instanceof Error ? error.message : error);
+      }
     }
     y += headerH + 3;
   }
@@ -718,12 +745,17 @@ function drawRecordPage(
   // ── Stamp image at bottom ──
   if (images.stamp) {
     try {
+      console.log("Adding stamp image to PDF");
       const stampW = 35;
       const stampH = 35;
       const stampX = pw - margin - stampW;
       const stampY = ph - margin - stampH - 8;
-      doc.addImage(images.stamp, stampX, stampY, stampW, stampH);
-    } catch { /* skip */ }
+      const base64String = extractBase64FromDataUrl(images.stamp);
+      doc.addImage(base64String, "PNG", stampX, stampY, stampW, stampH);
+      console.log("Stamp image added successfully");
+    } catch (error) {
+      console.error("Failed to add stamp image:", error instanceof Error ? error.message : error);
+    }
   }
 }
 

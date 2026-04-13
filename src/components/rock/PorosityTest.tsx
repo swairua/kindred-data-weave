@@ -5,7 +5,6 @@ import { Label } from "@/components/ui/label";
 import CalculatedInput from "@/components/CalculatedInput";
 import { useProject } from "@/context/ProjectContext";
 import { generateTestPDF } from "@/lib/pdfGenerator";
-import { generateTestCSV } from "@/lib/csvExporter";
 import { useTestReport } from "@/hooks/useTestReport";
 
 const PorosityTest = () => {
@@ -31,7 +30,7 @@ const PorosityTest = () => {
   };
 
   return (
-    <TestSection title="Porosity" onSave={() => {}} onClear={() => { setDryWeight(""); setSatWeight(""); setVolume(""); }} onExportPDF={exportPDF} onExportCSV={() => generateTestCSV({ title: "Porosity Test", ...project, fields: [{ label: "Dry Weight (g)", value: dryWeight }, { label: "Saturated Weight (g)", value: satWeight }, { label: "Volume (cm³)", value: volume }, { label: "Porosity (%)", value: porosity }] })}>
+    <TestSection title="Porosity" onSave={() => {}} onClear={() => { setDryWeight(""); setSatWeight(""); setVolume(""); }} onExportPDF={exportPDF}>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="space-y-1.5"><Label className="text-xs text-muted-foreground">Dry Weight (g)</Label><Input type="number" value={dryWeight} onChange={(e) => setDryWeight(e.target.value)} placeholder="0" /></div>
         <div className="space-y-1.5"><Label className="text-xs text-muted-foreground">Saturated Weight (g)</Label><Input type="number" value={satWeight} onChange={(e) => setSatWeight(e.target.value)} placeholder="0" /></div>

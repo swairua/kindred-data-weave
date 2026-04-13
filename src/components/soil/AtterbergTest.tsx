@@ -36,7 +36,6 @@ import {
   type ShrinkageLimitTest,
   type ShrinkageLimitTrial,
 } from "@/context/TestDataContext";
-import { generateTestCSV } from "@/lib/csvExporter";
 import { generateAtterbergPDF } from "@/lib/atterbergPdfGenerator";
 import {
   buildAtterbergSummaryFields,
@@ -1071,26 +1070,6 @@ const AtterbergTest = () => {
     return true;
   }, [computedRecords, project.clientName, project.date, project.projectName, projectState]);
 
-  const handleExportCSV = useCallback(() => {
-    if (computedRecords.length === 0) {
-      toast.error("No records to export");
-      return false;
-    }
-
-    generateTestCSV({
-      title: "Atterberg Limits Testing",
-      projectName: project.projectName,
-      clientName: project.clientName || projectState.clientName,
-      date: project.date,
-      labOrganization: projectState.labOrganization,
-      dateReported: projectState.dateReported,
-      checkedBy: projectState.checkedBy,
-      fields: aggregateResults,
-      tables: exportTables,
-    });
-
-    return true;
-  }, [aggregateResults, computedRecords.length, exportTables, project.clientName, project.date, project.projectName, projectState.clientName, projectState.labOrganization, projectState.dateReported, projectState.checkedBy]);
 
   const handleRecordExportPDF = useCallback(
     async (recordId: string) => {
@@ -1275,7 +1254,6 @@ const AtterbergTest = () => {
         onFinalSave={handleFinalSave}
         onClear={handleClearRequest}
         onExportPDF={handleExportPDF}
-        onExportCSV={handleExportCSV}
         onExportXLSX={handleExportXLSX}
         onExportSmokeCheck={handleExportSmokeCheck}
         exportSmokeCheckDisabled={computedRecords.length === 0}
