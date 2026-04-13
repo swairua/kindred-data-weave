@@ -67,7 +67,6 @@ import {
   type AtterbergExportPayload,
 } from "@/lib/jsonExporter";
 import { generateAtterbergXLSX } from "@/lib/xlsxExporter";
-import { importFromExcel, validateImportResult } from "@/lib/excelImporter";
 
 const STORAGE_KEY = "atterbergProjectState";
 
@@ -1027,103 +1026,6 @@ const AtterbergTest = () => {
     input.click();
   }, []);
 
-  const handleImportExcel = useCallback(() => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".xlsx,.xls";
-    input.onchange = async (event: Event) => {
-      const target = event.target as HTMLInputElement;
-      const file = target.files?.[0];
-      if (!file) return;
-
-      try {
-        const result = await importFromExcel(file);
-        const validation = validateImportResult(result);
-
-        if (!validation.isValid) {
-          toast.error(validation.message);
-          if (result.errors.length > 0) {
-            result.errors.forEach((err) => console.error(err));
-          }
-          return;
-        }
-
-        // Create a new record with the imported trials
-        const newRecord: AtterbergRecord = {
-          id: makeId("record"),
-          title: file.name.replace(/\.xlsx?$/, ""),
-          label: "",
-          note: "Imported from Excel file",
-          sampleNumber: "",
-          dateSubmitted: new Date().toISOString().split("T")[0],
-          dateTested: new Date().toISOString().split("T")[0],
-          testedBy: "",
-          tests: [],
-          isExpanded: true,
-          results: {},
-          passing425um: "",
-        };
-
-        // Add Liquid Limit test if trials exist
-        if (result.liquidLimitTrials.length > 0) {
-          newRecord.tests.push({
-            id: makeId("test"),
-            type: "liquidLimit",
-            title: "Liquid Limit",
-            trials: result.liquidLimitTrials,
-            isExpanded: true,
-            result: {},
-          } as LiquidLimitTest);
-        }
-
-        // Add Plastic Limit test if trials exist
-        if (result.plasticLimitTrials.length > 0) {
-          newRecord.tests.push({
-            id: makeId("test"),
-            type: "plasticLimit",
-            title: "Plastic Limit",
-            trials: result.plasticLimitTrials,
-            isExpanded: true,
-            result: {},
-          } as PlasticLimitTest);
-        }
-
-        // Add Shrinkage Limit test if trials exist
-        if (result.shrinkageLimitTrials.length > 0) {
-          newRecord.tests.push({
-            id: makeId("test"),
-            type: "shrinkageLimit",
-            title: "Linear Shrinkage",
-            trials: result.shrinkageLimitTrials,
-            isExpanded: true,
-            result: {},
-          } as ShrinkageLimitTest);
-        }
-
-        // Add record to project state
-        setProjectState((prev) => ({
-          ...prev,
-          records: [...prev.records, newRecord],
-        }));
-
-        // Show success message with details
-        toast.success(validation.message);
-
-        // Show warnings if any
-        if (result.warnings.length > 0) {
-          result.warnings.forEach((warning) => {
-            console.info("Import info:", warning);
-          });
-        }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Failed to import Excel file";
-        toast.error(errorMessage);
-        console.error("Excel import error:", error);
-      }
-    };
-    input.click();
-  }, []);
-
   const exportTables = useMemo(() => buildTablesForExport(computedRecords), [computedRecords]);
 
   const handleExportPDF = useCallback(async () => {
@@ -1405,9 +1307,6 @@ const AtterbergTest = () => {
             </Button>
             <Button type="button" onClick={handleImportJSON} variant="outline" size="sm" className="gap-2">
               <Upload className="h-4 w-4" /> Import JSON
-            </Button>
-            <Button type="button" onClick={handleImportExcel} variant="outline" size="sm" className="gap-2">
-              <Upload className="h-4 w-4" /> Import Excel
             </Button>
           </div>
         </div>
