@@ -180,12 +180,27 @@ const Admin = () => {
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
   };
 
+  const handleClearCache = () => {
+    try {
+      // Clear all localStorage keys related to cached data
+      localStorage.removeItem("atterbergProjectState");
+      localStorage.removeItem("enhancedAtterbergTests");
+      localStorage.removeItem("lab_session_token");
+
+      toast.success("Cache cleared successfully. Please refresh the page to reload data.");
+    } catch (error) {
+      toast.error("Error clearing cache");
+      console.error(error);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Tabs defaultValue="images" className="w-full">
-      <TabsList className="grid w-full grid-cols-2">
+      <TabsList className="grid w-full grid-cols-3">
         <TabsTrigger value="images">Media Library</TabsTrigger>
         <TabsTrigger value="tests">Test Definitions</TabsTrigger>
+        <TabsTrigger value="cache">Cache</TabsTrigger>
       </TabsList>
 
       <TabsContent value="images" className="space-y-6">
@@ -347,6 +362,43 @@ const Admin = () => {
 
       <TabsContent value="tests" className="space-y-6">
         <TestDefinitionsManager />
+      </TabsContent>
+
+      <TabsContent value="cache" className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Cache Management</CardTitle>
+            <CardDescription>Clear cached data to resolve sync issues between frontend and backend</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3 p-4 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800">
+              <p className="text-sm text-foreground">
+                <strong>About Cache:</strong> Your browser caches data locally to improve performance. If the frontend shows data that doesn't exist on the backend, clearing the cache will force the application to reload all data from the server.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium">Cached Data:</h4>
+              <ul className="text-sm text-muted-foreground space-y-2 ml-4">
+                <li>• Session token</li>
+                <li>• Atterberg test project data</li>
+                <li>• Application state and preferences</li>
+              </ul>
+            </div>
+
+            <Button
+              onClick={handleClearCache}
+              variant="destructive"
+              className="w-full"
+            >
+              Clear All Cache
+            </Button>
+
+            <p className="text-xs text-muted-foreground">
+              You will be logged out and may need to refresh the page after clearing the cache.
+            </p>
+          </CardContent>
+        </Card>
       </TabsContent>
     </Tabs>
     </div>
