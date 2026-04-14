@@ -85,20 +85,22 @@ export const generateAtterbergXLSX = async (
   wb.creator = "Lab Data Craft";
   wb.created = new Date();
 
-  // Fetch admin images once for all records
+  // Fetch admin images once for all records (with retry logic)
+  console.log("[XLSX] ════════════════════════════════════════");
+  console.log("[XLSX] Starting Excel export - fetching admin images...");
   let images = { logo: undefined, contacts: undefined, stamp: undefined };
   try {
     images = await fetchAdminImagesAsBase64();
-    console.log("Fetched admin images for export:", {
+    const loadedCount = [images.logo, images.contacts, images.stamp].filter(Boolean).length;
+    console.log("[XLSX] Admin images fetched for Excel export:", {
+      loaded: `${loadedCount}/3 images`,
       hasLogo: !!images.logo,
       hasContacts: !!images.contacts,
       hasStamp: !!images.stamp,
-      logoLength: images.logo?.length || 0,
-      contactsLength: images.contacts?.length || 0,
-      stampLength: images.stamp?.length || 0,
     });
   } catch (error) {
-    console.warn("Failed to fetch admin images, continuing without them:", error instanceof Error ? error.message : error);
+    console.error("[XLSX] Failed to fetch admin images:", error instanceof Error ? error.message : error);
+    console.warn("[XLSX] Continuing export without images (images are optional)");
     // Continue with empty images object - images are optional
   }
 
@@ -124,65 +126,80 @@ export const generateAtterbergXLSX = async (
 
     // Add images: logo (top left) and contacts (top right)
     let imageStartRow = 1;
+    let imagesAddedCount = 0;
+
     if (images.logo) {
       try {
-        console.log("Adding logo image to worksheet");
+        console.log(`[XLSX] Adding logo image to worksheet for record: ${sheetName}`);
         const base64String = extractBase64FromDataUrl(images.logo);
-        const logoId = wb.addImage({
-          base64: base64String,
-          extension: "png",
-        });
-        ws.addImage(logoId, {
-          tl: { col: 0, row: 0 }, // Top-left at A1
-          ext: { width: 80, height: 24 },
-        });
-        console.log("Logo image added successfully");
+        if (base64String && base64String.length > 0) {
+          const logoId = wb.addImage({
+            base64: base64String,
+            extension: "png",
+          });
+          ws.addImage(logoId, {
+            tl: { col: 0, row: 0 }, // Top-left at A1
+            ext: { width: 80, height: 24 },
+          });
+          console.log("[XLSX] ✓ Logo image added successfully");
+          imagesAddedCount++;
+        } else {
+          console.warn("[XLSX] Logo base64 string is empty, skipping");
+        }
       } catch (error) {
-        console.error("Failed to add logo image:", error instanceof Error ? error.message : error);
+        console.error("[XLSX] Failed to add logo image:", error instanceof Error ? error.message : error);
       }
-    } else {
-      console.warn("No logo image found to add");
     }
 
     if (images.contacts) {
       try {
-        console.log("Adding contacts image to worksheet");
+        console.log(`[XLSX] Adding contacts image to worksheet for record: ${sheetName}`);
         const base64String = extractBase64FromDataUrl(images.contacts);
-        const contactsId = wb.addImage({
-          base64: base64String,
-          extension: "png",
-        });
-        ws.addImage(contactsId, {
-          tl: { col: 3, row: 0 }, // Top-right at D1
-          ext: { width: 80, height: 24 },
-        });
-        console.log("Contacts image added successfully");
+        if (base64String && base64String.length > 0) {
+          const contactsId = wb.addImage({
+            base64: base64String,
+            extension: "png",
+          });
+          ws.addImage(contactsId, {
+            tl: { col: 3, row: 0 }, // Top-right at D1
+            ext: { width: 80, height: 24 },
+          });
+          console.log("[XLSX] ✓ Contacts image added successfully");
+          imagesAddedCount++;
+        } else {
+          console.warn("[XLSX] Contacts base64 string is empty, skipping");
+        }
       } catch (error) {
-        console.error("Failed to add contacts image:", error instanceof Error ? error.message : error);
+        console.error("[XLSX] Failed to add contacts image:", error instanceof Error ? error.message : error);
       }
-    } else {
-      console.warn("No contacts image found to add");
     }
 
     // Add stamp image below logo
     if (images.stamp) {
       try {
-        console.log("Adding stamp image to worksheet");
+        console.log(`[XLSX] Adding stamp image to worksheet for record: ${sheetName}`);
         const base64String = extractBase64FromDataUrl(images.stamp);
-        const stampId = wb.addImage({
-          base64: base64String,
-          extension: "png",
-        });
-        ws.addImage(stampId, {
-          tl: { col: 0, row: 6 }, // A7
-          ext: { width: 50, height: 24 },
-        });
-        console.log("Stamp image added successfully");
+        if (base64String && base64String.length > 0) {
+          const stampId = wb.addImage({
+            base64: base64String,
+            extension: "png",
+          });
+          ws.addImage(stampId, {
+            tl: { col: 0, row: 6 }, // A7
+            ext: { width: 50, height: 24 },
+          });
+          console.log("[XLSX] ✓ Stamp image added successfully");
+          imagesAddedCount++;
+        } else {
+          console.warn("[XLSX] Stamp base64 string is empty, skipping");
+        }
       } catch (error) {
-        console.error("Failed to add stamp image:", error instanceof Error ? error.message : error);
+        console.error("[XLSX] Failed to add stamp image:", error instanceof Error ? error.message : error);
       }
-    } else {
-      console.warn("No stamp image found to add");
+    }
+
+    if (imagesAddedCount > 0) {
+      console.log(`[XLSX] Sheet images complete: ${imagesAddedCount}/3 images added to ${sheetName}`);
     }
 
     // Row 10: Title (moved down to accommodate images)
@@ -619,20 +636,34 @@ export const generateAtterbergXLSX = async (
     };
   }
 
-  // Download
+  // Write and download Excel file
+  console.log("[XLSX] Writing Excel workbook to buffer...");
   const buffer = await wb.xlsx.writeBuffer();
   const blob = new Blob([buffer], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
 
+  console.log("[XLSX] ════════════════════════════════════════");
+  console.log(`[XLSX] ✓ Excel export complete!`);
+  console.log("[XLSX] File summary:", {
+    worksheetCount: wb.worksheets.length,
+    fileSizeBytes: blob.size,
+    fileSizeMB: (blob.size / 1024 / 1024).toFixed(2),
+  });
+  console.log("[XLSX] ════════════════════════════════════════");
+
   if (skipDownload) {
+    console.log("[XLSX] Returning blob without automatic download");
     return blob;
   }
 
+  const filename = `Atterberg_Limits_${(projectName || "export").replace(/\s+/g, "_")}.xlsx`;
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `Atterberg_Limits_${(projectName || "export").replace(/\s+/g, "_")}.xlsx`;
+  a.download = filename;
+  console.log(`[XLSX] Initiating download: ${filename}`);
   a.click();
   URL.revokeObjectURL(url);
+  console.log("[XLSX] Download initiated successfully");
 };
