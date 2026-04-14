@@ -14,6 +14,7 @@ import {
   getWaterMass,
   getDrySoilMass,
   getTrialMoisture,
+  calculateLinearRegression,
 } from "@/lib/atterbergCalculations";
 import { cn } from "@/lib/utils";
 
@@ -277,41 +278,88 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId }: Liquid
           {/* Hidden linear scale chart for Excel export - will be captured by the export process */}
           <div style={{ display: "none" }} className={`liquid-limit-export-chart${recordId ? `-${recordId}` : ""}`}>
             <div className="bg-white p-6" style={{ width: "600px", height: "400px" }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={graphData} margin={{ top: 20, right: 30, left: 60, bottom: 60 }}>
-                  <CartesianGrid stroke="#e5e7eb" />
-                  <XAxis
-                    dataKey="penetration"
-                    stroke="#000"
-                    label={{ value: "Penetration (mm)", position: "bottom", offset: 10, fontSize: 12 }}
-                    tick={{ fontSize: 11 }}
-                  />
-                  <YAxis
-                    stroke="#000"
-                    label={{ value: "Moisture Content (%)", angle: -90, position: "left", offset: 10, fontSize: 12 }}
-                    tick={{ fontSize: 11 }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#ffffff",
-                      border: "1px solid #d1d5db",
-                      borderRadius: 4,
-                    }}
-                    formatter={(value: number) => [`${value.toFixed(2)}%`, "Moisture"]}
-                    labelFormatter={(label) => `Penetration: ${label}mm`}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="moisture"
-                    name="Moisture"
-                    stroke="#ef4444"
-                    strokeWidth={2}
-                    dot={{ fill: "#ef4444", r: 4 }}
-                    activeDot={{ r: 5 }}
-                    isAnimationActive={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              {graphData.length > 0 && (() => {
+                // Calculate linear regression for line of best fit
+                const regressionData = calculateLinearRegression(
+                  graphData
+                    .map((d) => ({
+                      x: parseFloat(d.penetration) || 0,
+                      y: parseFloat(d.moisture) || 0,
+                    }))
+                    .filter((d) => !isNaN(d.x) && !isNaN(d.y))
+                );
+
+                // Generate regression line points
+                const regressionLineData = [];
+                if (regressionData && graphData.length >= 2) {
+                  const penetrationValues = graphData
+                    .map((d) => parseFloat(d.penetration) || 0)
+                    .filter((x) => !isNaN(x));
+                  const minPen = Math.min(...penetrationValues);
+                  const maxPen = Math.max(...penetrationValues);
+
+                  // Create two points for the regression line
+                  const y1 = regressionData.slope * minPen + regressionData.intercept;
+                  const y2 = regressionData.slope * maxPen + regressionData.intercept;
+
+                  regressionLineData.push(
+                    { penetration: minPen, regressionMoisture: y1, moisture: null },
+                    { penetration: maxPen, regressionMoisture: y2, moisture: null }
+                  );
+                }
+
+                return (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={graphData} margin={{ top: 20, right: 30, left: 60, bottom: 60 }}>
+                      <CartesianGrid stroke="#e5e7eb" />
+                      <XAxis
+                        dataKey="penetration"
+                        stroke="#000"
+                        label={{ value: "Penetration (mm)", position: "bottom", offset: 10, fontSize: 12 }}
+                        tick={{ fontSize: 11 }}
+                      />
+                      <YAxis
+                        stroke="#000"
+                        label={{ value: "Moisture Content (%)", angle: -90, position: "left", offset: 10, fontSize: 12 }}
+                        tick={{ fontSize: 11 }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "#ffffff",
+                          border: "1px solid #d1d5db",
+                          borderRadius: 4,
+                        }}
+                        formatter={(value: number) => [`${value.toFixed(2)}%`, "Moisture"]}
+                        labelFormatter={(label) => `Penetration: ${label}mm`}
+                      />
+                      {/* Data points line */}
+                      <Line
+                        type="monotone"
+                        dataKey="moisture"
+                        name="Moisture"
+                        stroke="#ef4444"
+                        strokeWidth={2}
+                        dot={{ fill: "#ef4444", r: 4 }}
+                        activeDot={{ r: 5 }}
+                        isAnimationActive={false}
+                      />
+                      {/* Line of best fit */}
+                      {regressionData && regressionLineData.length > 0 && (
+                        <Line
+                          data={regressionLineData}
+                          type="linear"
+                          dataKey="regressionMoisture"
+                          name="Line of Best Fit"
+                          stroke="#000000"
+                          strokeWidth={1.5}
+                          dot={false}
+                          isAnimationActive={false}
+                        />
+                      )}
+                    </LineChart>
+                  </ResponsiveContainer>
+                );
+              })()}
             </div>
           </div>
         </>

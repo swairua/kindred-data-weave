@@ -476,6 +476,147 @@ export const generateAtterbergXLSX = async (
       currentDataRow += dataLabels.length + 1;
     }
 
+    // Back-calculation section for Plastic Limit trials (using LL moisture content)
+    currentDataRow += 1;
+    ws.mergeCells(`B${currentDataRow}:K${currentDataRow}`);
+    const backCalcHeaderCell = ws.getCell(`B${currentDataRow}`);
+    backCalcHeaderCell.value = "PLASTIC LIMIT - BACK CALCULATION (Wet Soil from Dry Weight + Moisture%)";
+    backCalcHeaderCell.font = { ...headerFont, size: 10, color: { argb: "FF2962A3" } };
+    backCalcHeaderCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0F4FF" } };
+    backCalcHeaderCell.border = allThin;
+    currentDataRow += 1;
+
+    // Get the first LL trial's moisture for PR trial back-calculation
+    const firstLLTrial = llTrials[0];
+    const llFirstMoisture = firstLLTrial ? getTrialMoisture(firstLLTrial) : null;
+
+    // Build back-calculation data rows
+    const backCalcLabels = [
+      "Wt of Dry Soil (g)",
+      "Moisture Content (%)",
+      "Wt of Moisture (g)",
+      "Wt of Wet Soil (g)",
+    ];
+
+    // Add trial header row for back-calculations
+    ws.mergeCells(`B${currentDataRow}:D${currentDataRow}`);
+    setCell(ws, currentDataRow, 2, "", dataFont, allThin);
+
+    // Show columns for PR and MG trials
+    const prTrialIdx = plTrials.findIndex((t) => t.containerNo === "PR");
+    const mgTrialIdx = plTrials.findIndex((t) => t.containerNo === "MG");
+
+    if (prTrialIdx >= 0 || mgTrialIdx >= 0) {
+      if (prTrialIdx >= 0) {
+        const prTrial = plTrials[prTrialIdx];
+        const headerCell = ws.getCell(currentDataRow, 5);
+        headerCell.value = `PR (${prTrial.containerNo || "PR"})`;
+        headerCell.font = { ...dataBoldFont, size: 10 };
+        headerCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0F4FF" } };
+        headerCell.border = allThin;
+        headerCell.alignment = { horizontal: "center" };
+      }
+
+      if (mgTrialIdx >= 0) {
+        const mgTrial = plTrials[mgTrialIdx];
+        const headerCell = ws.getCell(currentDataRow, 6);
+        headerCell.value = `MG (${mgTrial.containerNo || "MG"})`;
+        headerCell.font = { ...dataBoldFont, size: 10 };
+        headerCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0F4FF" } };
+        headerCell.border = allThin;
+        headerCell.alignment = { horizontal: "center" };
+      }
+
+      // Fill empty columns
+      for (let col = 7; col <= 11; col++) {
+        const headerCell = ws.getCell(currentDataRow, col);
+        headerCell.border = allThin;
+      }
+      currentDataRow += 1;
+
+      // Add back-calculation rows
+      for (let i = 0; i < backCalcLabels.length; i++) {
+        const row = currentDataRow + i;
+
+        ws.mergeCells(row, 2, row, 4);
+        setCell(ws, row, 2, backCalcLabels[i], dataBoldFont, allThin);
+
+        // PR Trial back-calculation
+        if (prTrialIdx >= 0) {
+          const prTrial = plTrials[prTrialIdx];
+          const dryMass = num(prTrial.containerDryMass) && num(prTrial.containerMass)
+            ? round2(num(prTrial.containerDryMass)! - num(prTrial.containerMass)!)
+            : null;
+
+          let value: string | number = "-";
+          switch (i) {
+            case 0: // Wt of Dry Soil
+              value = dryMass !== null ? dryMass : "-";
+              break;
+            case 1: // Moisture Content (from LL)
+              value = llFirstMoisture ? Number(llFirstMoisture) : "-";
+              break;
+            case 2: // Wt of Moisture (calculated)
+              if (dryMass !== null && llFirstMoisture) {
+                const mc = Number(llFirstMoisture);
+                value = round2((dryMass * mc) / 100);
+              }
+              break;
+            case 3: // Wt of Wet Soil (calculated)
+              if (dryMass !== null && llFirstMoisture) {
+                const mc = Number(llFirstMoisture);
+                const moisture = (dryMass * mc) / 100;
+                value = round2(dryMass + moisture);
+              }
+              break;
+          }
+          setCell(ws, row, 5, value, dataFont, allThin);
+        }
+
+        // MG Trial back-calculation
+        if (mgTrialIdx >= 0) {
+          const mgTrial = plTrials[mgTrialIdx];
+          const dryMass = num(mgTrial.containerDryMass) && num(mgTrial.containerMass)
+            ? round2(num(mgTrial.containerDryMass)! - num(mgTrial.containerMass)!)
+            : null;
+
+          // For MG, get moisture from its own trial calculation if available
+          const mgMoisture = getTrialMoisture(mgTrial);
+
+          let value: string | number = "-";
+          switch (i) {
+            case 0: // Wt of Dry Soil
+              value = dryMass !== null ? dryMass : "-";
+              break;
+            case 1: // Moisture Content (from MG trial or default)
+              value = mgMoisture ? Number(mgMoisture) : "-";
+              break;
+            case 2: // Wt of Moisture (calculated)
+              if (dryMass !== null && mgMoisture) {
+                const mc = Number(mgMoisture);
+                value = round2((dryMass * mc) / 100);
+              }
+              break;
+            case 3: // Wt of Wet Soil (calculated)
+              if (dryMass !== null && mgMoisture) {
+                const mc = Number(mgMoisture);
+                const moisture = (dryMass * mc) / 100;
+                value = round2(dryMass + moisture);
+              }
+              break;
+          }
+          setCell(ws, row, 6, value, dataFont, allThin);
+        }
+
+        // Fill remaining columns
+        for (let col = 7; col <= 11; col++) {
+          setCell(ws, row, col, "-", dataFont, allThin);
+        }
+      }
+
+      currentDataRow += backCalcLabels.length + 1;
+    }
+
     // Row for Plastic Limit result - recalculate if needed
     currentDataRow += 1;
     ws.mergeCells(`B${currentDataRow}:F${currentDataRow}`);
@@ -484,6 +625,46 @@ export const generateAtterbergXLSX = async (
     ws.mergeCells(`J${currentDataRow}:K${currentDataRow}`);
     const plValue = record.results.plasticLimit ?? calculatePlasticLimit(plTrials);
     setCell(ws, currentDataRow, 10, plValue !== undefined ? plValue : "-", dataBoldFont, allThin);
+
+    // Position for the Liquid Limit chart - insert it here, within the data section
+    let chartSectionStartRow = currentDataRow + 2;
+
+    // Add Liquid Limit chart in the chart section area
+    if (options.chartImages && options.chartImages[`${record.id}-liquidLimit`]) {
+      try {
+        const llChartImageData = options.chartImages[`${record.id}-liquidLimit`];
+        const llBase64String = extractBase64FromDataUrl(llChartImageData);
+        const llChartImageId = wb.addImage({
+          base64: llBase64String,
+          extension: "png",
+        });
+
+        // Add chart header
+        chartSectionStartRow += 1;
+        ws.mergeCells(`B${chartSectionStartRow}:K${chartSectionStartRow}`);
+        const chartHeaderCell = ws.getCell(`B${chartSectionStartRow}`);
+        chartHeaderCell.value = "LIQUID LIMIT - MOISTURE VS PENETRATION GRAPH";
+        chartHeaderCell.font = { ...dataBoldFont, size: 11 };
+        chartHeaderCell.border = allThin;
+        chartHeaderCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0F4FF" } };
+
+        // Set row heights for chart area
+        for (let i = 0; i < 12; i++) {
+          ws.getRow(chartSectionStartRow + 1 + i).height = 20;
+        }
+
+        // Add the chart image within the designated box
+        ws.addImage(llChartImageId, {
+          tl: { col: 1, row: chartSectionStartRow }, // Column B, starting from chart row
+          ext: { width: 400, height: 240 }, // Sized to fit within columns B-K
+        });
+
+        console.log("Liquid limit chart added successfully to record:", record.id);
+        currentDataRow = chartSectionStartRow + 12; // Move past the chart area
+      } catch (error) {
+        console.error("Failed to add liquid limit chart:", error instanceof Error ? error.message : error);
+      }
+    }
 
     // Linear Shrinkage section
     let lsRow = currentDataRow + 3;
@@ -579,36 +760,6 @@ export const generateAtterbergXLSX = async (
     ws.mergeCells(`I${footerRow}:K${footerRow}`);
     setCell(ws, footerRow, 9, `Checked by: ${projectState.checkedBy || "____________"}`, dataBoldFont, null);
 
-    // Add liquid limit chart if available
-    let chartRowOffset = 0;
-    if (options.chartImages && options.chartImages[`${record.id}-liquidLimit`]) {
-      try {
-        const llChartImageData = options.chartImages[`${record.id}-liquidLimit`];
-        const llBase64String = extractBase64FromDataUrl(llChartImageData);
-        const llChartImageId = wb.addImage({
-          base64: llBase64String,
-          extension: "png",
-        });
-
-        // Add liquid limit chart on a new section, below the footer
-        const llChartRow = footerRow + 3;
-        ws.mergeCells(`B${llChartRow}:K${llChartRow}`);
-        const llChartTitleCell = ws.getCell(`B${llChartRow}`);
-        llChartTitleCell.value = "LIQUID LIMIT - MOISTURE VS PENETRATION GRAPH";
-        llChartTitleCell.font = { ...dataBoldFont, size: 11 };
-        llChartTitleCell.border = allThin;
-
-        // Add the chart image below the title
-        ws.addImage(llChartImageId, {
-          tl: { col: 1, row: llChartRow + 1 }, // Column B, one row below title
-          ext: { width: 320, height: 240 },
-        });
-        console.log("Liquid limit chart added successfully to record:", record.id);
-        chartRowOffset = 15; // Offset for the next chart
-      } catch (error) {
-        console.error("Failed to add liquid limit chart:", error instanceof Error ? error.message : error);
-      }
-    }
 
 
     // Print setup
