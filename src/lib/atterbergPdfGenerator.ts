@@ -55,7 +55,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 const fmt = (v: number | string | null | undefined): string =>
   v === null || v === undefined ? "-" : typeof v === "number" ? String(round2(v)) : v;
 
-// ── Draw the cone penetration / moisture graph (BS 1377 style) ──
+// ── Draw the cone penetration / moisture graph (BS 1377 style) with logarithmic scaling ──
 function drawConeGraph(
   doc: jsPDF,
   llTrials: LiquidLimitTrial[],
@@ -75,7 +75,7 @@ function drawConeGraph(
   doc.setFontSize(7);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...COLORS.primary);
-  doc.text("CONE PENETRATION vs MOISTURE CONTENT", x + w / 2, y + 8, { align: "center" });
+  doc.text("CONE PENETRATION vs MOISTURE CONTENT (Log Scale)", x + w / 2, y + 8, { align: "center" });
 
   // Axes
   doc.setDrawColor(...COLORS.dark);
@@ -83,13 +83,13 @@ function drawConeGraph(
   doc.line(plotX, plotY, plotX, plotY + plotH); // Y axis
   doc.line(plotX, plotY + plotH, plotX + plotW, plotY + plotH); // X axis
 
-  // Gather data points
+  // FIRST: Gather and process data points (calculate first)
   const points: Array<{ pen: number; mc: number }> = [];
   for (const trial of llTrials) {
     const pen = num(trial.penetration);
     const mcStr = calculateMoistureFromMass(trial.containerWetMass, trial.containerDryMass, trial.containerMass);
     const mc = mcStr ? Number(mcStr) : num(trial.moisture);
-    if (pen !== null && mc !== null) {
+    if (pen !== null && mc !== null && pen > 0 && mc > 0) {
       points.push({ pen, mc });
     }
   }
@@ -102,17 +102,25 @@ function drawConeGraph(
     return;
   }
 
-  // Determine ranges
-  const mcValues = points.map((p) => p.mc);
-  const penValues = points.map((p) => p.pen);
-  const mcMin = Math.floor(Math.min(...mcValues) - 2);
-  const mcMax = Math.ceil(Math.max(...mcValues) + 2);
-  const penMin = Math.floor(Math.min(...penValues, 14));
-  const penMax = Math.ceil(Math.max(...penValues, 26));
+  // Determine ranges using logarithmic values
+  const logMcValues = points.map((p) => Math.log10(p.mc));
+  const logPenValues = points.map((p) => Math.log10(p.pen));
+  const logMcMin = Math.min(...logMcValues);
+  const logMcMax = Math.max(...logMcValues);
+  const logPenMin = Math.min(...logPenValues);
+  const logPenMax = Math.max(...logPenValues);
 
-  // Scale functions
-  const scaleX = (mc: number) => plotX + ((mc - mcMin) / (mcMax - mcMin)) * plotW;
-  const scaleY = (pen: number) => plotY + plotH - ((pen - penMin) / (penMax - penMin)) * plotH;
+  // Add 10% padding to ranges
+  const logMcPadding = (logMcMax - logMcMin) * 0.1;
+  const logPenPadding = (logPenMax - logPenMin) * 0.1;
+  const mcMinLog = logMcMin - logMcPadding;
+  const mcMaxLog = logMcMax + logMcPadding;
+  const penMinLog = logPenMin - logPenPadding;
+  const penMaxLog = logPenMax + logPenPadding;
+
+  // Logarithmic scale functions
+  const scaleX = (mc: number) => plotX + ((Math.log10(mc) - mcMinLog) / (mcMaxLog - mcMinLog)) * plotW;
+  const scaleY = (pen: number) => plotY + plotH - ((Math.log10(pen) - penMinLog) / (penMaxLog - penMinLog)) * plotH;
 
   // Grid lines and tick marks
   doc.setFontSize(5.5);
@@ -121,20 +129,24 @@ function drawConeGraph(
   doc.setDrawColor(220, 220, 220);
   doc.setLineWidth(0.15);
 
-  // X-axis ticks (moisture content)
-  const mcStep = Math.max(1, Math.round((mcMax - mcMin) / 6));
-  for (let mc = Math.ceil(mcMin); mc <= mcMax; mc += mcStep) {
-    const px = scaleX(mc);
-    doc.line(px, plotY, px, plotY + plotH);
-    doc.text(String(mc), px, plotY + plotH + 5, { align: "center" });
+  // X-axis ticks (moisture content - logarithmic)
+  const mcTickValues = [10, 15, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+  for (const mc of mcTickValues) {
+    if (mc >= Math.pow(10, mcMinLog) && mc <= Math.pow(10, mcMaxLog)) {
+      const px = scaleX(mc);
+      doc.line(px, plotY, px, plotY + plotH);
+      doc.text(String(mc), px, plotY + plotH + 5, { align: "center" });
+    }
   }
 
-  // Y-axis ticks (penetration)
-  const penStep = Math.max(1, Math.round((penMax - penMin) / 6));
-  for (let pen = Math.ceil(penMin); pen <= penMax; pen += penStep) {
-    const py = scaleY(pen);
-    doc.line(plotX, py, plotX + plotW, py);
-    doc.text(String(pen), plotX - 3, py + 1.5, { align: "right" });
+  // Y-axis ticks (penetration - logarithmic)
+  const penTickValues = [5, 10, 15, 20, 25, 30, 35, 40];
+  for (const pen of penTickValues) {
+    if (pen >= Math.pow(10, penMinLog) && pen <= Math.pow(10, penMaxLog)) {
+      const py = scaleY(pen);
+      doc.line(plotX, py, plotX + plotW, py);
+      doc.text(String(pen), plotX - 3, py + 1.5, { align: "right" });
+    }
   }
 
   // 20mm reference line
@@ -148,10 +160,10 @@ function drawConeGraph(
   doc.text("20mm", plotX + plotW + 1, y20 + 1.5);
   doc.setLineDashPattern([], 0);
 
-  // Sort points by moisture content for line drawing
+  // Sort points by moisture content for line drawing (data processing before rendering)
   const sorted = [...points].sort((a, b) => a.mc - b.mc);
 
-  // Draw data line
+  // Draw data line with logarithmic scaling
   doc.setDrawColor(...COLORS.primary);
   doc.setLineWidth(0.5);
   for (let i = 1; i < sorted.length; i++) {
@@ -163,7 +175,7 @@ function drawConeGraph(
     );
   }
 
-  // Draw data points
+  // Draw data points with logarithmic scaling
   for (const pt of sorted) {
     const cx = scaleX(pt.mc);
     const cy = scaleY(pt.pen);
@@ -171,8 +183,8 @@ function drawConeGraph(
     doc.circle(cx, cy, 1.2, "F");
   }
 
-  // Mark LL at 20mm if available
-  if (liquidLimit !== undefined) {
+  // Mark LL at 20mm if available with logarithmic positioning
+  if (liquidLimit !== undefined && liquidLimit > 0) {
     const llX = scaleX(liquidLimit);
     doc.setDrawColor(200, 50, 50);
     doc.setLineDashPattern([1, 1], 0);
@@ -189,13 +201,13 @@ function drawConeGraph(
   doc.setFontSize(6);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...COLORS.dark);
-  doc.text("Moisture Content (%)", x + w / 2, y + h - 2, { align: "center" });
+  doc.text("Moisture Content (%) - Log Scale", x + w / 2, y + h - 2, { align: "center" });
 
   // Rotated Y label
   doc.saveGraphicsState();
   const yLabelX = x + 4;
   const yLabelY = y + h / 2;
-  doc.text("Penetration (mm)", yLabelX, yLabelY, { angle: 90 });
+  doc.text("Penetration (mm) - Log Scale", yLabelX, yLabelY, { angle: 90 });
   doc.restoreGraphicsState();
 }
 
