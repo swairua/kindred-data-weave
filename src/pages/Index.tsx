@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { ProjectContext } from "@/context/ProjectContext";
@@ -224,7 +224,15 @@ const Index = ({ initialTab }: IndexProps) => {
 
   // Keep session alive while authenticated to prevent backend timeout
   // Pings every 5 minutes to refresh the session on backend
-  useSessionKeepAlive(authStatus === "authenticated");
+  // If session expires, log out the user
+  const handleSessionExpired = useCallback(() => {
+    console.warn("[Index] Session expired detected by keep-alive, logging out user");
+    setCurrentUser(null);
+    setAuthStatus("unauthenticated");
+    toast.error("Your session has expired. Please sign in again.");
+  }, []);
+
+  useSessionKeepAlive(authStatus === "authenticated", handleSessionExpired);
 
   useEffect(() => {
     console.log("[Index] authStatus changed to:", authStatus);
@@ -273,18 +281,20 @@ const Index = ({ initialTab }: IndexProps) => {
           console.debug("[Index] API server currently unavailable, project history will not load");
         }
 
-        // If it's an authentication error, log additional context
-        // Note: Don't auto-logout on 401 from project loading - it's a non-critical background task
+        // If it's an authentication error, trigger session expiry
+        // This ensures we log out the user if the backend session is invalid
         if (errorMsg.includes("401") || errorMsg.includes("Unauthorized")) {
-          console.warn("[Index] ⚠️ Project loading returned 401 - possible session expiration on backend");
-          console.warn("[Index] Keeping user logged in locally - will retry on next action");
-          // Don't auto-logout on background task failures - let the user trigger actions that will refresh the session
+          console.warn("[Index] ⚠️ Project loading returned 401 - session is invalid on backend");
+          console.warn("[Index] Triggering immediate logout due to authentication error");
+          if (isMounted) {
+            handleSessionExpired();
+          }
         }
 
-        if (isMounted && !isNetworkError) {
+        if (isMounted && !isNetworkError && !errorMsg.includes("401")) {
           console.warn("[Index] Project history load failed - will show 'No saved projects'");
         }
-        // Silently fail - not critical to operation
+        // Silently fail for non-auth errors - not critical to operation
       } finally {
         if (isMounted) {
           setIsLoadingProjects(false);

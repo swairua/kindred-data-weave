@@ -1,16 +1,22 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { fetchCurrentUser } from '@/lib/api';
 
 /**
  * Hook to keep the user session alive by periodically pinging the backend
  * This prevents session timeout during active work sessions
- * 
+ *
  * @param enabled - Whether keep-alive is enabled (typically true if user is authenticated)
+ * @param onSessionExpired - Callback when session is detected as expired
  * @param intervalMs - How often to ping (default: 5 minutes)
  */
-export const useSessionKeepAlive = (enabled: boolean = true, intervalMs: number = 5 * 60 * 1000) => {
+export const useSessionKeepAlive = (
+  enabled: boolean = true,
+  onSessionExpired?: () => void,
+  intervalMs: number = 5 * 60 * 1000
+) => {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastPingRef = useRef<number>(0);
+  const sessionValidRef = useRef<boolean>(true);
 
   useEffect(() => {
     if (!enabled) {
@@ -19,6 +25,7 @@ export const useSessionKeepAlive = (enabled: boolean = true, intervalMs: number 
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
+      sessionValidRef.current = true;
       return;
     }
 
@@ -28,12 +35,22 @@ export const useSessionKeepAlive = (enabled: boolean = true, intervalMs: number 
         if (user) {
           const now = Date.now();
           lastPingRef.current = now;
+          // If session was previously invalid, it's now valid again
+          if (!sessionValidRef.current) {
+            sessionValidRef.current = true;
+            console.log('[KeepAlive] Session restored');
+          }
           console.debug(`[KeepAlive] Session ping successful at ${new Date(now).toLocaleTimeString()}`);
         } else {
-          console.warn('[KeepAlive] Session ping returned no user - session may have expired');
+          console.warn('[KeepAlive] Session ping returned no user - session has expired');
+          if (sessionValidRef.current) {
+            sessionValidRef.current = false;
+            onSessionExpired?.();
+          }
         }
       } catch (error) {
         console.warn('[KeepAlive] Session keep-alive ping failed:', error instanceof Error ? error.message : error);
+        // On network errors, don't mark session as invalid - it could be a temporary issue
       }
     };
 
@@ -51,9 +68,10 @@ export const useSessionKeepAlive = (enabled: boolean = true, intervalMs: number 
         intervalRef.current = null;
       }
     };
-  }, [enabled, intervalMs]);
+  }, [enabled, intervalMs, onSessionExpired]);
 
   return {
     lastPingTime: lastPingRef.current,
+    isSessionValid: sessionValidRef.current,
   };
 };
