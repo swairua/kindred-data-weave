@@ -65,7 +65,13 @@ export const generateTestExcel = async (
   wb.created = new Date();
 
   // Fetch admin images for header/footer
-  const images = await fetchAdminImagesAsBase64();
+  let images = { logo: undefined, contacts: undefined, stamp: undefined };
+  try {
+    images = await fetchAdminImagesAsBase64();
+  } catch (error) {
+    console.warn("Failed to fetch admin images for export, continuing without them:", error instanceof Error ? error.message : error);
+    // Continue with empty images object - images are optional
+  }
 
   const ws = wb.addWorksheet("Test Report");
 
