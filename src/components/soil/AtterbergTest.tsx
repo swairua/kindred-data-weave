@@ -835,12 +835,15 @@ const AtterbergTest = () => {
           console.log(`[AtterbergTest] Created new test:`, newTest);
           return {
             ...record,
+            isExpanded: true,
             tests: [...record.tests, newTest],
           };
         });
         console.log(`[AtterbergTest] Test added successfully`);
+        toast.success(`${type === "liquidLimit" ? "Liquid Limit" : type === "plasticLimit" ? "Plastic Limit" : "Linear Shrinkage"} test added`);
       } catch (error) {
         console.error(`[AtterbergTest] Error adding test:`, error);
+        toast.error("Failed to add test");
         throw error;
       }
     },
