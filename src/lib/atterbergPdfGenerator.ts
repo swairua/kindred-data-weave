@@ -497,12 +497,20 @@ function drawRecordPage(
   const rightX = margin + contentW * 0.5;
   const sectionStartY = y;
 
+  // Check if we need a page break for the right-side sections (approx 75-85 units total)
+  if (sectionStartY + 85 > ph - 15) {
+    doc.addPage();
+    y = 20;
+  }
+
+  const sectionStartY2 = y;
+
   // ── LEFT: Cone Graph ──
   const chartH = 50;
   drawConeGraph(doc, llTrials, record.results.liquidLimit, margin, y, leftW, chartH);
 
   // ── RIGHT: Linear Shrinkage ──
-  let ry = sectionStartY;
+  let ry = sectionStartY2;
   const slTrial = slTrials[0];
   const lsData = [
     ["Initial length (mm)", fmt(slTrial ? num(slTrial.initialLength) ?? 140 : 140)],
@@ -615,7 +623,7 @@ function drawRecordPage(
   ry += 10;
 
   // ── Footer: Tested by / Date / Checked by ──
-  const footerY = Math.max(ry, sectionStartY + chartH + 10) + 4;
+  const footerY = Math.max(ry, sectionStartY2 + chartH + 10) + 4;
   doc.setFontSize(7);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...COLORS.dark);

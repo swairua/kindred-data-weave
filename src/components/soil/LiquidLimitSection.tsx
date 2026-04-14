@@ -231,46 +231,50 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId }: Liquid
         <Plus className="mr-1 h-3.5 w-3.5" /> Add Trial
       </Button>
 
-      <div className="rounded-lg border bg-muted/40 p-3">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-muted-foreground">Liquid Limit (LL) at 20mm penetration</span>
-          <span className="text-lg font-bold text-blue-600 dark:text-blue-400">{result !== null ? `${result}%` : "-"}</span>
-        </div>
-      </div>
-
       {graphData.length >= 2 && (
         <>
-          <div className="rounded-lg border bg-card p-3">
-            <h4 className="mb-3 text-sm font-medium text-foreground">Moisture vs Penetration (Semi-log Scale)</h4>
-            <div className="overflow-x-auto">
-              <div className="h-[280px] min-w-[520px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={graphData} margin={{ top: 16, right: 20, left: 0, bottom: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="penetration" stroke="hsl(var(--muted-foreground))" label={{ value: "Penetration (mm)", position: "insideBottom", offset: -4 }} />
-                    <YAxis scale="log" stroke="hsl(var(--muted-foreground))" label={{ value: "Moisture (%) - Log Scale", angle: -90, position: "insideLeft" }} type="number" domain={[Math.min(...graphData.map(d => d.moisture)) * 0.8, Math.max(...graphData.map(d => d.moisture)) * 1.2]} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--background))",
-                        borderColor: "hsl(var(--border))",
-                        borderRadius: 8,
-                      }}
-                      formatter={(value: number) => [`${value.toFixed(2)}%`, "Moisture"]}
-                      labelFormatter={(label) => `Penetration: ${label}mm`}
-                    />
-                    <ReferenceLine x={20} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" />
-                    <Line
-                      type="monotone"
-                      dataKey="moisture"
-                      name="Moisture"
-                      stroke="hsl(var(--primary))"
-                      strokeWidth={2}
-                      dot={{ fill: "hsl(var(--primary))", r: 4 }}
-                      activeDot={{ r: 5 }}
-                      isAnimationActive={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Graph on the left - takes 2 columns */}
+            <div className="lg:col-span-2 rounded-lg border bg-card p-3">
+              <h4 className="mb-3 text-sm font-medium text-foreground">Moisture vs Penetration (Semi-log Scale)</h4>
+              <div className="overflow-x-auto">
+                <div className="h-[280px] min-w-[520px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={graphData} margin={{ top: 16, right: 20, left: 0, bottom: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="penetration" stroke="hsl(var(--muted-foreground))" label={{ value: "Penetration (mm)", position: "insideBottom", offset: -4 }} />
+                      <YAxis scale="log" stroke="hsl(var(--muted-foreground))" label={{ value: "Moisture (%) - Log Scale", angle: -90, position: "insideLeft" }} type="number" domain={[Math.min(...graphData.map(d => d.moisture)) * 0.8, Math.max(...graphData.map(d => d.moisture)) * 1.2]} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--background))",
+                          borderColor: "hsl(var(--border))",
+                          borderRadius: 8,
+                        }}
+                        formatter={(value: number) => [`${value.toFixed(2)}%`, "Moisture"]}
+                        labelFormatter={(label) => `Penetration: ${label}mm`}
+                      />
+                      <ReferenceLine x={20} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" />
+                      <Line
+                        type="monotone"
+                        dataKey="moisture"
+                        name="Moisture"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={2}
+                        dot={{ fill: "hsl(var(--primary))", r: 4 }}
+                        activeDot={{ r: 5 }}
+                        isAnimationActive={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
+            {/* Summary on the right - takes 1 column */}
+            <div className="flex flex-col gap-3">
+              <div className="rounded-lg border bg-muted/40 p-3 flex-1 flex flex-col justify-center">
+                <span className="text-sm font-medium text-muted-foreground">Liquid Limit (LL) at 20mm penetration</span>
+                <span className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-2">{result !== null ? `${result}%` : "-"}</span>
               </div>
             </div>
           </div>
