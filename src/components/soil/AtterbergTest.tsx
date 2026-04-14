@@ -67,6 +67,7 @@ import {
 } from "@/lib/jsonExporter";
 import { generateAtterbergXLSX } from "@/lib/xlsxExporter";
 import { ExportPreviewModal, type ExportPreviewData } from "@/components/ExportPreviewModal";
+import html2canvas from "html2canvas";
 
 const STORAGE_KEY = "atterbergProjectState";
 
