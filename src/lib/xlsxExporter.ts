@@ -6,7 +6,15 @@ import type {
   PlasticLimitTrial,
   ShrinkageLimitTrial,
 } from "@/context/TestDataContext";
-import { calculateMoistureFromMass, getTrialMoisture } from "./atterbergCalculations";
+import {
+  calculateMoistureFromMass,
+  getTrialMoisture,
+  calculateLiquidLimit,
+  calculatePlasticLimit,
+  calculateLinearShrinkage,
+  calculatePlasticityIndex,
+  calculateModulusOfPlasticity,
+} from "./atterbergCalculations";
 import { fetchAdminImagesAsBase64 } from "./imageUtils";
 
 interface ExportOptions {
@@ -16,6 +24,7 @@ interface ExportOptions {
   projectState: AtterbergProjectState;
   records: AtterbergRecord[];
   skipDownload?: boolean;
+  chartImages?: { [key: string]: string }; // recordId -> base64 image data URL
 }
 
 const thin: Partial<ExcelJS.Border> = { style: "thin" };
@@ -463,13 +472,13 @@ export const generateAtterbergXLSX = async (
       currentDataRow += dataLabels.length + 1;
     }
 
-    // Row for Plastic Limit result
+    // Row for Plastic Limit result - recalculate if needed
     currentDataRow += 1;
     ws.mergeCells(`B${currentDataRow}:F${currentDataRow}`);
     setCell(ws, currentDataRow, 2, "", dataFont, allThin);
     setCell(ws, currentDataRow, 8, "PLASTIC LIMIT", dataBoldFont, allThin);
     ws.mergeCells(`J${currentDataRow}:K${currentDataRow}`);
-    const plValue = record.results.plasticLimit;
+    const plValue = record.results.plasticLimit ?? calculatePlasticLimit(plTrials);
     setCell(ws, currentDataRow, 10, plValue !== undefined ? plValue : "-", dataBoldFont, allThin);
 
     // Linear Shrinkage section
@@ -494,16 +503,24 @@ export const generateAtterbergXLSX = async (
     ws.mergeCells(`G${lsRow}:I${lsRow}`);
     setCell(ws, lsRow, 7, "Shrinkage (%)", dataBoldFont, allThin);
     ws.mergeCells(`J${lsRow}:K${lsRow}`);
-    setCell(ws, lsRow, 10, record.results.linearShrinkage ?? "-", dataFont, allThin);
+    const shrinkageValue = record.results.linearShrinkage ?? calculateLinearShrinkage(slTrials);
+    setCell(ws, lsRow, 10, shrinkageValue ?? "-", dataFont, allThin);
 
-    // Summary results
+    // Summary results - recalculate if not provided in record.results
+    const liquidLimit = record.results.liquidLimit ?? calculateLiquidLimit(llTrials);
+    const plasticLimit = record.results.plasticLimit ?? calculatePlasticLimit(plTrials);
+    const linearShrinkage = record.results.linearShrinkage ?? calculateLinearShrinkage(slTrials);
+    const plasticityIndex = record.results.plasticityIndex ?? calculatePlasticityIndex(liquidLimit, plasticLimit);
+    const passing425um = num(record.passing425um);
+    const modulusOfPlasticity = record.results.modulusOfPlasticity ?? calculateModulusOfPlasticity(plasticityIndex, record.passing425um);
+
     const summaryLabels: [string, string | number | undefined][] = [
-      ["LIQUID LIMIT (%)", record.results.liquidLimit],
-      ["PLASTIC LIMIT (%)", record.results.plasticLimit],
-      ["PLASTICITY INDEX (%)", record.results.plasticityIndex],
-      ["Passing 425 µm (%)", num(record.passing425um)],
-      ["MODULUS OF PLASTICITY", record.results.modulusOfPlasticity],
-      ["LINEAR SHRINKAGE (%)", record.results.linearShrinkage],
+      ["LIQUID LIMIT (%)", liquidLimit],
+      ["PLASTIC LIMIT (%)", plasticLimit],
+      ["PLASTICITY INDEX (%)", plasticityIndex],
+      ["Passing 425 µm (%)", passing425um],
+      ["MODULUS OF PLASTICITY", modulusOfPlasticity],
+      ["LINEAR SHRINKAGE (%)", linearShrinkage],
     ];
 
     let summaryRow = lsRow + 3;
@@ -524,22 +541,20 @@ export const generateAtterbergXLSX = async (
     ws.mergeCells(`G${classRow}:G${classRow}`);
     setCell(ws, classRow, 7, "USCS", dataBoldFont, null);
     ws.mergeCells(`H${classRow}:K${classRow}`);
-    // Derive USCS from results
-    const ll = record.results.liquidLimit;
-    const pl = record.results.plasticLimit;
+    // Derive USCS from recalculated results
     let uscsCode = "";
     let uscsDesc = "";
-    if (pl !== undefined && ll !== undefined) {
-      const pi = record.results.plasticityIndex ?? 0;
+    if (plasticLimit !== null && liquidLimit !== null) {
+      const pi = plasticityIndex ?? 0;
       if (pi < 4) {
-        uscsCode = ll < 50 ? "ML" : "MH";
-        uscsDesc = ll < 50 ? "SILT OF LOW PLASTICITY" : "SILT OF HIGH PLASTICITY";
+        uscsCode = liquidLimit < 50 ? "ML" : "MH";
+        uscsDesc = liquidLimit < 50 ? "SILT OF LOW PLASTICITY" : "SILT OF HIGH PLASTICITY";
       } else if (pi >= 4 && pi < 7) {
         uscsCode = "CL-ML";
         uscsDesc = "SILTY CLAY OF LOW PLASTICITY";
       } else {
-        uscsCode = ll < 50 ? "CL" : "CH";
-        uscsDesc = ll < 50 ? "CLAY OF LOW PLASTICITY" : "CLAY OF HIGH PLASTICITY";
+        uscsCode = liquidLimit < 50 ? "CL" : "CH";
+        uscsDesc = liquidLimit < 50 ? "CLAY OF LOW PLASTICITY" : "CLAY OF HIGH PLASTICITY";
       }
     }
     setCell(ws, classRow, 8, uscsDesc, dataBoldFont, null);
@@ -559,6 +574,35 @@ export const generateAtterbergXLSX = async (
     setCell(ws, footerRow, 7, projectState.dateReported || "", valueFont, null);
     ws.mergeCells(`I${footerRow}:K${footerRow}`);
     setCell(ws, footerRow, 9, `Checked by: ${projectState.checkedBy || "____________"}`, dataBoldFont, null);
+
+    // Add plasticity chart if available
+    if (options.chartImages && options.chartImages[record.id]) {
+      try {
+        const chartImageData = options.chartImages[record.id];
+        const base64String = extractBase64FromDataUrl(chartImageData);
+        const chartImageId = wb.addImage({
+          base64: base64String,
+          extension: "png",
+        });
+
+        // Add chart on a new section, below the footer
+        const chartRow = footerRow + 3;
+        ws.mergeCells(`B${chartRow}:K${chartRow}`);
+        const chartTitleCell = ws.getCell(`B${chartRow}`);
+        chartTitleCell.value = "PLASTICITY CHART";
+        chartTitleCell.font = { ...dataBoldFont, size: 11 };
+        chartTitleCell.border = allThin;
+
+        // Add the chart image below the title
+        ws.addImage(chartImageId, {
+          tl: { col: 1, row: chartRow }, // Column B
+          ext: { width: 300, height: 240 }, // Size in EMUs (1/914400 of an inch)
+        });
+        console.log("Plasticity chart added successfully to record:", record.id);
+      } catch (error) {
+        console.error("Failed to add plasticity chart:", error instanceof Error ? error.message : error);
+      }
+    }
 
     // Print setup
     ws.pageSetup = {
