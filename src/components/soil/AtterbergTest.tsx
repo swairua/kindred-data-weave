@@ -177,7 +177,7 @@ const createTest = (type: AtterbergTestType, tests: AtterbergTest[]): AtterbergT
       id: makeId("test"),
       title: buildTestTitle(type, tests),
       type,
-      isExpanded: true,
+      isExpanded: false,
       trials: [createLiquidLimitTrial(0)],
       result: {},
     };
@@ -188,7 +188,7 @@ const createTest = (type: AtterbergTestType, tests: AtterbergTest[]): AtterbergT
       id: makeId("test"),
       title: buildTestTitle(type, tests),
       type,
-      isExpanded: true,
+      isExpanded: false,
       trials: [createPlasticLimitTrial(0)],
       result: {},
     };
@@ -198,7 +198,7 @@ const createTest = (type: AtterbergTestType, tests: AtterbergTest[]): AtterbergT
     id: makeId("test"),
     title: buildTestTitle(type, tests),
     type,
-    isExpanded: true,
+    isExpanded: false,
     trials: [createShrinkageLimitTrial(0)],
     result: {},
   };
@@ -209,7 +209,7 @@ const createRecord = (index: number): AtterbergRecord => ({
   title: `Record ${index + 1}`,
   label: "",
   note: "",
-  isExpanded: true,
+  isExpanded: false,
   tests: [],
   results: {},
 });
@@ -223,7 +223,7 @@ const createDefaultRecord = (index: number): AtterbergRecord => {
     id: makeId("test"),
     title: `Liquid Limit ${index + 1}`,
     type: "liquidLimit",
-    isExpanded: true,
+    isExpanded: false,
     trials: [
       {
         id: makeId("trial"),
@@ -274,7 +274,7 @@ const createDefaultRecord = (index: number): AtterbergRecord => {
     id: makeId("test"),
     title: `Plastic Limit ${index + 1}`,
     type: "plasticLimit",
-    isExpanded: true,
+    isExpanded: false,
     trials: [
       {
         id: makeId("trial"),
@@ -303,7 +303,7 @@ const createDefaultRecord = (index: number): AtterbergRecord => {
     id: makeId("test"),
     title: `Linear Shrinkage ${index + 1}`,
     type: "shrinkageLimit",
-    isExpanded: true,
+    isExpanded: false,
     trials: [
       {
         id: makeId("trial"),
@@ -326,7 +326,7 @@ const createDefaultRecord = (index: number): AtterbergRecord => {
     title: `Record ${index + 1}`,
     label: `Sample ${index + 1}`,
     note: "Sample soil specimen",
-    isExpanded: true,
+    isExpanded: false,
     tests: [liquidLimitTest, plasticLimitTest, shrinkageLimitTest],
     results: {},
     sampleNumber: `00${index + 1}`,
@@ -839,7 +839,6 @@ const AtterbergTest = () => {
           console.log(`[AtterbergTest] Created new test:`, newTest);
           return {
             ...record,
-            isExpanded: true,
             tests: [...record.tests, newTest],
           };
         });
@@ -873,7 +872,7 @@ const AtterbergTest = () => {
             ...test,
             title: buildTestTitle(type, record.tests.filter((item) => item.id !== testId)),
             type,
-            isExpanded: true,
+            isExpanded: false,
             trials: createTrialsForType(type) as AtterbergTest["trials"],
             result: {},
           } as AtterbergTest;
