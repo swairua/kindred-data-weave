@@ -260,7 +260,16 @@ const Index = ({ initialTab }: IndexProps) => {
         setProjectHistory(projects);
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
-        console.error("[Index] Failed to load project history:", errorMsg);
+
+        // Check if it's a network/API unavailability error
+        const isNetworkError = errorMsg.toLowerCase().includes("failed to fetch") ||
+                              errorMsg.toLowerCase().includes("unable to reach");
+
+        if (!isNetworkError) {
+          console.error("[Index] Failed to load project history:", errorMsg);
+        } else {
+          console.debug("[Index] API server currently unavailable, project history will not load");
+        }
 
         // If it's an authentication error, log additional context
         if (errorMsg.includes("401") || errorMsg.includes("Unauthorized")) {
@@ -296,7 +305,7 @@ const Index = ({ initialTab }: IndexProps) => {
           }
         }
 
-        if (isMounted) {
+        if (isMounted && !isNetworkError) {
           console.warn("[Index] Project history load failed - will show 'No saved projects'");
         }
         // Silently fail - not critical to operation

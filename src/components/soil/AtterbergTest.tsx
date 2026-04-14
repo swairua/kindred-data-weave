@@ -405,11 +405,21 @@ const loadAtterbergProjectFromApi = async (lookup: AtterbergProjectLookup) => {
 
     return normalizeAtterbergProjectState(extractAtterbergPayload(resultRow.payload_json));
   } catch (error) {
-    // If API is unavailable or unauthorized, return null to allow fallback to localStorage
-    if (error instanceof Error && (error.message.includes("Unauthorized") || error.message.includes("Forbidden"))) {
-      console.warn("API authentication failed, using localStorage fallback");
-      return null;
+    // If API is unavailable, unauthorized, or network error - return null to allow fallback to localStorage
+    if (error instanceof Error) {
+      const errorMsg = error.message.toLowerCase();
+      if (
+        errorMsg.includes("unauthorized") ||
+        errorMsg.includes("forbidden") ||
+        errorMsg.includes("failed to fetch") ||
+        errorMsg.includes("unable to reach") ||
+        errorMsg.includes("network")
+      ) {
+        console.debug("API unavailable, falling back to localStorage for Atterberg project");
+        return null;
+      }
     }
+    // Re-throw unexpected errors
     throw error;
   }
 };
