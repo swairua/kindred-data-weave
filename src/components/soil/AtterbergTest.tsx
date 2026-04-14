@@ -630,13 +630,9 @@ const updateTrialsForType = (test: AtterbergTest, trials: AtterbergTest["trials"
 
 const AtterbergTest = () => {
   const project = useProject();
-  // Initialize with 3 sample records containing complete test data for quick testing
+  // Initialize with empty records - users add tests as needed
   const [projectState, setProjectState] = useState<AtterbergProjectState>({
-    records: [
-      createDefaultRecord(0),
-      createDefaultRecord(1),
-      createDefaultRecord(2),
-    ],
+    records: [createRecord(0)],
   });
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const [smokeCheckStatus, setSmokeCheckStatus] = useState<SmokeCheckStatus | null>(null);

@@ -19,7 +19,7 @@ interface ShrinkageLimitSectionProps {
 const createTrial = (index: number): ShrinkageLimitTrial => ({
   id: `trial-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
   trialNo: String(index + 1),
-  initialLength: "140",
+  initialLength: "",
   finalLength: "",
 });
 
