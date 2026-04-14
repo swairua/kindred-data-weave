@@ -1174,6 +1174,34 @@ const AtterbergTest = () => {
     return chartImages;
   }, []);
 
+  const waitForElementsToBeVisible = useCallback(async (recordIds: string[], maxWaitTime: number = 2000): Promise<void> => {
+    console.log(`[Visibility] Waiting for elements to be visible`, { recordIds, maxWaitTime });
+    const pollInterval = 50;
+    const maxAttempts = Math.ceil(maxWaitTime / pollInterval);
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const allVisible = recordIds.every((recordId) => {
+        const chartRef = chartRefsMap.current.get(recordId);
+        return chartRef && chartRef.offsetParent !== null;
+      });
+
+      if (allVisible) {
+        console.log(`[Visibility] All elements are now visible after ${attempt * pollInterval}ms`);
+        return;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+    }
+
+    // Log which elements are still not visible
+    const stillHidden = recordIds.filter((recordId) => {
+      const chartRef = chartRefsMap.current.get(recordId);
+      return !chartRef || chartRef.offsetParent === null;
+    });
+
+    console.warn(`[Visibility] Some elements are still not visible after ${maxWaitTime}ms:`, stillHidden);
+  }, []);
+
   const registerChartRef = useCallback((recordId: string, ref: HTMLDivElement | null) => {
     if (ref) {
       chartRefsMap.current.set(recordId, ref);
@@ -1215,7 +1243,9 @@ const AtterbergTest = () => {
 
       // Ensure record is expanded and wait for chart to be fully rendered
       ensureRecordsExpanded([recordId]);
-      await new Promise((resolve) => setTimeout(resolve, 400));
+
+      // Wait for elements to become visible before capturing
+      await waitForElementsToBeVisible([recordId]);
 
       // Capture chart image for this record
       const chartImages = await captureAllChartImages([recordId]);
@@ -1233,7 +1263,7 @@ const AtterbergTest = () => {
 
       return true;
     },
-    [computedRecords, project.clientName, project.date, project.projectName, projectState, captureAllChartImages, ensureRecordsExpanded],
+    [computedRecords, project.clientName, project.date, project.projectName, projectState, captureAllChartImages, ensureRecordsExpanded, waitForElementsToBeVisible],
   );
 
   const handleRecordExportJSON = useCallback(
@@ -1282,8 +1312,8 @@ const AtterbergTest = () => {
       const recordIds = computedRecords.map((r) => r.id);
       ensureRecordsExpanded(recordIds);
 
-      // Wait for expand animation and chart rendering
-      await new Promise((resolve) => setTimeout(resolve, 400));
+      // Wait for elements to become visible before capturing
+      await waitForElementsToBeVisible(recordIds);
 
       // Capture all chart images
       const chartImages = await captureAllChartImages(recordIds);
@@ -1320,7 +1350,7 @@ const AtterbergTest = () => {
     }
 
     return true;
-  }, [computedRecords, project.clientName, project.date, project.projectName, projectState, captureAllChartImages, ensureRecordsExpanded]);
+  }, [computedRecords, project.clientName, project.date, project.projectName, projectState, captureAllChartImages, ensureRecordsExpanded, waitForElementsToBeVisible]);
 
   const handleExportSmokeCheck = useCallback(async () => {
     if (computedRecords.length === 0) {
