@@ -110,6 +110,7 @@ const retryImageFetch = async (
   }
 
   // Silently fail - images are optional for export
+  // IMPORTANT: Don't throw errors here - images are completely optional
   console.debug(`[ImageRetry] Image fetch failed after ${maxAttempts} attempts (this is normal if image doesn't exist):`, {
     filePath,
     lastError: lastError?.message || "Unknown error"

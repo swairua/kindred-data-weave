@@ -1080,6 +1080,10 @@ const AtterbergTest = () => {
         });
         setPreviewModalOpen(true);
       }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error("[Export] PDF export failed:", errorMsg);
+      toast.error(`Export failed: ${errorMsg}`);
     } finally {
       setIsPreviewLoading(false);
       setIsExporting(null);
@@ -1418,6 +1422,10 @@ const AtterbergTest = () => {
         });
         setPreviewModalOpen(true);
       }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error("[Export] Excel export failed:", errorMsg);
+      toast.error(`Export failed: ${errorMsg}`);
     } finally {
       setIsPreviewLoading(false);
       setIsExporting(null);
