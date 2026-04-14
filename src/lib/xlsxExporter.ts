@@ -476,6 +476,147 @@ export const generateAtterbergXLSX = async (
       currentDataRow += dataLabels.length + 1;
     }
 
+    // Back-calculation section for Plastic Limit trials (using LL moisture content)
+    currentDataRow += 1;
+    ws.mergeCells(`B${currentDataRow}:K${currentDataRow}`);
+    const backCalcHeaderCell = ws.getCell(`B${currentDataRow}`);
+    backCalcHeaderCell.value = "PLASTIC LIMIT - BACK CALCULATION (Wet Soil from Dry Weight + Moisture%)";
+    backCalcHeaderCell.font = { ...headerFont, size: 10, color: { argb: "FF2962A3" } };
+    backCalcHeaderCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0F4FF" } };
+    backCalcHeaderCell.border = allThin;
+    currentDataRow += 1;
+
+    // Get the first LL trial's moisture for PR trial back-calculation
+    const firstLLTrial = llTrials[0];
+    const llFirstMoisture = firstLLTrial ? getTrialMoisture(firstLLTrial) : null;
+
+    // Build back-calculation data rows
+    const backCalcLabels = [
+      "Wt of Dry Soil (g)",
+      "Moisture Content (%)",
+      "Wt of Moisture (g)",
+      "Wt of Wet Soil (g)",
+    ];
+
+    // Add trial header row for back-calculations
+    ws.mergeCells(`B${currentDataRow}:D${currentDataRow}`);
+    setCell(ws, currentDataRow, 2, "", dataFont, allThin);
+
+    // Show columns for PR and MG trials
+    const prTrialIdx = plTrials.findIndex((t) => t.containerNo === "PR");
+    const mgTrialIdx = plTrials.findIndex((t) => t.containerNo === "MG");
+
+    if (prTrialIdx >= 0 || mgTrialIdx >= 0) {
+      if (prTrialIdx >= 0) {
+        const prTrial = plTrials[prTrialIdx];
+        const headerCell = ws.getCell(currentDataRow, 5);
+        headerCell.value = `PR (${prTrial.containerNo || "PR"})`;
+        headerCell.font = { ...dataBoldFont, size: 10 };
+        headerCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0F4FF" } };
+        headerCell.border = allThin;
+        headerCell.alignment = { horizontal: "center" };
+      }
+
+      if (mgTrialIdx >= 0) {
+        const mgTrial = plTrials[mgTrialIdx];
+        const headerCell = ws.getCell(currentDataRow, 6);
+        headerCell.value = `MG (${mgTrial.containerNo || "MG"})`;
+        headerCell.font = { ...dataBoldFont, size: 10 };
+        headerCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0F4FF" } };
+        headerCell.border = allThin;
+        headerCell.alignment = { horizontal: "center" };
+      }
+
+      // Fill empty columns
+      for (let col = 7; col <= 11; col++) {
+        const headerCell = ws.getCell(currentDataRow, col);
+        headerCell.border = allThin;
+      }
+      currentDataRow += 1;
+
+      // Add back-calculation rows
+      for (let i = 0; i < backCalcLabels.length; i++) {
+        const row = currentDataRow + i;
+
+        ws.mergeCells(row, 2, row, 4);
+        setCell(ws, row, 2, backCalcLabels[i], dataBoldFont, allThin);
+
+        // PR Trial back-calculation
+        if (prTrialIdx >= 0) {
+          const prTrial = plTrials[prTrialIdx];
+          const dryMass = num(prTrial.containerDryMass) && num(prTrial.containerMass)
+            ? round2(num(prTrial.containerDryMass)! - num(prTrial.containerMass)!)
+            : null;
+
+          let value: string | number = "-";
+          switch (i) {
+            case 0: // Wt of Dry Soil
+              value = dryMass !== null ? dryMass : "-";
+              break;
+            case 1: // Moisture Content (from LL)
+              value = llFirstMoisture ? Number(llFirstMoisture) : "-";
+              break;
+            case 2: // Wt of Moisture (calculated)
+              if (dryMass !== null && llFirstMoisture) {
+                const mc = Number(llFirstMoisture);
+                value = round2((dryMass * mc) / 100);
+              }
+              break;
+            case 3: // Wt of Wet Soil (calculated)
+              if (dryMass !== null && llFirstMoisture) {
+                const mc = Number(llFirstMoisture);
+                const moisture = (dryMass * mc) / 100;
+                value = round2(dryMass + moisture);
+              }
+              break;
+          }
+          setCell(ws, row, 5, value, dataFont, allThin);
+        }
+
+        // MG Trial back-calculation
+        if (mgTrialIdx >= 0) {
+          const mgTrial = plTrials[mgTrialIdx];
+          const dryMass = num(mgTrial.containerDryMass) && num(mgTrial.containerMass)
+            ? round2(num(mgTrial.containerDryMass)! - num(mgTrial.containerMass)!)
+            : null;
+
+          // For MG, get moisture from its own trial calculation if available
+          const mgMoisture = getTrialMoisture(mgTrial);
+
+          let value: string | number = "-";
+          switch (i) {
+            case 0: // Wt of Dry Soil
+              value = dryMass !== null ? dryMass : "-";
+              break;
+            case 1: // Moisture Content (from MG trial or default)
+              value = mgMoisture ? Number(mgMoisture) : "-";
+              break;
+            case 2: // Wt of Moisture (calculated)
+              if (dryMass !== null && mgMoisture) {
+                const mc = Number(mgMoisture);
+                value = round2((dryMass * mc) / 100);
+              }
+              break;
+            case 3: // Wt of Wet Soil (calculated)
+              if (dryMass !== null && mgMoisture) {
+                const mc = Number(mgMoisture);
+                const moisture = (dryMass * mc) / 100;
+                value = round2(dryMass + moisture);
+              }
+              break;
+          }
+          setCell(ws, row, 6, value, dataFont, allThin);
+        }
+
+        // Fill remaining columns
+        for (let col = 7; col <= 11; col++) {
+          setCell(ws, row, col, "-", dataFont, allThin);
+        }
+      }
+
+      currentDataRow += backCalcLabels.length + 1;
+    }
+
     // Row for Plastic Limit result - recalculate if needed
     currentDataRow += 1;
     ws.mergeCells(`B${currentDataRow}:F${currentDataRow}`);
