@@ -55,58 +55,81 @@ const imagePathToBase64 = async (filePath: string): Promise<string | undefined> 
 
   try {
     // Fetch with proper credentials and session token
-    const response = await fetch(imageUrl, {
-      method: "GET",
-      headers: {
-        "X-Session-Token": sessionToken || "",
-        "Accept": "image/*",
-      },
-      credentials: "include",
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
-    if (!response.ok) {
-      console.error("Failed to fetch image:", {
-        status: response.status,
-        statusText: response.statusText,
-        url: imageUrl,
-        hasSessionToken: !!sessionToken
+    try {
+      const response = await fetch(imageUrl, {
+        method: "GET",
+        headers: {
+          "X-Session-Token": sessionToken || "",
+          "Accept": "image/*",
+        },
+        credentials: "include",
+        signal: controller.signal,
       });
-      return undefined;
-    }
 
-    const blob = await response.blob();
-    console.log("Image fetched as blob:", {
-      size: blob.size,
-      type: blob.type,
-      filename: filePath
-    });
+      clearTimeout(timeoutId);
 
-    // Validate blob size
-    if (blob.size === 0) {
-      console.error("Downloaded image is empty:", { filePath });
-      return undefined;
-    }
-
-    // Convert blob to base64 data URL
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const dataUrl = reader.result as string;
-        console.log("Image converted to base64 data URL successfully:", {
-          length: dataUrl.length,
-          filename: filePath,
-          isDataUrl: dataUrl.startsWith("data:")
+      if (!response.ok) {
+        console.warn("Failed to fetch image - server returned error:", {
+          status: response.status,
+          statusText: response.statusText,
+          url: imageUrl,
+          hasSessionToken: !!sessionToken
         });
-        resolve(dataUrl);
-      };
-      reader.onerror = (error) => {
-        console.error("Error reading blob as base64:", error);
-        resolve(undefined);
-      };
-      reader.readAsDataURL(blob);
-    });
+        return undefined;
+      }
+
+      const blob = await response.blob();
+      console.log("Image fetched as blob:", {
+        size: blob.size,
+        type: blob.type,
+        filename: filePath
+      });
+
+      // Validate blob size
+      if (blob.size === 0) {
+        console.warn("Downloaded image is empty:", { filePath });
+        return undefined;
+      }
+
+      // Convert blob to base64 data URL
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = reader.result as string;
+          console.log("Image converted to base64 data URL successfully:", {
+            length: dataUrl.length,
+            filename: filePath,
+            isDataUrl: dataUrl.startsWith("data:")
+          });
+          resolve(dataUrl);
+        };
+        reader.onerror = (error) => {
+          console.warn("Error reading blob as base64:", error);
+          resolve(undefined);
+        };
+        reader.readAsDataURL(blob);
+      });
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+
+      if (fetchError instanceof DOMException && fetchError.name === "AbortError") {
+        console.warn("Image fetch timed out (5s):", { filePath, imageUrl });
+      } else if (fetchError instanceof TypeError && fetchError.message.includes("Failed to fetch")) {
+        console.warn("Image fetch failed (network error, CORS, or invalid URL):", { filePath, imageUrl });
+      } else {
+        console.warn("Error fetching image:", {
+          error: fetchError instanceof Error ? fetchError.message : fetchError,
+          filePath,
+          imageUrl
+        });
+      }
+      return undefined;
+    }
   } catch (error) {
-    console.error("Error in imagePathToBase64:", {
+    console.warn("Unexpected error in imagePathToBase64:", {
       error: error instanceof Error ? error.message : error,
       filePath,
       imageUrl
@@ -140,11 +163,16 @@ export async function fetchAdminImagesAsBase64(): Promise<AdminImages> {
       console.warn("⚠️ No admin images found in database. Please upload logo, contacts, and stamp from Admin > Media Library");
     }
 
-    const [logo, contacts, stamp] = await Promise.all([
+    // Fetch images with individual error handling so one failure doesn't break all
+    const results = await Promise.allSettled([
       latest.logo ? imagePathToBase64(latest.logo) : Promise.resolve(undefined),
       latest.contacts ? imagePathToBase64(latest.contacts) : Promise.resolve(undefined),
       latest.stamp ? imagePathToBase64(latest.stamp) : Promise.resolve(undefined),
     ]);
+
+    const logo = results[0].status === "fulfilled" ? results[0].value : undefined;
+    const contacts = results[1].status === "fulfilled" ? results[1].value : undefined;
+    const stamp = results[2].status === "fulfilled" ? results[2].value : undefined;
 
     images.logo = logo;
     images.contacts = contacts;
