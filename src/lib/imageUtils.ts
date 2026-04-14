@@ -13,7 +13,7 @@ type AdminImagePaths = Partial<Record<AdminImageType, string>>;
 const getAdminImageUrl = (path: string) => {
   const apiUrl = new URL(buildApiUrl());
   const imageUrl = new URL(path, apiUrl.origin).toString();
-  console.log("Constructed image URL:", { path, apiOrigin: apiUrl.origin, fullUrl: imageUrl });
+  console.debug("Constructed image URL:", { path, apiOrigin: apiUrl.origin, fullUrl: imageUrl });
   return imageUrl;
 };
 
@@ -24,7 +24,7 @@ const listAdminImagePaths = async (): Promise<AdminImagePaths> => {
     const response = await listRecords<AdminImageRow>("admin_images");
     const rows: AdminImageRow[] = response.data || [];
 
-    console.log("Admin images fetched from DB:", { rowCount: rows.length, rows });
+    console.debug("Admin images fetched from DB:", { rowCount: rows.length, rows });
 
     for (const row of rows) {
       if (row.image_type === "logo" || row.image_type === "contacts" || row.image_type === "stamp") {
@@ -33,7 +33,7 @@ const listAdminImagePaths = async (): Promise<AdminImagePaths> => {
         }
       }
     }
-    console.log("Admin image paths extracted:", latest);
+    console.debug("Admin image paths extracted:", latest);
   } catch (error) {
     console.error("Failed to fetch admin image paths:", error instanceof Error ? error.message : error);
     // Silently fail - images are optional
@@ -72,17 +72,17 @@ const retryImageFetch = async (
         clearTimeout(timeoutId);
 
         if (response.ok) {
-          console.log(`[ImageRetry] ✓ Successfully fetched image on attempt ${attempt}/${maxAttempts}`, { filePath });
+          console.debug(`[ImageRetry] Successfully fetched image on attempt ${attempt}/${maxAttempts}`, { filePath });
           return response;
         }
 
         if (response.status === 401 || response.status === 403) {
-          console.warn(`[ImageRetry] Authentication error (${response.status}) - not retrying`, { filePath });
+          console.debug(`[ImageRetry] Authentication error (${response.status}) - not retrying`, { filePath });
           return null; // Don't retry auth errors
         }
 
         lastError = new Error(`HTTP ${response.status}: ${response.statusText}`);
-        console.warn(`[ImageRetry] Server error on attempt ${attempt}/${maxAttempts}:`, {
+        console.debug(`[ImageRetry] Server error on attempt ${attempt}/${maxAttempts}:`, {
           status: response.status,
           statusText: response.statusText,
           filePath
@@ -90,7 +90,8 @@ const retryImageFetch = async (
       } catch (fetchError) {
         clearTimeout(timeoutId);
         lastError = fetchError instanceof Error ? fetchError : new Error(String(fetchError));
-        console.warn(`[ImageRetry] Network/fetch error on attempt ${attempt}/${maxAttempts}:`, {
+        // Silently log - network errors are expected when images don't exist
+        console.debug(`[ImageRetry] Network/fetch error on attempt ${attempt}/${maxAttempts}:`, {
           error: lastError.message,
           filePath,
           isTimeout: lastError.name === "AbortError"
@@ -100,16 +101,16 @@ const retryImageFetch = async (
       // Wait before retrying (exponential backoff)
       if (attempt < maxAttempts) {
         const delayMs = initialDelayMs * Math.pow(2, attempt - 1);
-        console.log(`[ImageRetry] Waiting ${delayMs}ms before retry ${attempt + 1}/${maxAttempts}...`);
         await new Promise(resolve => setTimeout(resolve, delayMs));
       }
     } catch (unexpectedError) {
       lastError = unexpectedError instanceof Error ? unexpectedError : new Error(String(unexpectedError));
-      console.error(`[ImageRetry] Unexpected error on attempt ${attempt}/${maxAttempts}:`, lastError);
+      console.debug(`[ImageRetry] Error on attempt ${attempt}/${maxAttempts}:`, lastError);
     }
   }
 
-  console.error(`[ImageRetry] ✗ Failed to fetch image after ${maxAttempts} attempts:`, {
+  // Silently fail - images are optional for export
+  console.debug(`[ImageRetry] Image fetch failed after ${maxAttempts} attempts (this is normal if image doesn't exist):`, {
     filePath,
     lastError: lastError?.message || "Unknown error"
   });
@@ -120,7 +121,7 @@ const imagePathToBase64 = async (filePath: string): Promise<string | undefined> 
   const imageUrl = getAdminImageUrl(filePath);
   const sessionToken = localStorage.getItem("lab_session_token");
 
-  console.log("[ImageConvert] Starting image conversion to base64:", {
+  console.debug("[ImageConvert] Starting image conversion to base64:", {
     filePath,
     imageUrl,
     hasSessionToken: !!sessionToken,
@@ -131,12 +132,12 @@ const imagePathToBase64 = async (filePath: string): Promise<string | undefined> 
     const response = await retryImageFetch(filePath, imageUrl, sessionToken);
 
     if (!response) {
-      console.warn("[ImageConvert] Image fetch failed (all retries exhausted), skipping image", { filePath });
+      console.debug("[ImageConvert] Image not available, skipping", { filePath });
       return undefined;
     }
 
     const blob = await response.blob();
-    console.log("[ImageConvert] Image fetched as blob:", {
+    console.debug("[ImageConvert] Image fetched as blob:", {
       size: blob.size,
       type: blob.type,
       filename: filePath
@@ -144,7 +145,7 @@ const imagePathToBase64 = async (filePath: string): Promise<string | undefined> 
 
     // Validate blob size
     if (blob.size === 0) {
-      console.warn("[ImageConvert] Downloaded image is empty:", { filePath });
+      console.debug("[ImageConvert] Downloaded image is empty:", { filePath });
       return undefined;
     }
 
@@ -154,7 +155,7 @@ const imagePathToBase64 = async (filePath: string): Promise<string | undefined> 
 
       reader.onload = () => {
         const dataUrl = reader.result as string;
-        console.log("[ImageConvert] ✓ Image converted to base64 successfully:", {
+        console.debug("[ImageConvert] Image converted to base64:", {
           length: dataUrl.length,
           filename: filePath,
           isDataUrl: dataUrl.startsWith("data:")
@@ -163,19 +164,19 @@ const imagePathToBase64 = async (filePath: string): Promise<string | undefined> 
       };
 
       reader.onerror = (error) => {
-        console.error("[ImageConvert] Error reading blob as base64:", error);
+        console.debug("[ImageConvert] Error reading blob as base64:", error);
         resolve(undefined);
       };
 
       reader.abort = () => {
-        console.warn("[ImageConvert] Blob reading was aborted");
+        console.debug("[ImageConvert] Blob reading was aborted");
         resolve(undefined);
       };
 
       reader.readAsDataURL(blob);
     });
   } catch (error) {
-    console.error("[ImageConvert] Unexpected error in imagePathToBase64:", {
+    console.debug("[ImageConvert] Error in imagePathToBase64 (images are optional):", {
       error: error instanceof Error ? error.message : error,
       filePath,
       imageUrl
@@ -194,28 +195,16 @@ export async function fetchAdminImagesAsBase64(): Promise<AdminImages> {
   const images: AdminImages = {};
 
   try {
-    console.log("[ImageFetch] ════════════════════════════════════════");
-    console.log("[ImageFetch] Starting admin image fetch for export (with retry logic)...");
-    console.log("[ImageFetch] ════════════════════════════════════════");
-
     const latest = await listAdminImagePaths();
-
-    console.log("[ImageFetch] Admin image paths in database:", {
-      hasLogo: !!latest.logo,
-      hasContacts: !!latest.contacts,
-      hasStamp: !!latest.stamp,
-    });
 
     // If no images at all, still continue gracefully
     if (!latest.logo && !latest.contacts && !latest.stamp) {
-      console.info("[ImageFetch] ℹ️ No admin images found in database - export will proceed without images");
-      console.info("[ImageFetch] Tip: Upload images in Admin > Media Library to include them in exports");
+      console.debug("[ImageFetch] No admin images found in database - export will proceed without images");
       return images; // Return empty images object - not an error
     }
 
     // Fetch images in parallel with individual error handling
     // One failure won't break the others or the export
-    console.log("[ImageFetch] Fetching images (with 3 retries, exponential backoff)...");
     const results = await Promise.allSettled([
       latest.logo ? imagePathToBase64(latest.logo) : Promise.resolve(undefined),
       latest.contacts ? imagePathToBase64(latest.contacts) : Promise.resolve(undefined),
@@ -226,35 +215,12 @@ export async function fetchAdminImagesAsBase64(): Promise<AdminImages> {
     const contacts = results[1].status === "fulfilled" ? results[1].value : undefined;
     const stamp = results[2].status === "fulfilled" ? results[2].value : undefined;
 
-    // Log any failures
-    if (results[0].status === "rejected") {
-      console.warn("[ImageFetch] Logo fetch rejected:", results[0].reason);
-    }
-    if (results[1].status === "rejected") {
-      console.warn("[ImageFetch] Contacts fetch rejected:", results[1].reason);
-    }
-    if (results[2].status === "rejected") {
-      console.warn("[ImageFetch] Stamp fetch rejected:", results[2].reason);
-    }
-
     images.logo = logo;
     images.contacts = contacts;
     images.stamp = stamp;
-
-    const successCount = [logo, contacts, stamp].filter(Boolean).length;
-    const attemptCount = [latest.logo, latest.contacts, latest.stamp].filter(Boolean).length;
-
-    console.log("[ImageFetch] ════════════════════════════════════════");
-    console.log(`[ImageFetch] ✓ Image fetch complete: ${successCount}/${attemptCount} loaded successfully`);
-    console.log("[ImageFetch] Result summary:", {
-      logo: logo ? `✓ loaded (${logo.length} bytes)` : "✗ not loaded",
-      contacts: contacts ? `✓ loaded (${contacts.length} bytes)` : "✗ not loaded",
-      stamp: stamp ? `✓ loaded (${stamp.length} bytes)` : "✗ not loaded",
-    });
-    console.log("[ImageFetch] ════════════════════════════════════════");
   } catch (error) {
-    console.error("[ImageFetch] Unexpected error in fetchAdminImagesAsBase64:", error);
-    console.warn("[ImageFetch] Export will proceed without images");
+    // Silently fail - images are optional
+    console.debug("[ImageFetch] Error fetching admin images (export will continue without them):", error);
     // Continue anyway - images are optional
   }
 
