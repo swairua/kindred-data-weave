@@ -2,7 +2,7 @@ import { useCallback, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Upload, Loader2, X } from "lucide-react";
+import { Upload, Loader2, X, Copy, Check } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { buildApiUrl, listRecords, uploadFile } from "@/lib/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -31,6 +31,15 @@ interface StoredImage {
   error?: string;
 }
 
+interface DebugInfo {
+  projects: any[];
+  localStorage: Record<string, any>;
+  sessionToken: string | null;
+  apiUrl: string;
+  timestamp: string;
+  error?: string;
+}
+
 const Admin = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -42,6 +51,57 @@ const Admin = () => {
     contacts: { type: "contacts", loading: false },
     stamp: { type: "stamp", loading: false },
   });
+  const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null);
+  const [debugLoading, setDebugLoading] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  const loadDebugInfo = useCallback(async () => {
+    setDebugLoading(true);
+    try {
+      const projects = await listRecords("projects", { limit: 100 });
+
+      const localStorageData: Record<string, any> = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key) {
+          const value = localStorage.getItem(key);
+          try {
+            localStorageData[key] = JSON.parse(value || "");
+          } catch {
+            localStorageData[key] = value;
+          }
+        }
+      }
+
+      const sessionToken = localStorage.getItem("lab_session_token");
+
+      setDebugInfo({
+        projects: projects.data || [],
+        localStorage: localStorageData,
+        sessionToken,
+        apiUrl: buildApiUrl(),
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      setDebugInfo({
+        projects: [],
+        localStorage: {},
+        sessionToken: null,
+        apiUrl: buildApiUrl(),
+        timestamp: new Date().toISOString(),
+        error: errorMsg,
+      });
+    } finally {
+      setDebugLoading(false);
+    }
+  }, []);
+
+  const copyToClipboard = (text: string, fieldName: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(fieldName);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
 
   useEffect(() => {
     const fetchStoredImages = async () => {
@@ -197,10 +257,11 @@ const Admin = () => {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="images" className="w-full">
-      <TabsList className="grid w-full grid-cols-3">
+      <TabsList className="grid w-full grid-cols-4">
         <TabsTrigger value="images">Media Library</TabsTrigger>
         <TabsTrigger value="tests">Test Definitions</TabsTrigger>
         <TabsTrigger value="cache">Cache</TabsTrigger>
+        <TabsTrigger value="debug">Debug</TabsTrigger>
       </TabsList>
 
       <TabsContent value="images" className="space-y-6">
@@ -397,6 +458,182 @@ const Admin = () => {
             <p className="text-xs text-muted-foreground">
               You will be logged out and may need to refresh the page after clearing the cache.
             </p>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="debug" className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Debug Information</CardTitle>
+            <CardDescription>View backend data, API responses, and browser storage state</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Button
+              onClick={loadDebugInfo}
+              disabled={debugLoading}
+              className="w-full"
+            >
+              {debugLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Loading Debug Info...
+                </>
+              ) : (
+                "Load Debug Info"
+              )}
+            </Button>
+
+            {debugInfo && (
+              <div className="space-y-4">
+                {/* Error Display */}
+                {debugInfo.error && (
+                  <div className="p-3 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800">
+                    <p className="text-sm text-red-900 dark:text-red-200">
+                      <strong>Error:</strong> {debugInfo.error}
+                    </p>
+                  </div>
+                )}
+
+                {/* API URL */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium">API URL</label>
+                    <button
+                      onClick={() => copyToClipboard(debugInfo.apiUrl, "apiUrl")}
+                      className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+                    >
+                      {copiedField === "apiUrl" ? (
+                        <>
+                          <Check className="h-3 w-3" /> Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3 w-3" /> Copy
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <div className="p-2 rounded bg-muted font-mono text-xs break-all">
+                    {debugInfo.apiUrl}
+                  </div>
+                </div>
+
+                {/* Session Token */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium">Session Token</label>
+                    <button
+                      onClick={() => copyToClipboard(debugInfo.sessionToken || "None", "token")}
+                      className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+                    >
+                      {copiedField === "token" ? (
+                        <>
+                          <Check className="h-3 w-3" /> Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3 w-3" /> Copy
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <div className="p-2 rounded bg-muted font-mono text-xs break-all">
+                    {debugInfo.sessionToken ? `${debugInfo.sessionToken.substring(0, 20)}...` : "Not set"}
+                  </div>
+                </div>
+
+                {/* Projects from API */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium">
+                      Projects from API ({debugInfo.projects.length} found)
+                    </label>
+                    <button
+                      onClick={() => copyToClipboard(JSON.stringify(debugInfo.projects, null, 2), "projects")}
+                      className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+                    >
+                      {copiedField === "projects" ? (
+                        <>
+                          <Check className="h-3 w-3" /> Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3 w-3" /> Copy
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  {debugInfo.projects.length === 0 ? (
+                    <div className="p-2 rounded bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800">
+                      <p className="text-xs text-yellow-900 dark:text-yellow-200">
+                        No projects found in database. This matches your backend state.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="p-2 rounded bg-muted font-mono text-xs max-h-48 overflow-auto">
+                      <pre>{JSON.stringify(debugInfo.projects, null, 2)}</pre>
+                    </div>
+                  )}
+                </div>
+
+                {/* LocalStorage Contents */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium">Browser Storage (localStorage)</label>
+                    <button
+                      onClick={() => copyToClipboard(JSON.stringify(debugInfo.localStorage, null, 2), "localStorage")}
+                      className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+                    >
+                      {copiedField === "localStorage" ? (
+                        <>
+                          <Check className="h-3 w-3" /> Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3 w-3" /> Copy
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <div className="p-2 rounded bg-muted font-mono text-xs max-h-48 overflow-auto">
+                    <pre>{JSON.stringify(debugInfo.localStorage, null, 2) || "{}"}</pre>
+                  </div>
+                </div>
+
+                {/* Timestamp */}
+                <div className="text-xs text-muted-foreground text-right">
+                  Last loaded: {new Date(debugInfo.timestamp).toLocaleString()}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Diagnostic Checks</CardTitle>
+            <CardDescription>Quick status checks</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between p-3 rounded border">
+              <span className="text-sm">Session Token Set</span>
+              <span className={`text-xs px-2 py-1 rounded ${debugInfo?.sessionToken ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"}`}>
+                {debugInfo?.sessionToken ? "✓ Yes" : "✗ No"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded border">
+              <span className="text-sm">Projects in Database</span>
+              <span className={`text-xs px-2 py-1 rounded ${debugInfo && debugInfo.projects.length > 0 ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"}`}>
+                {debugInfo ? `${debugInfo.projects.length} found` : "Not checked"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded border">
+              <span className="text-sm">Cached Project Data in Browser</span>
+              <span className={`text-xs px-2 py-1 rounded ${debugInfo?.localStorage["atterbergProjectState"] ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200" : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"}`}>
+                {debugInfo?.localStorage["atterbergProjectState"] ? "⚠ Cached" : "✓ Not cached"}
+              </span>
+            </div>
           </CardContent>
         </Card>
       </TabsContent>
