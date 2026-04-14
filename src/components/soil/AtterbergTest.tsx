@@ -177,7 +177,7 @@ const createTest = (type: AtterbergTestType, tests: AtterbergTest[]): AtterbergT
       id: makeId("test"),
       title: buildTestTitle(type, tests),
       type,
-      isExpanded: false,
+      isExpanded: true,
       trials: [createLiquidLimitTrial(0)],
       result: {},
     };
@@ -188,7 +188,7 @@ const createTest = (type: AtterbergTestType, tests: AtterbergTest[]): AtterbergT
       id: makeId("test"),
       title: buildTestTitle(type, tests),
       type,
-      isExpanded: false,
+      isExpanded: true,
       trials: [createPlasticLimitTrial(0)],
       result: {},
     };
@@ -198,7 +198,7 @@ const createTest = (type: AtterbergTestType, tests: AtterbergTest[]): AtterbergT
     id: makeId("test"),
     title: buildTestTitle(type, tests),
     type,
-    isExpanded: false,
+    isExpanded: true,
     trials: [createShrinkageLimitTrial(0)],
     result: {},
   };
