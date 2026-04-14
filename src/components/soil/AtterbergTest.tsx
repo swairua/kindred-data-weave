@@ -642,6 +642,7 @@ const AtterbergTest = () => {
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [previewData, setPreviewData] = useState<ExportPreviewData | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [isExporting, setIsExporting] = useState<"json" | "pdf" | "xlsx" | null>(null);
   const saveStatusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hydratedRef = useRef(false);
   const loadAttemptedRef = useRef(false);
@@ -1002,15 +1003,20 @@ const AtterbergTest = () => {
     };
   }, [persistedState.records, project.clientName, project.date, project.projectName, projectState.clientName, projectState.labOrganization, projectState.dateReported, projectState.checkedBy]);
 
-  const handleExportJSON = useCallback(() => {
+  const handleExportJSON = useCallback(async () => {
     if (computedRecords.length === 0) {
       toast.error("No records to export");
       return;
     }
 
-    const jsonString = exportAsJSON(buildExportPayload());
-    downloadJSON(jsonString, `atterberg-limits-${new Date().toISOString().split("T")[0]}.json`);
-    toast.success("Atterberg project exported");
+    setIsExporting("json");
+    try {
+      const jsonString = exportAsJSON(buildExportPayload());
+      downloadJSON(jsonString, `atterberg-limits-${new Date().toISOString().split("T")[0]}.json`);
+      toast.success("Atterberg project exported");
+    } finally {
+      setIsExporting(null);
+    }
   }, [buildExportPayload, computedRecords.length]);
 
   const handleImportJSON = useCallback(() => {
@@ -1046,6 +1052,7 @@ const AtterbergTest = () => {
       return false;
     }
 
+    setIsExporting("pdf");
     setIsPreviewLoading(true);
     try {
       const blob = await generateAtterbergPDF({
@@ -1074,6 +1081,7 @@ const AtterbergTest = () => {
       }
     } finally {
       setIsPreviewLoading(false);
+      setIsExporting(null);
     }
 
     return true;
@@ -1366,6 +1374,7 @@ const AtterbergTest = () => {
       return false;
     }
 
+    setIsExporting("xlsx");
     setIsPreviewLoading(true);
     try {
       console.log(`[Export] Starting Excel export for ${computedRecords.length} records`);
@@ -1410,6 +1419,7 @@ const AtterbergTest = () => {
       }
     } finally {
       setIsPreviewLoading(false);
+      setIsExporting(null);
     }
 
     return true;
@@ -1560,8 +1570,8 @@ const AtterbergTest = () => {
           </Button>
 
           <div className="ml-auto flex gap-2">
-            <Button type="button" onClick={handleExportJSON} variant="outline" size="sm" className="gap-2" disabled={computedRecords.length === 0}>
-              <Download className="h-4 w-4" /> Export JSON
+            <Button type="button" onClick={handleExportJSON} variant="outline" size="sm" className="gap-2" disabled={computedRecords.length === 0 || isExporting === "json"}>
+              <Download className="h-4 w-4" /> {isExporting === "json" ? "loading.." : "Export JSON"}
             </Button>
             <Button type="button" onClick={handleImportJSON} variant="outline" size="sm" className="gap-2">
               <Upload className="h-4 w-4" /> Import JSON
@@ -1804,7 +1814,7 @@ const RecordCard = ({
                       disabled={isExporting === "pdf"}
                       title="Export this record as PDF"
                     >
-                      <Download className="h-3 w-3" /> PDF
+                      <Download className="h-3 w-3" /> {isExporting === "pdf" ? "loading.." : "PDF"}
                     </Button>
                     <Button
                       type="button"
@@ -1815,7 +1825,7 @@ const RecordCard = ({
                       disabled={isExporting === "xlsx"}
                       title="Export this record as Excel"
                     >
-                      <Download className="h-3 w-3" /> Excel
+                      <Download className="h-3 w-3" /> {isExporting === "xlsx" ? "loading.." : "Excel"}
                     </Button>
                     <Button
                       type="button"
@@ -1826,7 +1836,7 @@ const RecordCard = ({
                       disabled={isExporting === "json"}
                       title="Export this record as JSON"
                     >
-                      <Download className="h-3 w-3" /> JSON
+                      <Download className="h-3 w-3" /> {isExporting === "json" ? "loading.." : "JSON"}
                     </Button>
                   </div>
 
