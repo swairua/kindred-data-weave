@@ -626,6 +626,46 @@ export const generateAtterbergXLSX = async (
     const plValue = record.results.plasticLimit ?? calculatePlasticLimit(plTrials);
     setCell(ws, currentDataRow, 10, plValue !== undefined ? plValue : "-", dataBoldFont, allThin);
 
+    // Position for the Liquid Limit chart - insert it here, within the data section
+    let chartSectionStartRow = currentDataRow + 2;
+
+    // Add Liquid Limit chart in the chart section area
+    if (options.chartImages && options.chartImages[`${record.id}-liquidLimit`]) {
+      try {
+        const llChartImageData = options.chartImages[`${record.id}-liquidLimit`];
+        const llBase64String = extractBase64FromDataUrl(llChartImageData);
+        const llChartImageId = wb.addImage({
+          base64: llBase64String,
+          extension: "png",
+        });
+
+        // Add chart header
+        chartSectionStartRow += 1;
+        ws.mergeCells(`B${chartSectionStartRow}:K${chartSectionStartRow}`);
+        const chartHeaderCell = ws.getCell(`B${chartSectionStartRow}`);
+        chartHeaderCell.value = "LIQUID LIMIT - MOISTURE VS PENETRATION GRAPH";
+        chartHeaderCell.font = { ...dataBoldFont, size: 11 };
+        chartHeaderCell.border = allThin;
+        chartHeaderCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0F4FF" } };
+
+        // Set row heights for chart area
+        for (let i = 0; i < 12; i++) {
+          ws.getRow(chartSectionStartRow + 1 + i).height = 20;
+        }
+
+        // Add the chart image within the designated box
+        ws.addImage(llChartImageId, {
+          tl: { col: 1, row: chartSectionStartRow }, // Column B, starting from chart row
+          ext: { width: 400, height: 240 }, // Sized to fit within columns B-K
+        });
+
+        console.log("Liquid limit chart added successfully to record:", record.id);
+        currentDataRow = chartSectionStartRow + 12; // Move past the chart area
+      } catch (error) {
+        console.error("Failed to add liquid limit chart:", error instanceof Error ? error.message : error);
+      }
+    }
+
     // Linear Shrinkage section
     let lsRow = currentDataRow + 3;
     ws.mergeCells(`G${lsRow}:K${lsRow}`);
@@ -720,36 +760,6 @@ export const generateAtterbergXLSX = async (
     ws.mergeCells(`I${footerRow}:K${footerRow}`);
     setCell(ws, footerRow, 9, `Checked by: ${projectState.checkedBy || "____________"}`, dataBoldFont, null);
 
-    // Add liquid limit chart if available
-    let chartRowOffset = 0;
-    if (options.chartImages && options.chartImages[`${record.id}-liquidLimit`]) {
-      try {
-        const llChartImageData = options.chartImages[`${record.id}-liquidLimit`];
-        const llBase64String = extractBase64FromDataUrl(llChartImageData);
-        const llChartImageId = wb.addImage({
-          base64: llBase64String,
-          extension: "png",
-        });
-
-        // Add liquid limit chart on a new section, below the footer
-        const llChartRow = footerRow + 3;
-        ws.mergeCells(`B${llChartRow}:K${llChartRow}`);
-        const llChartTitleCell = ws.getCell(`B${llChartRow}`);
-        llChartTitleCell.value = "LIQUID LIMIT - MOISTURE VS PENETRATION GRAPH";
-        llChartTitleCell.font = { ...dataBoldFont, size: 11 };
-        llChartTitleCell.border = allThin;
-
-        // Add the chart image below the title
-        ws.addImage(llChartImageId, {
-          tl: { col: 1, row: llChartRow + 1 }, // Column B, one row below title
-          ext: { width: 320, height: 240 },
-        });
-        console.log("Liquid limit chart added successfully to record:", record.id);
-        chartRowOffset = 15; // Offset for the next chart
-      } catch (error) {
-        console.error("Failed to add liquid limit chart:", error instanceof Error ? error.message : error);
-      }
-    }
 
 
     // Print setup
