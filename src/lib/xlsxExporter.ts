@@ -345,17 +345,15 @@ export const generateAtterbergXLSX = async (
               setCell(ws, row, col, cont, dataFont, allThin);
               break;
             case 5: // Wt Moisture (calculated)
-              if (wet !== null && dry !== null) {
-                setCell(ws, row, col, round2(wet - dry), dataFont, allThin);
-              } else {
-                setCell(ws, row, col, "-", dataFont, allThin);
+              {
+                const wm = wet !== null && dry !== null ? round2(wet - dry) : null;
+                setCell(ws, row, col, wm !== null ? wm : "-", dataFont, allThin);
               }
               break;
             case 6: // Wt Dry Soil (calculated)
-              if (dry !== null && cont !== null) {
-                setCell(ws, row, col, round2(dry - cont), dataFont, allThin);
-              } else {
-                setCell(ws, row, col, "-", dataFont, allThin);
+              {
+                const ds = dry !== null && cont !== null ? round2(dry - cont) : null;
+                setCell(ws, row, col, ds !== null ? ds : "-", dataFont, allThin);
               }
               break;
             case 7: // Moisture %
@@ -448,17 +446,15 @@ export const generateAtterbergXLSX = async (
               setCell(ws, row, col, cont, dataFont, allThin);
               break;
             case 5:
-              if (wet !== null && dry !== null) {
-                setCell(ws, row, col, round2(wet - dry), dataFont, allThin);
-              } else {
-                setCell(ws, row, col, "-", dataFont, allThin);
+              {
+                const wm = wet !== null && dry !== null ? round2(wet - dry) : null;
+                setCell(ws, row, col, wm !== null ? wm : "-", dataFont, allThin);
               }
               break;
             case 6:
-              if (dry !== null && cont !== null) {
-                setCell(ws, row, col, round2(dry - cont), dataFont, allThin);
-              } else {
-                setCell(ws, row, col, "-", dataFont, allThin);
+              {
+                const ds = dry !== null && cont !== null ? round2(dry - cont) : null;
+                setCell(ws, row, col, ds !== null ? ds : "-", dataFont, allThin);
               }
               break;
             case 7: {
@@ -612,34 +608,6 @@ export const generateAtterbergXLSX = async (
       }
     }
 
-    // Add plasticity chart if available
-    if (options.chartImages && options.chartImages[record.id]) {
-      try {
-        const chartImageData = options.chartImages[record.id];
-        const base64String = extractBase64FromDataUrl(chartImageData);
-        const chartImageId = wb.addImage({
-          base64: base64String,
-          extension: "png",
-        });
-
-        // Add chart on a new section, below the footer (and liquid limit chart if present)
-        const chartRow = footerRow + 3 + chartRowOffset;
-        ws.mergeCells(`B${chartRow}:K${chartRow}`);
-        const chartTitleCell = ws.getCell(`B${chartRow}`);
-        chartTitleCell.value = "PLASTICITY CHART";
-        chartTitleCell.font = { ...dataBoldFont, size: 11 };
-        chartTitleCell.border = allThin;
-
-        // Add the chart image below the title
-        ws.addImage(chartImageId, {
-          tl: { col: 1, row: chartRow + 1 }, // Column B, one row below title
-          ext: { width: 300, height: 240 },
-        });
-        console.log("Plasticity chart added successfully to record:", record.id);
-      } catch (error) {
-        console.error("Failed to add plasticity chart:", error instanceof Error ? error.message : error);
-      }
-    }
 
     // Print setup
     ws.pageSetup = {

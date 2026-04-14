@@ -211,125 +211,6 @@ function drawConeGraph(
   doc.restoreGraphicsState();
 }
 
-// ── Draw the Casagrande Plasticity Chart ──
-function drawPlasticityChart(
-  doc: jsPDF,
-  ll: number | undefined,
-  pi: number | undefined,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-) {
-  const margin = { top: 14, bottom: 20, left: 28, right: 8 };
-  const plotX = x + margin.left;
-  const plotY = y + margin.top;
-  const plotW = w - margin.left - margin.right;
-  const plotH = h - margin.top - margin.bottom;
-
-  // Title
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...COLORS.primary);
-  doc.text("PLASTICITY CHART (ASTM D2487)", x + w / 2, y + 8, { align: "center" });
-
-  // Axes
-  doc.setDrawColor(...COLORS.dark);
-  doc.setLineWidth(0.3);
-  doc.line(plotX, plotY, plotX, plotY + plotH);
-  doc.line(plotX, plotY + plotH, plotX + plotW, plotY + plotH);
-
-  // Range
-  const llMax = Math.max(100, (ll ?? 0) + 20);
-  const piMax = Math.max(60, (pi ?? 0) + 15);
-
-  const scaleX2 = (v: number) => plotX + (v / llMax) * plotW;
-  const scaleY2 = (v: number) => plotY + plotH - (v / piMax) * plotH;
-
-  // Grid
-  doc.setFontSize(5.5);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(...COLORS.muted);
-  doc.setDrawColor(230, 230, 230);
-  doc.setLineWidth(0.1);
-
-  for (let v = 0; v <= llMax; v += 20) {
-    const px = scaleX2(v);
-    doc.line(px, plotY, px, plotY + plotH);
-    doc.text(String(v), px, plotY + plotH + 5, { align: "center" });
-  }
-  for (let v = 0; v <= piMax; v += 10) {
-    const py = scaleY2(v);
-    doc.line(plotX, py, plotX + plotW, py);
-    doc.text(String(v), plotX - 3, py + 1.5, { align: "right" });
-  }
-
-  // LL=50 reference line
-  doc.setDrawColor(200, 200, 200);
-  doc.setLineDashPattern([2, 2], 0);
-  doc.setLineWidth(0.3);
-  const x50 = scaleX2(50);
-  doc.line(x50, plotY, x50, plotY + plotH);
-  doc.setLineDashPattern([], 0);
-
-  // A-line: PI = 0.73(LL - 20)
-  doc.setDrawColor(139, 92, 246); // purple
-  doc.setLineWidth(0.5);
-  const aStart = 20;
-  const aEnd = llMax;
-  const aY1 = 0.73 * (aStart - 20);
-  const aY2 = 0.73 * (aEnd - 20);
-  doc.line(scaleX2(aStart), scaleY2(aY1), scaleX2(aEnd), scaleY2(Math.min(aY2, piMax)));
-
-  // U-line: PI = 0.9(LL - 8)
-  doc.setDrawColor(239, 68, 68); // red
-  doc.setLineWidth(0.3);
-  doc.setLineDashPattern([2, 2], 0);
-  const uStart = 8;
-  const uY1 = 0;
-  const uY2 = 0.9 * (aEnd - 8);
-  doc.line(scaleX2(uStart), scaleY2(uY1), scaleX2(aEnd), scaleY2(Math.min(uY2, piMax)));
-  doc.setLineDashPattern([], 0);
-
-  // Zone labels
-  doc.setFontSize(5);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(100, 100, 100);
-  doc.text("CL", scaleX2(30), scaleY2(18));
-  doc.text("ML", scaleX2(30), scaleY2(4));
-  doc.text("CH", scaleX2(70), scaleY2(35));
-  doc.text("MH", scaleX2(70), scaleY2(8));
-
-  // Legend
-  doc.setFontSize(4.5);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(139, 92, 246);
-  doc.text("— A-line", plotX + plotW - 20, plotY + 5);
-  doc.setTextColor(239, 68, 68);
-  doc.text("-- U-line", plotX + plotW - 20, plotY + 9);
-
-  // Plot sample point
-  if (ll !== undefined && pi !== undefined) {
-    const cx = scaleX2(ll);
-    const cy = scaleY2(pi);
-    doc.setFillColor(239, 68, 68);
-    doc.circle(cx, cy, 1.5, "F");
-    doc.setFontSize(5);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(239, 68, 68);
-    doc.text(`(${round2(ll)}, ${round2(pi)})`, cx + 3, cy - 2);
-  }
-
-  // Axis labels
-  doc.setFontSize(6);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...COLORS.dark);
-  doc.text("Liquid Limit (%)", x + w / 2, y + h - 2, { align: "center" });
-  doc.saveGraphicsState();
-  doc.text("Plasticity Index (%)", x + 4, y + h / 2, { angle: 90 });
-  doc.restoreGraphicsState();
-}
-
 function drawRecordPage(
   doc: jsPDF,
   record: AtterbergRecord,
@@ -620,18 +501,6 @@ function drawRecordPage(
   const chartH = 50;
   drawConeGraph(doc, llTrials, record.results.liquidLimit, margin, y, leftW, chartH);
 
-  // ── LEFT: Plasticity Chart below cone graph ──
-  const plasticityChartH = 50;
-  drawPlasticityChart(
-    doc,
-    record.results.liquidLimit,
-    record.results.plasticityIndex,
-    margin,
-    y + chartH + 4,
-    leftW,
-    plasticityChartH,
-  );
-
   // ── RIGHT: Linear Shrinkage ──
   let ry = sectionStartY;
   const slTrial = slTrials[0];
@@ -746,7 +615,7 @@ function drawRecordPage(
   ry += 10;
 
   // ── Footer: Tested by / Date / Checked by ──
-  const footerY = Math.max(ry, sectionStartY + chartH + plasticityChartH + 10) + 4;
+  const footerY = Math.max(ry, sectionStartY + chartH + 10) + 4;
   doc.setFontSize(7);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...COLORS.dark);

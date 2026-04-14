@@ -5,7 +5,6 @@ import { toast } from "sonner";
 
 import TestSection from "@/components/TestSection";
 import AtterbergTestCard from "./AtterbergTestCard";
-import PlasticityChart from "./PlasticityChart";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
@@ -1116,63 +1115,7 @@ const AtterbergTest = () => {
     }
 
     for (const recordId of recordIds) {
-      // First, try to capture the plasticity chart (from chartRefsMap)
-      const plasticityChartRef = chartRefsMap.current.get(recordId);
-      console.log(`[Chart Capture] Attempting to capture plasticity chart for record ${recordId}`, {
-        chartRefExists: !!plasticityChartRef,
-        chartRefTag: plasticityChartRef?.tagName,
-        chartRefVisible: plasticityChartRef ? plasticityChartRef.offsetParent !== null : false,
-      });
-
-      if (plasticityChartRef && plasticityChartRef.offsetParent !== null) {
-        // Additional check: Verify SVG is present and rendered
-        const svg = plasticityChartRef.querySelector('svg');
-        if (svg) {
-          // Verify SVG has dimensions
-          const svgWidth = svg.getAttribute('width');
-          const svgHeight = svg.getAttribute('height');
-          if (svgWidth && svgHeight) {
-            try {
-              // Wait a moment to ensure the chart is fully rendered
-              await new Promise((resolve) => setTimeout(resolve, 150));
-
-              console.log(`[Chart Capture] Starting html2canvas for plasticity chart of record ${recordId}`, {
-                element: plasticityChartRef,
-                visible: plasticityChartRef.offsetParent !== null,
-                hasSvg: !!svg,
-                svgDimensions: { width: svgWidth, height: svgHeight },
-                elementDimensions: {
-                  width: plasticityChartRef.offsetWidth,
-                  height: plasticityChartRef.offsetHeight,
-                },
-              });
-
-              const canvas = await html2canvas(plasticityChartRef, {
-                backgroundColor: "#ffffff",
-                scale: 2,
-                logging: false,
-                useCORS: true,
-                allowTaint: true,
-              });
-
-              const imageData = canvas.toDataURL("image/png");
-              chartImages[recordId] = imageData;
-              console.log(`[Chart Capture] Successfully captured plasticity chart for record ${recordId}`, {
-                imageDataLength: imageData.length,
-                canvasWidth: canvas.width,
-                canvasHeight: canvas.height,
-              });
-            } catch (error) {
-              console.error(`[Chart Capture] Failed to capture plasticity chart for record ${recordId}:`, {
-                error: error instanceof Error ? error.message : String(error),
-                stack: error instanceof Error ? error.stack : undefined,
-              });
-            }
-          }
-        }
-      }
-
-      // Second, try to capture the liquid limit chart (by class selector)
+      // Capture the liquid limit chart (by class selector)
       const liquidLimitChartElement = document.querySelector(`.liquid-limit-export-chart-${recordId}`);
       console.log(`[Chart Capture] Attempting to capture liquid limit chart for record ${recordId}`, {
         elementFound: !!liquidLimitChartElement,
@@ -1761,19 +1704,11 @@ const RecordCard = ({
 }: RecordCardProps) => {
   const [nextTestType, setNextTestType] = useState<AtterbergTestType>("liquidLimit");
   const [isExporting, setIsExporting] = useState<"pdf" | "xlsx" | "json" | null>(null);
-  const plasticityChartRef = useRef<HTMLDivElement>(null);
   const liquidLimitChartRef = useRef<HTMLDivElement>(null);
 
   // Register chart refs with parent when they change
   useEffect(() => {
-    // Register plasticity chart
-    console.log(`[RecordCard] Registering chart ref for record ${record.id}`, {
-      plasticityRefExists: !!plasticityChartRef.current,
-      liquidLimitRefExists: !!liquidLimitChartRef.current,
-    });
-    onRegisterChartRef(record.id, plasticityChartRef.current);
-
-    // Cleanup: unregister when unmounting
+    // Unregister when unmounting
     return () => {
       console.log(`[RecordCard] Cleaning up chart ref for record ${record.id}`);
       onRegisterChartRef(record.id, null);
@@ -2007,14 +1942,6 @@ const RecordCard = ({
                 ) : null;
               })()}
 
-              {record.results.liquidLimit !== undefined || record.results.plasticityIndex !== undefined ? (
-                <div ref={plasticityChartRef}>
-                  <PlasticityChart
-                    liquidLimit={record.results.liquidLimit ?? null}
-                    plasticityIndex={record.results.plasticityIndex ?? null}
-                  />
-                </div>
-              ) : null}
             </div>
           </CardContent>
         </CollapsibleContent>
