@@ -38,6 +38,7 @@ import {
 import { generateAtterbergPDF } from "@/lib/atterbergPdfGenerator";
 import {
   buildAtterbergSummaryFields,
+  calculateLiquidLimit,
   calculateProjectResults,
   calculateRecordResults,
   calculateTestResult,
@@ -1890,21 +1891,33 @@ const RecordCard = ({
               </div>
             ) : (
               <div className="space-y-3">
-                {record.tests.map((test) => (
-                  <AtterbergTestCard
-                    key={test.id}
-                    test={test}
-                    recordId={record.id}
-                    onDelete={() => onRemoveTest(test.id)}
-                    onUpdateTitle={(title) => onUpdateTestTitle(test.id, title)}
-                    onUpdateType={(type) => onUpdateTestType(test.id, type)}
-                    onToggleExpanded={() => onToggleTestExpanded(test.id)}
-                    onUpdateLiquidLimitTrials={(trials) => onUpdateLiquidLimitTrials(test.id, trials)}
-                    onUpdatePlasticLimitTrials={(trials) => onUpdatePlasticLimitTrials(test.id, trials)}
-                    onUpdateShrinkageLimitTrials={(trials) => onUpdateShrinkageLimitTrials(test.id, trials)}
-                    onSyncResult={onSyncTest}
-                  />
-                ))}
+                {record.tests.map((test) => {
+                  // Calculate liquid limit moisture for PR trial in PL section
+                  let liquidLimitMoisture: number | null = null;
+                  if (test.type === "plasticLimit") {
+                    const llTest = record.tests.find((t) => t.type === "liquidLimit") as LiquidLimitTest | undefined;
+                    if (llTest) {
+                      liquidLimitMoisture = calculateLiquidLimit(llTest.trials);
+                    }
+                  }
+
+                  return (
+                    <AtterbergTestCard
+                      key={test.id}
+                      test={test}
+                      recordId={record.id}
+                      liquidLimitMoisture={liquidLimitMoisture}
+                      onDelete={() => onRemoveTest(test.id)}
+                      onUpdateTitle={(title) => onUpdateTestTitle(test.id, title)}
+                      onUpdateType={(type) => onUpdateTestType(test.id, type)}
+                      onToggleExpanded={() => onToggleTestExpanded(test.id)}
+                      onUpdateLiquidLimitTrials={(trials) => onUpdateLiquidLimitTrials(test.id, trials)}
+                      onUpdatePlasticLimitTrials={(trials) => onUpdatePlasticLimitTrials(test.id, trials)}
+                      onUpdateShrinkageLimitTrials={(trials) => onUpdateShrinkageLimitTrials(test.id, trials)}
+                      onSyncResult={onSyncTest}
+                    />
+                  );
+                })}
               </div>
             )}
 
