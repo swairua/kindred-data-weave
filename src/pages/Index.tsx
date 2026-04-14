@@ -207,13 +207,14 @@ const Index = ({ initialTab }: IndexProps) => {
     restoreSession();
 
     // Set a timeout to force unauthenticated state if the check takes too long
+    // Increased from 3s to 10s to accommodate slower API responses
     timeoutId = setTimeout(() => {
       if (isMounted) {
         console.warn("[Index] Session restore timeout - setting to unauthenticated");
         setCurrentUser(null);
         setAuthStatus("unauthenticated");
       }
-    }, 3000);
+    }, 10000);
 
     return () => {
       isMounted = false;
@@ -221,8 +222,9 @@ const Index = ({ initialTab }: IndexProps) => {
     };
   }, []);
 
-  // Keep session alive while authenticated (disabled per user request - no auto-logout)
-  useSessionKeepAlive(false);
+  // Keep session alive while authenticated to prevent backend timeout
+  // Pings every 5 minutes to refresh the session on backend
+  useSessionKeepAlive(authStatus === "authenticated");
 
   useEffect(() => {
     console.log("[Index] authStatus changed to:", authStatus);
@@ -272,37 +274,11 @@ const Index = ({ initialTab }: IndexProps) => {
         }
 
         // If it's an authentication error, log additional context
+        // Note: Don't auto-logout on 401 from project loading - it's a non-critical background task
         if (errorMsg.includes("401") || errorMsg.includes("Unauthorized")) {
-          console.error("[Index] ⚠️ AUTHENTICATION ERROR on list endpoint");
-          console.error("[Index] This means the session token from login is not being recognized by the server");
-          console.error("[Index] Possible causes:");
-          console.error("[Index]   1. Session token not being returned by login endpoint");
-          console.error("[Index]   2. Backend expecting different header name for token (not X-Session-Token)");
-          console.error("[Index]   3. Backend session token expired or invalid");
-          console.log("[Index] Auth status:", authStatus);
-          console.log("[Index] Current user:", currentUser);
-
-          // Try to refresh the session by verifying current user again
-          if (isMounted) {
-            console.log("[Index] Attempting to refresh session...");
-            try {
-              const refreshedUser = await fetchCurrentUser();
-              if (refreshedUser && isMounted) {
-                console.log("[Index] Session refreshed successfully");
-                // Don't retry project loading automatically - let user trigger it
-              } else if (isMounted) {
-                console.warn("[Index] Session refresh failed - marking as unauthenticated");
-                setCurrentUser(null);
-                setAuthStatus("unauthenticated");
-              }
-            } catch (refreshError) {
-              console.error("[Index] Session refresh failed:", refreshError);
-              if (isMounted) {
-                setCurrentUser(null);
-                setAuthStatus("unauthenticated");
-              }
-            }
-          }
+          console.warn("[Index] ⚠️ Project loading returned 401 - possible session expiration on backend");
+          console.warn("[Index] Keeping user logged in locally - will retry on next action");
+          // Don't auto-logout on background task failures - let the user trigger actions that will refresh the session
         }
 
         if (isMounted && !isNetworkError) {
