@@ -107,8 +107,13 @@ export const apiRequest = async <T>(
   const url = buildApiUrl(params);
   const controller = new AbortController();
   const REQUEST_TIMEOUT = 30000; // 30 second timeout (increased from 8s for reliability)
+
+  // Debug: Log that we're about to send credentials
+  const action = params?.action || 'unknown';
+  console.debug(`[API] Fetching ${action} with credentials: 'include' (cookies will be sent)`);
+
   const timeoutId = setTimeout(() => {
-    console.warn(`[API] Request timeout after ${REQUEST_TIMEOUT}ms for action: ${params?.action || 'unknown'}`);
+    console.warn(`[API] Request timeout after ${REQUEST_TIMEOUT}ms for action: ${action}`);
     controller.abort();
   }, REQUEST_TIMEOUT);
 
@@ -117,6 +122,7 @@ export const apiRequest = async <T>(
       ...init,
       headers,
       signal: controller.signal,
+      credentials: 'include', // Send cookies with requests so PHP sessions work
     });
 
     // Check for session token in response headers
