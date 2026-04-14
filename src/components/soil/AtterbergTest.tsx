@@ -1134,14 +1134,31 @@ const AtterbergTest = () => {
         continue;
       }
 
+      // Additional check: Verify SVG is present and rendered
+      const svg = chartRef.querySelector('svg');
+      if (!svg) {
+        console.warn(`[Chart Capture] No SVG found in chart element for record ${recordId}, skipping capture`);
+        continue;
+      }
+
+      // Verify SVG has dimensions
+      const svgWidth = svg.getAttribute('width');
+      const svgHeight = svg.getAttribute('height');
+      if (!svgWidth || !svgHeight) {
+        console.warn(`[Chart Capture] SVG missing dimensions for record ${recordId}`, { svgWidth, svgHeight });
+        continue;
+      }
+
       try {
         // Wait a moment to ensure the chart is fully rendered
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 150));
 
         console.log(`[Chart Capture] Starting html2canvas for record ${recordId}`, {
           element: chartRef,
           visible: chartRef.offsetParent !== null,
-          dimensions: {
+          hasSvg: !!svg,
+          svgDimensions: { width: svgWidth, height: svgHeight },
+          elementDimensions: {
             width: chartRef.offsetWidth,
             height: chartRef.offsetHeight,
           },
@@ -1172,6 +1189,82 @@ const AtterbergTest = () => {
 
     console.log(`[Chart Capture] Completed capturing ${Object.keys(chartImages).length} of ${recordIds.length} charts`);
     return chartImages;
+  }, []);
+
+  const waitForChartsToBeFullyRendered = useCallback(async (recordIds: string[], maxWaitTime: number = 3000): Promise<void> => {
+    console.log(`[Chart Render] Waiting for charts to be fully rendered`, { recordIds, maxWaitTime });
+    const pollInterval = 50;
+    const maxAttempts = Math.ceil(maxWaitTime / pollInterval);
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const allReady = recordIds.every((recordId) => {
+        const chartRef = chartRefsMap.current.get(recordId);
+
+        // Check 1: Element is visible
+        if (!chartRef || chartRef.offsetParent === null) {
+          return false;
+        }
+
+        // Check 2: SVG elements are rendered (Recharts renders SVG charts)
+        const svg = chartRef.querySelector('svg');
+        if (!svg) {
+          console.log(`[Chart Render] No SVG found yet for record ${recordId}`);
+          return false;
+        }
+
+        // Check 3: SVG has dimensions (width and height)
+        const svgWidth = svg.getAttribute('width');
+        const svgHeight = svg.getAttribute('height');
+        if (!svgWidth || !svgHeight) {
+          console.log(`[Chart Render] SVG has no dimensions yet for record ${recordId}`);
+          return false;
+        }
+
+        // Check 4: SVG has content (child elements)
+        if (svg.children.length === 0) {
+          console.log(`[Chart Render] SVG has no content yet for record ${recordId}`);
+          return false;
+        }
+
+        return true;
+      });
+
+      if (allReady) {
+        console.log(`[Chart Render] All charts are fully rendered after ${attempt * pollInterval}ms`);
+        // Additional safety wait to ensure rendering is truly complete
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        return;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+    }
+
+    // Log diagnostic info about charts that aren't ready
+    const notReady = recordIds.filter((recordId) => {
+      const chartRef = chartRefsMap.current.get(recordId);
+      if (!chartRef || chartRef.offsetParent === null) {
+        console.warn(`[Chart Render] Chart not visible for record ${recordId}`);
+        return true;
+      }
+      const svg = chartRef.querySelector('svg');
+      if (!svg) {
+        console.warn(`[Chart Render] No SVG found for record ${recordId}`);
+        return true;
+      }
+      const svgWidth = svg.getAttribute('width');
+      const svgHeight = svg.getAttribute('height');
+      if (!svgWidth || !svgHeight) {
+        console.warn(`[Chart Render] SVG has no dimensions for record ${recordId}:`, { svgWidth, svgHeight });
+        return true;
+      }
+      if (svg.children.length === 0) {
+        console.warn(`[Chart Render] SVG has no content for record ${recordId}`);
+        return true;
+      }
+      return false;
+    });
+
+    console.warn(`[Chart Render] Some charts are still not fully rendered after ${maxWaitTime}ms:`, notReady);
   }, []);
 
   const registerChartRef = useCallback((recordId: string, ref: HTMLDivElement | null) => {
@@ -1215,12 +1308,19 @@ const AtterbergTest = () => {
 
       // Ensure record is expanded and wait for chart to be fully rendered
       ensureRecordsExpanded([recordId]);
-      await new Promise((resolve) => setTimeout(resolve, 400));
+
+      // Wait for charts to be fully rendered before capturing
+      await waitForChartsToBeFullyRendered([recordId]);
 
       // Capture chart image for this record
       const chartImages = await captureAllChartImages([recordId]);
 
       console.log(`[Export] Chart images captured for record:`, Object.keys(chartImages));
+
+      // Ensure we have chart images before generating Excel
+      if (Object.keys(chartImages).length === 0) {
+        console.warn(`[Export] No chart images captured for record ${recordId}, but continuing with export`);
+      }
 
       await generateAtterbergXLSX({
         projectName: project.projectName,
@@ -1233,7 +1333,7 @@ const AtterbergTest = () => {
 
       return true;
     },
-    [computedRecords, project.clientName, project.date, project.projectName, projectState, captureAllChartImages, ensureRecordsExpanded],
+    [computedRecords, project.clientName, project.date, project.projectName, projectState, captureAllChartImages, ensureRecordsExpanded, waitForChartsToBeFullyRendered],
   );
 
   const handleRecordExportJSON = useCallback(
@@ -1282,8 +1382,8 @@ const AtterbergTest = () => {
       const recordIds = computedRecords.map((r) => r.id);
       ensureRecordsExpanded(recordIds);
 
-      // Wait for expand animation and chart rendering
-      await new Promise((resolve) => setTimeout(resolve, 400));
+      // Wait for all charts to be fully rendered before capturing
+      await waitForChartsToBeFullyRendered(recordIds);
 
       // Capture all chart images
       const chartImages = await captureAllChartImages(recordIds);
@@ -1320,7 +1420,7 @@ const AtterbergTest = () => {
     }
 
     return true;
-  }, [computedRecords, project.clientName, project.date, project.projectName, projectState, captureAllChartImages, ensureRecordsExpanded]);
+  }, [computedRecords, project.clientName, project.date, project.projectName, projectState, captureAllChartImages, ensureRecordsExpanded, waitForChartsToBeFullyRendered]);
 
   const handleExportSmokeCheck = useCallback(async () => {
     if (computedRecords.length === 0) {

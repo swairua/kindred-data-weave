@@ -775,7 +775,13 @@ export const generateAtterbergPDF = async (
   options: AtterbergPDFOptions
 ): Promise<Blob | void> => {
   // Fetch images in parallel with PDF setup
-  const images = await fetchAdminImagesAsBase64();
+  let images = { logo: undefined, contacts: undefined, stamp: undefined };
+  try {
+    images = await fetchAdminImagesAsBase64();
+  } catch (error) {
+    console.warn("Failed to fetch admin images for PDF, continuing without them:", error instanceof Error ? error.message : error);
+    // Continue with empty images object - images are optional
+  }
 
   const doc = new jsPDF();
 

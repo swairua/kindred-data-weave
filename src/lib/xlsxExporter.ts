@@ -86,15 +86,21 @@ export const generateAtterbergXLSX = async (
   wb.created = new Date();
 
   // Fetch admin images once for all records
-  const images = await fetchAdminImagesAsBase64();
-  console.log("Fetched admin images for export:", {
-    hasLogo: !!images.logo,
-    hasContacts: !!images.contacts,
-    hasStamp: !!images.stamp,
-    logoLength: images.logo?.length || 0,
-    contactsLength: images.contacts?.length || 0,
-    stampLength: images.stamp?.length || 0,
-  });
+  let images = { logo: undefined, contacts: undefined, stamp: undefined };
+  try {
+    images = await fetchAdminImagesAsBase64();
+    console.log("Fetched admin images for export:", {
+      hasLogo: !!images.logo,
+      hasContacts: !!images.contacts,
+      hasStamp: !!images.stamp,
+      logoLength: images.logo?.length || 0,
+      contactsLength: images.contacts?.length || 0,
+      stampLength: images.stamp?.length || 0,
+    });
+  } catch (error) {
+    console.warn("Failed to fetch admin images, continuing without them:", error instanceof Error ? error.message : error);
+    // Continue with empty images object - images are optional
+  }
 
   for (const record of records) {
     const sheetName = (record.label || record.title || "Record").substring(0, 31);
