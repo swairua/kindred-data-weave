@@ -40,6 +40,7 @@ import ShrinkageLimitSection from "./ShrinkageLimitSection";
 interface AtterbergTestCardProps {
   test: AtterbergTest;
   recordId?: string;
+  liquidLimitMoisture?: number | null; // For PR trial in PL section
   onDelete: () => void;
   onUpdateTitle: (title: string) => void;
   onUpdateType: (type: AtterbergTestType) => void;
@@ -59,6 +60,7 @@ const testTypeLabels: Record<AtterbergTestType, string> = {
 const AtterbergTestCard = ({
   test,
   recordId,
+  liquidLimitMoisture,
   onDelete,
   onUpdateTitle,
   onUpdateType,
@@ -202,6 +204,7 @@ const AtterbergTestCard = ({
               trials={test.trials}
               result={computedResult.plasticLimit ?? null}
               onChangeTrials={onUpdatePlasticLimitTrials}
+              liquidLimitMoisture={liquidLimitMoisture}
             />
           )}
 
