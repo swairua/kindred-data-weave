@@ -1116,78 +1116,130 @@ const AtterbergTest = () => {
     }
 
     for (const recordId of recordIds) {
-      const chartRef = chartRefsMap.current.get(recordId);
-      console.log(`[Chart Capture] Attempting to capture chart for record ${recordId}`, {
-        chartRefExists: !!chartRef,
-        chartRefTag: chartRef?.tagName,
-        chartRefVisible: chartRef ? chartRef.offsetParent !== null : false,
+      // First, try to capture the plasticity chart (from chartRefsMap)
+      const plasticityChartRef = chartRefsMap.current.get(recordId);
+      console.log(`[Chart Capture] Attempting to capture plasticity chart for record ${recordId}`, {
+        chartRefExists: !!plasticityChartRef,
+        chartRefTag: plasticityChartRef?.tagName,
+        chartRefVisible: plasticityChartRef ? plasticityChartRef.offsetParent !== null : false,
       });
 
-      if (!chartRef) {
-        console.warn(`[Chart Capture] Chart ref not found for record ${recordId}`);
-        continue;
+      if (plasticityChartRef && plasticityChartRef.offsetParent !== null) {
+        // Additional check: Verify SVG is present and rendered
+        const svg = plasticityChartRef.querySelector('svg');
+        if (svg) {
+          // Verify SVG has dimensions
+          const svgWidth = svg.getAttribute('width');
+          const svgHeight = svg.getAttribute('height');
+          if (svgWidth && svgHeight) {
+            try {
+              // Wait a moment to ensure the chart is fully rendered
+              await new Promise((resolve) => setTimeout(resolve, 150));
+
+              console.log(`[Chart Capture] Starting html2canvas for plasticity chart of record ${recordId}`, {
+                element: plasticityChartRef,
+                visible: plasticityChartRef.offsetParent !== null,
+                hasSvg: !!svg,
+                svgDimensions: { width: svgWidth, height: svgHeight },
+                elementDimensions: {
+                  width: plasticityChartRef.offsetWidth,
+                  height: plasticityChartRef.offsetHeight,
+                },
+              });
+
+              const canvas = await html2canvas(plasticityChartRef, {
+                backgroundColor: "#ffffff",
+                scale: 2,
+                logging: false,
+                useCORS: true,
+                allowTaint: true,
+              });
+
+              const imageData = canvas.toDataURL("image/png");
+              chartImages[recordId] = imageData;
+              console.log(`[Chart Capture] Successfully captured plasticity chart for record ${recordId}`, {
+                imageDataLength: imageData.length,
+                canvasWidth: canvas.width,
+                canvasHeight: canvas.height,
+              });
+            } catch (error) {
+              console.error(`[Chart Capture] Failed to capture plasticity chart for record ${recordId}:`, {
+                error: error instanceof Error ? error.message : String(error),
+                stack: error instanceof Error ? error.stack : undefined,
+              });
+            }
+          }
+        }
       }
 
-      // Check if the ref is actually visible
-      if (chartRef.offsetParent === null) {
-        console.warn(`[Chart Capture] Chart element is not visible (display: none or hidden) for record ${recordId}`);
-        continue;
-      }
+      // Second, try to capture the liquid limit chart (by class selector)
+      const liquidLimitChartElement = document.querySelector(`.liquid-limit-export-chart-${recordId}`);
+      console.log(`[Chart Capture] Attempting to capture liquid limit chart for record ${recordId}`, {
+        elementFound: !!liquidLimitChartElement,
+        elementVisible: liquidLimitChartElement ? (liquidLimitChartElement as HTMLElement).offsetParent !== null : false,
+      });
 
-      // Additional check: Verify SVG is present and rendered
-      const svg = chartRef.querySelector('svg');
-      if (!svg) {
-        console.warn(`[Chart Capture] No SVG found in chart element for record ${recordId}, skipping capture`);
-        continue;
-      }
+      if (liquidLimitChartElement) {
+        const llElement = liquidLimitChartElement as HTMLElement;
+        // Make it visible temporarily for capture (it's hidden by default with display: none)
+        const originalDisplay = llElement.style.display;
+        llElement.style.display = "block";
 
-      // Verify SVG has dimensions
-      const svgWidth = svg.getAttribute('width');
-      const svgHeight = svg.getAttribute('height');
-      if (!svgWidth || !svgHeight) {
-        console.warn(`[Chart Capture] SVG missing dimensions for record ${recordId}`, { svgWidth, svgHeight });
-        continue;
-      }
+        // Force a small delay to ensure display:block is applied
+        await new Promise((resolve) => setTimeout(resolve, 50));
 
-      try {
-        // Wait a moment to ensure the chart is fully rendered
-        await new Promise((resolve) => setTimeout(resolve, 150));
+        const svg = llElement.querySelector('svg');
+        if (svg) {
+          const svgWidth = svg.getAttribute('width');
+          const svgHeight = svg.getAttribute('height');
+          if (svgWidth && svgHeight) {
+            try {
+              await new Promise((resolve) => setTimeout(resolve, 150));
 
-        console.log(`[Chart Capture] Starting html2canvas for record ${recordId}`, {
-          element: chartRef,
-          visible: chartRef.offsetParent !== null,
-          hasSvg: !!svg,
-          svgDimensions: { width: svgWidth, height: svgHeight },
-          elementDimensions: {
-            width: chartRef.offsetWidth,
-            height: chartRef.offsetHeight,
-          },
-        });
+              console.log(`[Chart Capture] Starting html2canvas for liquid limit chart of record ${recordId}`, {
+                element: llElement,
+                hasSvg: !!svg,
+                svgDimensions: { width: svgWidth, height: svgHeight },
+                elementDimensions: {
+                  width: llElement.offsetWidth,
+                  height: llElement.offsetHeight,
+                },
+              });
 
-        const canvas = await html2canvas(chartRef, {
-          backgroundColor: "#ffffff",
-          scale: 2,
-          logging: false,
-          useCORS: true,
-          allowTaint: true,
-        });
+              const canvas = await html2canvas(llElement, {
+                backgroundColor: "#ffffff",
+                scale: 2,
+                logging: false,
+                useCORS: true,
+                allowTaint: true,
+              });
 
-        const imageData = canvas.toDataURL("image/png");
-        chartImages[recordId] = imageData;
-        console.log(`[Chart Capture] Successfully captured chart for record ${recordId}`, {
-          imageDataLength: imageData.length,
-          canvasWidth: canvas.width,
-          canvasHeight: canvas.height,
-        });
-      } catch (error) {
-        console.error(`[Chart Capture] Failed to capture chart for record ${recordId}:`, {
-          error: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined,
-        });
+              const imageData = canvas.toDataURL("image/png");
+              chartImages[`${recordId}-liquidLimit`] = imageData;
+              console.log(`[Chart Capture] Successfully captured liquid limit chart for record ${recordId}`, {
+                imageDataLength: imageData.length,
+                canvasWidth: canvas.width,
+                canvasHeight: canvas.height,
+              });
+            } catch (error) {
+              console.error(`[Chart Capture] Failed to capture liquid limit chart for record ${recordId}:`, {
+                error: error instanceof Error ? error.message : String(error),
+                stack: error instanceof Error ? error.stack : undefined,
+              });
+            } finally {
+              // Restore original display state
+              llElement.style.display = originalDisplay;
+            }
+          } else {
+            console.warn(`[Chart Capture] Liquid limit chart SVG missing dimensions for record ${recordId}`, { svgWidth, svgHeight });
+          }
+        } else {
+          console.warn(`[Chart Capture] No SVG found in liquid limit chart for record ${recordId}`);
+        }
       }
     }
 
-    console.log(`[Chart Capture] Completed capturing ${Object.keys(chartImages).length} of ${recordIds.length} charts`);
+    console.log(`[Chart Capture] Completed capturing charts for ${Object.keys(chartImages).length} chart types`);
     return chartImages;
   }, []);
 
@@ -1710,12 +1762,14 @@ const RecordCard = ({
   const [nextTestType, setNextTestType] = useState<AtterbergTestType>("liquidLimit");
   const [isExporting, setIsExporting] = useState<"pdf" | "xlsx" | "json" | null>(null);
   const plasticityChartRef = useRef<HTMLDivElement>(null);
+  const liquidLimitChartRef = useRef<HTMLDivElement>(null);
 
-  // Register chart ref with parent when it changes
+  // Register chart refs with parent when they change
   useEffect(() => {
+    // Register plasticity chart
     console.log(`[RecordCard] Registering chart ref for record ${record.id}`, {
-      refExists: !!plasticityChartRef.current,
-      refTagName: plasticityChartRef.current?.tagName,
+      plasticityRefExists: !!plasticityChartRef.current,
+      liquidLimitRefExists: !!liquidLimitChartRef.current,
     });
     onRegisterChartRef(record.id, plasticityChartRef.current);
 
@@ -1725,6 +1779,14 @@ const RecordCard = ({
       onRegisterChartRef(record.id, null);
     };
   }, [record.id, onRegisterChartRef]);
+
+  // Store liquid limit chart ref for later access
+  useEffect(() => {
+    // Update the liquid limit chart ref - this is primarily for access by the export mechanism
+    if (liquidLimitChartRef.current) {
+      console.log(`[RecordCard] Liquid limit chart ref found for record ${record.id}`);
+    }
+  }, [record.id, record.tests]);
 
   const handleExportRecordPDF = useCallback(async () => {
     setIsExporting("pdf");
@@ -1889,6 +1951,7 @@ const RecordCard = ({
                   <AtterbergTestCard
                     key={test.id}
                     test={test}
+                    recordId={record.id}
                     onDelete={() => onRemoveTest(test.id)}
                     onUpdateTitle={(title) => onUpdateTestTitle(test.id, title)}
                     onUpdateType={(type) => onUpdateTestType(test.id, type)}

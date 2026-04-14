@@ -39,6 +39,7 @@ import ShrinkageLimitSection from "./ShrinkageLimitSection";
 
 interface AtterbergTestCardProps {
   test: AtterbergTest;
+  recordId?: string;
   onDelete: () => void;
   onUpdateTitle: (title: string) => void;
   onUpdateType: (type: AtterbergTestType) => void;
@@ -57,6 +58,7 @@ const testTypeLabels: Record<AtterbergTestType, string> = {
 
 const AtterbergTestCard = ({
   test,
+  recordId,
   onDelete,
   onUpdateTitle,
   onUpdateType,
@@ -187,6 +189,7 @@ const AtterbergTestCard = ({
               trials={test.trials}
               result={computedResult.liquidLimit ?? null}
               onChangeTrials={onUpdateLiquidLimitTrials}
+              recordId={recordId}
             />
           )}
 
