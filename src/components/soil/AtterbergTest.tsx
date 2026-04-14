@@ -1104,38 +1104,103 @@ const AtterbergTest = () => {
     [computedRecords, project.clientName, project.date, project.projectName, projectState],
   );
 
-  const captureAllChartImages = useCallback(async (recordIds: string[]): Promise<{ [key: string]: string }> => {
+  const captureAllChartImages = useCallback(async (recordIds: string[], expandRecords?: (ids: string[]) => void): Promise<{ [key: string]: string }> => {
     const chartImages: { [key: string]: string } = {};
+
+    // Expand all records before capturing to ensure charts are visible
+    if (expandRecords) {
+      expandRecords(recordIds);
+      console.log(`[Chart Capture] Expanded records for visibility`);
+      // Wait for the expand animation/render to complete
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    }
 
     for (const recordId of recordIds) {
       const chartRef = chartRefsMap.current.get(recordId);
+      console.log(`[Chart Capture] Attempting to capture chart for record ${recordId}`, {
+        chartRefExists: !!chartRef,
+        chartRefTag: chartRef?.tagName,
+        chartRefVisible: chartRef ? chartRef.offsetParent !== null : false,
+      });
+
       if (!chartRef) {
-        console.warn(`Chart ref not found for record ${recordId}`);
+        console.warn(`[Chart Capture] Chart ref not found for record ${recordId}`);
+        continue;
+      }
+
+      // Check if the ref is actually visible
+      if (chartRef.offsetParent === null) {
+        console.warn(`[Chart Capture] Chart element is not visible (display: none or hidden) for record ${recordId}`);
         continue;
       }
 
       try {
+        // Wait a moment to ensure the chart is fully rendered
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        console.log(`[Chart Capture] Starting html2canvas for record ${recordId}`, {
+          element: chartRef,
+          visible: chartRef.offsetParent !== null,
+          dimensions: {
+            width: chartRef.offsetWidth,
+            height: chartRef.offsetHeight,
+          },
+        });
+
         const canvas = await html2canvas(chartRef, {
           backgroundColor: "#ffffff",
           scale: 2,
           logging: false,
+          useCORS: true,
+          allowTaint: true,
         });
-        chartImages[recordId] = canvas.toDataURL("image/png");
-        console.log(`Captured chart for record ${recordId}`);
+
+        const imageData = canvas.toDataURL("image/png");
+        chartImages[recordId] = imageData;
+        console.log(`[Chart Capture] Successfully captured chart for record ${recordId}`, {
+          imageDataLength: imageData.length,
+          canvasWidth: canvas.width,
+          canvasHeight: canvas.height,
+        });
       } catch (error) {
-        console.error(`Failed to capture chart for record ${recordId}:`, error);
+        console.error(`[Chart Capture] Failed to capture chart for record ${recordId}:`, {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        });
       }
     }
 
+    console.log(`[Chart Capture] Completed capturing ${Object.keys(chartImages).length} of ${recordIds.length} charts`);
     return chartImages;
   }, []);
 
   const registerChartRef = useCallback((recordId: string, ref: HTMLDivElement | null) => {
     if (ref) {
       chartRefsMap.current.set(recordId, ref);
+      console.log(`[Chart Ref] Registered chart ref for record ${recordId}`, {
+        refTagName: ref.tagName,
+        refClassName: ref.className,
+        refId: ref.id,
+      });
     } else {
       chartRefsMap.current.delete(recordId);
+      console.log(`[Chart Ref] Unregistered chart ref for record ${recordId}`);
     }
+    console.log(`[Chart Ref] Total registered charts:`, chartRefsMap.current.size);
+  }, []);
+
+  const ensureRecordsExpanded = useCallback((recordIds: string[]) => {
+    console.log(`[Expand] Ensuring records are expanded:`, recordIds);
+    setProjectState((prev) => ({
+      ...prev,
+      records: prev.records.map((record) => {
+        if (recordIds.includes(record.id) && !record.isExpanded) {
+          console.log(`[Expand] Expanding record ${record.id}`);
+          return { ...record, isExpanded: true };
+        }
+        return record;
+      }),
+    }));
   }, []);
 
   const handleRecordExportXLSX = useCallback(
@@ -1146,8 +1211,16 @@ const AtterbergTest = () => {
         return false;
       }
 
+      console.log(`[Export] Starting Excel export for record ${recordId}`);
+
+      // Ensure record is expanded and wait for chart to be fully rendered
+      ensureRecordsExpanded([recordId]);
+      await new Promise((resolve) => setTimeout(resolve, 400));
+
       // Capture chart image for this record
       const chartImages = await captureAllChartImages([recordId]);
+
+      console.log(`[Export] Chart images captured for record:`, Object.keys(chartImages));
 
       await generateAtterbergXLSX({
         projectName: project.projectName,
@@ -1160,7 +1233,7 @@ const AtterbergTest = () => {
 
       return true;
     },
-    [computedRecords, project.clientName, project.date, project.projectName, projectState, captureAllChartImages],
+    [computedRecords, project.clientName, project.date, project.projectName, projectState, captureAllChartImages, ensureRecordsExpanded],
   );
 
   const handleRecordExportJSON = useCallback(
@@ -1202,9 +1275,20 @@ const AtterbergTest = () => {
 
     setIsPreviewLoading(true);
     try {
-      // Capture all chart images
+      console.log(`[Export] Starting Excel export for ${computedRecords.length} records`);
+      console.log(`[Export] Registered chart refs:`, Array.from(chartRefsMap.current.keys()));
+
+      // Ensure all records are expanded
       const recordIds = computedRecords.map((r) => r.id);
+      ensureRecordsExpanded(recordIds);
+
+      // Wait for expand animation and chart rendering
+      await new Promise((resolve) => setTimeout(resolve, 400));
+
+      // Capture all chart images
       const chartImages = await captureAllChartImages(recordIds);
+
+      console.log(`[Export] Captured ${Object.keys(chartImages).length} charts out of ${recordIds.length}`);
 
       const blob = await generateAtterbergXLSX({
         projectName: project.projectName,
@@ -1236,7 +1320,7 @@ const AtterbergTest = () => {
     }
 
     return true;
-  }, [computedRecords, project.clientName, project.date, project.projectName, projectState, captureAllChartImages]);
+  }, [computedRecords, project.clientName, project.date, project.projectName, projectState, captureAllChartImages, ensureRecordsExpanded]);
 
   const handleExportSmokeCheck = useCallback(async () => {
     if (computedRecords.length === 0) {
@@ -1529,7 +1613,17 @@ const RecordCard = ({
 
   // Register chart ref with parent when it changes
   useEffect(() => {
+    console.log(`[RecordCard] Registering chart ref for record ${record.id}`, {
+      refExists: !!plasticityChartRef.current,
+      refTagName: plasticityChartRef.current?.tagName,
+    });
     onRegisterChartRef(record.id, plasticityChartRef.current);
+
+    // Cleanup: unregister when unmounting
+    return () => {
+      console.log(`[RecordCard] Cleaning up chart ref for record ${record.id}`);
+      onRegisterChartRef(record.id, null);
+    };
   }, [record.id, onRegisterChartRef]);
 
   const handleExportRecordPDF = useCallback(async () => {
