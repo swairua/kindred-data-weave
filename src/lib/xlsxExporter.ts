@@ -358,7 +358,7 @@ export const generateAtterbergXLSX = async (
               break;
             case 7: // Moisture %
             {
-              const mc = calculateMoistureFromMass(trial.containerWetMass, trial.containerDryMass, trial.containerMass);
+              const mc = getTrialMoisture(trial);
               setCell(ws, row, col, mc ? Number(mc) : "-", dataBoldFont, allThin);
               break;
             }
@@ -458,7 +458,7 @@ export const generateAtterbergXLSX = async (
               }
               break;
             case 7: {
-              const mc = calculateMoistureFromMass(trial.containerWetMass, trial.containerDryMass, trial.containerMass);
+              const mc = getTrialMoisture(trial);
               setCell(ws, row, col, mc ? Number(mc) : "-", dataBoldFont, allThin);
               break;
             }
