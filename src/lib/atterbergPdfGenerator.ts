@@ -7,7 +7,7 @@ import type {
   PlasticLimitTrial,
   ShrinkageLimitTrial,
 } from "@/context/TestDataContext";
-import { calculateMoistureFromMass } from "./atterbergCalculations";
+import { calculateMoistureFromMass, getTrialMoisture } from "./atterbergCalculations";
 import { fetchAdminImagesAsBase64, type AdminImages } from "./imageUtils";
 
 // Helper to extract base64 string from data URL
@@ -87,8 +87,8 @@ function drawConeGraph(
   const points: Array<{ pen: number; mc: number }> = [];
   for (const trial of llTrials) {
     const pen = num(trial.penetration);
-    const mcStr = calculateMoistureFromMass(trial.containerWetMass, trial.containerDryMass, trial.containerMass);
-    const mc = mcStr ? Number(mcStr) : num(trial.moisture);
+    const mcStr = getTrialMoisture(trial);
+    const mc = mcStr ? Number(mcStr) : null;
     if (pen !== null && mc !== null && pen > 0 && mc > 0) {
       points.push({ pen, mc });
     }
@@ -368,7 +368,7 @@ function drawRecordPage(
           case 5: row.push(wet !== null && dry !== null ? fmt(round2(wet - dry)) : "-"); break;
           case 6: row.push(dry !== null && cont !== null ? fmt(round2(dry - cont)) : "-"); break;
           case 7: {
-            const mc = calculateMoistureFromMass(trial.containerWetMass, trial.containerDryMass, trial.containerMass);
+            const mc = getTrialMoisture(trial);
             row.push(mc ? String(round2(Number(mc))) : "-");
             break;
           }
@@ -439,7 +439,7 @@ function drawRecordPage(
           case 5: row.push(wet !== null && dry !== null ? fmt(round2(wet - dry)) : "-"); break;
           case 6: row.push(dry !== null && cont !== null ? fmt(round2(dry - cont)) : "-"); break;
           case 7: {
-            const mc = calculateMoistureFromMass(trial.containerWetMass, trial.containerDryMass, trial.containerMass);
+            const mc = getTrialMoisture(trial);
             row.push(mc ? String(round2(Number(mc))) : "-");
             break;
           }
