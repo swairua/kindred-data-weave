@@ -652,6 +652,7 @@ const AtterbergTest = () => {
   const loadAttemptedRef = useRef(false);
   const skipNextPersistRef = useRef(false);
   const isSavingRef = useRef(false);
+  const chartRefsMap = useRef<Map<string, HTMLDivElement | null>>(new Map());
 
   const computedRecords = useMemo<ComputedRecord[]>(() => {
     return projectState.records.map((record) => {
@@ -1103,6 +1104,40 @@ const AtterbergTest = () => {
     [computedRecords, project.clientName, project.date, project.projectName, projectState],
   );
 
+  const captureAllChartImages = useCallback(async (recordIds: string[]): Promise<{ [key: string]: string }> => {
+    const chartImages: { [key: string]: string } = {};
+
+    for (const recordId of recordIds) {
+      const chartRef = chartRefsMap.current.get(recordId);
+      if (!chartRef) {
+        console.warn(`Chart ref not found for record ${recordId}`);
+        continue;
+      }
+
+      try {
+        const canvas = await html2canvas(chartRef, {
+          backgroundColor: "#ffffff",
+          scale: 2,
+          logging: false,
+        });
+        chartImages[recordId] = canvas.toDataURL("image/png");
+        console.log(`Captured chart for record ${recordId}`);
+      } catch (error) {
+        console.error(`Failed to capture chart for record ${recordId}:`, error);
+      }
+    }
+
+    return chartImages;
+  }, []);
+
+  const registerChartRef = useCallback((recordId: string, ref: HTMLDivElement | null) => {
+    if (ref) {
+      chartRefsMap.current.set(recordId, ref);
+    } else {
+      chartRefsMap.current.delete(recordId);
+    }
+  }, []);
+
   const handleRecordExportXLSX = useCallback(
     async (recordId: string) => {
       const record = computedRecords.find((r) => r.id === recordId);
@@ -1111,17 +1146,21 @@ const AtterbergTest = () => {
         return false;
       }
 
+      // Capture chart image for this record
+      const chartImages = await captureAllChartImages([recordId]);
+
       await generateAtterbergXLSX({
         projectName: project.projectName,
         clientName: project.clientName || projectState.clientName,
         date: project.date,
         projectState,
         records: [record],
+        chartImages: Object.keys(chartImages).length > 0 ? chartImages : undefined,
       });
 
       return true;
     },
-    [computedRecords, project.clientName, project.date, project.projectName, projectState],
+    [computedRecords, project.clientName, project.date, project.projectName, projectState, captureAllChartImages],
   );
 
   const handleRecordExportJSON = useCallback(
@@ -1163,6 +1202,10 @@ const AtterbergTest = () => {
 
     setIsPreviewLoading(true);
     try {
+      // Capture all chart images
+      const recordIds = computedRecords.map((r) => r.id);
+      const chartImages = await captureAllChartImages(recordIds);
+
       const blob = await generateAtterbergXLSX({
         projectName: project.projectName,
         clientName: project.clientName || projectState.clientName,
@@ -1170,6 +1213,7 @@ const AtterbergTest = () => {
         projectState,
         records: computedRecords,
         skipDownload: true,
+        chartImages: Object.keys(chartImages).length > 0 ? chartImages : undefined,
       });
 
       if (blob) {
@@ -1192,7 +1236,7 @@ const AtterbergTest = () => {
     }
 
     return true;
-  }, [computedRecords, project.clientName, project.date, project.projectName, projectState]);
+  }, [computedRecords, project.clientName, project.date, project.projectName, projectState, captureAllChartImages]);
 
   const handleExportSmokeCheck = useCallback(async () => {
     if (computedRecords.length === 0) {
@@ -1380,6 +1424,7 @@ const AtterbergTest = () => {
                 onExportPDF={handleRecordExportPDF}
                 onExportXLSX={handleRecordExportXLSX}
                 onExportJSON={handleRecordExportJSON}
+                onRegisterChartRef={registerChartRef}
               />
             ))}
           </div>
@@ -1449,6 +1494,7 @@ interface RecordCardProps {
   onExportPDF: (recordId: string) => Promise<boolean>;
   onExportXLSX: (recordId: string) => Promise<boolean>;
   onExportJSON: (recordId: string) => boolean;
+  onRegisterChartRef: (recordId: string, ref: HTMLDivElement | null) => void;
 }
 
 const RecordCard = ({
@@ -1475,9 +1521,16 @@ const RecordCard = ({
   onExportPDF,
   onExportXLSX,
   onExportJSON,
+  onRegisterChartRef,
 }: RecordCardProps) => {
   const [nextTestType, setNextTestType] = useState<AtterbergTestType>("liquidLimit");
   const [isExporting, setIsExporting] = useState<"pdf" | "xlsx" | "json" | null>(null);
+  const plasticityChartRef = useRef<HTMLDivElement>(null);
+
+  // Register chart ref with parent when it changes
+  useEffect(() => {
+    onRegisterChartRef(record.id, plasticityChartRef.current);
+  }, [record.id, onRegisterChartRef]);
 
   const handleExportRecordPDF = useCallback(async () => {
     setIsExporting("pdf");
@@ -1698,10 +1751,12 @@ const RecordCard = ({
               })()}
 
               {record.results.liquidLimit !== undefined || record.results.plasticityIndex !== undefined ? (
-                <PlasticityChart
-                  liquidLimit={record.results.liquidLimit ?? null}
-                  plasticityIndex={record.results.plasticityIndex ?? null}
-                />
+                <div ref={plasticityChartRef}>
+                  <PlasticityChart
+                    liquidLimit={record.results.liquidLimit ?? null}
+                    plasticityIndex={record.results.plasticityIndex ?? null}
+                  />
+                </div>
               ) : null}
             </div>
           </CardContent>
