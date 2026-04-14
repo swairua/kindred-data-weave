@@ -581,6 +581,37 @@ export const generateAtterbergXLSX = async (
     ws.mergeCells(`I${footerRow}:K${footerRow}`);
     setCell(ws, footerRow, 9, `Checked by: ${projectState.checkedBy || "____________"}`, dataBoldFont, null);
 
+    // Add liquid limit chart if available
+    let chartRowOffset = 0;
+    if (options.chartImages && options.chartImages[`${record.id}-liquidLimit`]) {
+      try {
+        const llChartImageData = options.chartImages[`${record.id}-liquidLimit`];
+        const llBase64String = extractBase64FromDataUrl(llChartImageData);
+        const llChartImageId = wb.addImage({
+          base64: llBase64String,
+          extension: "png",
+        });
+
+        // Add liquid limit chart on a new section, below the footer
+        const llChartRow = footerRow + 3;
+        ws.mergeCells(`B${llChartRow}:K${llChartRow}`);
+        const llChartTitleCell = ws.getCell(`B${llChartRow}`);
+        llChartTitleCell.value = "LIQUID LIMIT - MOISTURE VS PENETRATION GRAPH";
+        llChartTitleCell.font = { ...dataBoldFont, size: 11 };
+        llChartTitleCell.border = allThin;
+
+        // Add the chart image below the title
+        ws.addImage(llChartImageId, {
+          tl: { col: 1, row: llChartRow + 1 }, // Column B, one row below title
+          ext: { width: 320, height: 240 },
+        });
+        console.log("Liquid limit chart added successfully to record:", record.id);
+        chartRowOffset = 15; // Offset for the next chart
+      } catch (error) {
+        console.error("Failed to add liquid limit chart:", error instanceof Error ? error.message : error);
+      }
+    }
+
     // Add plasticity chart if available
     if (options.chartImages && options.chartImages[record.id]) {
       try {
@@ -591,8 +622,8 @@ export const generateAtterbergXLSX = async (
           extension: "png",
         });
 
-        // Add chart on a new section, below the footer
-        const chartRow = footerRow + 3;
+        // Add chart on a new section, below the footer (and liquid limit chart if present)
+        const chartRow = footerRow + 3 + chartRowOffset;
         ws.mergeCells(`B${chartRow}:K${chartRow}`);
         const chartTitleCell = ws.getCell(`B${chartRow}`);
         chartTitleCell.value = "PLASTICITY CHART";
@@ -601,8 +632,8 @@ export const generateAtterbergXLSX = async (
 
         // Add the chart image below the title
         ws.addImage(chartImageId, {
-          tl: { col: 1, row: chartRow }, // Column B
-          ext: { width: 300, height: 240 }, // Size in EMUs (1/914400 of an inch)
+          tl: { col: 1, row: chartRow + 1 }, // Column B, one row below title
+          ext: { width: 300, height: 240 },
         });
         console.log("Plasticity chart added successfully to record:", record.id);
       } catch (error) {

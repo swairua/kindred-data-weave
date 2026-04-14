@@ -21,6 +21,7 @@ interface LiquidLimitSectionProps {
   trials: LiquidLimitTrial[];
   result: number | null;
   onChangeTrials: (trials: LiquidLimitTrial[]) => void;
+  recordId?: string;
 }
 
 const createTrial = (index: number): LiquidLimitTrial => ({
@@ -49,7 +50,7 @@ const TooltipHeader = ({ label, tooltip }: TooltipHeaderProps) => (
   </UITooltip>
 );
 
-const LiquidLimitSection = ({ trials, result, onChangeTrials }: LiquidLimitSectionProps) => {
+const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId }: LiquidLimitSectionProps) => {
   const graphData = useMemo(() => getLiquidLimitGraphData(trials), [trials]);
 
   const updateTrial = (index: number, field: keyof LiquidLimitTrial, value: string) => {
@@ -237,32 +238,75 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials }: LiquidLimitSecti
       </div>
 
       {graphData.length >= 2 && (
-        <div className="rounded-lg border bg-card p-3">
-          <h4 className="mb-3 text-sm font-medium text-foreground">Moisture vs Penetration (Semi-log Scale)</h4>
-          <div className="overflow-x-auto">
-            <div className="h-[280px] min-w-[520px]">
+        <>
+          <div className="rounded-lg border bg-card p-3">
+            <h4 className="mb-3 text-sm font-medium text-foreground">Moisture vs Penetration (Semi-log Scale)</h4>
+            <div className="overflow-x-auto">
+              <div className="h-[280px] min-w-[520px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={graphData} margin={{ top: 16, right: 20, left: 0, bottom: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="penetration" stroke="hsl(var(--muted-foreground))" label={{ value: "Penetration (mm)", position: "insideBottom", offset: -4 }} />
+                    <YAxis scale="log" stroke="hsl(var(--muted-foreground))" label={{ value: "Moisture (%) - Log Scale", angle: -90, position: "insideLeft" }} type="number" domain={[Math.min(...graphData.map(d => d.moisture)) * 0.8, Math.max(...graphData.map(d => d.moisture)) * 1.2]} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--background))",
+                        borderColor: "hsl(var(--border))",
+                        borderRadius: 8,
+                      }}
+                      formatter={(value: number) => [`${value.toFixed(2)}%`, "Moisture"]}
+                      labelFormatter={(label) => `Penetration: ${label}mm`}
+                    />
+                    <ReferenceLine x={20} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" />
+                    <Line
+                      type="monotone"
+                      dataKey="moisture"
+                      name="Moisture"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={2}
+                      dot={{ fill: "hsl(var(--primary))", r: 4 }}
+                      activeDot={{ r: 5 }}
+                      isAnimationActive={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          {/* Hidden linear scale chart for Excel export - will be captured by the export process */}
+          <div style={{ display: "none" }} className={`liquid-limit-export-chart${recordId ? `-${recordId}` : ""}`}>
+            <div className="bg-white p-6" style={{ width: "600px", height: "400px" }}>
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={graphData} margin={{ top: 16, right: 20, left: 0, bottom: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="penetration" stroke="hsl(var(--muted-foreground))" label={{ value: "Penetration (mm)", position: "insideBottom", offset: -4 }} />
-                  <YAxis scale="log" stroke="hsl(var(--muted-foreground))" label={{ value: "Moisture (%) - Log Scale", angle: -90, position: "insideLeft" }} type="number" domain={[Math.min(...graphData.map(d => d.moisture)) * 0.8, Math.max(...graphData.map(d => d.moisture)) * 1.2]} />
+                <LineChart data={graphData} margin={{ top: 20, right: 30, left: 60, bottom: 60 }}>
+                  <CartesianGrid stroke="#e5e7eb" />
+                  <XAxis
+                    dataKey="penetration"
+                    stroke="#000"
+                    label={{ value: "Penetration (mm)", position: "bottom", offset: 10, fontSize: 12 }}
+                    tick={{ fontSize: 11 }}
+                  />
+                  <YAxis
+                    stroke="#000"
+                    label={{ value: "Moisture Content (%)", angle: -90, position: "left", offset: 10, fontSize: 12 }}
+                    tick={{ fontSize: 11 }}
+                  />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "hsl(var(--background))",
-                      borderColor: "hsl(var(--border))",
-                      borderRadius: 8,
+                      backgroundColor: "#ffffff",
+                      border: "1px solid #d1d5db",
+                      borderRadius: 4,
                     }}
                     formatter={(value: number) => [`${value.toFixed(2)}%`, "Moisture"]}
                     labelFormatter={(label) => `Penetration: ${label}mm`}
                   />
-                  <ReferenceLine x={20} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" />
                   <Line
                     type="monotone"
                     dataKey="moisture"
                     name="Moisture"
-                    stroke="hsl(var(--primary))"
+                    stroke="#ef4444"
                     strokeWidth={2}
-                    dot={{ fill: "hsl(var(--primary))", r: 4 }}
+                    dot={{ fill: "#ef4444", r: 4 }}
                     activeDot={{ r: 5 }}
                     isAnimationActive={false}
                   />
@@ -270,7 +314,7 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials }: LiquidLimitSecti
               </ResponsiveContainer>
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
