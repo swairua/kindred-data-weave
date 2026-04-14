@@ -114,6 +114,10 @@ const AtterbergTestCard = ({
     setPendingType(null);
   };
 
+  const validationMessages = useMemo(() => {
+    return getTestValidationMessages(test);
+  }, [test]);
+
   return (
     <Card className="border shadow-sm transition-all hover:shadow-md print:shadow-none">
       <CardHeader className="space-y-3 pb-3">
@@ -227,33 +231,26 @@ const AtterbergTestCard = ({
               </div>
             </div>
 
-            {useMemo(() => {
-              const { errors, warnings } = getTestValidationMessages(test);
-              return (
-                <>
-                  {errors.length > 0 && (
-                    <div className="flex gap-2 rounded-lg border border-red-200/50 bg-red-50 p-3 text-sm text-red-900 dark:border-red-900/30 dark:bg-red-950/20 dark:text-red-200">
-                      <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                      <div className="space-y-1">
-                        {errors.map((err, i) => (
-                          <div key={i}>{err}</div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {warnings.length > 0 && errors.length === 0 && (
-                    <div className="flex gap-2 rounded-lg border border-amber-200/50 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/30 dark:bg-amber-950/20 dark:text-amber-200">
-                      <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                      <div className="space-y-1">
-                        {warnings.map((warn, i) => (
-                          <div key={i}>{warn}</div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </>
-              );
-            }, [test])}
+            {validationMessages.errors.length > 0 && (
+              <div className="flex gap-2 rounded-lg border border-red-200/50 bg-red-50 p-3 text-sm text-red-900 dark:border-red-900/30 dark:bg-red-950/20 dark:text-red-200">
+                <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  {validationMessages.errors.map((err, i) => (
+                    <div key={i}>{err}</div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {validationMessages.warnings.length > 0 && validationMessages.errors.length === 0 && (
+              <div className="flex gap-2 rounded-lg border border-amber-200/50 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/30 dark:bg-amber-950/20 dark:text-amber-200">
+                <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  {validationMessages.warnings.map((warn, i) => (
+                    <div key={i}>{warn}</div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       )}

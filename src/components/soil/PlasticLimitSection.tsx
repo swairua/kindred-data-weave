@@ -100,7 +100,7 @@ const PlasticLimitSection = ({ trials, result, onChangeTrials }: PlasticLimitSec
                         value={trial.containerNo || ""}
                         onChange={(e) => updateTrial(index, "containerNo", e.target.value)}
                         className="h-8 w-16"
-                        placeholder="-"
+                        placeholder="201"
                       />
                     </td>
                     <td className="px-2 py-1.5">
@@ -110,7 +110,7 @@ const PlasticLimitSection = ({ trials, result, onChangeTrials }: PlasticLimitSec
                         value={trial.containerWetMass || ""}
                         onChange={(e) => updateTrial(index, "containerWetMass", e.target.value)}
                         className="h-8"
-                        placeholder="-"
+                        placeholder="22.0"
                       />
                     </td>
                     <td className="px-2 py-1.5">
@@ -120,7 +120,7 @@ const PlasticLimitSection = ({ trials, result, onChangeTrials }: PlasticLimitSec
                         value={trial.containerDryMass || ""}
                         onChange={(e) => updateTrial(index, "containerDryMass", e.target.value)}
                         className="h-8"
-                        placeholder="-"
+                        placeholder="16.5"
                       />
                     </td>
                     <td className="px-2 py-1.5">
@@ -130,7 +130,7 @@ const PlasticLimitSection = ({ trials, result, onChangeTrials }: PlasticLimitSec
                         value={trial.containerMass || ""}
                         onChange={(e) => updateTrial(index, "containerMass", e.target.value)}
                         className="h-8"
-                        placeholder="-"
+                        placeholder="4.8"
                       />
                     </td>
                     <td className="px-2 py-1.5">

@@ -177,7 +177,7 @@ const createTest = (type: AtterbergTestType, tests: AtterbergTest[]): AtterbergT
       id: makeId("test"),
       title: buildTestTitle(type, tests),
       type,
-      isExpanded: true,
+      isExpanded: false,
       trials: [createLiquidLimitTrial(0)],
       result: {},
     };
@@ -188,7 +188,7 @@ const createTest = (type: AtterbergTestType, tests: AtterbergTest[]): AtterbergT
       id: makeId("test"),
       title: buildTestTitle(type, tests),
       type,
-      isExpanded: true,
+      isExpanded: false,
       trials: [createPlasticLimitTrial(0)],
       result: {},
     };
@@ -198,7 +198,7 @@ const createTest = (type: AtterbergTestType, tests: AtterbergTest[]): AtterbergT
     id: makeId("test"),
     title: buildTestTitle(type, tests),
     type,
-    isExpanded: true,
+    isExpanded: false,
     trials: [createShrinkageLimitTrial(0)],
     result: {},
   };
@@ -209,7 +209,7 @@ const createRecord = (index: number): AtterbergRecord => ({
   title: `Record ${index + 1}`,
   label: "",
   note: "",
-  isExpanded: true,
+  isExpanded: false,
   tests: [],
   results: {},
 });
@@ -223,7 +223,7 @@ const createDefaultRecord = (index: number): AtterbergRecord => {
     id: makeId("test"),
     title: `Liquid Limit ${index + 1}`,
     type: "liquidLimit",
-    isExpanded: true,
+    isExpanded: false,
     trials: [
       {
         id: makeId("trial"),
@@ -274,7 +274,7 @@ const createDefaultRecord = (index: number): AtterbergRecord => {
     id: makeId("test"),
     title: `Plastic Limit ${index + 1}`,
     type: "plasticLimit",
-    isExpanded: true,
+    isExpanded: false,
     trials: [
       {
         id: makeId("trial"),
@@ -303,7 +303,7 @@ const createDefaultRecord = (index: number): AtterbergRecord => {
     id: makeId("test"),
     title: `Linear Shrinkage ${index + 1}`,
     type: "shrinkageLimit",
-    isExpanded: true,
+    isExpanded: false,
     trials: [
       {
         id: makeId("trial"),
@@ -326,7 +326,7 @@ const createDefaultRecord = (index: number): AtterbergRecord => {
     title: `Record ${index + 1}`,
     label: `Sample ${index + 1}`,
     note: "Sample soil specimen",
-    isExpanded: true,
+    isExpanded: false,
     tests: [liquidLimitTest, plasticLimitTest, shrinkageLimitTest],
     results: {},
     sampleNumber: `00${index + 1}`,
@@ -630,13 +630,9 @@ const updateTrialsForType = (test: AtterbergTest, trials: AtterbergTest["trials"
 
 const AtterbergTest = () => {
   const project = useProject();
-  // Initialize with 3 sample records containing complete test data for quick testing
+  // Initialize with empty records - users add tests as needed
   const [projectState, setProjectState] = useState<AtterbergProjectState>({
-    records: [
-      createDefaultRecord(0),
-      createDefaultRecord(1),
-      createDefaultRecord(2),
-    ],
+    records: [createRecord(0)],
   });
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const [smokeCheckStatus, setSmokeCheckStatus] = useState<SmokeCheckStatus | null>(null);
@@ -844,8 +840,10 @@ const AtterbergTest = () => {
           };
         });
         console.log(`[AtterbergTest] Test added successfully`);
+        toast.success(`${type === "liquidLimit" ? "Liquid Limit" : type === "plasticLimit" ? "Plastic Limit" : "Linear Shrinkage"} test added`);
       } catch (error) {
         console.error(`[AtterbergTest] Error adding test:`, error);
+        toast.error("Failed to add test");
         throw error;
       }
     },
@@ -873,7 +871,7 @@ const AtterbergTest = () => {
             ...test,
             title: buildTestTitle(type, record.tests.filter((item) => item.id !== testId)),
             type,
-            isExpanded: true,
+            isExpanded: false,
             trials: createTrialsForType(type) as AtterbergTest["trials"],
             result: {},
           } as AtterbergTest;

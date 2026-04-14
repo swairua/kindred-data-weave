@@ -144,7 +144,7 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId }: Liquid
                         value={trial.containerNo || ""}
                         onChange={(e) => updateTrial(index, "containerNo", e.target.value)}
                         className="h-8 w-16"
-                        placeholder="-"
+                        placeholder="101"
                       />
                     </td>
                     <td className="px-2 py-1.5">
@@ -164,7 +164,7 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId }: Liquid
                         value={trial.containerWetMass || ""}
                         onChange={(e) => updateTrial(index, "containerWetMass", e.target.value)}
                         className="h-8"
-                        placeholder="-"
+                        placeholder="23.8"
                       />
                     </td>
                     <td className="px-2 py-1.5">
@@ -174,7 +174,7 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId }: Liquid
                         value={trial.containerDryMass || ""}
                         onChange={(e) => updateTrial(index, "containerDryMass", e.target.value)}
                         className="h-8"
-                        placeholder="-"
+                        placeholder="17.6"
                       />
                     </td>
                     <td className="px-2 py-1.5">
@@ -184,7 +184,7 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId }: Liquid
                         value={trial.containerMass || ""}
                         onChange={(e) => updateTrial(index, "containerMass", e.target.value)}
                         className="h-8"
-                        placeholder="-"
+                        placeholder="5.0"
                       />
                     </td>
                     <td className="px-2 py-1.5">
