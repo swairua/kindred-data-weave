@@ -166,14 +166,16 @@ const PlasticityChart: React.FC<PlasticityChartProps> = ({ liquidLimit, plastici
                 type="number"
                 dataKey="x"
                 name="Liquid Limit (%)"
-                label={{ value: "Liquid Limit (%)", offset: 40, position: "insideBottomRight" }}
+                tick={{ fontSize: 12 }}
+                label={{ value: "Liquid Limit (%)", offset: 40, position: "insideBottomRight", fontSize: 12 }}
                 domain={[minLL, maxLL]}
               />
               <YAxis
                 type="number"
                 dataKey="y"
                 name="Plasticity Index (%)"
-                label={{ value: "Plasticity Index (%)", angle: -90, position: "insideLeft" }}
+                tick={{ fontSize: 12 }}
+                label={{ value: "Plasticity Index (%)", angle: -90, position: "insideLeft", fontSize: 12 }}
                 domain={[0, maxPI]}
               />
               <Tooltip

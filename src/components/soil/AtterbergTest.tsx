@@ -1158,7 +1158,7 @@ const AtterbergTest = () => {
 
               const canvas = await html2canvas(llElement, {
                 backgroundColor: "#ffffff",
-                scale: 2,
+                scale: 3,
                 logging: false,
                 useCORS: true,
                 allowTaint: true,

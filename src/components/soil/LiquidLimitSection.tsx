@@ -242,8 +242,8 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId }: Liquid
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={graphData} margin={{ top: 16, right: 20, left: 0, bottom: 8 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="penetration" stroke="hsl(var(--muted-foreground))" label={{ value: "Penetration (mm)", position: "insideBottom", offset: -4 }} />
-                      <YAxis scale="log" stroke="hsl(var(--muted-foreground))" label={{ value: "Moisture (%) - Log Scale", angle: -90, position: "insideLeft" }} type="number" domain={[Math.min(...graphData.map(d => d.moisture)) * 0.8, Math.max(...graphData.map(d => d.moisture)) * 1.2]} />
+                      <XAxis dataKey="penetration" stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 12 }} label={{ value: "Penetration (mm)", position: "insideBottom", offset: -4, fontSize: 12 }} />
+                      <YAxis scale="log" stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 12 }} label={{ value: "Moisture (%) - Log Scale", angle: -90, position: "insideLeft", fontSize: 12 }} type="number" domain={[Math.min(...graphData.map(d => d.moisture)) * 0.8, Math.max(...graphData.map(d => d.moisture)) * 1.2]} />
                       <Tooltip
                         contentStyle={{
                           backgroundColor: "hsl(var(--background))",
@@ -319,13 +319,13 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId }: Liquid
                       <XAxis
                         dataKey="penetration"
                         stroke="#000"
-                        label={{ value: "Penetration (mm)", position: "bottom", offset: 10, fontSize: 12 }}
-                        tick={{ fontSize: 11 }}
+                        label={{ value: "Penetration (mm)", position: "bottom", offset: 10, fontSize: 14, fontWeight: "bold", fill: "#374151" }}
+                        tick={{ fontSize: 14, fill: "#374151" }}
                       />
                       <YAxis
                         stroke="#000"
-                        label={{ value: "Moisture Content (%)", angle: -90, position: "left", offset: 10, fontSize: 12 }}
-                        tick={{ fontSize: 11 }}
+                        label={{ value: "Moisture Content (%)", angle: -90, position: "left", offset: 10, fontSize: 14, fontWeight: "bold", fill: "#374151" }}
+                        tick={{ fontSize: 14, fill: "#374151" }}
                       />
                       <Tooltip
                         contentStyle={{
