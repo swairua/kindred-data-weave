@@ -329,13 +329,13 @@ function drawRecordPage(
   let y = 10;
 
   // ── Header images: logo (left) + contacts (right) ──
-  const headerH = 24;
+  const headerH = 36;
   if (images.logo || images.contacts) {
     if (images.logo) {
       try {
         console.log("Adding logo image to PDF");
         const base64String = extractBase64FromDataUrl(images.logo);
-        doc.addImage(base64String, "PNG", margin, y, contentW * 0.35, headerH);
+        doc.addImage(base64String, "PNG", margin, y, contentW * 0.525, headerH);
         console.log("Logo image added successfully");
       } catch (error) {
         console.error("Failed to add logo image:", error instanceof Error ? error.message : error);
@@ -344,7 +344,7 @@ function drawRecordPage(
     if (images.contacts) {
       try {
         console.log("Adding contacts image to PDF");
-        const contactsW = contentW * 0.35;
+        const contactsW = contentW * 0.525;
         const base64String = extractBase64FromDataUrl(images.contacts);
         doc.addImage(base64String, "PNG", pw - margin - contactsW, y, contactsW, headerH);
         console.log("Contacts image added successfully");
@@ -837,8 +837,8 @@ function drawRecordPage(
   if (images.stamp) {
     try {
       console.log("Adding stamp image to PDF");
-      const stampW = 35;
-      const stampH = 35;
+      const stampW = 52;
+      const stampH = 52;
       const stampX = pw - margin - stampW;
       const stampY = ph - margin - stampH - 8;
       const base64String = extractBase64FromDataUrl(images.stamp);
