@@ -725,6 +725,100 @@ try {
         }
     }
 
+    // ============= IMAGE SERVE ENDPOINT (fixes CORS for exports) =============
+    if ($action === 'serve-image') {
+        // Allow serving images to authenticated users
+        $user = getCurrentUser($conn);
+
+        // Get image identifier (either by image_id or image_type for latest)
+        $imageId = $_GET['image_id'] ?? $body['image_id'] ?? null;
+        $imageType = $_GET['image_type'] ?? $body['image_type'] ?? null;
+
+        $sql = null;
+        $params = [];
+        $paramTypes = '';
+
+        if ($imageId) {
+            $sql = "SELECT id, file_path, mime_type FROM admin_images WHERE id = ? LIMIT 1";
+            $params = [$imageId];
+            $paramTypes = 'i';
+        } elseif ($imageType && in_array($imageType, ['logo', 'contacts', 'stamp'], true)) {
+            // Get the latest image of this type
+            $sql = "SELECT id, file_path, mime_type FROM admin_images WHERE image_type = ? ORDER BY id DESC LIMIT 1";
+            $params = [$imageType];
+            $paramTypes = 's';
+        } else {
+            respond(['error' => 'Invalid image_id or image_type'], 400);
+        }
+
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            error_log("Failed to prepare image query: " . $conn->error);
+            respond(['error' => 'Database error'], 500);
+        }
+
+        if ($params) {
+            $stmt->bind_param($paramTypes, ...$params);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        $stmt->close();
+
+        if (!$row || !$row['file_path']) {
+            error_log("Image not found: imageId=$imageId, imageType=$imageType");
+            respond(['error' => 'Image not found'], 404);
+        }
+
+        $filePath = __DIR__ . $row['file_path'];
+
+        // Validate file exists and is within uploads directory
+        $realPath = realpath($filePath);
+        $uploadsDir = realpath(__DIR__ . '/uploads/');
+
+        if (!$realPath || !$uploadsDir || strpos($realPath, $uploadsDir) !== 0) {
+            error_log("Invalid file path: $filePath (real: $realPath, uploads: $uploadsDir)");
+            respond(['error' => 'Invalid image path'], 400);
+        }
+
+        if (!file_exists($realPath)) {
+            error_log("Image file not found on disk: $realPath");
+            respond(['error' => 'Image file not found'], 404);
+        }
+
+        // Read and serve the image file with proper headers
+        // Headers are already set by CORS configuration at the top of api.php
+        // This response is NOT JSON, it's the raw image file
+        $mimeType = $row['mime_type'] ?? 'image/png';
+        $fileSize = filesize($realPath);
+
+        // Clear any previous output
+        if (ob_get_length()) {
+            ob_clean();
+        }
+
+        // Set response headers for image serving
+        http_response_code(200);
+        header('Content-Type: ' . $mimeType);
+        header('Content-Length: ' . $fileSize);
+        header('Content-Disposition: inline; filename=' . basename($realPath));
+        header('Cache-Control: public, max-age=86400'); // Cache for 24 hours
+
+        // CORS headers are already set at the top of this file,
+        // so fetch() with custom headers will work now
+
+        // Stream the file
+        if (readfile($realPath) === false) {
+            error_log("Failed to read image file: $realPath");
+            http_response_code(500);
+            echo 'Failed to read image';
+            exit;
+        }
+
+        exit;
+    }
+
     // ============= CRUD ENDPOINTS (require authentication) =============
 
     $table = tableName($body);
