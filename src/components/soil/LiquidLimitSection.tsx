@@ -242,23 +242,13 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId }: Liquid
             .filter((d) => !isNaN(d.x) && !isNaN(d.y))
         );
 
-        // Generate regression line data
-        const regressionLineData: Array<{ penetration: number; regressionMoisture: number; moisture: number | null }> = [];
-        if (regressionData && graphData.length >= 2) {
-          const penetrationValues = graphData
-            .map((d) => d.penetration || 0)
-            .filter((x) => !isNaN(x));
-          const minPen = Math.min(...penetrationValues);
-          const maxPen = Math.max(...penetrationValues);
-
-          const y1 = regressionData.slope * minPen + regressionData.intercept;
-          const y2 = regressionData.slope * maxPen + regressionData.intercept;
-
-          regressionLineData.push(
-            { penetration: minPen, regressionMoisture: y1, moisture: null },
-            { penetration: maxPen, regressionMoisture: y2, moisture: null }
-          );
-        }
+        // Generate merged data with regression line points
+        const mergedChartData = graphData.map((d) => ({
+          ...d,
+          regressionMoisture: regressionData
+            ? regressionData.slope * d.penetration + regressionData.intercept
+            : null,
+        }));
 
         return (
           <>
@@ -269,7 +259,7 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId }: Liquid
                 <div className="overflow-x-auto">
                   <div className="h-[280px] min-w-[520px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={graphData} margin={{ top: 16, right: 20, left: 0, bottom: 8 }}>
+                      <LineChart data={mergedChartData} margin={{ top: 16, right: 20, left: 0, bottom: 8 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                         <XAxis dataKey="penetration" stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 12 }} label={{ value: "Penetration (mm)", position: "insideBottom", offset: -4, fontSize: 12 }} />
                         <YAxis scale="log" stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 12 }} label={{ value: "Moisture (%) - Log Scale", angle: -90, position: "insideLeft", fontSize: 12 }} type="number" domain={[Math.min(...graphData.map(d => d.moisture)) * 0.8, Math.max(...graphData.map(d => d.moisture)) * 1.2]} />
@@ -294,9 +284,8 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId }: Liquid
                           isAnimationActive={false}
                         />
                         {/* Line of best fit */}
-                        {regressionLineData.length > 0 && (
+                        {regressionData && (
                           <Line
-                            data={regressionLineData}
                             type="linear"
                             dataKey="regressionMoisture"
                             name="Line of Fit"
