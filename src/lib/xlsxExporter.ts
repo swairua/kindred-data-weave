@@ -148,7 +148,7 @@ export const generateAtterbergXLSX = async (
           });
           ws.addImage(logoId, {
             tl: { col: 0, row: 0 }, // Top-left at A1
-            ext: { width: 300, height: 90 },
+            ext: { width: 450, height: 135 },
           });
           console.debug("[XLSX] Logo image added");
           imagesAddedCount++;
@@ -171,7 +171,7 @@ export const generateAtterbergXLSX = async (
           });
           ws.addImage(contactsId, {
             tl: { col: 5, row: 0 }, // Top-right at F1
-            ext: { width: 300, height: 90 },
+            ext: { width: 450, height: 135 },
           });
           console.debug("[XLSX] Contacts image added");
           imagesAddedCount++;
@@ -783,7 +783,7 @@ export const generateAtterbergXLSX = async (
         });
         ws.addImage(stampId, {
           tl: { col: 8, row: footerRow - 2 },
-          ext: { width: 180, height: 75 },
+          ext: { width: 270, height: 113 },
         });
         console.debug("[XLSX] Stamp image added near footer");
         imagesAddedCount++;
