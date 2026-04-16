@@ -231,143 +231,186 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId }: Liquid
         <Plus className="mr-1 h-3.5 w-3.5" /> Add Trial
       </Button>
 
-      {graphData.length >= 2 && (
-        <>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Graph on the left - takes 2 columns */}
-            <div className="lg:col-span-2 rounded-lg border bg-card p-3">
-              <h4 className="mb-3 text-sm font-medium text-foreground">Moisture vs Penetration (Semi-log Scale)</h4>
-              <div className="overflow-x-auto">
-                <div className="h-[280px] min-w-[520px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={graphData} margin={{ top: 16, right: 20, left: 0, bottom: 8 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="penetration" stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 12 }} label={{ value: "Penetration (mm)", position: "insideBottom", offset: -4, fontSize: 12 }} />
-                      <YAxis scale="log" stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 12 }} label={{ value: "Moisture (%) - Log Scale", angle: -90, position: "insideLeft", fontSize: 12 }} type="number" domain={[Math.min(...graphData.map(d => d.moisture)) * 0.8, Math.max(...graphData.map(d => d.moisture)) * 1.2]} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--background))",
-                          borderColor: "hsl(var(--border))",
-                          borderRadius: 8,
-                        }}
-                        formatter={(value: number) => [`${value.toFixed(2)}%`, "Moisture"]}
-                        labelFormatter={(label) => `Penetration: ${label}mm`}
-                      />
-                      <ReferenceLine x={20} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" />
-                      <Line
-                        type="monotone"
-                        dataKey="moisture"
-                        name="Moisture"
-                        stroke="hsl(var(--primary))"
-                        strokeWidth={2}
-                        dot={{ fill: "hsl(var(--primary))", r: 4 }}
-                        activeDot={{ r: 5 }}
-                        isAnimationActive={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
+      {graphData.length >= 2 && (() => {
+        // Calculate linear regression for line of best fit
+        const regressionData = calculateLinearRegression(
+          graphData
+            .map((d) => ({
+              x: d.penetration || 0,
+              y: d.moisture || 0,
+            }))
+            .filter((d) => !isNaN(d.x) && !isNaN(d.y))
+        );
+
+        // Generate regression line data
+        const regressionLineData: Array<{ penetration: number; regressionMoisture: number; moisture: number | null }> = [];
+        if (regressionData && graphData.length >= 2) {
+          const penetrationValues = graphData
+            .map((d) => d.penetration || 0)
+            .filter((x) => !isNaN(x));
+          const minPen = Math.min(...penetrationValues);
+          const maxPen = Math.max(...penetrationValues);
+
+          const y1 = regressionData.slope * minPen + regressionData.intercept;
+          const y2 = regressionData.slope * maxPen + regressionData.intercept;
+
+          regressionLineData.push(
+            { penetration: minPen, regressionMoisture: y1, moisture: null },
+            { penetration: maxPen, regressionMoisture: y2, moisture: null }
+          );
+        }
+
+        return (
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* Graph on the left - takes 2 columns */}
+              <div className="lg:col-span-2 rounded-lg border bg-card p-3">
+                <h4 className="mb-3 text-sm font-medium text-foreground">Moisture vs Penetration (Semi-log Scale)</h4>
+                <div className="overflow-x-auto">
+                  <div className="h-[280px] min-w-[520px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={graphData} margin={{ top: 16, right: 20, left: 0, bottom: 8 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="penetration" stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 12 }} label={{ value: "Penetration (mm)", position: "insideBottom", offset: -4, fontSize: 12 }} />
+                        <YAxis scale="log" stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 12 }} label={{ value: "Moisture (%) - Log Scale", angle: -90, position: "insideLeft", fontSize: 12 }} type="number" domain={[Math.min(...graphData.map(d => d.moisture)) * 0.8, Math.max(...graphData.map(d => d.moisture)) * 1.2]} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "hsl(var(--background))",
+                            borderColor: "hsl(var(--border))",
+                            borderRadius: 8,
+                          }}
+                          formatter={(value: number) => [`${value.toFixed(2)}%`, "Moisture"]}
+                          labelFormatter={(label) => `Penetration: ${label}mm`}
+                        />
+                        <ReferenceLine x={20} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" />
+                        {/* Data points only */}
+                        <Line
+                          type="linear"
+                          dataKey="moisture"
+                          name="Data Points"
+                          stroke="none"
+                          dot={{ fill: "hsl(var(--primary))", r: 4 }}
+                          activeDot={{ r: 5 }}
+                          isAnimationActive={false}
+                        />
+                        {/* Line of best fit */}
+                        {regressionLineData.length > 0 && (
+                          <Line
+                            data={regressionLineData}
+                            type="linear"
+                            dataKey="regressionMoisture"
+                            name="Line of Fit"
+                            stroke="hsl(var(--primary))"
+                            strokeWidth={2}
+                            dot={false}
+                            isAnimationActive={false}
+                          />
+                        )}
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+
+              {/* Summary on the right - takes 1 column */}
+              <div className="flex flex-col gap-3">
+                <div className="rounded-lg border bg-muted/40 p-3 flex-1 flex flex-col justify-center">
+                  <span className="text-sm font-medium text-muted-foreground">Liquid Limit (LL) at 20mm penetration</span>
+                  <span className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-2">{result !== null ? `${result}%` : "-"}</span>
                 </div>
               </div>
             </div>
 
-            {/* Summary on the right - takes 1 column */}
-            <div className="flex flex-col gap-3">
-              <div className="rounded-lg border bg-muted/40 p-3 flex-1 flex flex-col justify-center">
-                <span className="text-sm font-medium text-muted-foreground">Liquid Limit (LL) at 20mm penetration</span>
-                <span className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-2">{result !== null ? `${result}%` : "-"}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Hidden linear scale chart for Excel export - will be captured by the export process */}
-          <div style={{ display: "none" }} className={`liquid-limit-export-chart${recordId ? `-${recordId}` : ""}`}>
-            <div className="bg-white p-6" style={{ width: "600px", height: "400px" }}>
-              {graphData.length > 0 && (() => {
-                // Calculate linear regression for line of best fit
-                const regressionData = calculateLinearRegression(
-                  graphData
-                    .map((d) => ({
-                      x: d.penetration || 0,
-                      y: d.moisture || 0,
-                    }))
-                    .filter((d) => !isNaN(d.x) && !isNaN(d.y))
-                );
-
-                // Generate regression line points
-                const regressionLineData = [];
-                if (regressionData && graphData.length >= 2) {
-                  const penetrationValues = graphData
-                    .map((d) => d.penetration || 0)
-                    .filter((x) => !isNaN(x));
-                  const minPen = Math.min(...penetrationValues);
-                  const maxPen = Math.max(...penetrationValues);
-
-                  // Create two points for the regression line
-                  const y1 = regressionData.slope * minPen + regressionData.intercept;
-                  const y2 = regressionData.slope * maxPen + regressionData.intercept;
-
-                  regressionLineData.push(
-                    { penetration: minPen, regressionMoisture: y1, moisture: null },
-                    { penetration: maxPen, regressionMoisture: y2, moisture: null }
+            {/* Hidden linear scale chart for Excel export - will be captured by the export process */}
+            <div style={{ display: "none" }} className={`liquid-limit-export-chart${recordId ? `-${recordId}` : ""}`}>
+              <div className="bg-white p-6" style={{ width: "600px", height: "400px" }}>
+                {graphData.length > 0 && (() => {
+                  // Calculate linear regression for line of best fit
+                  const regressionData = calculateLinearRegression(
+                    graphData
+                      .map((d) => ({
+                        x: d.penetration || 0,
+                        y: d.moisture || 0,
+                      }))
+                      .filter((d) => !isNaN(d.x) && !isNaN(d.y))
                   );
-                }
 
-                return (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={graphData} margin={{ top: 20, right: 30, left: 60, bottom: 60 }}>
-                      <CartesianGrid stroke="#e5e7eb" />
-                      <XAxis
-                        dataKey="penetration"
-                        stroke="#000"
-                        label={{ value: "Penetration (mm)", position: "bottom", offset: 10, fontSize: 14, fontWeight: "bold", fill: "#374151" }}
-                        tick={{ fontSize: 14, fill: "#374151" }}
-                      />
-                      <YAxis
-                        stroke="#000"
-                        label={{ value: "Moisture Content (%)", angle: -90, position: "left", offset: 10, fontSize: 14, fontWeight: "bold", fill: "#374151" }}
-                        tick={{ fontSize: 14, fill: "#374151" }}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "#ffffff",
-                          border: "1px solid #d1d5db",
-                          borderRadius: 4,
-                        }}
-                        formatter={(value: number) => [`${value.toFixed(2)}%`, "Moisture"]}
-                        labelFormatter={(label) => `Penetration: ${label}mm`}
-                      />
-                      {/* Data points line */}
-                      <Line
-                        type="monotone"
-                        dataKey="moisture"
-                        name="Moisture"
-                        stroke="#ef4444"
-                        strokeWidth={2}
-                        dot={{ fill: "#ef4444", r: 4 }}
-                        activeDot={{ r: 5 }}
-                        isAnimationActive={false}
-                      />
-                      {/* Line of best fit */}
-                      {regressionData && regressionLineData.length > 0 && (
+                  // Generate regression line points
+                  const regressionLineData = [];
+                  if (regressionData && graphData.length >= 2) {
+                    const penetrationValues = graphData
+                      .map((d) => d.penetration || 0)
+                      .filter((x) => !isNaN(x));
+                    const minPen = Math.min(...penetrationValues);
+                    const maxPen = Math.max(...penetrationValues);
+
+                    // Create two points for the regression line
+                    const y1 = regressionData.slope * minPen + regressionData.intercept;
+                    const y2 = regressionData.slope * maxPen + regressionData.intercept;
+
+                    regressionLineData.push(
+                      { penetration: minPen, regressionMoisture: y1, moisture: null },
+                      { penetration: maxPen, regressionMoisture: y2, moisture: null }
+                    );
+                  }
+
+                  return (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={graphData} margin={{ top: 20, right: 30, left: 60, bottom: 60 }}>
+                        <CartesianGrid stroke="#e5e7eb" />
+                        <XAxis
+                          dataKey="penetration"
+                          stroke="#000"
+                          label={{ value: "Penetration (mm)", position: "bottom", offset: 10, fontSize: 14, fontWeight: "bold", fill: "#374151" }}
+                          tick={{ fontSize: 14, fill: "#374151" }}
+                        />
+                        <YAxis
+                          stroke="#000"
+                          label={{ value: "Moisture Content (%)", angle: -90, position: "left", offset: 10, fontSize: 14, fontWeight: "bold", fill: "#374151" }}
+                          tick={{ fontSize: 14, fill: "#374151" }}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "#ffffff",
+                            border: "1px solid #d1d5db",
+                            borderRadius: 4,
+                          }}
+                          formatter={(value: number) => [`${value.toFixed(2)}%`, "Moisture"]}
+                          labelFormatter={(label) => `Penetration: ${label}mm`}
+                        />
+                        {/* Data points line */}
                         <Line
-                          data={regressionLineData}
                           type="linear"
-                          dataKey="regressionMoisture"
-                          name="Line of Best Fit"
-                          stroke="#000000"
-                          strokeWidth={1.5}
-                          dot={false}
+                          dataKey="moisture"
+                          name="Data Points"
+                          stroke="#ef4444"
+                          strokeWidth={2}
+                          dot={{ fill: "#ef4444", r: 4 }}
+                          activeDot={{ r: 5 }}
                           isAnimationActive={false}
                         />
-                      )}
-                    </LineChart>
-                  </ResponsiveContainer>
-                );
-              })()}
+                        {/* Line of best fit */}
+                        {regressionData && regressionLineData.length > 0 && (
+                          <Line
+                            data={regressionLineData}
+                            type="linear"
+                            dataKey="regressionMoisture"
+                            name="Line of Best Fit"
+                            stroke="#000000"
+                            strokeWidth={1.5}
+                            dot={false}
+                            isAnimationActive={false}
+                          />
+                        )}
+                      </LineChart>
+                    </ResponsiveContainer>
+                  );
+                })()}
+              </div>
             </div>
-          </div>
-        </>
-      )}
+          </>
+        );
+      })()}
     </div>
   );
 };
