@@ -651,7 +651,7 @@ export const generateAtterbergXLSX = async (
         // Add the chart image on left side (columns B-F)
         ws.addImage(llChartImageId, {
           tl: { col: 1, row: chartSectionStartRow },
-          ext: { width: 280, height: 240 },
+          ext: { width: 420, height: 360 },
         });
 
         console.log("Liquid limit chart added successfully to record:", record.id);

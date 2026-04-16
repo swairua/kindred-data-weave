@@ -694,7 +694,7 @@ function drawRecordPage(
   const sectionStartY2 = y;
 
   // ── LEFT: Cone Graph (use captured image if available, else draw) ──
-  const chartH = 50;
+  const chartH = 100;
   const llChartImageKey = `${record.id}-liquidLimit`;
   const hasChartImage = chartImages && chartImages[llChartImageKey];
 
