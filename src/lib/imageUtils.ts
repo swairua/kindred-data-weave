@@ -11,9 +11,26 @@ type AdminImageRow = { image_type: string; file_path: string };
 type AdminImagePaths = Partial<Record<AdminImageType, string>>;
 
 const getAdminImageUrl = (path: string) => {
+  // Extract image type from filename (format: {image_type}_{date}_{random}.{ext})
+  const match = path.match(/\/(logo|contacts|stamp)_/);
+  const imageType = match ? match[1] : null;
+
+  // Use the serve-image API endpoint instead of direct /uploads/ path
+  // This ensures CORS headers are properly set for fetch() requests with custom headers
+  // which is required for export functionality
+  if (imageType) {
+    const apiUrl = new URL(buildApiUrl());
+    const imageUrl = new URL(apiUrl.pathname, apiUrl.origin);
+    imageUrl.searchParams.set('action', 'serve-image');
+    imageUrl.searchParams.set('image_type', imageType);
+    console.debug("Constructed API image URL for fetch():", { path, imageType, fullUrl: imageUrl.toString() });
+    return imageUrl.toString();
+  }
+
+  // Fallback to direct path (shouldn't normally happen)
   const apiUrl = new URL(buildApiUrl());
   const imageUrl = new URL(path, apiUrl.origin).toString();
-  console.debug("Constructed image URL:", { path, apiOrigin: apiUrl.origin, fullUrl: imageUrl });
+  console.debug("Constructed direct image URL:", { path, apiOrigin: apiUrl.origin, fullUrl: imageUrl });
   return imageUrl;
 };
 

@@ -1024,161 +1024,21 @@ const AtterbergTest = () => {
     };
   }, [persistedState.records, project.clientName, project.date, project.projectName, projectState.clientName, projectState.labOrganization, projectState.dateReported, projectState.checkedBy]);
 
-  const handleExportJSON = useCallback(async () => {
-    if (computedRecords.length === 0) {
-      toast.error("No records to export");
-      return;
+  // Helper functions for chart capture and export (defined before usage)
+  const registerChartRef = useCallback((recordId: string, ref: HTMLDivElement | null) => {
+    if (ref) {
+      chartRefsMap.current.set(recordId, ref);
+      console.log(`[Chart Ref] Registered chart ref for record ${recordId}`, {
+        refTagName: ref.tagName,
+        refClassName: ref.className,
+        refId: ref.id,
+      });
+    } else {
+      chartRefsMap.current.delete(recordId);
+      console.log(`[Chart Ref] Unregistered chart ref for record ${recordId}`);
     }
-
-    // Check for critical data integrity issues
-    const recordsWithErrors = computedRecords.filter(record => {
-      const { canExport, errorMessages } = canRecordBeExported(record);
-      if (!canExport) {
-        console.warn(`Cannot export record "${record.title}": ${errorMessages.join("; ")}`);
-      }
-      return !canExport;
-    });
-
-    if (recordsWithErrors.length > 0) {
-      toast.error(`Cannot export: ${recordsWithErrors.length} record(s) have invalid data. Please fix PL > LL issues first.`);
-      return;
-    }
-
-    setIsExporting("json");
-    try {
-      const jsonString = exportAsJSON(buildExportPayload());
-      downloadJSON(jsonString, `atterberg-limits-${new Date().toISOString().split("T")[0]}.json`);
-      toast.success("Atterberg project exported");
-    } finally {
-      setIsExporting(null);
-    }
-  }, [buildExportPayload, computedRecords]);
-
-  const handleImportJSON = useCallback(() => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".json";
-    input.onchange = (event: Event) => {
-      const target = event.target as HTMLInputElement;
-      const file = target.files?.[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = () => {
-        const imported = importFromJSON(String(reader.result ?? ""));
-        if (!imported) {
-          toast.error("Invalid JSON file format");
-          return;
-        }
-
-        setProjectState(imported);
-        toast.success(`Imported ${imported.records.length} record(s)`);
-      };
-      reader.readAsText(file);
-    };
-    input.click();
+    console.log(`[Chart Ref] Total registered charts:`, chartRefsMap.current.size);
   }, []);
-
-  const exportTables = useMemo(() => buildTablesForExport(computedRecords), [computedRecords]);
-
-  const handleExportPDF = useCallback(async () => {
-    if (computedRecords.length === 0) {
-      toast.error("No records to export");
-      return false;
-    }
-
-    // Check for critical data integrity issues
-    const recordsWithErrors = computedRecords.filter(record => {
-      const { canExport, errorMessages } = canRecordBeExported(record);
-      if (!canExport) {
-        console.warn(`Cannot export record "${record.title}": ${errorMessages.join("; ")}`);
-      }
-      return !canExport;
-    });
-
-    if (recordsWithErrors.length > 0) {
-      toast.error(`Cannot export: ${recordsWithErrors.length} record(s) have invalid data (PL > LL). Please fix these first.`);
-      return false;
-    }
-
-    setIsExporting("pdf");
-    setIsPreviewLoading(true);
-    try {
-      console.log(`[Export PDF] Starting PDF export for ${computedRecords.length} records`);
-
-      // Ensure all records are expanded (for chart visibility)
-      const recordIds = computedRecords.map((r) => r.id);
-      ensureRecordsExpanded(recordIds);
-
-      // Wait for all charts to be fully rendered before capturing
-      await waitForChartsToBeFullyRendered(recordIds);
-
-      // Capture all chart images to match Excel export
-      const chartImages = await captureAllChartImages(recordIds);
-      console.log(`[Export PDF] Captured ${Object.keys(chartImages).length} charts out of ${recordIds.length}`);
-
-      const blob = await generateAtterbergPDF({
-        projectName: project.projectName,
-        clientName: project.clientName || projectState.clientName,
-        date: project.date,
-        projectState,
-        records: computedRecords,
-        skipDownload: true,
-        chartImages: Object.keys(chartImages).length > 0 ? chartImages : undefined,
-      });
-
-      if (blob) {
-        setPreviewData({
-          type: "pdf",
-          fileName: `Atterberg_Limits_${(project.projectName || "export").replace(/\s+/g, "_")}.pdf`,
-          blob,
-          summary: {
-            title: "Atterberg Limits Testing",
-            projectName: project.projectName,
-            clientName: project.clientName || projectState.clientName,
-            date: project.date,
-            pageCount: computedRecords.length,
-          },
-        });
-        setPreviewModalOpen(true);
-      }
-    } finally {
-      setIsPreviewLoading(false);
-      setIsExporting(null);
-    }
-
-    return true;
-  }, [computedRecords, project.clientName, project.date, project.projectName, projectState, captureAllChartImages, ensureRecordsExpanded, waitForChartsToBeFullyRendered]);
-
-
-  const handleRecordExportPDF = useCallback(
-    async (recordId: string) => {
-      const record = computedRecords.find((r) => r.id === recordId);
-      if (!record) {
-        toast.error("Record not found");
-        return false;
-      }
-
-      // Expand the record and wait for chart to render
-      ensureRecordsExpanded([recordId]);
-      await waitForChartsToBeFullyRendered([recordId]);
-
-      // Capture the chart image for this record
-      const chartImages = await captureAllChartImages([recordId]);
-
-      await generateAtterbergPDF({
-        projectName: project.projectName,
-        clientName: project.clientName || projectState.clientName,
-        date: project.date,
-        projectState,
-        records: [record],
-        chartImages: Object.keys(chartImages).length > 0 ? chartImages : undefined,
-      });
-
-      return true;
-    },
-    [computedRecords, project.clientName, project.date, project.projectName, projectState, captureAllChartImages, ensureRecordsExpanded, waitForChartsToBeFullyRendered],
-  );
 
   const captureAllChartImages = useCallback(async (recordIds: string[], expandRecords?: (ids: string[]) => void): Promise<{ [key: string]: string }> => {
     const chartImages: { [key: string]: string } = {};
@@ -1339,21 +1199,6 @@ const AtterbergTest = () => {
     console.warn(`[Chart Render] Some charts are still not fully rendered after ${maxWaitTime}ms:`, notReady);
   }, []);
 
-  const registerChartRef = useCallback((recordId: string, ref: HTMLDivElement | null) => {
-    if (ref) {
-      chartRefsMap.current.set(recordId, ref);
-      console.log(`[Chart Ref] Registered chart ref for record ${recordId}`, {
-        refTagName: ref.tagName,
-        refClassName: ref.className,
-        refId: ref.id,
-      });
-    } else {
-      chartRefsMap.current.delete(recordId);
-      console.log(`[Chart Ref] Unregistered chart ref for record ${recordId}`);
-    }
-    console.log(`[Chart Ref] Total registered charts:`, chartRefsMap.current.size);
-  }, []);
-
   const ensureRecordsExpanded = useCallback((recordIds: string[]) => {
     console.log(`[Expand] Ensuring records are expanded:`, recordIds);
     setProjectState((prev) => ({
@@ -1367,6 +1212,162 @@ const AtterbergTest = () => {
       }),
     }));
   }, []);
+
+  const handleExportJSON = useCallback(async () => {
+    if (computedRecords.length === 0) {
+      toast.error("No records to export");
+      return;
+    }
+
+    // Check for critical data integrity issues
+    const recordsWithErrors = computedRecords.filter(record => {
+      const { canExport, errorMessages } = canRecordBeExported(record);
+      if (!canExport) {
+        console.warn(`Cannot export record "${record.title}": ${errorMessages.join("; ")}`);
+      }
+      return !canExport;
+    });
+
+    if (recordsWithErrors.length > 0) {
+      toast.error(`Cannot export: ${recordsWithErrors.length} record(s) have invalid data. Please fix PL > LL issues first.`);
+      return;
+    }
+
+    setIsExporting("json");
+    try {
+      const jsonString = exportAsJSON(buildExportPayload());
+      downloadJSON(jsonString, `atterberg-limits-${new Date().toISOString().split("T")[0]}.json`);
+      toast.success("Atterberg project exported");
+    } finally {
+      setIsExporting(null);
+    }
+  }, [buildExportPayload, computedRecords]);
+
+  const handleImportJSON = useCallback(() => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = (event: Event) => {
+      const target = event.target as HTMLInputElement;
+      const file = target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const imported = importFromJSON(String(reader.result ?? ""));
+        if (!imported) {
+          toast.error("Invalid JSON file format");
+          return;
+        }
+
+        setProjectState(imported);
+        toast.success(`Imported ${imported.records.length} record(s)`);
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  }, []);
+
+  const exportTables = useMemo(() => buildTablesForExport(computedRecords), [computedRecords]);
+
+  const handleExportPDF = useCallback(async () => {
+    if (computedRecords.length === 0) {
+      toast.error("No records to export");
+      return false;
+    }
+
+    // Check for critical data integrity issues
+    const recordsWithErrors = computedRecords.filter(record => {
+      const { canExport, errorMessages } = canRecordBeExported(record);
+      if (!canExport) {
+        console.warn(`Cannot export record "${record.title}": ${errorMessages.join("; ")}`);
+      }
+      return !canExport;
+    });
+
+    if (recordsWithErrors.length > 0) {
+      toast.error(`Cannot export: ${recordsWithErrors.length} record(s) have invalid data (PL > LL). Please fix these first.`);
+      return false;
+    }
+
+    setIsExporting("pdf");
+    setIsPreviewLoading(true);
+    try {
+      console.log(`[Export PDF] Starting PDF export for ${computedRecords.length} records`);
+
+      // Ensure all records are expanded (for chart visibility)
+      const recordIds = computedRecords.map((r) => r.id);
+      ensureRecordsExpanded(recordIds);
+
+      // Wait for all charts to be fully rendered before capturing
+      await waitForChartsToBeFullyRendered(recordIds);
+
+      // Capture all chart images to match Excel export
+      const chartImages = await captureAllChartImages(recordIds);
+      console.log(`[Export PDF] Captured ${Object.keys(chartImages).length} charts out of ${recordIds.length}`);
+
+      const blob = await generateAtterbergPDF({
+        projectName: project.projectName,
+        clientName: project.clientName || projectState.clientName,
+        date: project.date,
+        projectState,
+        records: computedRecords,
+        skipDownload: true,
+        chartImages: Object.keys(chartImages).length > 0 ? chartImages : undefined,
+      });
+
+      if (blob) {
+        setPreviewData({
+          type: "pdf",
+          fileName: `Atterberg_Limits_${(project.projectName || "export").replace(/\s+/g, "_")}.pdf`,
+          blob,
+          summary: {
+            title: "Atterberg Limits Testing",
+            projectName: project.projectName,
+            clientName: project.clientName || projectState.clientName,
+            date: project.date,
+            pageCount: computedRecords.length,
+          },
+        });
+        setPreviewModalOpen(true);
+      }
+    } finally {
+      setIsPreviewLoading(false);
+      setIsExporting(null);
+    }
+
+    return true;
+  }, [computedRecords, project.clientName, project.date, project.projectName, projectState, captureAllChartImages, ensureRecordsExpanded, waitForChartsToBeFullyRendered]);
+
+
+  const handleRecordExportPDF = useCallback(
+    async (recordId: string) => {
+      const record = computedRecords.find((r) => r.id === recordId);
+      if (!record) {
+        toast.error("Record not found");
+        return false;
+      }
+
+      // Expand the record and wait for chart to render
+      ensureRecordsExpanded([recordId]);
+      await waitForChartsToBeFullyRendered([recordId]);
+
+      // Capture the chart image for this record
+      const chartImages = await captureAllChartImages([recordId]);
+
+      await generateAtterbergPDF({
+        projectName: project.projectName,
+        clientName: project.clientName || projectState.clientName,
+        date: project.date,
+        projectState,
+        records: [record],
+        chartImages: Object.keys(chartImages).length > 0 ? chartImages : undefined,
+      });
+
+      return true;
+    },
+    [computedRecords, project.clientName, project.date, project.projectName, projectState, captureAllChartImages, ensureRecordsExpanded, waitForChartsToBeFullyRendered],
+  );
 
   const handleRecordExportXLSX = useCallback(
     async (recordId: string) => {
