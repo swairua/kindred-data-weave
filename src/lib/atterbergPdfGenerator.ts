@@ -267,10 +267,10 @@ function drawConeGraph(
   // Sort points by moisture content for line drawing (data processing before rendering)
   const sorted = [...points].sort((a, b) => a.mc - b.mc);
 
-  // Calculate log-linear regression (ASTM D4318 compliant): penetration = m·log₁₀(moisture) + b
-  // Transform to { x: moisture, y: penetration } for regression
+  // Calculate log-linear regression (ASTM D4318 compliant): moisture = m·log₁₀(penetration) + b
+  // Same format as chart: { x: penetration, y: moisture }
   const regressionResult = calculateLogLinearRegression(
-    points.map(p => ({ x: p.mc, y: p.pen }))
+    points.map(p => ({ x: p.pen, y: p.mc }))
   );
 
   const slope = regressionResult?.slope ?? 0;

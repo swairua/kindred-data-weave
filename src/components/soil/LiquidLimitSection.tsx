@@ -428,7 +428,7 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId, plasticL
               <div className="bg-white p-8" style={{ width: "1200px", height: "800px" }}>
                 {graphData.length > 0 && (() => {
                   // Calculate log-linear regression for line of best fit (ASTM D4318 compliant)
-                  const regressionData = calculateLogLinearRegression(
+                  const regressionDataExport = calculateLogLinearRegression(
                     graphData
                       .map((d) => ({
                         x: d.penetration || 0,
@@ -437,37 +437,39 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId, plasticL
                       .filter((d) => !isNaN(d.x) && !isNaN(d.y) && d.x > 0)
                   );
 
-                  // Generate regression line points with padding so the line never sits on the axis
-                  const regressionLineData = [];
-                  const penetrationValues = graphData
-                    .map((d) => d.penetration || 0)
-                    .filter((x) => !isNaN(x));
-                  const minPen = penetrationValues.length ? Math.min(...penetrationValues) : 0;
-                  const maxPen = penetrationValues.length ? Math.max(...penetrationValues) : 0;
-                  const xPad = Math.max((maxPen - minPen) * 0.05, 1);
+                  const penetrationValuesExport = graphData.map((d) => d.penetration);
+                  const minPenExport = Math.min(...penetrationValuesExport);
+                  const maxPenExport = Math.max(...penetrationValuesExport);
+                  const xStartExport = Math.min(minPenExport, 18);
+                  const xEndExport = Math.max(maxPenExport, 26);
 
-                  if (regressionData && graphData.length >= 2) {
-                    const x1 = minPen - xPad;
-                    const x2 = maxPen + xPad;
-                    // Use log-linear equation: y = m·log₁₀(x) + b
-                    const y1 = regressionData.slope * Math.log10(Math.max(x1, 0.1)) + regressionData.intercept;
-                    const y2 = regressionData.slope * Math.log10(x2) + regressionData.intercept;
-
-                    regressionLineData.push(
-                      { penetration: x1, regressionMoisture: y1, moisture: null },
-                      { penetration: x2, regressionMoisture: y2, moisture: null }
-                    );
-                  }
+                  // Build merged chart data: data points + regression endpoints
+                  // For log-linear regression, the Y value is calculated as: y = m·log₁₀(x) + b
+                  const mergedChartDataExport = [
+                    ...(regressionDataExport
+                      ? [{ penetration: xStartExport, moisture: null as number | null, regressionMoisture: regressionDataExport.slope * Math.log10(xStartExport) + regressionDataExport.intercept }]
+                      : []),
+                    ...graphData.map((d) => ({
+                      penetration: d.penetration,
+                      moisture: d.moisture as number | null,
+                      regressionMoisture: regressionDataExport && d.penetration > 0
+                        ? regressionDataExport.slope * Math.log10(d.penetration) + regressionDataExport.intercept
+                        : null,
+                    })),
+                    ...(regressionDataExport
+                      ? [{ penetration: xEndExport, moisture: null as number | null, regressionMoisture: regressionDataExport.slope * Math.log10(xEndExport) + regressionDataExport.intercept }]
+                      : []),
+                  ].sort((a, b) => a.penetration - b.penetration);
 
                   return (
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={graphData} margin={{ top: 30, right: 50, left: 80, bottom: 80 }}>
+                      <LineChart data={mergedChartDataExport} margin={{ top: 30, right: 50, left: 80, bottom: 80 }}>
                         <CartesianGrid stroke="#e5e7eb" strokeWidth={1.5} />
                         <XAxis
                           dataKey="penetration"
                           type="number"
                           scale="log"
-                          domain={[(dataMin: number) => Math.max(0.1, dataMin - xPad), (dataMax: number) => dataMax + xPad]}
+                          domain={[xStartExport, xEndExport]}
                           allowDataOverflow={true}
                           stroke="#000"
                           strokeWidth={2}
@@ -486,22 +488,22 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId, plasticL
                           type="linear"
                           dataKey="moisture"
                           name="Data Points"
-                          stroke="#ef4444"
+                          stroke="none"
                           strokeWidth={3}
                           dot={{ fill: "#ef4444", r: 6, strokeWidth: 0 }}
                           activeDot={{ r: 7 }}
                           isAnimationActive={false}
                         />
                         {/* Line of best fit */}
-                        {regressionData && regressionLineData.length > 0 && (
+                        {regressionDataExport && (
                           <Line
-                            data={regressionLineData}
                             type="linear"
                             dataKey="regressionMoisture"
                             name="Line of Best Fit"
                             stroke="#000000"
                             strokeWidth={2.5}
                             dot={false}
+                            connectNulls
                             isAnimationActive={false}
                           />
                         )}
