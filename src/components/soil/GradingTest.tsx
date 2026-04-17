@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import TestSection from "@/components/TestSection";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,15 @@ const GradingTest = () => {
   // Only initialize with default rows if a project is selected
   const [rows, setRows] = useState<Row[]>(project.currentProjectId ? defaultRows : []);
   const hasProjectSelected = !!project.currentProjectId;
+
+  // Reset rows when project changes
+  useEffect(() => {
+    if (project.currentProjectId) {
+      setRows(defaultRows);
+    } else {
+      setRows([]);
+    }
+  }, [project.currentProjectId]);
 
   const totalWeight = rows.reduce((s, r) => s + (parseFloat(r.weightRetained) || 0), 0);
 
