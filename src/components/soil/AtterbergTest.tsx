@@ -1014,6 +1014,7 @@ const AtterbergTest = () => {
       version: "3.0",
       project: {
         title: project.projectName || "Atterberg Limits Testing",
+        projectName: project.projectName || projectState.projectName,
         clientName: project.clientName || projectState.clientName,
         date: project.date,
         labOrganization: projectState.labOrganization,
@@ -1022,7 +1023,7 @@ const AtterbergTest = () => {
         records: persistedState.records,
       },
     };
-  }, [persistedState.records, project.clientName, project.date, project.projectName, projectState.clientName, projectState.labOrganization, projectState.dateReported, projectState.checkedBy]);
+  }, [persistedState.records, project.clientName, project.date, project.projectName, projectState.clientName, projectState.projectName, projectState.labOrganization, projectState.dateReported, projectState.checkedBy]);
 
   // Helper functions for chart capture and export (defined before usage)
   const registerChartRef = useCallback((recordId: string, ref: HTMLDivElement | null) => {
@@ -1425,6 +1426,7 @@ const AtterbergTest = () => {
         version: "3.0",
         project: {
           title: project.projectName || "Atterberg Limits Testing",
+          projectName: project.projectName || projectState.projectName,
           clientName: project.clientName || projectState.clientName,
           date: project.date,
           labOrganization: projectState.labOrganization,
@@ -1440,7 +1442,7 @@ const AtterbergTest = () => {
 
       return true;
     },
-    [persistedState.records, project.clientName, project.date, project.projectName, projectState.clientName, projectState.labOrganization, projectState.dateReported, projectState.checkedBy],
+    [persistedState.records, project.clientName, project.date, project.projectName, projectState.clientName, projectState.projectName, projectState.labOrganization, projectState.dateReported, projectState.checkedBy],
   );
 
   const handleExportXLSX = useCallback(async () => {

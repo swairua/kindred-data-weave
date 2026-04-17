@@ -16,6 +16,7 @@ export interface AtterbergExportPayload {
   version: string;
   project: {
     title?: string;
+    projectName?: string;
     clientName?: string;
     date?: string;
     labOrganization?: string;
