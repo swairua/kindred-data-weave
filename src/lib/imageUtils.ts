@@ -70,10 +70,26 @@ const retryImageFetch = async (
   let lastError: Error | null = null;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    let timeoutId: NodeJS.Timeout | null = null;
+    let controller: AbortController | null = null;
+    let isAborted = false;
+
     try {
-      const controller = new AbortController();
-      const timeout = Math.min(5000 * attempt, 30000); // Scale timeout by attempt
-      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      controller = new AbortController();
+      const timeout = Math.min(8000 * attempt, 20000); // Max 20s timeout instead of 30s
+
+      // Set timeout that will abort the request if it takes too long
+      timeoutId = setTimeout(() => {
+        isAborted = true;
+        if (controller && !isAborted) {
+          try {
+            controller.abort();
+          } catch (e) {
+            // Ignore abort errors - controller might already be aborted
+            console.debug("[ImageRetry] Timeout abort failed (already aborted or destroyed)");
+          }
+        }
+      }, timeout);
 
       try {
         const response = await fetch(imageUrl, {
@@ -86,7 +102,11 @@ const retryImageFetch = async (
           signal: controller.signal,
         });
 
-        clearTimeout(timeoutId);
+        // Fetch succeeded - clear timeout immediately
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
 
         if (response.ok) {
           console.debug(`[ImageRetry] Successfully fetched image on attempt ${attempt}/${maxAttempts}`, { filePath });
@@ -105,14 +125,23 @@ const retryImageFetch = async (
           filePath
         });
       } catch (fetchError) {
-        clearTimeout(timeoutId);
-        lastError = fetchError instanceof Error ? fetchError : new Error(String(fetchError));
-        // Silently log - network errors are expected when images don't exist
-        console.debug(`[ImageRetry] Network/fetch error on attempt ${attempt}/${maxAttempts}:`, {
-          error: lastError.message,
-          filePath,
-          isTimeout: lastError.name === "AbortError"
-        });
+        // Clear timeout if fetch fails
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+
+        // Handle both AbortError (from timeout) and network errors gracefully
+        if (fetchError instanceof Error && fetchError.name === "AbortError") {
+          lastError = new Error(isAborted ? "Request timeout" : "Request aborted");
+          console.debug(`[ImageRetry] Request aborted on attempt ${attempt}/${maxAttempts}`, { filePath, wasTimeout: isAborted });
+        } else {
+          lastError = fetchError instanceof Error ? fetchError : new Error(String(fetchError));
+          console.debug(`[ImageRetry] Network/fetch error on attempt ${attempt}/${maxAttempts}:`, {
+            error: lastError.message,
+            filePath,
+          });
+        }
       }
 
       // Wait before retrying (exponential backoff)
@@ -121,8 +150,21 @@ const retryImageFetch = async (
         await new Promise(resolve => setTimeout(resolve, delayMs));
       }
     } catch (unexpectedError) {
+      // Clean up timeout if still pending
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+
       lastError = unexpectedError instanceof Error ? unexpectedError : new Error(String(unexpectedError));
       console.debug(`[ImageRetry] Error on attempt ${attempt}/${maxAttempts}:`, lastError);
+    } finally {
+      // Final safety check to ensure timeout is always cleared
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      // Clean up controller reference
+      controller = null;
     }
   }
 
@@ -180,12 +222,12 @@ const imagePathToBase64 = async (filePath: string): Promise<string | undefined> 
         resolve(dataUrl);
       };
 
-      reader.onerror = (error) => {
-        console.debug("[ImageConvert] Error reading blob as base64:", error);
+      reader.onerror = () => {
+        console.debug("[ImageConvert] Error reading blob as base64");
         resolve(undefined);
       };
 
-      reader.abort = () => {
+      reader.onabort = () => {
         console.debug("[ImageConvert] Blob reading was aborted");
         resolve(undefined);
       };

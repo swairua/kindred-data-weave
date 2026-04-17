@@ -748,24 +748,31 @@ function drawRecordPage(
   doc.text("AASHTO", rightX + 2, ry + 4.5);
   ry += 10;
 
+  // ── Calculate footer position (used for both stamp and footer text) ──
+  const footerY = Math.max(ry, sectionStartY2 + chartH + 10) + 4;
+
   // ── Stamp image at bottom (drawn BEFORE footer text for proper z-order) ──
+  // Positioned behind the "Checked by" field in the footer area
   if (images.stamp) {
     try {
       console.log("Adding stamp image to PDF");
-      const stampW = 52;
-      const stampH = 52;
-      const stampX = pw - margin - stampW;
-      const stampY = ph - margin - stampH - 8;
+      const stampW = 45; // Reduced from 52mm
+      const stampH = 45; // Reduced from 52mm
+      const checkedByFieldX = margin + contentW * 0.7; // Start of "Checked by" field
+      const checkedByFieldW = contentW * 0.3; // Width of "Checked by" field (30% of content)
+      // Center stamp horizontally within the "Checked by" field
+      const stampX = checkedByFieldX + (checkedByFieldW / 2) - (stampW / 2);
+      // Position slightly below the footer text baseline for depth effect
+      const stampY = footerY + 4;
       const base64String = extractBase64FromDataUrl(images.stamp);
       doc.addImage(base64String, "PNG", stampX, stampY, stampW, stampH);
-      console.log("Stamp image added successfully");
+      console.log("Stamp image added successfully", { stampW, stampH, stampX, stampY });
     } catch (error) {
       console.error("Failed to add stamp image:", error instanceof Error ? error.message : error);
     }
   }
 
   // ── Footer: Tested by / Date / Checked by ──
-  const footerY = Math.max(ry, sectionStartY2 + chartH + 10) + 4;
   doc.setFontSize(7);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...COLORS.dark);

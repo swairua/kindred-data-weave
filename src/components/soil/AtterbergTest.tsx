@@ -1306,7 +1306,8 @@ const AtterbergTest = () => {
       await waitForChartsToBeFullyRendered(recordIds);
 
       // Capture all chart images to match Excel export
-      const chartImages = await captureAllChartImages(recordIds);
+      // Pass ensureRecordsExpanded as callback to ensure proper async state update and rendering wait
+      const chartImages = await captureAllChartImages(recordIds, ensureRecordsExpanded);
       console.log(`[Export PDF] Captured ${Object.keys(chartImages).length} charts out of ${recordIds.length}`);
 
       const blob = await generateAtterbergPDF({
@@ -1352,11 +1353,12 @@ const AtterbergTest = () => {
       }
 
       // Expand the record and wait for chart to render
-      ensureRecordsExpanded([recordId]);
+      // Note: We don't need to call ensureRecordsExpanded first since captureAllChartImages will handle it
       await waitForChartsToBeFullyRendered([recordId]);
 
       // Capture the chart image for this record
-      const chartImages = await captureAllChartImages([recordId]);
+      // Pass ensureRecordsExpanded as callback to ensure proper async state update and rendering wait
+      const chartImages = await captureAllChartImages([recordId], ensureRecordsExpanded);
 
       await generateAtterbergPDF({
         projectName: project.projectName,
@@ -1382,14 +1384,12 @@ const AtterbergTest = () => {
 
       console.log(`[Export] Starting Excel export for record ${recordId}`);
 
-      // Ensure record is expanded and wait for chart to be fully rendered
-      ensureRecordsExpanded([recordId]);
-
       // Wait for charts to be fully rendered before capturing
       await waitForChartsToBeFullyRendered([recordId]);
 
       // Capture chart image for this record
-      const chartImages = await captureAllChartImages([recordId]);
+      // Pass ensureRecordsExpanded as callback to ensure proper async state update and rendering wait
+      const chartImages = await captureAllChartImages([recordId], ensureRecordsExpanded);
 
       console.log(`[Export] Chart images captured for record:`, Object.keys(chartImages));
 
@@ -1471,13 +1471,13 @@ const AtterbergTest = () => {
 
       // Ensure all records are expanded
       const recordIds = computedRecords.map((r) => r.id);
-      ensureRecordsExpanded(recordIds);
 
       // Wait for all charts to be fully rendered before capturing
       await waitForChartsToBeFullyRendered(recordIds);
 
       // Capture all chart images
-      const chartImages = await captureAllChartImages(recordIds);
+      // Pass ensureRecordsExpanded as callback to ensure proper async state update and rendering wait
+      const chartImages = await captureAllChartImages(recordIds, ensureRecordsExpanded);
 
       console.log(`[Export] Captured ${Object.keys(chartImages).length} charts out of ${recordIds.length}`);
 
