@@ -72,15 +72,22 @@ const retryImageFetch = async (
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     let timeoutId: NodeJS.Timeout | null = null;
     let controller: AbortController | null = null;
+    let isAborted = false;
 
     try {
       controller = new AbortController();
-      const timeout = Math.min(5000 * attempt, 30000); // Scale timeout by attempt
+      const timeout = Math.min(8000 * attempt, 20000); // Max 20s timeout instead of 30s
 
-      // Wrap timeout in try-finally to ensure it's always cleared
+      // Set timeout that will abort the request if it takes too long
       timeoutId = setTimeout(() => {
-        if (controller) {
-          controller.abort();
+        isAborted = true;
+        if (controller && !isAborted) {
+          try {
+            controller.abort();
+          } catch (e) {
+            // Ignore abort errors - controller might already be aborted
+            console.debug("[ImageRetry] Timeout abort failed (already aborted or destroyed)");
+          }
         }
       }, timeout);
 
@@ -126,8 +133,8 @@ const retryImageFetch = async (
 
         // Handle both AbortError (from timeout) and network errors gracefully
         if (fetchError instanceof Error && fetchError.name === "AbortError") {
-          lastError = new Error("Request timeout");
-          console.debug(`[ImageRetry] Request timeout on attempt ${attempt}/${maxAttempts}`, { filePath });
+          lastError = new Error(isAborted ? "Request timeout" : "Request aborted");
+          console.debug(`[ImageRetry] Request aborted on attempt ${attempt}/${maxAttempts}`, { filePath, wasTimeout: isAborted });
         } else {
           lastError = fetchError instanceof Error ? fetchError : new Error(String(fetchError));
           console.debug(`[ImageRetry] Network/fetch error on attempt ${attempt}/${maxAttempts}:`, {
@@ -156,6 +163,8 @@ const retryImageFetch = async (
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
+      // Clean up controller reference
+      controller = null;
     }
   }
 
