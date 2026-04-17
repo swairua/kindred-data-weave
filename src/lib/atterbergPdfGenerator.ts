@@ -267,8 +267,21 @@ function drawConeGraph(
   // Sort points by moisture content for line drawing (data processing before rendering)
   const sorted = [...points].sort((a, b) => a.mc - b.mc);
 
-  // Draw data line with logarithmic scaling
-  doc.setDrawColor(...COLORS.primary);
+  // Calculate linear regression on log-log scale
+  const logPoints = sorted.map(p => ({ logMc: Math.log10(p.mc), logPen: Math.log10(p.pen) }));
+  const n = logPoints.length;
+  const sumLogMc = logPoints.reduce((sum, p) => sum + p.logMc, 0);
+  const sumLogPen = logPoints.reduce((sum, p) => sum + p.logPen, 0);
+  const sumLogMcLogPen = logPoints.reduce((sum, p) => sum + p.logMc * p.logPen, 0);
+  const sumLogMcSquared = logPoints.reduce((sum, p) => sum + p.logMc * p.logMc, 0);
+
+  // Least squares: slope = (n*sumXY - sumX*sumY) / (n*sumX^2 - (sumX)^2)
+  // intercept = (sumY - slope*sumX) / n
+  const slope = (n * sumLogMcLogPen - sumLogMc * sumLogPen) / (n * sumLogMcSquared - sumLogMc * sumLogMc);
+  const intercept = (sumLogPen - slope * sumLogMc) / n;
+
+  // Draw data line with logarithmic scaling (RED for trial data)
+  doc.setDrawColor(200, 50, 50);
   doc.setLineWidth(0.5);
   for (let i = 1; i < sorted.length; i++) {
     doc.line(
@@ -279,11 +292,29 @@ function drawConeGraph(
     );
   }
 
-  // Draw data points with logarithmic scaling
+  // Draw regression line in BLACK
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.6);
+  // Calculate two points on the regression line spanning the plot area
+  const mcMin = Math.pow(10, mcMinLog);
+  const mcMax = Math.pow(10, mcMaxLog);
+  const logMcStart = Math.log10(mcMin);
+  const logPenStart = slope * logMcStart + intercept;
+  const logMcEnd = Math.log10(mcMax);
+  const logPenEnd = slope * logMcEnd + intercept;
+
+  doc.line(
+    scaleX(Math.pow(10, logMcStart)),
+    scaleY(Math.pow(10, logPenStart)),
+    scaleX(Math.pow(10, logMcEnd)),
+    scaleY(Math.pow(10, logPenEnd)),
+  );
+
+  // Draw data points with logarithmic scaling (RED for trial data)
   for (const pt of sorted) {
     const cx = scaleX(pt.mc);
     const cy = scaleY(pt.pen);
-    doc.setFillColor(...COLORS.primary);
+    doc.setFillColor(200, 50, 50);
     doc.circle(cx, cy, 1.2, "F");
   }
 
@@ -717,16 +748,7 @@ function drawRecordPage(
   doc.text("AASHTO", rightX + 2, ry + 4.5);
   ry += 10;
 
-  // ── Footer: Tested by / Date / Checked by ──
-  const footerY = Math.max(ry, sectionStartY2 + chartH + 10) + 4;
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...COLORS.dark);
-  doc.text(`Tested by: ${record.testedBy || "____________"}`, margin, footerY);
-  doc.text(`Date reported: ${projectState.dateReported || "____________"}`, margin + contentW * 0.35, footerY);
-  doc.text(`Checked by: ${projectState.checkedBy || "____________"}`, margin + contentW * 0.7, footerY);
-
-  // ── Stamp image at bottom ──
+  // ── Stamp image at bottom (drawn BEFORE footer text for proper z-order) ──
   if (images.stamp) {
     try {
       console.log("Adding stamp image to PDF");
@@ -741,6 +763,15 @@ function drawRecordPage(
       console.error("Failed to add stamp image:", error instanceof Error ? error.message : error);
     }
   }
+
+  // ── Footer: Tested by / Date / Checked by ──
+  const footerY = Math.max(ry, sectionStartY2 + chartH + 10) + 4;
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...COLORS.dark);
+  doc.text(`Tested by: ${record.testedBy || "____________"}`, margin, footerY);
+  doc.text(`Date reported: ${projectState.dateReported || "____________"}`, margin + contentW * 0.35, footerY);
+  doc.text(`Checked by: ${projectState.checkedBy || "____________"}`, margin + contentW * 0.7, footerY);
 }
 
 export const generateAtterbergPDF = async (
