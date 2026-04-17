@@ -835,6 +835,47 @@ const AtterbergTest = () => {
     }));
   }, []);
 
+  // Helper function to collapse all records
+  const collapseAllRecords = useCallback(() => {
+    setProjectState((prev) => ({
+      ...prev,
+      records: prev.records.map((record) => ({
+        ...record,
+        isExpanded: false,
+      })),
+    }));
+  }, []);
+
+  // Helper function to collapse all records except the specified one
+  const collapseOtherRecords = useCallback((recordIdToKeep: string) => {
+    setProjectState((prev) => ({
+      ...prev,
+      records: prev.records.map((record) => ({
+        ...record,
+        isExpanded: record.id === recordIdToKeep,
+      })),
+    }));
+  }, []);
+
+  // Helper function to collapse all tests in a record except the specified one
+  const collapseOtherTests = useCallback((recordId: string, testIdToKeep: string) => {
+    setProjectState((prev) => ({
+      ...prev,
+      records: prev.records.map((record) => {
+        if (record.id === recordId) {
+          return {
+            ...record,
+            tests: record.tests.map((test) => ({
+              ...test,
+              isExpanded: test.id === testIdToKeep,
+            })),
+          };
+        }
+        return record;
+      }),
+    }));
+  }, []);
+
   const updateRecord = useCallback((recordId: string, updater: (record: AtterbergRecord) => AtterbergRecord) => {
     try {
       setProjectState((prev) => {
@@ -869,9 +910,20 @@ const AtterbergTest = () => {
   );
 
   const addRecord = useCallback(() => {
-    setProjectState((prev) => ({
-      records: [...prev.records, createRecord(prev.records.length)],
-    }));
+    setProjectState((prev) => {
+      const newRecord = createRecord(prev.records.length);
+      // Set new record to expanded and collapse all other records
+      return {
+        ...prev,
+        records: prev.records.map((record) => ({
+          ...record,
+          isExpanded: false,
+        })).concat({
+          ...newRecord,
+          isExpanded: true,
+        }),
+      };
+    });
   }, []);
 
   const removeRecord = useCallback((recordId: string) => {
@@ -890,7 +942,14 @@ const AtterbergTest = () => {
           return {
             ...record,
             isExpanded: true,
-            tests: [...record.tests, newTest],
+            // Collapse all existing tests and add the new one expanded
+            tests: record.tests.map((test) => ({
+              ...test,
+              isExpanded: false,
+            })).concat({
+              ...newTest,
+              isExpanded: true,
+            }),
           };
         });
         console.log(`[AtterbergTest] Test added successfully`);
@@ -1714,7 +1773,16 @@ const AtterbergTest = () => {
                 record={record}
                 recordIndex={index}
                 onRemove={() => removeRecord(record.id)}
-                onToggleExpanded={() => updateRecord(record.id, (current) => ({ ...current, isExpanded: !current.isExpanded }))}
+                onToggleExpanded={() => {
+                  // When expanding a record, collapse all other records (accordion behavior)
+                  setProjectState((prev) => ({
+                    ...prev,
+                    records: prev.records.map((r) => ({
+                      ...r,
+                      isExpanded: r.id === record.id ? !r.isExpanded : false,
+                    })),
+                  }));
+                }}
                 onUpdateTitle={(title) => updateRecord(record.id, (current) => ({ ...current, title }))}
                 onUpdateLabel={(label) => updateRecord(record.id, (current) => ({ ...current, label }))}
                 onUpdateNote={(note) => updateRecord(record.id, (current) => ({ ...current, note }))}
@@ -1724,7 +1792,24 @@ const AtterbergTest = () => {
                 onUpdateTestedBy={(testedBy) => updateRecord(record.id, (current) => ({ ...current, testedBy }))}
                 onAddTest={(type) => addTest(record.id, type)}
                 onRemoveTest={(testId) => removeTest(record.id, testId)}
-                onToggleTestExpanded={(testId) => updateTest(record.id, testId, (test) => ({ ...test, isExpanded: !test.isExpanded }))}
+                onToggleTestExpanded={(testId) => {
+                  // When expanding a test, collapse all other tests in the same record (accordion behavior)
+                  setProjectState((prev) => ({
+                    ...prev,
+                    records: prev.records.map((r) => {
+                      if (r.id === record.id) {
+                        return {
+                          ...r,
+                          tests: r.tests.map((t) => ({
+                            ...t,
+                            isExpanded: t.id === testId ? !t.isExpanded : false,
+                          })),
+                        };
+                      }
+                      return r;
+                    }),
+                  }));
+                }}
                 onUpdateTestTitle={(testId, title) => updateTest(record.id, testId, (test) => ({ ...test, title }))}
                 onUpdateTestType={(testId, type) => updateTestType(record.id, testId, type)}
                 onUpdateLiquidLimitTrials={(testId, trials) => updateTestTrials(record.id, testId, trials)}
