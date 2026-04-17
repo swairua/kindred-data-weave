@@ -464,7 +464,7 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId, plasticL
                   return (
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={mergedChartDataExport} margin={{ top: 30, right: 50, left: 80, bottom: 80 }}>
-                        <CartesianGrid stroke="#e5e7eb" strokeWidth={1.5} />
+                        <CartesianGrid stroke="#e5e7eb" strokeWidth={1.5} fill="#F5E6D3" />
                         <XAxis
                           dataKey="penetration"
                           type="number"
