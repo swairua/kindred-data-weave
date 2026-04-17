@@ -976,14 +976,11 @@ const AtterbergTest = () => {
           return {
             ...record,
             isExpanded: true,
-            // Collapse all existing tests and add the new one expanded
+            // Collapse all existing tests and add the new one collapsed
             tests: record.tests.map((test) => ({
               ...test,
               isExpanded: false,
-            })).concat({
-              ...newTest,
-              isExpanded: true,
-            }),
+            })).concat(newTest),
           };
         });
         console.log(`[AtterbergTest] Test added successfully`);
