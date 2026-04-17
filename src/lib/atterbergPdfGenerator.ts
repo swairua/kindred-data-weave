@@ -427,7 +427,7 @@ function drawRecordPage(
   const plTrials = (plTest?.type === "plasticLimit" ? plTest.trials : []) as PlasticLimitTrial[];
   const slTrials = (slTest?.type === "shrinkageLimit" ? slTest.trials : []) as ShrinkageLimitTrial[];
 
-  // ── Data table - handle unlimited trials with pagination ──
+  // ── Data table: Combined LL and PL trials into single unified table ──
   const dataLabels = [
     "Container No",
     "Penetration (mm)",
@@ -439,55 +439,55 @@ function drawRecordPage(
     "Moisture Content (%)",
   ];
 
-  const trialsPerTable = 5; // LL trials to show per table
+  // Check if we need a page break before the combined table
+  if ((llTrials.length > 0 || plTrials.length > 0) && y > ph - 85) {
+    doc.addPage();
+    y = 20;
+  }
 
-  // Helper function to get column width based on trial index
-  // Matches Excel's proportions: B(15), C(6), D(6), E(12), F(12), G(12)
-  const getColumnWidthForTrial = (trialIndex: number): number => {
-    if (trialIndex === 0) return 15; // Label column
-    if (trialIndex === 1 || trialIndex === 2) return 6; // First two trials: narrow
-    return 12; // Trials 3+: wide
-  };
+  // ── COMBINED ATTERBERG LIMITS TABLE ──
+  if (llTrials.length > 0 || plTrials.length > 0) {
+    // Add section header
+    doc.setFillColor(...COLORS.headerBg);
+    doc.rect(margin, y, contentW, 7, "F");
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...COLORS.primary);
+    doc.text("ATTERBERG LIMITS TEST", margin + 2, y + 5);
+    y += 9;
 
-  // ── LIQUID LIMIT tables (LL trials only — PL is a separate single-row table below) ──
-  let tableCount = 0;
+    // Calculate column widths: label column (12 units) + equal distribution for all trials
+    const totalTrials = llTrials.length + plTrials.length;
+    const labelW = 12;
+    const remainingW = contentW - labelW;
+    const perColW = totalTrials > 0 ? remainingW / totalTrials : 0;
 
-  for (let startIdx = 0; startIdx < llTrials.length; startIdx += trialsPerTable) {
-    const endIdx = Math.min(startIdx + trialsPerTable, llTrials.length);
-    const trialsInThisTable = llTrials.slice(startIdx, endIdx);
-
-    // Check if we need a page break
-    if (tableCount > 0 && y > ph - 85) {
-      doc.addPage();
-      y = 20;
-    }
-
-    // Add section header before first table
-    if (tableCount === 0) {
-      doc.setFillColor(...COLORS.headerBg);
-      doc.rect(margin, y, contentW, 7, "F");
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(...COLORS.primary);
-      doc.text("LIQUID LIMIT TEST", margin + 2, y + 5);
-      y += 9;
-    }
-
-    // Build table headers
+    // Build combined headers
     const colHeaders = [""];
-    const colWidths = [getColumnWidthForTrial(0)];
+    const colWidths = [labelW];
 
-    for (let i = 0; i < trialsInThisTable.length; i++) {
-      const trial = trialsInThisTable[i];
+    // Add LL trial headers
+    for (let i = 0; i < llTrials.length; i++) {
+      const trial = llTrials[i];
       const containerInfo = trial.containerNo ? ` (${trial.containerNo})` : "";
-      colHeaders.push(`Trial ${startIdx + i + 1}${containerInfo}`);
-      colWidths.push(getColumnWidthForTrial(i + 1));
+      colHeaders.push(`Trial ${i + 1} (LL)${containerInfo}`);
+      colWidths.push(perColW);
     }
 
-    // Build LL data rows
-    const dataRows: string[][] = dataLabels.map((label, rowIdx) => {
+    // Add PL trial headers
+    for (let i = 0; i < plTrials.length; i++) {
+      const trial = plTrials[i];
+      const containerInfo = trial.containerNo ? ` (${trial.containerNo})` : "";
+      colHeaders.push(`Trial ${i + 1} (PL)${containerInfo}`);
+      colWidths.push(perColW);
+    }
+
+    // Build combined data rows
+    const combinedDataRows: string[][] = dataLabels.map((label, rowIdx) => {
       const row = [label];
-      for (const trial of trialsInThisTable) {
+
+      // Add LL trial data
+      for (const trial of llTrials) {
         const wet = num(trial.containerWetMass);
         const dry = num(trial.containerDryMass);
         const cont = num(trial.containerMass);
@@ -506,58 +506,8 @@ function drawRecordPage(
           }
         }
       }
-      return row;
-    });
 
-    y = drawTable({
-      doc,
-      x: margin,
-      y: y,
-      width: contentW,
-      colWidths,
-      rowHeight: 6,
-      headers: colHeaders,
-      rows: dataRows,
-      plTrialStartIndex: -1,
-      plTrialEndIndex: -1,
-    });
-
-    y += 3;
-    tableCount++;
-  }
-
-  // ── PLASTIC LIMIT table — render ALL PL trials in a single row, equal-width columns ──
-  if (plTrials.length > 0) {
-    if (y > ph - 85) {
-      doc.addPage();
-      y = 20;
-    }
-
-    doc.setFillColor(...COLORS.headerBg);
-    doc.rect(margin, y, contentW, 7, "F");
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...COLORS.primary);
-    doc.text("PLASTIC LIMIT TEST", margin + 2, y + 5);
-    y += 9;
-
-    // Equal-width columns: label gets fixed 15, remaining width split across PL trials
-    const labelW = 15;
-    const remainingW = contentW - labelW;
-    const perCol = remainingW / plTrials.length;
-    const colHeaders = [""];
-    const colWidths = [labelW];
-
-    for (let i = 0; i < plTrials.length; i++) {
-      const trial = plTrials[i];
-      const containerInfo = trial.containerNo ? ` (${trial.containerNo})` : "";
-      colHeaders.push(`Trial ${i + 1}${containerInfo}`);
-      colWidths.push(perCol);
-    }
-
-    // Build PL data rows with back-calculation
-    const plDataRows: string[][] = dataLabels.map((label, rowIdx) => {
-      const row = [label];
+      // Add PL trial data
       for (const trial of plTrials) {
         const wet = num(trial.containerWetMass);
         const dry = num(trial.containerDryMass);
@@ -587,23 +537,23 @@ function drawRecordPage(
           case 7: row.push(mcNum !== null ? fmt(round2(mcNum)) : "-"); break;
         }
       }
+
       return row;
     });
 
+    // Draw the combined table with reduced row height and font size
     y = drawTable({
       doc,
       x: margin,
       y: y,
       width: contentW,
       colWidths,
-      rowHeight: 6,
+      rowHeight: 5, // Reduced from 6 to 5
       headers: colHeaders,
-      rows: plDataRows,
-      isPLSection: true,
-      plTrialStartIndex: 1,
-      plTrialEndIndex: plTrials.length,
-      // Auto-shrink font when PL columns get crowded
-      fontSize: plTrials.length >= 6 ? 5.5 : 6.5,
+      rows: combinedDataRows,
+      plTrialStartIndex: llTrials.length > 0 ? llTrials.length + 1 : -1,
+      plTrialEndIndex: totalTrials,
+      fontSize: 5.5, // Reduced from 6.5 to 5.5
     });
 
     y += 3;
