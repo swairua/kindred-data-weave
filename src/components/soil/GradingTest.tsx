@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import TestSection from "@/components/TestSection";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,16 @@ const GradingTest = () => {
 
   // Only initialize with default rows if a project is selected
   const [rows, setRows] = useState<Row[]>(project.currentProjectId ? defaultRows : []);
+  const hasProjectSelected = !!project.currentProjectId;
+
+  // Reset rows when project changes
+  useEffect(() => {
+    if (project.currentProjectId) {
+      setRows(defaultRows);
+    } else {
+      setRows([]);
+    }
+  }, [project.currentProjectId]);
 
   const totalWeight = rows.reduce((s, r) => s + (parseFloat(r.weightRetained) || 0), 0);
 
@@ -130,62 +140,73 @@ const GradingTest = () => {
 
   return (
     <TestSection title="Grading (Sieve Analysis)" onSave={() => {}} onClear={() => setRows(defaultRows)} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b">
-              <th className="text-left py-2 px-2 font-medium text-muted-foreground">Sieve Size (mm)</th>
-              <th className="text-left py-2 px-2 font-medium text-muted-foreground">Weight Retained (g)</th>
-              <th className="text-left py-2 px-2 font-medium text-muted-foreground">% Passing</th>
-              <th className="w-10"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, i) => (
-              <tr key={i} className="border-b border-border/50">
-                <td className="py-1.5 px-2">
-                  <Input value={row.sieveSize} onChange={(e) => update(i, "sieveSize", e.target.value)} className="h-8" />
-                </td>
-                <td className="py-1.5 px-2">
-                  <Input type="number" value={row.weightRetained} onChange={(e) => update(i, "weightRetained", e.target.value)} className="h-8" placeholder="0" />
-                </td>
-                <td className="py-1.5 px-2">
-                  <CalculatedInput value={getPercentPassing(i)} />
-                </td>
-                <td className="py-1.5 px-1">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setRows(rows.filter((_, j) => j !== i))}>
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <Button variant="outline" size="sm" className="mt-3" onClick={() => setRows([...rows, { sieveSize: "", weightRetained: "" }])}>
-        <Plus className="h-3.5 w-3.5 mr-1" /> Add Row
-      </Button>
-
-      {chartData.length >= 2 && (
-        <div className="mt-6">
-          <Label className="text-xs text-muted-foreground mb-2 block">Particle Size Distribution Curve</Label>
-          <ChartContainer id="grading-chart" config={chartConfig} className="h-[300px] w-full">
-            <LineChart data={chartData} margin={{ top: 10, right: 20, bottom: 20, left: 10 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis
-                dataKey="sieveSize"
-                type="number"
-                scale="log"
-                domain={["dataMin", "dataMax"]}
-                tickFormatter={(v) => String(v)}
-                label={{ value: "Sieve Size (mm)", position: "insideBottom", offset: -10, className: "fill-muted-foreground text-xs" }}
-              />
-              <YAxis type="number" domain={[0, 100]} label={{ value: "% Passing", angle: -90, position: "insideLeft", offset: 5, className: "fill-muted-foreground text-xs" }} />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Line type="monotone" dataKey="percentPassing" name="percentPassing" stroke="var(--color-percentPassing)" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-            </LineChart>
-          </ChartContainer>
+      {!hasProjectSelected && rows.length === 0 ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground mb-2">No project selected</p>
+            <p className="text-xs text-muted-foreground">Select an existing project or create a new one to begin testing</p>
+          </div>
         </div>
+      ) : (
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-2 px-2 font-medium text-muted-foreground">Sieve Size (mm)</th>
+                  <th className="text-left py-2 px-2 font-medium text-muted-foreground">Weight Retained (g)</th>
+                  <th className="text-left py-2 px-2 font-medium text-muted-foreground">% Passing</th>
+                  <th className="w-10"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, i) => (
+                  <tr key={i} className="border-b border-border/50">
+                    <td className="py-1.5 px-2">
+                      <Input value={row.sieveSize} onChange={(e) => update(i, "sieveSize", e.target.value)} className="h-8" />
+                    </td>
+                    <td className="py-1.5 px-2">
+                      <Input type="number" value={row.weightRetained} onChange={(e) => update(i, "weightRetained", e.target.value)} className="h-8" placeholder="0" />
+                    </td>
+                    <td className="py-1.5 px-2">
+                      <CalculatedInput value={getPercentPassing(i)} />
+                    </td>
+                    <td className="py-1.5 px-1">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setRows(rows.filter((_, j) => j !== i))}>
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <Button variant="outline" size="sm" className="mt-3" onClick={() => setRows([...rows, { sieveSize: "", weightRetained: "" }])}>
+            <Plus className="h-3.5 w-3.5 mr-1" /> Add Row
+          </Button>
+
+          {chartData.length >= 2 && (
+            <div className="mt-6">
+              <Label className="text-xs text-muted-foreground mb-2 block">Particle Size Distribution Curve</Label>
+              <ChartContainer id="grading-chart" config={chartConfig} className="h-[300px] w-full">
+                <LineChart data={chartData} margin={{ top: 10, right: 20, bottom: 20, left: 10 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="sieveSize"
+                    type="number"
+                    scale="log"
+                    domain={["dataMin", "dataMax"]}
+                    tickFormatter={(v) => String(v)}
+                    label={{ value: "Sieve Size (mm)", position: "insideBottom", offset: -10, className: "fill-muted-foreground text-xs" }}
+                  />
+                  <YAxis type="number" domain={[0, 100]} label={{ value: "% Passing", angle: -90, position: "insideLeft", offset: 5, className: "fill-muted-foreground text-xs" }} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Line type="monotone" dataKey="percentPassing" name="percentPassing" stroke="var(--color-percentPassing)" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ChartContainer>
+            </div>
+          )}
+        </>
       )}
     </TestSection>
   );

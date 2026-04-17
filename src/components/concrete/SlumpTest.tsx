@@ -13,6 +13,7 @@ const SlumpTest = () => {
   const project = useProject();
   const [slump, setSlump] = useState("");
   const [remarks, setRemarks] = useState("");
+  const hasProjectSelected = !!project.currentProjectId;
 
   const dataPoints = slump ? 1 : 0;
   const slumpResults = useMemo(() => [
@@ -44,16 +45,25 @@ const SlumpTest = () => {
 
   return (
     <TestSection title="Slump Test" onSave={() => {}} onClear={() => { setSlump(""); setRemarks(""); }} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Slump Value (mm)</Label>
-          <Input type="number" value={slump} onChange={(e) => setSlump(e.target.value)} placeholder="0" />
+      {!hasProjectSelected && !slump ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground mb-2">No project selected</p>
+            <p className="text-xs text-muted-foreground">Select an existing project or create a new one to begin testing</p>
+          </div>
         </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Remarks</Label>
-          <Textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} placeholder="e.g. True slump, collapse..." className="resize-none h-9 min-h-[36px]" />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Slump Value (mm)</Label>
+            <Input type="number" value={slump} onChange={(e) => setSlump(e.target.value)} placeholder="0" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Remarks</Label>
+            <Textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} placeholder="e.g. True slump, collapse..." className="resize-none h-9 min-h-[36px]" />
+          </div>
         </div>
-      </div>
+      )}
     </TestSection>
   );
 };

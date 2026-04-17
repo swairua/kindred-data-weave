@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import TestSection from "@/components/TestSection";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -21,10 +21,12 @@ interface Row { penetration: string; load: string }
 
 const CBRTest = () => {
   const project = useProject();
-  const [rows, setRows] = useState<Row[]>([
+  const defaultRows: Row[] = [
     { penetration: "0.5", load: "" },{ penetration: "1.0", load: "" },{ penetration: "1.5", load: "" },{ penetration: "2.0", load: "" },
     { penetration: "2.5", load: "" },{ penetration: "3.0", load: "" },{ penetration: "4.0", load: "" },{ penetration: "5.0", load: "" },
-  ]);
+  ];
+  const [rows, setRows] = useState<Row[]>(project.currentProjectId ? defaultRows : []);
+  const hasProjectSelected = !!project.currentProjectId;
 
   const getCBR = (pen: string, load: string) => {
     const p = parseFloat(pen); const l = parseFloat(load);
@@ -101,36 +103,47 @@ const CBRTest = () => {
 
   return (
     <TestSection title="CBR (California Bearing Ratio)" onSave={() => {}} onClear={() => setRows([{ penetration: "", load: "" }])} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Penetration (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Load (kN)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">CBR (%)</th><th className="w-10"></th></tr></thead>
-          <tbody>
-            {rows.map((row, i) => (
-              <tr key={i} className="border-b border-border/50">
-                <td className="py-1.5 px-2"><Input value={row.penetration} onChange={(e) => update(i, "penetration", e.target.value)} className="h-8" /></td>
-                <td className="py-1.5 px-2"><Input type="number" value={row.load} onChange={(e) => update(i, "load", e.target.value)} className="h-8" placeholder="0" /></td>
-                <td className="py-1.5 px-2"><CalculatedInput value={getCBR(row.penetration, row.load)} /></td>
-                <td className="py-1.5 px-1"><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setRows(rows.filter((_, j) => j !== i))}><X className="h-3.5 w-3.5" /></Button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <Button variant="outline" size="sm" className="mt-3" onClick={() => setRows([...rows, { penetration: "", load: "" }])}><Plus className="h-3.5 w-3.5 mr-1" /> Add Row</Button>
-
-      {chartData.length >= 2 && (
-        <div className="mt-6">
-          <Label className="text-xs text-muted-foreground mb-2 block">Penetration vs Load Curve</Label>
-          <ChartContainer id="cbr-chart" config={chartConfig} className="h-[300px] w-full">
-            <LineChart data={chartData} margin={{ top: 10, right: 20, bottom: 20, left: 10 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="penetration" type="number" domain={["dataMin", "dataMax"]} label={{ value: "Penetration (mm)", position: "insideBottom", offset: -10, className: "fill-muted-foreground text-xs" }} />
-              <YAxis type="number" domain={[0, "dataMax + 1"]} label={{ value: "Load (kN)", angle: -90, position: "insideLeft", offset: 5, className: "fill-muted-foreground text-xs" }} />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Line type="monotone" dataKey="load" name="load" stroke="var(--color-load)" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-            </LineChart>
-          </ChartContainer>
+      {!hasProjectSelected && rows.length === 0 ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground mb-2">No project selected</p>
+            <p className="text-xs text-muted-foreground">Select an existing project or create a new one to begin testing</p>
+          </div>
         </div>
+      ) : (
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Penetration (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Load (kN)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">CBR (%)</th><th className="w-10"></th></tr></thead>
+              <tbody>
+                {rows.map((row, i) => (
+                  <tr key={i} className="border-b border-border/50">
+                    <td className="py-1.5 px-2"><Input value={row.penetration} onChange={(e) => update(i, "penetration", e.target.value)} className="h-8" /></td>
+                    <td className="py-1.5 px-2"><Input type="number" value={row.load} onChange={(e) => update(i, "load", e.target.value)} className="h-8" placeholder="0" /></td>
+                    <td className="py-1.5 px-2"><CalculatedInput value={getCBR(row.penetration, row.load)} /></td>
+                    <td className="py-1.5 px-1"><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setRows(rows.filter((_, j) => j !== i))}><X className="h-3.5 w-3.5" /></Button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <Button variant="outline" size="sm" className="mt-3" onClick={() => setRows([...rows, { penetration: "", load: "" }])}><Plus className="h-3.5 w-3.5 mr-1" /> Add Row</Button>
+
+          {chartData.length >= 2 && (
+            <div className="mt-6">
+              <Label className="text-xs text-muted-foreground mb-2 block">Penetration vs Load Curve</Label>
+              <ChartContainer id="cbr-chart" config={chartConfig} className="h-[300px] w-full">
+                <LineChart data={chartData} margin={{ top: 10, right: 20, bottom: 20, left: 10 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="penetration" type="number" domain={["dataMin", "dataMax"]} label={{ value: "Penetration (mm)", position: "insideBottom", offset: -10, className: "fill-muted-foreground text-xs" }} />
+                  <YAxis type="number" domain={[0, "dataMax + 1"]} label={{ value: "Load (kN)", angle: -90, position: "insideLeft", offset: 5, className: "fill-muted-foreground text-xs" }} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Line type="monotone" dataKey="load" name="load" stroke="var(--color-load)" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ChartContainer>
+            </div>
+          )}
+        </>
       )}
     </TestSection>
   );
