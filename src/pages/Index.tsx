@@ -380,6 +380,7 @@ const Index = ({ initialTab }: IndexProps) => {
     // Clear browser cache/localStorage
     localStorage.removeItem("atterbergProjectState");
     localStorage.removeItem("enhancedAtterbergTests");
+    localStorage.removeItem("lab_session_token");
 
     // Reset all test data context
     testData.resetProjectData();
@@ -388,6 +389,9 @@ const Index = ({ initialTab }: IndexProps) => {
     window.dispatchEvent(new CustomEvent("resetProject"));
 
     toast.success("New project started - form cleared and data reset");
+
+    // Reload the page to ensure all state is fresh
+    window.location.reload();
   };
 
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
