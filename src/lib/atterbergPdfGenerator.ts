@@ -6,7 +6,7 @@ import type {
   PlasticLimitTrial,
   ShrinkageLimitTrial,
 } from "@/context/TestDataContext";
-import { calculateMoistureFromMass, getTrialMoisture } from "./atterbergCalculations";
+import { calculateMoistureFromMass, getTrialMoisture, calculateLogLinearRegression } from "./atterbergCalculations";
 import { fetchAdminImagesAsBase64, type AdminImages } from "./imageUtils";
 
 // Helper to extract base64 string from data URL
@@ -179,7 +179,7 @@ function drawConeGraph(
   doc.setFontSize(7);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...COLORS.primary);
-  doc.text("CONE PENETRATION vs MOISTURE CONTENT (Log Scale)", x + w / 2, y + 8, { align: "center" });
+  doc.text("CONE PENETRATION vs MOISTURE CONTENT (Semi-Log, ASTM D4318)", x + w / 2, y + 8, { align: "center" });
 
   // Axes
   doc.setDrawColor(...COLORS.dark);
@@ -206,25 +206,25 @@ function drawConeGraph(
     return;
   }
 
-  // Determine ranges using logarithmic values
-  const logMcValues = points.map((p) => Math.log10(p.mc));
+  // Determine ranges using linear moisture and logarithmic penetration (semi-log plot per ASTM D4318)
+  const mcValues = points.map((p) => p.mc);
   const logPenValues = points.map((p) => Math.log10(p.pen));
-  const logMcMin = Math.min(...logMcValues);
-  const logMcMax = Math.max(...logMcValues);
+  const mcMin = Math.min(...mcValues);
+  const mcMax = Math.max(...mcValues);
   const logPenMin = Math.min(...logPenValues);
   const logPenMax = Math.max(...logPenValues);
 
   // Add 10% padding to ranges
-  const logMcPadding = (logMcMax - logMcMin) * 0.1;
+  const mcPadding = (mcMax - mcMin) * 0.1;
   const logPenPadding = (logPenMax - logPenMin) * 0.1;
-  const mcMinLog = logMcMin - logMcPadding;
-  const mcMaxLog = logMcMax + logMcPadding;
+  const mcMinVal = mcMin - mcPadding;
+  const mcMaxVal = mcMax + mcPadding;
   const penMinLog = logPenMin - logPenPadding;
   const penMaxLog = logPenMax + logPenPadding;
 
-  // Logarithmic scale functions
-  const scaleX = (mc: number) => plotX + ((Math.log10(mc) - mcMinLog) / (mcMaxLog - mcMinLog)) * plotW;
-  const scaleY = (pen: number) => plotY + plotH - ((Math.log10(pen) - penMinLog) / (penMaxLog - penMinLog)) * plotH;
+  // Semi-log scale functions: X axis is log penetration, Y axis is linear moisture
+  const scaleX = (pen: number) => plotX + ((Math.log10(pen) - penMinLog) / (penMaxLog - penMinLog)) * plotW;
+  const scaleY = (mc: number) => plotY + plotH - ((mc - mcMinVal) / (mcMaxVal - mcMinVal)) * plotH;
 
   // Grid lines and tick marks
   doc.setFontSize(5.5);
@@ -233,62 +233,58 @@ function drawConeGraph(
   doc.setDrawColor(220, 220, 220);
   doc.setLineWidth(0.15);
 
-  // X-axis ticks (moisture content - logarithmic)
-  const mcTickValues = [10, 15, 20, 30, 40, 50, 60, 70, 80, 90, 100];
-  for (const mc of mcTickValues) {
-    if (mc >= Math.pow(10, mcMinLog) && mc <= Math.pow(10, mcMaxLog)) {
-      const px = scaleX(mc);
-      doc.line(px, plotY, px, plotY + plotH);
-      doc.text(String(mc), px, plotY + plotH + 5, { align: "center" });
-    }
-  }
-
-  // Y-axis ticks (penetration - logarithmic)
-  const penTickValues = [5, 10, 15, 20, 25, 30, 35, 40];
+  // X-axis ticks (penetration - logarithmic)
+  const penTickValues = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
   for (const pen of penTickValues) {
     if (pen >= Math.pow(10, penMinLog) && pen <= Math.pow(10, penMaxLog)) {
-      const py = scaleY(pen);
-      doc.line(plotX, py, plotX + plotW, py);
-      doc.text(String(pen), plotX - 3, py + 1.5, { align: "right" });
+      const px = scaleX(pen);
+      doc.line(px, plotY, px, plotY + plotH);
+      doc.text(String(pen), px, plotY + plotH + 5, { align: "center" });
     }
   }
 
-  // 20mm reference line
+  // Y-axis ticks (moisture content - linear)
+  const mcTickValues = [10, 15, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+  for (const mc of mcTickValues) {
+    if (mc >= mcMinVal && mc <= mcMaxVal) {
+      const py = scaleY(mc);
+      doc.line(plotX, py, plotX + plotW, py);
+      doc.text(String(mc), plotX - 3, py + 1.5, { align: "right" });
+    }
+  }
+
+  // 20mm reference line (vertical at penetration = 20mm on log scale)
   doc.setDrawColor(200, 50, 50);
   doc.setLineWidth(0.3);
   doc.setLineDashPattern([2, 2], 0);
-  const y20 = scaleY(20);
-  doc.line(plotX, y20, plotX + plotW, y20);
+  const x20 = scaleX(20);
+  doc.line(x20, plotY, x20, plotY + plotH);
   doc.setFontSize(5);
   doc.setTextColor(200, 50, 50);
-  doc.text("20mm", plotX + plotW + 1, y20 + 1.5);
+  doc.text("20mm", x20, plotY - 2, { align: "center" });
   doc.setLineDashPattern([], 0);
 
   // Sort points by moisture content for line drawing (data processing before rendering)
   const sorted = [...points].sort((a, b) => a.mc - b.mc);
 
-  // Calculate linear regression on log-log scale
-  const logPoints = sorted.map(p => ({ logMc: Math.log10(p.mc), logPen: Math.log10(p.pen) }));
-  const n = logPoints.length;
-  const sumLogMc = logPoints.reduce((sum, p) => sum + p.logMc, 0);
-  const sumLogPen = logPoints.reduce((sum, p) => sum + p.logPen, 0);
-  const sumLogMcLogPen = logPoints.reduce((sum, p) => sum + p.logMc * p.logPen, 0);
-  const sumLogMcSquared = logPoints.reduce((sum, p) => sum + p.logMc * p.logMc, 0);
+  // Calculate log-linear regression (ASTM D4318 compliant): penetration = m·log₁₀(moisture) + b
+  // Transform to { x: moisture, y: penetration } for regression
+  const regressionResult = calculateLogLinearRegression(
+    points.map(p => ({ x: p.mc, y: p.pen }))
+  );
 
-  // Least squares: slope = (n*sumXY - sumX*sumY) / (n*sumX^2 - (sumX)^2)
-  // intercept = (sumY - slope*sumX) / n
-  const slope = (n * sumLogMcLogPen - sumLogMc * sumLogPen) / (n * sumLogMcSquared - sumLogMc * sumLogMc);
-  const intercept = (sumLogPen - slope * sumLogMc) / n;
+  const slope = regressionResult?.slope ?? 0;
+  const intercept = regressionResult?.intercept ?? 0;
 
-  // Draw data line with logarithmic scaling (RED for trial data)
+  // Draw data line with semi-log scaling (RED for trial data)
   doc.setDrawColor(200, 50, 50);
   doc.setLineWidth(0.5);
   for (let i = 1; i < sorted.length; i++) {
     doc.line(
-      scaleX(sorted[i - 1].mc),
-      scaleY(sorted[i - 1].pen),
-      scaleX(sorted[i].mc),
-      scaleY(sorted[i].pen),
+      scaleX(sorted[i - 1].pen),
+      scaleY(sorted[i - 1].mc),
+      scaleX(sorted[i].pen),
+      scaleY(sorted[i].mc),
     );
   }
 
@@ -296,53 +292,52 @@ function drawConeGraph(
   doc.setDrawColor(0, 0, 0);
   doc.setLineWidth(0.6);
   // Calculate two points on the regression line spanning the plot area
-  const mcMin = Math.pow(10, mcMinLog);
-  const mcMax = Math.pow(10, mcMaxLog);
-  const logMcStart = Math.log10(mcMin);
-  const logPenStart = slope * logMcStart + intercept;
-  const logMcEnd = Math.log10(mcMax);
-  const logPenEnd = slope * logMcEnd + intercept;
+  // Using log-linear equation: moisture = m·log₁₀(penetration) + b
+  const penMin = Math.pow(10, penMinLog);
+  const penMax = Math.pow(10, penMaxLog);
+  const mcStart = slope * Math.log10(penMin) + intercept;
+  const mcEnd = slope * Math.log10(penMax) + intercept;
 
   doc.line(
-    scaleX(Math.pow(10, logMcStart)),
-    scaleY(Math.pow(10, logPenStart)),
-    scaleX(Math.pow(10, logMcEnd)),
-    scaleY(Math.pow(10, logPenEnd)),
+    scaleX(penMin),
+    scaleY(mcStart),
+    scaleX(penMax),
+    scaleY(mcEnd),
   );
 
-  // Draw data points with logarithmic scaling (RED for trial data)
+  // Draw data points with semi-log scaling (RED for trial data)
   for (const pt of sorted) {
-    const cx = scaleX(pt.mc);
-    const cy = scaleY(pt.pen);
+    const cx = scaleX(pt.pen);
+    const cy = scaleY(pt.mc);
     doc.setFillColor(200, 50, 50);
     doc.circle(cx, cy, 1.2, "F");
   }
 
-  // Mark LL at 20mm if available with logarithmic positioning
+  // Mark LL at 20mm if available (horizontal line at LL moisture value)
   if (liquidLimit !== undefined && liquidLimit > 0) {
-    const llX = scaleX(liquidLimit);
+    const llY = scaleY(liquidLimit);
     doc.setDrawColor(200, 50, 50);
     doc.setLineDashPattern([1, 1], 0);
     doc.setLineWidth(0.3);
-    doc.line(llX, plotY, llX, plotY + plotH);
+    doc.line(plotX, llY, plotX + plotW, llY);
     doc.setLineDashPattern([], 0);
     doc.setFontSize(5.5);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(200, 50, 50);
-    doc.text(`LL=${round2(liquidLimit)}%`, llX, plotY - 2, { align: "center" });
+    doc.text(`LL=${round2(liquidLimit)}%`, plotX + plotW + 1, llY + 1.5, { align: "left" });
   }
 
   // Axis labels
   doc.setFontSize(6);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...COLORS.dark);
-  doc.text("Moisture Content (%) - Log Scale", x + w / 2, y + h - 2, { align: "center" });
+  doc.text("Penetration (mm) - Log Scale", x + w / 2, y + h - 2, { align: "center" });
 
   // Rotated Y label
   doc.saveGraphicsState();
   const yLabelX = x + 4;
   const yLabelY = y + h / 2;
-  doc.text("Penetration (mm) - Log Scale", yLabelX, yLabelY, { angle: 90 });
+  doc.text("Moisture Content (%) - Linear Scale", yLabelX, yLabelY, { angle: 90 });
   doc.restoreGraphicsState();
 }
 

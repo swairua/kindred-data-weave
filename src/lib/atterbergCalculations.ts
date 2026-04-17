@@ -128,8 +128,9 @@ export const averageNumbers = (values: number[]) => {
 };
 
 /**
- * Calculate Liquid Limit (LL) using cone penetration method (BS 1377).
- * Interpolates moisture content at 20mm penetration.
+ * Calculate Liquid Limit (LL) using cone penetration method (BS 1377 / ASTM D4318).
+ * Uses semi-log regression: LL = m·log₁₀(20) + b at 20mm penetration.
+ * This approach aligns with international standards and improves regression fit quality.
  */
 export const calculateLiquidLimit = (trials: LiquidLimitTrial[]): number | null => {
   const validTrials = getValidLiquidLimitTrials(trials);
@@ -139,15 +140,16 @@ export const calculateLiquidLimit = (trials: LiquidLimitTrial[]): number | null 
 
   const targetPenetration = 20;
 
-  // Prefer linear regression at 20 mm when 2+ valid trials exist
-  const regression = calculateLinearRegression(
+  // Use log-linear regression at 20 mm when 2+ valid trials exist (ASTM D4318 compliant)
+  const regression = calculateLogLinearRegression(
     validTrials.map((t) => ({ x: t.penetration, y: t.moisture })),
   );
   if (regression && Number.isFinite(regression.slope) && Number.isFinite(regression.intercept)) {
-    return round(regression.slope * targetPenetration + regression.intercept);
+    // LL = m·log₁₀(20) + b
+    return round(regression.slope * Math.log10(targetPenetration) + regression.intercept);
   }
 
-  // Fallback: piecewise interpolation
+  // Fallback: piecewise interpolation (for cases where regression fails)
   let lower: (typeof validTrials)[number] | null = null;
   let upper: (typeof validTrials)[number] | null = null;
 
@@ -591,6 +593,45 @@ export const calculateLinearRegression = (
 };
 
 /**
+ * Log-linear regression for semi-log plots (ASTM D4318 / BS 1377 compliant)
+ * Transforms X values using log10, then performs linear regression
+ * Equation: y = m·log₁₀(x) + b
+ * Returns slope, intercept, and R-squared value
+ */
+export const calculateLogLinearRegression = (
+  points: Array<{ x: number; y: number }>,
+): { slope: number; intercept: number; rSquared: number } | null => {
+  if (points.length < 2) return null;
+
+  // Transform X values to log scale
+  const transformedPoints = points.map((p) => ({
+    x: Math.log10(p.x),
+    y: p.y,
+  }));
+
+  const n = transformedPoints.length;
+  const sumX = transformedPoints.reduce((sum, p) => sum + p.x, 0);
+  const sumY = transformedPoints.reduce((sum, p) => sum + p.y, 0);
+  const sumXY = transformedPoints.reduce((sum, p) => sum + p.x * p.y, 0);
+  const sumX2 = transformedPoints.reduce((sum, p) => sum + p.x * p.x, 0);
+
+  const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+  const intercept = (sumY - slope * sumX) / n;
+
+  // Calculate R-squared
+  const meanY = sumY / n;
+  const ssTotal = transformedPoints.reduce((sum, p) => sum + Math.pow(p.y - meanY, 2), 0);
+  const ssResidual = transformedPoints.reduce((sum, p) => sum + Math.pow(p.y - (slope * p.x + intercept), 2), 0);
+  const rSquared = 1 - ssResidual / ssTotal;
+
+  return {
+    slope: round(slope),
+    intercept: round(intercept),
+    rSquared: round(rSquared),
+  };
+};
+
+/**
  * Predict Y value using linear regression
  */
 export const predictWithLinearRegression = (
@@ -616,14 +657,15 @@ export const calculateCoefficientOfVariation = (values: number[]): number | null
 
 /**
  * Fit line through liquid limit trials and get R-squared
- * Helps assess quality of cone penetration test data
+ * Uses log-linear regression to assess quality of cone penetration test data
+ * Helps assess quality of cone penetration test data per ASTM D4318 standards
  */
 export const getLiquidLimitFitQuality = (trials: LiquidLimitTrial[]): { rSquared: number; slope: number; intercept: number } | null => {
   const validTrials = getValidLiquidLimitTrials(trials);
   if (validTrials.length < 2) return null;
 
   const points = validTrials.map((t) => ({ x: t.penetration, y: t.moisture }));
-  const regression = calculateLinearRegression(points);
+  const regression = calculateLogLinearRegression(points);
 
   return regression
     ? {
