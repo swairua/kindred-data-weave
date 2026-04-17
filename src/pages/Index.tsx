@@ -337,14 +337,11 @@ const Index = ({ initialTab }: IndexProps) => {
     localStorage.removeItem("atterbergProjectState");
     localStorage.removeItem("enhancedAtterbergTests");
 
-    // Reset project metadata
-    testData.updateProjectMetadata({
-      projectName: "",
-      clientName: "",
-      labOrganization: "",
-      dateReported: "",
-      checkedBy: "",
-    });
+    // Reset all test data context
+    testData.resetProjectData();
+
+    // Dispatch custom event for components to listen to (e.g., AtterbergTest)
+    window.dispatchEvent(new CustomEvent("resetProject"));
 
     toast.success("New project started - form cleared and data reset");
   };
