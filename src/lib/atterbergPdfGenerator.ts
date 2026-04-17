@@ -616,7 +616,7 @@ function drawRecordPage(
 
   const sectionStartY2 = y;
 
-  // ── LEFT: Cone Graph (use captured image if available, else draw) ──
+  // ── LEFT: Cone Graph (use captured linear chart image) ──
   const chartH = 110;
   const llChartImageKey = `${record.id}-liquidLimit`;
   const hasChartImage = chartImages && chartImages[llChartImageKey];
@@ -628,11 +628,20 @@ function drawRecordPage(
       doc.addImage(base64String, "PNG", margin, y, leftW, chartH, undefined, "NONE");
       console.log("Captured liquid limit chart image added successfully to PDF");
     } catch (error) {
-      console.error("Failed to add captured chart image, falling back to drawing:", error instanceof Error ? error.message : error);
-      drawConeGraph(doc, llTrials, record.results.liquidLimit, margin, y, leftW, chartH);
+      console.error("Failed to add captured chart image:", error instanceof Error ? error.message : error);
+      // No fallback - log error and continue with empty space
+      doc.setFontSize(10);
+      doc.setTextColor(...COLORS.muted);
+      doc.text("Chart image could not be embedded", margin + leftW / 2, y + chartH / 2, { align: "center" });
     }
   } else {
-    drawConeGraph(doc, llTrials, record.results.liquidLimit, margin, y, leftW, chartH);
+    console.warn("No chart image captured for record", record.id, "- displaying placeholder");
+    // Display placeholder message instead of drawing fallback graph
+    doc.setFillColor(...COLORS.lightBg);
+    doc.rect(margin, y, leftW, chartH, "F");
+    doc.setFontSize(10);
+    doc.setTextColor(...COLORS.muted);
+    doc.text("Chart image not captured", margin + leftW / 2, y + chartH / 2, { align: "center" });
   }
 
   // ── RIGHT: Linear Shrinkage ──
@@ -752,21 +761,33 @@ function drawRecordPage(
   const footerY = Math.max(ry, sectionStartY2 + chartH + 10) + 4;
 
   // ── Stamp image at bottom (drawn BEFORE footer text for proper z-order) ──
-  // Positioned behind the "Checked by" field in the footer area
+  // Positioned as background behind the "Checked by" text (not below page edge)
   if (images.stamp) {
     try {
       console.log("Adding stamp image to PDF");
-      const stampW = 45; // Reduced from 52mm
-      const stampH = 45; // Reduced from 52mm
-      const checkedByFieldX = margin + contentW * 0.7; // Start of "Checked by" field
-      const checkedByFieldW = contentW * 0.3; // Width of "Checked by" field (30% of content)
+      const stampW = 45; // mm
+      const stampH = 45; // mm
+      const pageHeight = ph; // A4 page height
+      const pageBottomMargin = 5; // 5mm safety margin from bottom
+
       // Center stamp horizontally within the "Checked by" field
+      const checkedByFieldX = margin + contentW * 0.7;
+      const checkedByFieldW = contentW * 0.3;
       const stampX = checkedByFieldX + (checkedByFieldW / 2) - (stampW / 2);
-      // Position slightly below the footer text baseline for depth effect
-      const stampY = footerY + 4;
+
+      // Position stamp vertically behind/centered with the "Checked by" text
+      // Offset so the stamp acts as a background watermark, centered with the text
+      let stampY = footerY - stampH / 2 + 2; // Center vertically with text, slight downward adjustment
+
+      // Ensure stamp doesn't overflow the page bottom
+      if (stampY + stampH > pageHeight - pageBottomMargin) {
+        stampY = pageHeight - pageBottomMargin - stampH;
+        console.log("Stamp position adjusted to fit within page bounds", { adjustedStampY: stampY, maxY: pageHeight - pageBottomMargin });
+      }
+
       const base64String = extractBase64FromDataUrl(images.stamp);
       doc.addImage(base64String, "PNG", stampX, stampY, stampW, stampH);
-      console.log("Stamp image added successfully", { stampW, stampH, stampX, stampY });
+      console.log("Stamp image added successfully as background watermark", { stampW, stampH, stampX, stampY, pageHeight });
     } catch (error) {
       console.error("Failed to add stamp image:", error instanceof Error ? error.message : error);
     }
