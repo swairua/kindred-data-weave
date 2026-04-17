@@ -160,9 +160,17 @@ const createShrinkageLimitTrial = (index: number): ShrinkageLimitTrial => ({
 const createTrialsForType = (type: AtterbergTestType) => {
   switch (type) {
     case "liquidLimit":
-      return [createLiquidLimitTrial(0)] as AtterbergTest["trials"];
+      return [
+        createLiquidLimitTrial(0),
+        createLiquidLimitTrial(1),
+        createLiquidLimitTrial(2),
+        createLiquidLimitTrial(3),
+      ] as AtterbergTest["trials"];
     case "plasticLimit":
-      return [createPlasticLimitTrial(0)] as AtterbergTest["trials"];
+      return [
+        createPlasticLimitTrial(0),
+        createPlasticLimitTrial(1),
+      ] as AtterbergTest["trials"];
     case "shrinkageLimit":
       return [createShrinkageLimitTrial(0)] as AtterbergTest["trials"];
   }
@@ -180,7 +188,12 @@ const createTest = (type: AtterbergTestType, tests: AtterbergTest[]): AtterbergT
       title: buildTestTitle(type, tests),
       type,
       isExpanded: true,
-      trials: [createLiquidLimitTrial(0)],
+      trials: [
+        createLiquidLimitTrial(0),
+        createLiquidLimitTrial(1),
+        createLiquidLimitTrial(2),
+        createLiquidLimitTrial(3),
+      ],
       result: {},
     };
   }
@@ -191,7 +204,10 @@ const createTest = (type: AtterbergTestType, tests: AtterbergTest[]): AtterbergT
       title: buildTestTitle(type, tests),
       type,
       isExpanded: true,
-      trials: [createPlasticLimitTrial(0)],
+      trials: [
+        createPlasticLimitTrial(0),
+        createPlasticLimitTrial(1),
+      ],
       result: {},
     };
   }
