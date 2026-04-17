@@ -707,6 +707,42 @@ function drawRecordPage(
   }
   ry += 4;
 
+  // ── Calculate footer position early (needed for stamp positioning before classification) ──
+  const footerY = Math.max(ry, sectionStartY2 + chartH + 10) + 4;
+
+  // ── Stamp image as background (drawn BEFORE classification for proper z-order) ──
+  // Positioned as background behind the "Checked by" text and classification table
+  if (images.stamp) {
+    try {
+      console.log("Adding stamp image to PDF as background");
+      const stampW = 35; // mm - reduced from 45 for less visual overlap
+      const stampH = 35; // mm - reduced from 45 for less visual overlap
+      const pageHeight = ph; // A4 page height
+      const pageBottomMargin = 5; // 5mm safety margin from bottom
+
+      // Center stamp horizontally within the "Checked by" field
+      const checkedByFieldX = margin + contentW * 0.7;
+      const checkedByFieldW = contentW * 0.3;
+      const stampX = checkedByFieldX + (checkedByFieldW / 2) - (stampW / 2);
+
+      // Position stamp vertically behind/centered with the "Checked by" text
+      // Offset so the stamp acts as a background watermark, centered with the text
+      let stampY = footerY - stampH / 2 + 2; // Center vertically with text, slight downward adjustment
+
+      // Ensure stamp doesn't overflow the page bottom
+      if (stampY + stampH > pageHeight - pageBottomMargin) {
+        stampY = pageHeight - pageBottomMargin - stampH;
+        console.log("Stamp position adjusted to fit within page bounds", { adjustedStampY: stampY, maxY: pageHeight - pageBottomMargin });
+      }
+
+      const base64String = extractBase64FromDataUrl(images.stamp);
+      doc.addImage(base64String, "PNG", stampX, stampY, stampW, stampH);
+      console.log("Stamp image added successfully as background watermark", { stampW, stampH, stampX, stampY, pageHeight });
+    } catch (error) {
+      console.error("Failed to add stamp image:", error instanceof Error ? error.message : error);
+    }
+  }
+
   // ── RIGHT: Soil Classification ──
   const ll = record.results.liquidLimit;
   const pi = record.results.plasticityIndex ?? 0;
@@ -756,42 +792,6 @@ function drawRecordPage(
   doc.setTextColor(...COLORS.primary);
   doc.text("AASHTO", rightX + 2, ry + 4.5);
   ry += 10;
-
-  // ── Calculate footer position (used for both stamp and footer text) ──
-  const footerY = Math.max(ry, sectionStartY2 + chartH + 10) + 4;
-
-  // ── Stamp image at bottom (drawn BEFORE footer text for proper z-order) ──
-  // Positioned as background behind the "Checked by" text (not below page edge)
-  if (images.stamp) {
-    try {
-      console.log("Adding stamp image to PDF");
-      const stampW = 45; // mm
-      const stampH = 45; // mm
-      const pageHeight = ph; // A4 page height
-      const pageBottomMargin = 5; // 5mm safety margin from bottom
-
-      // Center stamp horizontally within the "Checked by" field
-      const checkedByFieldX = margin + contentW * 0.7;
-      const checkedByFieldW = contentW * 0.3;
-      const stampX = checkedByFieldX + (checkedByFieldW / 2) - (stampW / 2);
-
-      // Position stamp vertically behind/centered with the "Checked by" text
-      // Offset so the stamp acts as a background watermark, centered with the text
-      let stampY = footerY - stampH / 2 + 2; // Center vertically with text, slight downward adjustment
-
-      // Ensure stamp doesn't overflow the page bottom
-      if (stampY + stampH > pageHeight - pageBottomMargin) {
-        stampY = pageHeight - pageBottomMargin - stampH;
-        console.log("Stamp position adjusted to fit within page bounds", { adjustedStampY: stampY, maxY: pageHeight - pageBottomMargin });
-      }
-
-      const base64String = extractBase64FromDataUrl(images.stamp);
-      doc.addImage(base64String, "PNG", stampX, stampY, stampW, stampH);
-      console.log("Stamp image added successfully as background watermark", { stampW, stampH, stampX, stampY, pageHeight });
-    } catch (error) {
-      console.error("Failed to add stamp image:", error instanceof Error ? error.message : error);
-    }
-  }
 
   // ── Footer: Tested by / Date / Checked by ──
   doc.setFontSize(7);
