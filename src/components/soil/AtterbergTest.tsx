@@ -147,6 +147,10 @@ const createLiquidLimitTrial = (index: number): LiquidLimitTrial => ({
 const createPlasticLimitTrial = (index: number): PlasticLimitTrial => ({
   id: makeId("trial"),
   trialNo: String(index + 1),
+  containerNo: String(200 + index + 1),
+  containerWetMass: "",
+  containerDryMass: "",
+  containerMass: "",
   moisture: "",
 });
 
