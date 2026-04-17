@@ -34,6 +34,7 @@ import {
 import Dashboard from "@/pages/Dashboard";
 import Reports from "@/pages/Reports";
 import Admin from "@/pages/Admin";
+import ProjectHeader from "@/components/ProjectHeader";
 import { fetchCurrentUser, loginUser, logoutUser, type ApiUser, listRecords, debugAuthState } from "@/lib/api";
 import { registerAllTests } from "@/lib/testRegistration";
 import { registry } from "@/lib/testRegistry";
@@ -57,7 +58,33 @@ type AuthStatus = "checking" | "authenticated" | "unauthenticated";
 type TestCategory = "soil" | "concrete" | "rock" | "special";
 
 // Component to render tests dynamically from registry
-const TestsView = ({ initialTab }: { initialTab?: string }) => {
+const TestsView = ({
+  initialTab,
+  projectName,
+  clientName,
+  date,
+  projectHistory,
+  isLoadingProjects,
+  projectMetadata,
+  onProjectNameChange,
+  onClientNameChange,
+  onLoadProject,
+  onStartNewProject,
+  onMetadataChange,
+}: {
+  initialTab?: string;
+  projectName: string;
+  clientName: string;
+  date: string;
+  projectHistory: ApiProjectRow[];
+  isLoadingProjects: boolean;
+  projectMetadata: any;
+  onProjectNameChange: (value: string) => void;
+  onClientNameChange: (value: string) => void;
+  onLoadProject: (projectId: string) => void;
+  onStartNewProject: () => void;
+  onMetadataChange: (key: string, value: string) => void;
+}) => {
   const testData = useTestData();
 
   // Group tests by category
@@ -118,27 +145,43 @@ const TestsView = ({ initialTab }: { initialTab?: string }) => {
   };
 
   return (
-    <Tabs defaultValue={initialTab || "soil"} className="w-full">
-      <TabsList className="w-full grid grid-cols-4 mb-6 h-11">
-        <TabsTrigger value="soil" className="gap-1.5 text-sm">
-          <Mountain className="h-4 w-4" /> Soil
-        </TabsTrigger>
-        <TabsTrigger value="concrete" className="gap-1.5 text-sm">
-          <Hammer className="h-4 w-4" /> Concrete
-        </TabsTrigger>
-        <TabsTrigger value="rock" className="gap-1.5 text-sm">
-          <Mountain className="h-4 w-4" /> Rock
-        </TabsTrigger>
-        <TabsTrigger value="special" className="gap-1.5 text-sm">
-          <TestTubeDiagonal className="h-4 w-4" /> Special
-        </TabsTrigger>
-      </TabsList>
+    <div className="space-y-6">
+      <ProjectHeader
+        projectName={projectName}
+        clientName={clientName}
+        date={date}
+        projectHistory={projectHistory}
+        isLoadingProjects={isLoadingProjects}
+        projectMetadata={projectMetadata}
+        onProjectNameChange={onProjectNameChange}
+        onClientNameChange={onClientNameChange}
+        onLoadProject={onLoadProject}
+        onStartNewProject={onStartNewProject}
+        onMetadataChange={onMetadataChange}
+      />
 
-      {renderTestsByCategory("soil")}
-      {renderTestsByCategory("concrete")}
-      {renderTestsByCategory("rock")}
-      {renderTestsByCategory("special")}
-    </Tabs>
+      <Tabs defaultValue={initialTab || "soil"} className="w-full">
+        <TabsList className="w-full grid grid-cols-4 mb-6 h-11">
+          <TabsTrigger value="soil" className="gap-1.5 text-sm">
+            <Mountain className="h-4 w-4" /> Soil
+          </TabsTrigger>
+          <TabsTrigger value="concrete" className="gap-1.5 text-sm">
+            <Hammer className="h-4 w-4" /> Concrete
+          </TabsTrigger>
+          <TabsTrigger value="rock" className="gap-1.5 text-sm">
+            <Mountain className="h-4 w-4" /> Rock
+          </TabsTrigger>
+          <TabsTrigger value="special" className="gap-1.5 text-sm">
+            <TestTubeDiagonal className="h-4 w-4" /> Special
+          </TabsTrigger>
+        </TabsList>
+
+        {renderTestsByCategory("soil")}
+        {renderTestsByCategory("concrete")}
+        {renderTestsByCategory("rock")}
+        {renderTestsByCategory("special")}
+      </Tabs>
+    </div>
   );
 };
 
@@ -424,7 +467,7 @@ const Index = ({ initialTab }: IndexProps) => {
               ) : null}
             </div>
 
-            {isAuthenticated && (
+            {isAuthenticated && !isTestsPage && (
               <>
                 <div className="mt-4 flex gap-2">
                   <Button
@@ -481,86 +524,6 @@ const Index = ({ initialTab }: IndexProps) => {
                   </Button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mt-4">
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Project Name</Label>
-                    <Input value={projectName} onChange={(e) => handleProjectNameChange(e.target.value)} placeholder="Enter project name" className="h-9" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Client Name</Label>
-                    <Input value={clientName} onChange={(e) => handleClientNameChange(e.target.value)} placeholder="Enter client name" className="h-9" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Date</Label>
-                    <Input value={today} readOnly className="h-9 calculated-field cursor-default" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
-                      <History className="h-3.5 w-3.5" /> History
-                    </Label>
-                    {projectHistory.length > 0 ? (
-                      <Select value="" onValueChange={handleLoadProject}>
-                        <SelectTrigger className="h-9">
-                          <SelectValue placeholder="Load a project" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {projectHistory.map((project) => (
-                            <SelectItem key={project.id} value={String(project.id)}>
-                              <div className="flex flex-col">
-                                <span className="font-medium">{project.name}</span>
-                                <span className="text-xs text-muted-foreground">{project.client_name && `${project.client_name} • `}{project.project_date}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <div className="h-9 px-3 py-2 rounded-md border border-input bg-background text-muted-foreground text-sm flex items-center">
-                        {isLoadingProjects ? "Loading..." : "No saved projects"}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <Collapsible open={showAdvancedMetadata} onOpenChange={setShowAdvancedMetadata} className="mt-3 border-t pt-3">
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="sm" className="gap-1.5 h-8 px-2 text-xs">
-                      <ChevronDown className="h-4 w-4 transition-transform" style={{ transform: showAdvancedMetadata ? "rotate(180deg)" : "rotate(0deg)" }} />
-                      Advanced Metadata
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="mt-3 space-y-3 pt-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Lab Organization</Label>
-                        <Input
-                          value={testData.projectMetadata.labOrganization || ""}
-                          onChange={(e) => handleMetadataChange("labOrganization", e.target.value)}
-                          placeholder="Enter lab organization"
-                          className="h-9"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Date Reported</Label>
-                        <Input
-                          type="date"
-                          value={testData.projectMetadata.dateReported || ""}
-                          onChange={(e) => handleMetadataChange("dateReported", e.target.value)}
-                          className="h-9"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Checked By</Label>
-                        <Input
-                          value={testData.projectMetadata.checkedBy || ""}
-                          onChange={(e) => handleMetadataChange("checkedBy", e.target.value)}
-                          placeholder="Enter name of person who checked"
-                          className="h-9"
-                        />
-                      </div>
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
               </>
             )}
           </div>
@@ -739,7 +702,20 @@ const Index = ({ initialTab }: IndexProps) => {
           ) : view === "admin" ? (
             <Admin />
           ) : (
-            <TestsView initialTab={initialTab} />
+            <TestsView
+              initialTab={initialTab}
+              projectName={projectName}
+              clientName={clientName}
+              date={today}
+              projectHistory={projectHistory}
+              isLoadingProjects={isLoadingProjects}
+              projectMetadata={testData.projectMetadata}
+              onProjectNameChange={handleProjectNameChange}
+              onClientNameChange={handleClientNameChange}
+              onLoadProject={handleLoadProject}
+              onStartNewProject={handleStartNewProject}
+              onMetadataChange={handleMetadataChange}
+            />
           )}
         </main>
       </div>

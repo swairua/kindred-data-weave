@@ -663,9 +663,9 @@ const updateTrialsForType = (test: AtterbergTest, trials: AtterbergTest["trials"
 
 const AtterbergTest = () => {
   const project = useProject();
-  // Initialize with empty records - users add tests as needed
+  // Initialize with empty records if no project selected, otherwise with one empty record
   const [projectState, setProjectState] = useState<AtterbergProjectState>({
-    records: [createRecord(0)],
+    records: project.currentProjectId ? [createRecord(0)] : [],
   });
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const [smokeCheckStatus, setSmokeCheckStatus] = useState<SmokeCheckStatus | null>(null);
@@ -774,7 +774,7 @@ const AtterbergTest = () => {
   useEffect(() => {
     const handleResetProject = () => {
       console.log("[AtterbergTest] Received resetProject event, clearing all data");
-      setProjectState({ records: [createRecord(0)] });
+      setProjectState({ records: [] });
       hydratedRef.current = false;
       lastLoadedLookupRef.current = null;
       skipNextPersistRef.current = true;

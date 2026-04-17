@@ -37,7 +37,8 @@ const GradingTest = () => {
     { sieveSize: "Pan", weightRetained: "" },
   ];
 
-  const [rows, setRows] = useState<Row[]>(defaultRows);
+  // Only initialize with default rows if a project is selected
+  const [rows, setRows] = useState<Row[]>(project.currentProjectId ? defaultRows : []);
 
   const totalWeight = rows.reduce((s, r) => s + (parseFloat(r.weightRetained) || 0), 0);
 
