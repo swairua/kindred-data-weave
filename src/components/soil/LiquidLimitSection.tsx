@@ -483,6 +483,7 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId, plasticL
                           label={{ value: "Moisture Content (%)", angle: -90, position: "left", offset: 20, fontSize: 20, fontWeight: "bold", fill: "#111827" }}
                           tick={{ fontSize: 18, fill: "#111827" }}
                         />
+                        <ReferenceLine x={20} stroke="#000" strokeDasharray="4 4" />
                         {/* Data points line */}
                         <Line
                           type="linear"
