@@ -16,7 +16,7 @@ import {
   getWaterMass,
   getDrySoilMass,
   getTrialMoisture,
-  calculateLinearRegression,
+  calculateLogLinearRegression,
   calculatePlasticityIndex,
   getALinePI,
   classifySoil,
@@ -241,11 +241,11 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId, plasticL
       </Button>
 
       {graphData.length >= 2 && (() => {
-        // Calculate linear regression for line of best fit
+        // Calculate log-linear regression for line of best fit (ASTM D4318 compliant)
         const regressionPoints = graphData
           .map((d) => ({ x: d.penetration || 0, y: d.moisture || 0 }))
-          .filter((d) => !isNaN(d.x) && !isNaN(d.y));
-        const regressionData = calculateLinearRegression(regressionPoints);
+          .filter((d) => !isNaN(d.x) && !isNaN(d.y) && d.x > 0);
+        const regressionData = calculateLogLinearRegression(regressionPoints);
 
         const penetrationValues = graphData.map((d) => d.penetration);
         const minPen = Math.min(...penetrationValues);
@@ -254,25 +254,26 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId, plasticL
         const xStart = Math.min(minPen, 18);
         const xEnd = Math.max(maxPen, 26);
 
-        // LL at 20 mm via regression
+        // LL at 20 mm via log-linear regression: LL = m·log₁₀(20) + b
         const llAt20 = regressionData
-          ? Number((regressionData.slope * 20 + regressionData.intercept).toFixed(2))
+          ? Number((regressionData.slope * Math.log10(20) + regressionData.intercept).toFixed(2))
           : null;
 
         // Build merged chart data: data points + regression endpoints
+        // For log-linear regression, the Y value is calculated as: y = m·log₁₀(x) + b
         const mergedChartData = [
           ...(regressionData
-            ? [{ penetration: xStart, moisture: null as number | null, regressionMoisture: regressionData.slope * xStart + regressionData.intercept }]
+            ? [{ penetration: xStart, moisture: null as number | null, regressionMoisture: regressionData.slope * Math.log10(xStart) + regressionData.intercept }]
             : []),
           ...graphData.map((d) => ({
             penetration: d.penetration,
             moisture: d.moisture as number | null,
-            regressionMoisture: regressionData
-              ? regressionData.slope * d.penetration + regressionData.intercept
+            regressionMoisture: regressionData && d.penetration > 0
+              ? regressionData.slope * Math.log10(d.penetration) + regressionData.intercept
               : null,
           })),
           ...(regressionData
-            ? [{ penetration: xEnd, moisture: null as number | null, regressionMoisture: regressionData.slope * xEnd + regressionData.intercept }]
+            ? [{ penetration: xEnd, moisture: null as number | null, regressionMoisture: regressionData.slope * Math.log10(xEnd) + regressionData.intercept }]
             : []),
         ].sort((a, b) => a.penetration - b.penetration);
 
@@ -292,7 +293,7 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId, plasticL
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               {/* Graph on the left - takes 2 columns */}
               <div className="lg:col-span-2 rounded-lg border bg-card p-3">
-                <h4 className="mb-3 text-sm font-medium text-foreground">Moisture Content vs Penetration (Linear Regression)</h4>
+                <h4 className="mb-3 text-sm font-medium text-foreground">Moisture Content vs Penetration (Semi-Log, ASTM D4318)</h4>
                 <div className="overflow-x-auto">
                   <div className="h-[280px] min-w-[520px]">
                     <ResponsiveContainer width="100%" height="100%">
@@ -301,10 +302,12 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId, plasticL
                         <XAxis
                           dataKey="penetration"
                           type="number"
+                          scale="log"
                           domain={[xStart, xEnd]}
+                          allowDataOverflow={true}
                           stroke="hsl(var(--muted-foreground))"
                           tick={{ fontSize: 12 }}
-                          label={{ value: "Penetration (mm)", position: "insideBottom", offset: -4, fontSize: 12 }}
+                          label={{ value: "Penetration (mm, log scale)", position: "insideBottom", offset: -4, fontSize: 12 }}
                         />
                         <YAxis
                           stroke="hsl(var(--muted-foreground))"
@@ -365,7 +368,7 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId, plasticL
                 </div>
                 {regressionData && (
                   <p className="mt-2 text-xs text-muted-foreground font-mono">
-                    y = {regressionData.slope.toFixed(3)}·x + {regressionData.intercept.toFixed(3)} &nbsp;|&nbsp; R² = {regressionData.rSquared.toFixed(3)}
+                    y = {regressionData.slope.toFixed(3)}·log₁₀(x) + {regressionData.intercept.toFixed(3)} &nbsp;|&nbsp; R² = {regressionData.rSquared.toFixed(3)}
                   </p>
                 )}
               </div>
@@ -420,18 +423,18 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId, plasticL
               </div>
             )}
 
-            {/* Hidden linear scale chart for Excel export - will be captured by the export process */}
+            {/* Hidden semi-log chart for Excel export - will be captured by the export process */}
             <div style={{ display: "none" }} className={`liquid-limit-export-chart${recordId ? `-${recordId}` : ""}`}>
               <div className="bg-white p-8" style={{ width: "1200px", height: "800px" }}>
                 {graphData.length > 0 && (() => {
-                  // Calculate linear regression for line of best fit
-                  const regressionData = calculateLinearRegression(
+                  // Calculate log-linear regression for line of best fit (ASTM D4318 compliant)
+                  const regressionData = calculateLogLinearRegression(
                     graphData
                       .map((d) => ({
                         x: d.penetration || 0,
                         y: d.moisture || 0,
                       }))
-                      .filter((d) => !isNaN(d.x) && !isNaN(d.y))
+                      .filter((d) => !isNaN(d.x) && !isNaN(d.y) && d.x > 0)
                   );
 
                   // Generate regression line points with padding so the line never sits on the axis
@@ -446,8 +449,9 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId, plasticL
                   if (regressionData && graphData.length >= 2) {
                     const x1 = minPen - xPad;
                     const x2 = maxPen + xPad;
-                    const y1 = regressionData.slope * x1 + regressionData.intercept;
-                    const y2 = regressionData.slope * x2 + regressionData.intercept;
+                    // Use log-linear equation: y = m·log₁₀(x) + b
+                    const y1 = regressionData.slope * Math.log10(Math.max(x1, 0.1)) + regressionData.intercept;
+                    const y2 = regressionData.slope * Math.log10(x2) + regressionData.intercept;
 
                     regressionLineData.push(
                       { penetration: x1, regressionMoisture: y1, moisture: null },
@@ -462,10 +466,12 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId, plasticL
                         <XAxis
                           dataKey="penetration"
                           type="number"
-                          domain={[(dataMin: number) => Math.max(0, dataMin - xPad), (dataMax: number) => dataMax + xPad]}
+                          scale="log"
+                          domain={[(dataMin: number) => Math.max(0.1, dataMin - xPad), (dataMax: number) => dataMax + xPad]}
+                          allowDataOverflow={true}
                           stroke="#000"
                           strokeWidth={2}
-                          label={{ value: "Penetration (mm)", position: "bottom", offset: 20, fontSize: 20, fontWeight: "bold", fill: "#111827" }}
+                          label={{ value: "Penetration (mm, Log Scale)", position: "bottom", offset: 20, fontSize: 20, fontWeight: "bold", fill: "#111827" }}
                           tick={{ fontSize: 18, fill: "#111827" }}
                         />
                         <YAxis
