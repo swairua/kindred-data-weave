@@ -35,6 +35,7 @@ import Dashboard from "@/pages/Dashboard";
 import Reports from "@/pages/Reports";
 import Admin from "@/pages/Admin";
 import ProjectHeader from "@/components/ProjectHeader";
+import Navigation from "@/components/Navigation";
 import { fetchCurrentUser, loginUser, logoutUser, type ApiUser, listRecords, debugAuthState } from "@/lib/api";
 import { registerAllTests } from "@/lib/testRegistration";
 import { registry } from "@/lib/testRegistry";
@@ -432,9 +433,9 @@ const Index = ({ initialTab }: IndexProps) => {
 
   return (
     <ProjectContext.Provider value={projectCtx}>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background flex flex-col">
         <header className="border-b bg-card sticky top-0 z-10">
-          <div className="container max-w-6xl mx-auto px-4 py-4">
+          <div className="px-4 py-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center overflow-hidden">
@@ -466,71 +467,24 @@ const Index = ({ initialTab }: IndexProps) => {
                 </div>
               ) : null}
             </div>
-
-            {isAuthenticated && !isTestsPage && (
-              <>
-                <div className="mt-4 flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5"
-                    onClick={handleStartNewProject}
-                  >
-                    <Plus className="h-4 w-4" /> New Project
-                  </Button>
-                  <Button
-                    variant={view === "dashboard" ? "default" : "outline"}
-                    size="sm"
-                    className="gap-1.5"
-                    onClick={() => {
-                      setView("dashboard");
-                      navigate("/");
-                    }}
-                  >
-                    <LayoutDashboard className="h-4 w-4" /> Dashboard
-                  </Button>
-                  <Button
-                    variant={view === "tests" ? "default" : "outline"}
-                    size="sm"
-                    className="gap-1.5"
-                    onClick={() => {
-                      setView("tests");
-                      navigate("/tests");
-                    }}
-                  >
-                    <FlaskConical className="h-4 w-4" /> Tests
-                  </Button>
-                  <Button
-                    variant={view === "reports" ? "default" : "outline"}
-                    size="sm"
-                    className="gap-1.5"
-                    onClick={() => {
-                      setView("reports");
-                      navigate("/reports");
-                    }}
-                  >
-                    <FileText className="h-4 w-4" /> Reports
-                  </Button>
-                  <Button
-                    variant={view === "admin" ? "default" : "outline"}
-                    size="sm"
-                    className="gap-1.5"
-                    onClick={() => {
-                      setView("admin");
-                      navigate("/");
-                    }}
-                  >
-                    <Hammer className="h-4 w-4" /> Admin
-                  </Button>
-                </div>
-
-              </>
-            )}
           </div>
         </header>
 
-        <main className="container max-w-6xl mx-auto px-4 py-6">
-          {authStatus === "checking" ? (
+        <div className="flex flex-1 overflow-hidden">
+          {isAuthenticated && (
+            <Navigation
+              currentView={view}
+              onViewChange={setView}
+              onStartNewProject={handleStartNewProject}
+              onLogout={handleLogout}
+              userName={currentUser?.name}
+              userEmail={currentUser?.email}
+            />
+          )}
+
+          <main className="flex-1 overflow-y-auto px-4 py-6">
+            <div className="container max-w-6xl mx-auto">
+            {authStatus === "checking" ? (
             <div className="flex min-h-[60vh] items-center justify-center">
               <Card className="w-full max-w-md shadow-sm">
                 <CardHeader>
@@ -717,7 +671,9 @@ const Index = ({ initialTab }: IndexProps) => {
               onMetadataChange={handleMetadataChange}
             />
           )}
+            </div>
         </main>
+        </div>
       </div>
     </ProjectContext.Provider>
   );
