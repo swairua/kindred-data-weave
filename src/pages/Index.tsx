@@ -20,6 +20,7 @@ import {
   Mountain,
   TestTubeDiagonal,
   History,
+  Plus,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -325,6 +326,29 @@ const Index = ({ initialTab }: IndexProps) => {
     toast.success(`Loaded project: ${project.name}`);
   };
 
+  const handleStartNewProject = () => {
+    // Clear form fields
+    setProjectName("");
+    setClientName("");
+    setProjectDate(undefined);
+    setCurrentProjectId(null);
+
+    // Clear browser cache/localStorage
+    localStorage.removeItem("atterbergProjectState");
+    localStorage.removeItem("enhancedAtterbergTests");
+
+    // Reset project metadata
+    testData.updateProjectMetadata({
+      projectName: "",
+      clientName: "",
+      labOrganization: "",
+      dateReported: "",
+      checkedBy: "",
+    });
+
+    toast.success("New project started - form cleared and data reset");
+  };
+
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -406,6 +430,14 @@ const Index = ({ initialTab }: IndexProps) => {
             {isAuthenticated && (
               <>
                 <div className="mt-4 flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={handleStartNewProject}
+                  >
+                    <Plus className="h-4 w-4" /> New Project
+                  </Button>
                   <Button
                     variant={view === "dashboard" ? "default" : "outline"}
                     size="sm"
