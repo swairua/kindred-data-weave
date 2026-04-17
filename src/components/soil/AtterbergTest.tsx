@@ -786,6 +786,36 @@ const AtterbergTest = () => {
     };
   }, []);
 
+  // Initialize with one empty record when a project is selected (for new projects with no data)
+  useEffect(() => {
+    if (!project.currentProjectId) {
+      // No project selected yet
+      return;
+    }
+
+    // Wait a brief moment for the restore effect to complete
+    const timer = setTimeout(() => {
+      if (!hydratedRef.current) {
+        // Still loading, wait longer
+        return;
+      }
+
+      // If records are still empty after hydration, initialize with one record
+      setProjectState((prev) => {
+        if (prev.records.length === 0) {
+          console.log("[AtterbergTest] Initializing new project with one empty record");
+          return {
+            ...prev,
+            records: [createRecord(0)],
+          };
+        }
+        return prev;
+      });
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [project.currentProjectId]);
+
   const { totalDataPoints, totalStartedDataPoints, aggregateResults, aggregateProjectResults, status, totalCompletedTests } = useMemo(() => {
     const totalPoints = computedRecords.reduce((sum, record) => sum + record.dataPoints, 0);
     const totalStartedPoints = computedRecords.reduce((sum, record) => sum + record.startedDataPoints, 0);
