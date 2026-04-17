@@ -44,7 +44,7 @@ const TestSection = ({ title, children, onSave, onFinalSave, onClear, onExportPD
             {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             {title}
           </CardTitle>
-          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+          <div className="flex flex-wrap gap-2 justify-end" onClick={(e) => e.stopPropagation()}>
             {onExportSmokeCheck && (
               <Button
                 size="sm"
