@@ -129,6 +129,7 @@ interface TestDataContextType {
   updateProjectMetadata: (data: Partial<ProjectMetadata>) => void;
   recordMetadata: Record<string, RecordMetadata>;
   updateRecordMetadata: (testId: string, data: Partial<RecordMetadata>) => void;
+  resetProjectData: () => void;
 }
 
 const defaultTests: Record<string, TestSummary> = {
@@ -158,6 +159,7 @@ const TestDataContext = createContext<TestDataContextType>({
   updateProjectMetadata: () => {},
   recordMetadata: {},
   updateRecordMetadata: () => {},
+  resetProjectData: () => {},
 });
 
 export const useTestData = () => useContext(TestDataContext);
@@ -244,9 +246,15 @@ export const TestDataProvider = ({ children }: { children: ReactNode }) => {
     }));
   }, []);
 
+  const resetProjectData = useCallback(() => {
+    setTests(defaultTests);
+    setProjectMetadata({});
+    setRecordMetadata({});
+  }, []);
+
   return (
     <TestDataContext.Provider
-      value={{ tests, updateTest, projectMetadata, updateProjectMetadata, recordMetadata, updateRecordMetadata }}
+      value={{ tests, updateTest, projectMetadata, updateProjectMetadata, recordMetadata, updateRecordMetadata, resetProjectData }}
     >
       {children}
     </TestDataContext.Provider>

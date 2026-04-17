@@ -770,6 +770,22 @@ const AtterbergTest = () => {
     };
   }, []);
 
+  // Listen for reset project event
+  useEffect(() => {
+    const handleResetProject = () => {
+      console.log("[AtterbergTest] Received resetProject event, clearing all data");
+      setProjectState({ records: [createRecord(0)] });
+      hydratedRef.current = false;
+      lastLoadedLookupRef.current = null;
+      skipNextPersistRef.current = true;
+    };
+
+    window.addEventListener("resetProject", handleResetProject);
+    return () => {
+      window.removeEventListener("resetProject", handleResetProject);
+    };
+  }, []);
+
   const { totalDataPoints, totalStartedDataPoints, aggregateResults, aggregateProjectResults, status, totalCompletedTests } = useMemo(() => {
     const totalPoints = computedRecords.reduce((sum, record) => sum + record.dataPoints, 0);
     const totalStartedPoints = computedRecords.reduce((sum, record) => sum + record.startedDataPoints, 0);
