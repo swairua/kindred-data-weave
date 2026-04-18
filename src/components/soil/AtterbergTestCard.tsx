@@ -129,8 +129,15 @@ const AtterbergTestCard = ({
       <CardHeader className="space-y-3 pb-3">
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 flex-1 items-center gap-2">
-            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0" onClick={onToggleExpanded}>
-              {test.isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="h-9 w-9 flex-shrink-0 bg-accent/10 hover:bg-accent/20 border-accent/40 text-accent hover:text-accent hover:border-accent/70 transition-all duration-200 hover:shadow-md group"
+              onClick={onToggleExpanded}
+              title={test.isExpanded ? "Click to collapse" : "Click to expand"}
+            >
+              {test.isExpanded ? <ChevronDown className="h-4 w-4 transition-transform group-hover:scale-110" /> : <ChevronRight className="h-4 w-4 transition-transform group-hover:scale-110" />}
             </Button>
 
             {isEditingTitle ? (

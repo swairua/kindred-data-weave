@@ -2008,8 +2008,15 @@ const RecordCard = ({
       <Card className="border shadow-sm print:break-inside-avoid print:shadow-none">
         <CardHeader className="space-y-3 pb-3">
           <div className="flex items-start gap-3">
-            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={onToggleExpanded}>
-              {record.isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="h-10 w-10 flex-shrink-0 bg-primary/10 hover:bg-primary/20 border-primary/40 text-primary hover:text-primary hover:border-primary/70 transition-all duration-200 hover:shadow-md group relative"
+              onClick={onToggleExpanded}
+              title={record.isExpanded ? "Click to collapse" : "Click to expand"}
+            >
+              {record.isExpanded ? <ChevronDown className="h-5 w-5 transition-transform group-hover:scale-110" /> : <ChevronRight className="h-5 w-5 transition-transform group-hover:scale-110" />}
             </Button>
 
             <div className="min-w-0 flex-1 space-y-3">
