@@ -211,14 +211,14 @@ const Index = ({ initialTab }: IndexProps) => {
     restoreSession();
 
     // Set a timeout to force unauthenticated state if the check takes too long
-    // Increased from 3s to 10s to accommodate slower API responses
+    // Reduced to 1s in development for faster loading
     timeoutId = setTimeout(() => {
       if (isMounted) {
         console.warn("[Index] Session restore timeout - setting to unauthenticated");
         setCurrentUser(null);
         setAuthStatus("unauthenticated");
       }
-    }, 10000);
+    }, 1000);
 
     return () => {
       isMounted = false;
