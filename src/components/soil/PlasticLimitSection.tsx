@@ -30,34 +30,20 @@ const createTrial = (index: number, label?: string): PlasticLimitTrial => ({
 });
 
 const PlasticLimitSection = ({ trials, result, onChangeTrials, liquidLimitMoisture }: PlasticLimitSectionProps) => {
-  // Ensure PR and MG trials exist in the trials array
-  const ensureFixedTrials = (currentTrials: PlasticLimitTrial[]): PlasticLimitTrial[] => {
-    const prExists = currentTrials.some((t) => t.containerNo === "PR");
-    const mgExists = currentTrials.some((t) => t.containerNo === "MG");
+  // Filter out PR and MG rows from display - these are computed, not user input
+  const displayTrials = trials.filter((t) => t.containerNo !== "PR" && t.containerNo !== "MG");
 
-    let updated = [...currentTrials];
-    if (!prExists) {
-      updated.push(createTrial(updated.length, "PR"));
-    }
-    if (!mgExists) {
-      updated.push(createTrial(updated.length, "MG"));
-    }
-    return updated;
-  };
-
-  const ensuredTrials = ensureFixedTrials(trials);
-
-  // Sync fixed trials with parent component
+  // Ensure at least 2 default trials on first mount
   useEffect(() => {
-    const trialsNeedSync = !trials.some((t) => t.containerNo === "PR") || !trials.some((t) => t.containerNo === "MG");
-    if (trialsNeedSync) {
-      onChangeTrials(ensuredTrials);
+    // Only initialize if trials array is empty
+    if (trials.length === 0) {
+      onChangeTrials([createTrial(0), createTrial(1)]);
     }
   }, []); // Only run once on mount
 
   const updateTrial = (index: number, field: keyof PlasticLimitTrial, value: string) => {
     onChangeTrials(
-      ensuredTrials.map((trial, trialIndex) =>
+      displayTrials.map((trial, trialIndex) =>
         trialIndex === index
           ? {
               ...trial,
@@ -69,42 +55,12 @@ const PlasticLimitSection = ({ trials, result, onChangeTrials, liquidLimitMoistu
   };
 
   const addTrial = () => {
-    onChangeTrials(ensureFixedTrials([...ensuredTrials, createTrial(ensuredTrials.length)]));
+    onChangeTrials([...displayTrials, createTrial(displayTrials.length)]);
   };
 
   const removeTrial = (index: number) => {
-    const trial = ensuredTrials[index];
-    // Don't allow removing fixed trials (PR, MG)
-    if (trial.containerNo === "PR" || trial.containerNo === "MG") {
-      return;
-    }
-
-    const nextTrials = ensuredTrials.filter((_, trialIndex) => trialIndex !== index);
+    const nextTrials = displayTrials.filter((_, trialIndex) => trialIndex !== index);
     onChangeTrials(nextTrials.length === 0 ? [createTrial(0)] : nextTrials);
-  };
-
-  // Calculate moisture content for PR trial from LL
-  const getPRMoisture = (): string => {
-    const prTrial = ensuredTrials.find((t) => t.containerNo === "PR");
-    if (!prTrial) return "";
-    if (liquidLimitMoisture !== null && liquidLimitMoisture !== undefined) {
-      return String(liquidLimitMoisture);
-    }
-    return prTrial.moisture;
-  };
-
-  // Calculate moisture content for MG trial from MG source data
-  const getMGMoisture = (): string => {
-    const mgSourceTrial = ensuredTrials.find((t) => t.containerNo === "MG");
-    if (!mgSourceTrial) return "";
-    // Check if we have the full data entry for MG (wet, dry, container)
-    const mg = calculateMoistureFromMass(
-      mgSourceTrial.containerWetMass,
-      mgSourceTrial.containerDryMass,
-      mgSourceTrial.containerMass,
-    );
-    if (mg) return mg;
-    return mgSourceTrial.moisture;
   };
 
   return (
@@ -113,8 +69,8 @@ const PlasticLimitSection = ({ trials, result, onChangeTrials, liquidLimitMoistu
         <div className="text-blue-900 dark:text-blue-200">
           <strong>Plastic Limit (PL) Trial Guide:</strong>
           <div className="mt-1 space-y-1">
-            <div>• <strong>PR:</strong> Reference trial - automatically uses Liquid Limit moisture value</div>
-            <div>• <strong>MG:</strong> Independent trial - enter mass data or moisture directly</div>
+            <div>• Enter at least 2 trials with moisture content data</div>
+            <div>• Enter mass data (wet, dry, container) to auto-calculate moisture, or enter moisture directly</div>
             <div>• <strong>Important:</strong> PL must never exceed LL. If results show PL &gt; LL, check your trial moisture percentages.</div>
           </div>
         </div>
@@ -142,46 +98,33 @@ const PlasticLimitSection = ({ trials, result, onChangeTrials, liquidLimitMoistu
               </tr>
             </thead>
             <tbody>
-              {ensuredTrials.map((trial, index) => {
-                const isFixedTrial = trial.containerNo === "PR" || trial.containerNo === "MG";
+              {displayTrials.map((trial, index) => {
                 const started = isPlasticLimitTrialStarted(trial);
                 const valid = isPlasticLimitTrialValid(trial);
                 const waterMass = getWaterMass(trial);
                 const drySoilMass = getDrySoilMass(trial);
                 const autoMoisture = getTrialMoisture(trial);
                 const hasAutoMoisture = trial.containerWetMass && trial.containerDryMass && trial.containerMass;
-
-                // For PR trial, use liquid limit moisture
-                let effectiveMoisture = autoMoisture;
-                if (trial.containerNo === "PR") {
-                  effectiveMoisture = getPRMoisture();
-                } else if (trial.containerNo === "MG") {
-                  effectiveMoisture = getMGMoisture();
-                }
+                const effectiveMoisture = autoMoisture;
 
                 return (
                   <tr
                     key={trial.id}
                     className={cn(
                       "border-b border-border/60 transition-colors",
-                      isFixedTrial && "bg-blue-50/40 dark:bg-blue-950/10",
-                      started && !valid && !isFixedTrial && "bg-amber-50/70 dark:bg-amber-950/20",
+                      started && !valid && "bg-amber-50/70 dark:bg-amber-950/20",
                     )}
                   >
                     <td className="px-2 py-1.5">
                       <Input value={trial.trialNo} disabled className="h-8 bg-muted/50 w-12" />
                     </td>
                     <td className="px-2 py-1.5">
-                      {isFixedTrial ? (
-                        <Input value={trial.containerNo || ""} disabled className="h-8 bg-muted/50 w-16 font-bold" />
-                      ) : (
-                        <Input
-                          value={trial.containerNo || ""}
-                          onChange={(e) => updateTrial(index, "containerNo", e.target.value)}
-                          className="h-8 w-16"
-                          placeholder="201"
-                        />
-                      )}
+                      <Input
+                        value={trial.containerNo || ""}
+                        onChange={(e) => updateTrial(index, "containerNo", e.target.value)}
+                        className="h-8 w-16"
+                        placeholder="201"
+                      />
                     </td>
                     <td className="px-2 py-1.5">
                       <Input
@@ -220,7 +163,7 @@ const PlasticLimitSection = ({ trials, result, onChangeTrials, liquidLimitMoistu
                       <span className="text-sm text-muted-foreground">{drySoilMass !== null ? drySoilMass : "-"}</span>
                     </td>
                     <td className="px-2 py-1.5">
-                      {isFixedTrial || hasAutoMoisture ? (
+                      {hasAutoMoisture ? (
                         <span className="text-sm font-medium">{effectiveMoisture || "-"}</span>
                       ) : (
                         <Input
@@ -234,19 +177,15 @@ const PlasticLimitSection = ({ trials, result, onChangeTrials, liquidLimitMoistu
                       )}
                     </td>
                     <td className="px-1 py-1.5">
-                      {!isFixedTrial ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                          onClick={() => removeTrial(index)}
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </Button>
-                      ) : (
-                        <div className="h-7 w-7" />
-                      )}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() => removeTrial(index)}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
                     </td>
                   </tr>
                 );

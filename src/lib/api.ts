@@ -3,16 +3,27 @@ const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
 // In development, use the proxied path to bypass CORS. In production, use the full URL.
 export const API_BASE_URL = configuredApiBaseUrl || (import.meta.env.DEV ? "/api.php" : "https://lab.wayrus.co.ke/api.php");
 
+// Log API configuration on module load
+console.log("[API] === CONFIGURATION ===");
+console.log("[API] VITE_API_BASE_URL env:", configuredApiBaseUrl ? `"${configuredApiBaseUrl}"` : "(not set)");
+console.log("[API] Development mode:", import.meta.env.DEV);
+console.log("[API] Final API_BASE_URL:", API_BASE_URL);
+console.log("[API] window.location.origin:", window.location.origin);
+
 const SESSION_STORAGE_KEY = "lab_session_token";
 
 // Session token management (stored in localStorage for persistence)
 export const setSessionToken = (token: string | null) => {
+  const timestamp = new Date().toISOString();
   if (token) {
     localStorage.setItem(SESSION_STORAGE_KEY, token);
-    console.log("[API] Session token stored");
+    console.log(`[API] ${timestamp} Session token stored (${token.substring(0, 20)}...)`);
+    console.log("[API] Stack trace:", new Error().stack);
   } else {
+    const previousToken = localStorage.getItem(SESSION_STORAGE_KEY);
     localStorage.removeItem(SESSION_STORAGE_KEY);
-    console.log("[API] Session token cleared");
+    console.log(`[API] ${timestamp} Session token cleared${previousToken ? ` (was: ${previousToken.substring(0, 20)}...)` : ""}`);
+    console.log("[API] Stack trace:", new Error().stack);
   }
 };
 
@@ -68,18 +79,32 @@ interface LogoutResponse {
 }
 
 export const buildApiUrl = (params?: Record<string, string | number | boolean | null | undefined>) => {
-  const url = new URL(API_BASE_URL);
-
-  if (params) {
-    Object.entries(params).forEach(([key, value]) => {
-      if (value === undefined || value === null || value === "") return;
-      url.searchParams.set(key, String(value));
-    });
+  // Validate API_BASE_URL before constructing
+  if (!API_BASE_URL) {
+    const errorMsg = "[API] FATAL: API_BASE_URL is not configured. Check VITE_API_BASE_URL environment variable.";
+    console.error(errorMsg);
+    throw new Error(errorMsg);
   }
 
-  const finalUrl = url.toString();
-  console.debug("[API] Built URL:", finalUrl);
-  return finalUrl;
+  try {
+    // Handle relative URLs (e.g., /api.php) by providing the base origin
+    const url = new URL(API_BASE_URL, window.location.origin);
+
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value === undefined || value === null || value === "") return;
+        url.searchParams.set(key, String(value));
+      });
+    }
+
+    const finalUrl = url.toString();
+    console.debug("[API] Built URL:", finalUrl);
+    return finalUrl;
+  } catch (error) {
+    const errorMsg = `[API] Failed to construct URL: ${error instanceof Error ? error.message : String(error)}. API_BASE_URL="${API_BASE_URL}", window.location.origin="${window.location.origin}"`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
+  }
 };
 
 export const apiRequest = async <T>(
@@ -175,8 +200,10 @@ export const apiRequest = async <T>(
 };
 
 export const loginUser = async (email: string, password: string) => {
-  console.log("[API] === LOGIN REQUEST START ===");
+  const timestamp = new Date().toISOString();
+  console.log(`[API] ${timestamp} === LOGIN REQUEST START ===`);
   console.log("[API] Attempting login for email:", email);
+  console.log("[API] API endpoint:", buildApiUrl({ action: "login" }));
 
   try {
     const response = await apiRequest<LoginResponse>(
@@ -187,8 +214,9 @@ export const loginUser = async (email: string, password: string) => {
       { action: "login" },
     );
 
-    console.log("[API] === LOGIN RESPONSE ===");
-    console.log("[API] Login successful. User:", response.user.name);
+    const loginTimestamp = new Date().toISOString();
+    console.log(`[API] ${loginTimestamp} === LOGIN RESPONSE ===`);
+    console.log("[API] Login successful. User:", response.user.name, "User ID:", response.user_id);
     console.log("[API] Full response:", JSON.stringify(response, null, 2));
 
     // Store session token from response if provided
@@ -207,7 +235,11 @@ export const loginUser = async (email: string, password: string) => {
 
     return response;
   } catch (error) {
-    console.error("[API] Login failed:", error instanceof Error ? error.message : error);
+    const errorTimestamp = new Date().toISOString();
+    console.error(`[API] ${errorTimestamp} Login failed:`, error instanceof Error ? error.message : error);
+    if (error instanceof Error) {
+      console.error("[API] Error stack:", error.stack);
+    }
     throw error;
   }
 };
@@ -343,14 +375,22 @@ export const uploadFile = async (file: File, metadata?: Record<string, string>) 
 };
 
 export const logoutUser = async () => {
+  const timestamp = new Date().toISOString();
+  console.log(`[API] ${timestamp} === LOGOUT REQUEST START ===`);
+  console.log("[API] Current session token:", getSessionToken() ? "✓ Present" : "✗ Not found");
+
   try {
     const response = await apiRequest<LogoutResponse>({ method: "POST" }, { action: "logout" });
     // Clear session token on logout
+    const logoutTimestamp = new Date().toISOString();
+    console.log(`[API] ${logoutTimestamp} Logout successful (server responded OK)`);
     setSessionToken(null);
-    console.log("[API] Session token cleared on logout");
+    console.log(`[API] ${logoutTimestamp} Session token cleared on logout`);
     return response;
   } catch (error) {
     // Clear session even if logout fails
+    const errorTimestamp = new Date().toISOString();
+    console.warn(`[API] ${errorTimestamp} Logout API call failed, but clearing token anyway:`, error instanceof Error ? error.message : error);
     setSessionToken(null);
     throw error;
   }
