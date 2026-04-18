@@ -184,7 +184,14 @@ const Index = ({ initialTab }: IndexProps) => {
     const restoreSession = async () => {
       try {
         console.log("[Index] Starting session restore...");
-        const user = await fetchCurrentUser();
+
+        // Race the session restore against a 3-second timeout
+        const sessionPromise = fetchCurrentUser();
+        const timeoutPromise = new Promise<null>((_, reject) =>
+          setTimeout(() => reject(new Error("Session restore timeout")), 3000)
+        );
+
+        const user = await Promise.race([sessionPromise, timeoutPromise]);
         console.log("[Index] Session restore complete. User:", user);
 
         if (!isMounted) return;
@@ -199,7 +206,8 @@ const Index = ({ initialTab }: IndexProps) => {
           setAuthStatus("unauthenticated");
         }
       } catch (err) {
-        console.error("[Index] Error during session restore:", err);
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        console.warn("[Index] Session restore failed:", errorMessage);
         if (isMounted) {
           setCurrentUser(null);
           setAuthStatus("unauthenticated");
@@ -210,11 +218,10 @@ const Index = ({ initialTab }: IndexProps) => {
     // Start the session restore
     restoreSession();
 
-    // Set a timeout to force unauthenticated state if the check takes too long
-    // 5 second timeout allows for API latency while still providing reasonable UX
+    // Fallback timeout (should rarely be needed now with Promise.race)
     timeoutId = setTimeout(() => {
       if (isMounted) {
-        console.warn("[Index] Session restore timeout - setting to unauthenticated");
+        console.warn("[Index] Fallback timeout - setting to unauthenticated");
         setCurrentUser(null);
         setAuthStatus("unauthenticated");
       }

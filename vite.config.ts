@@ -11,6 +11,15 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    proxy: {
+      "/api.php": {
+        target: "https://lab.wayrus.co.ke",
+        changeOrigin: true,
+        rewrite: (path) => path,
+        secure: false,
+        ws: true,
+      },
+    },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {

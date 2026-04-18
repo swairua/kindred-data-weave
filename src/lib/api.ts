@@ -1,6 +1,7 @@
 const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
 
-export const API_BASE_URL = configuredApiBaseUrl || "https://lab.wayrus.co.ke/api.php";
+// In development, use the proxied path to bypass CORS. In production, use the full URL.
+export const API_BASE_URL = configuredApiBaseUrl || (import.meta.env.DEV ? "/api.php" : "https://lab.wayrus.co.ke/api.php");
 
 const SESSION_STORAGE_KEY = "lab_session_token";
 
