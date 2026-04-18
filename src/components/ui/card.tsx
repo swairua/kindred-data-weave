@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
   <div ref={ref} className={cn("rounded-lg border bg-card text-card-foreground shadow-sm", className)} {...props} />
@@ -14,10 +15,33 @@ const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
 );
 CardHeader.displayName = "CardHeader";
 
-const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(
-  ({ className, ...props }, ref) => (
-    <h3 ref={ref} className={cn("text-2xl font-semibold leading-none tracking-tight", className)} {...props} />
-  ),
+interface CardTitleProps extends React.HTMLAttributes<HTMLHeadingElement> {
+  tooltip?: string | React.ReactNode;
+  tooltipSide?: "top" | "right" | "bottom" | "left";
+  tooltipAlign?: "start" | "center" | "end";
+}
+
+const CardTitle = React.forwardRef<HTMLHeadingElement, CardTitleProps>(
+  ({ className, tooltip, tooltipSide = "right", tooltipAlign, ...props }, ref) => {
+    const heading = (
+      <h3 ref={ref} className={cn("text-2xl font-semibold leading-none tracking-tight", className)} {...props} />
+    );
+
+    if (!tooltip) {
+      return heading;
+    }
+
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {heading}
+        </TooltipTrigger>
+        <TooltipContent side={tooltipSide} align={tooltipAlign}>
+          {tooltip}
+        </TooltipContent>
+      </Tooltip>
+    );
+  },
 );
 CardTitle.displayName = "CardTitle";
 
