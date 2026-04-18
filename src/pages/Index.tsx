@@ -337,16 +337,22 @@ const Index = ({ initialTab }: IndexProps) => {
   };
 
   const handleStartNewProject = () => {
+    const timestamp = new Date().toISOString();
+    console.log(`[Index] ${timestamp} === START NEW PROJECT ===`);
+    console.log("[Index] Clearing project data but PRESERVING user session");
+
     // Clear form fields
     setProjectName("");
     setClientName("");
     setProjectDate(undefined);
     setCurrentProjectId(null);
 
-    // Clear browser cache/localStorage
+    // Clear project-related localStorage (BUT NOT session token)
+    console.log("[Index] Removing project state from localStorage...");
     localStorage.removeItem("atterbergProjectState");
     localStorage.removeItem("enhancedAtterbergTests");
-    localStorage.removeItem("lab_session_token");
+    // ✓ FIXED: Do NOT clear session token when starting a new project
+    // The user should remain logged in with a fresh project state
 
     // Reset all test data context
     testData.resetProjectData();
@@ -359,7 +365,8 @@ const Index = ({ initialTab }: IndexProps) => {
 
     toast.success("New project started - form cleared and data reset");
 
-    // Reload the page to ensure all state is fresh
+    console.log(`[Index] ${timestamp} Reloading page to refresh project state...`);
+    // Reload the page to ensure all state is fresh (but session will be restored)
     window.location.reload();
   };
 
