@@ -391,16 +391,21 @@ const Index = ({ initialTab }: IndexProps) => {
   };
 
   const handleLogout = async () => {
+    const timestamp = new Date().toISOString();
+    console.log(`[Index] ${timestamp} === USER-INITIATED LOGOUT ===`);
+    console.log("[Index] Calling logoutUser()...");
     try {
       await logoutUser();
       toast.success("Logged out");
+      console.log(`[Index] ${new Date().toISOString()} Logout successful, clearing auth state`);
     } catch (error) {
-      console.error("Failed to logout:", error);
+      console.error(`[Index] ${new Date().toISOString()} Failed to logout:`, error);
       toast.error("Failed to end the remote session");
     } finally {
       setCurrentUser(null);
       setPassword("");
       setAuthStatus("unauthenticated");
+      console.log(`[Index] ${new Date().toISOString()} Auth state cleared (user marked as unauthenticated)`);
     }
   };
 
