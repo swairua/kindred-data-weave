@@ -591,6 +591,17 @@ const AtterbergTest = () => {
   const skipNextPersistRef = useRef(false);
   const isSavingRef = useRef(false);
   const chartRefsMap = useRef<Map<string, HTMLDivElement | null>>(new Map());
+  const projectIdentityRef = useRef<{
+    projectName: string | null;
+    clientName: string | null;
+    projectDate: string | null;
+    currentProjectId: string | null;
+  }>({
+    projectName: null,
+    clientName: null,
+    projectDate: null,
+    currentProjectId: null,
+  });
 
   const computedRecords = useMemo<ComputedRecord[]>(() => {
     return projectState.records.map((record) => {
@@ -657,11 +668,15 @@ const AtterbergTest = () => {
 
       if (cancelled) return;
 
+      // Defensive check: verify localStorage data matches current project context
+      // If localStorage was cleared by the project identity change detection effect,
+      // it will be empty and we skip loading. Otherwise, we only load if it exists.
       const saved = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem("enhancedAtterbergTests");
       if (saved) {
         try {
           const parsed = normalizeAtterbergProjectState(JSON.parse(saved));
           if (parsed) {
+            console.log("[AtterbergTest] Loading Atterberg project from localStorage");
             skipNextPersistRef.current = true;
             setProjectState(collapseAllOnLoad(parsed));
           }
@@ -711,6 +726,44 @@ const AtterbergTest = () => {
       window.removeEventListener("resetProject", handleResetProject);
     };
   }, []);
+
+  // Detect project identity changes and clear stale data
+  useEffect(() => {
+    const currentIdentity = {
+      projectName: project.projectName || null,
+      clientName: project.clientName || null,
+      projectDate: project.projectDate || null,
+      currentProjectId: project.currentProjectId || null,
+    };
+
+    const previousIdentity = projectIdentityRef.current;
+    const hasProjectChanged =
+      currentIdentity.projectName !== previousIdentity.projectName ||
+      currentIdentity.clientName !== previousIdentity.clientName ||
+      currentIdentity.projectDate !== previousIdentity.projectDate ||
+      currentIdentity.currentProjectId !== previousIdentity.currentProjectId;
+
+    if (hasProjectChanged && previousIdentity.projectName !== null) {
+      console.log(
+        "[AtterbergTest] Project context changed, clearing stale data",
+        { previousIdentity, currentIdentity }
+      );
+      // Clear stale localStorage data when project changes
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem("enhancedAtterbergTests");
+      } catch {
+        // ignore storage errors
+      }
+      // Reset refs to force re-initialization
+      hydratedRef.current = false;
+      lastLoadedLookupRef.current = null;
+      skipNextPersistRef.current = false;
+    }
+
+    // Update the ref with current identity
+    projectIdentityRef.current = currentIdentity;
+  }, [project.projectName, project.clientName, project.projectDate, project.currentProjectId]);
 
 
   const { totalDataPoints, totalStartedDataPoints, aggregateResults, aggregateProjectResults, status, totalCompletedTests } = useMemo(() => {
