@@ -330,7 +330,10 @@ const loadAtterbergProjectFromApi = async (lookup: AtterbergProjectLookup, proje
         (row) => row.test_key === "atterberg" && Number(row.project_id) === projectId && row.payload_json,
       );
       if (resultRow) {
-        return normalizeAtterbergProjectState(extractAtterbergPayload(resultRow.payload_json));
+        const loadedState = extractAtterbergPayload(resultRow.payload_json);
+        const recordCount = loadedState.records?.length || 0;
+        console.log(`[Atterberg Load] Loaded project (ID: ${projectId}) with ${recordCount} test records from API`);
+        return normalizeAtterbergProjectState(loadedState);
       }
     }
 
@@ -345,7 +348,10 @@ const loadAtterbergProjectFromApi = async (lookup: AtterbergProjectLookup, proje
     const resultRow = resultsResponse.data.find((row) => row.test_key === "atterberg" && Number(row.project_id) === projectRow.id && row.payload_json);
     if (!resultRow) return null;
 
-    return normalizeAtterbergProjectState(extractAtterbergPayload(resultRow.payload_json));
+    const loadedState = extractAtterbergPayload(resultRow.payload_json);
+    const recordCount = loadedState.records?.length || 0;
+    console.log(`[Atterberg Load] Loaded project "${projectRow.name}" (ID: ${projectRow.id}) with ${recordCount} test records from API`);
+    return normalizeAtterbergProjectState(loadedState);
   } catch (error) {
     // If API is unavailable, unauthorized, or network error - return null to allow fallback to localStorage
     if (error instanceof Error) {
@@ -682,7 +688,8 @@ const AtterbergTest = () => {
         try {
           const parsed = normalizeAtterbergProjectState(JSON.parse(saved));
           if (parsed) {
-            console.log("[AtterbergTest] Loading Atterberg project from localStorage");
+            const recordCount = parsed.records?.length || 0;
+            console.log(`[AtterbergTest] Loading Atterberg project from localStorage with ${recordCount} test records`);
             skipNextPersistRef.current = true;
             setProjectState(collapseAllOnLoad(parsed));
           }
@@ -1001,6 +1008,9 @@ const AtterbergTest = () => {
     if (saveStatusTimeoutRef.current) {
       clearTimeout(saveStatusTimeoutRef.current);
     }
+
+    const recordCount = persistedState.records?.length || 0;
+    console.log(`[Atterberg] Initiating save with ${recordCount} test records`);
 
     try {
       const apiTimestamp = await saveAtterbergProjectToApi({
