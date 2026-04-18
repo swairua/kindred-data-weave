@@ -49,8 +49,13 @@ const TestSection = ({ title, children, onSave, onFinalSave, onClear, onExportPD
         onClick={() => setOpen(!open)}
       >
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
-            {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          <CardTitle className="text-base font-semibold flex items-center gap-2 group">
+            <span
+              className="inline-flex items-center justify-center h-6 w-6 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 transition-all duration-200 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50 group-hover:shadow-md flex-shrink-0"
+              title={open ? "Click to collapse" : "Click to expand"}
+            >
+              {open ? <ChevronDown className="h-5 w-5 transition-transform group-hover:scale-110" /> : <ChevronRight className="h-5 w-5 transition-transform group-hover:scale-110" />}
+            </span>
             {title}
           </CardTitle>
           <div className="flex flex-wrap gap-2 justify-end" onClick={(e) => e.stopPropagation()}>
