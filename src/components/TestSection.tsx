@@ -1,8 +1,9 @@
 import { ReactNode, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, CheckCircle2, ChevronDown, ChevronRight, FileDown, FlaskConical, Loader2, Save, Sheet, Trash2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, ChevronDown, ChevronRight, FileDown, FlaskConical, Loader2, Save, Sheet, Trash2, HelpCircle } from "lucide-react";
 import { toast } from "sonner";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import ProjectHeader from "@/components/ProjectHeader";
 import { useProject } from "@/context/ProjectContext";
 
@@ -18,6 +19,7 @@ type SmokeCheckStatus = {
 
 interface TestSectionProps {
   title: string;
+  tooltip?: string;
   children: ReactNode;
   onSave?: () => void | boolean | Promise<void | boolean>;
   onFinalSave?: () => void | Promise<void>;
@@ -32,7 +34,7 @@ interface TestSectionProps {
   lastSaveError?: string | null;
 }
 
-const TestSection = ({ title, children, onSave, onFinalSave, onClear, onExportPDF, onExportXLSX, onExportSmokeCheck, exportSmokeCheckDisabled, smokeCheckStatus, saveStatus = "idle", lastSavedAt, lastSaveError }: TestSectionProps) => {
+const TestSection = ({ title, tooltip, children, onSave, onFinalSave, onClear, onExportPDF, onExportXLSX, onExportSmokeCheck, exportSmokeCheckDisabled, smokeCheckStatus, saveStatus = "idle", lastSavedAt, lastSaveError }: TestSectionProps) => {
   const [open, setOpen] = useState(false);
   const project = useProject();
   const hasHeaderHandlers =
@@ -56,7 +58,25 @@ const TestSection = ({ title, children, onSave, onFinalSave, onClear, onExportPD
             >
               {open ? <ChevronDown className="h-5 w-5 transition-transform group-hover:scale-110" /> : <ChevronRight className="h-5 w-5 transition-transform group-hover:scale-110" />}
             </span>
-            {title}
+            <div className="flex items-center gap-2">
+              <span>{title}</span>
+              {tooltip && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="inline-flex items-center justify-center h-5 w-5 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <HelpCircle className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="max-w-xs">
+                    {tooltip}
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
           </CardTitle>
           <div className="flex flex-wrap gap-2 justify-end" onClick={(e) => e.stopPropagation()}>
             {onExportSmokeCheck && (
