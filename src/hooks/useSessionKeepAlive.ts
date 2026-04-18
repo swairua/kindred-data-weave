@@ -36,12 +36,22 @@ export const useSessionKeepAlive = (enabled: boolean = true, intervalMs: number 
         if (user) {
           const now = Date.now();
           lastPingRef.current = now;
-          console.log(`[KeepAlive] ${timestamp} Ping #${pingNumber} successful - user: ${user.name} (${user.email})`);
+          console.log(`[KeepAlive] ${timestamp} ✓ Ping #${pingNumber} SUCCESS - user: ${user.name} (${user.email})`);
         } else {
-          console.warn(`[KeepAlive] ${timestamp} Ping #${pingNumber} returned no user - session may have expired`);
+          console.warn(`[KeepAlive] ${timestamp} ⚠️ Ping #${pingNumber} returned no user - session may have expired on backend`);
+          console.warn("[KeepAlive] This could happen if:");
+          console.warn("  1. Session timeout on backend");
+          console.warn("  2. Backend session was manually cleared");
+          console.warn("  3. API connection issue (but returned 401)");
+          console.warn("[KeepAlive] User should be prompted to re-authenticate on next action");
         }
       } catch (error) {
-        console.warn(`[KeepAlive] ${timestamp} Ping #${pingNumber} failed:`, error instanceof Error ? error.message : error);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error(`[KeepAlive] ${timestamp} ✗ Ping #${pingNumber} FAILED:`, errorMsg);
+        console.error("[KeepAlive] This could indicate:");
+        console.error("  1. Network connectivity issue");
+        console.error("  2. API server is unreachable");
+        console.error("  3. Session token is invalid");
       }
     };
 

@@ -42,25 +42,32 @@ const PlasticLimitSection = ({ trials, result, onChangeTrials, liquidLimitMoistu
   }, []); // Only run once on mount
 
   const updateTrial = (index: number, field: keyof PlasticLimitTrial, value: string) => {
-    onChangeTrials(
-      displayTrials.map((trial, trialIndex) =>
-        trialIndex === index
-          ? {
-              ...trial,
-              [field]: field === "trialNo" || field === "containerNo" ? value : sanitizeNumericInput(value),
-            }
-          : trial,
-      ),
+    const updatedDisplayTrials = displayTrials.map((trial, trialIndex) =>
+      trialIndex === index
+        ? {
+            ...trial,
+            [field]: field === "trialNo" || field === "containerNo" ? value : sanitizeNumericInput(value),
+          }
+        : trial,
     );
+    // Preserve any PR/MG rows that were filtered out
+    const prMgRows = trials.filter((t) => t.containerNo === "PR" || t.containerNo === "MG");
+    onChangeTrials([...updatedDisplayTrials, ...prMgRows]);
   };
 
   const addTrial = () => {
-    onChangeTrials([...displayTrials, createTrial(displayTrials.length)]);
+    const newDisplayTrials = [...displayTrials, createTrial(displayTrials.length)];
+    // Preserve any PR/MG rows that were filtered out
+    const prMgRows = trials.filter((t) => t.containerNo === "PR" || t.containerNo === "MG");
+    onChangeTrials([...newDisplayTrials, ...prMgRows]);
   };
 
   const removeTrial = (index: number) => {
     const nextTrials = displayTrials.filter((_, trialIndex) => trialIndex !== index);
-    onChangeTrials(nextTrials.length === 0 ? [createTrial(0)] : nextTrials);
+    const finalTrials = nextTrials.length === 0 ? [createTrial(0)] : nextTrials;
+    // Preserve any PR/MG rows that were filtered out
+    const prMgRows = trials.filter((t) => t.containerNo === "PR" || t.containerNo === "MG");
+    onChangeTrials([...finalTrials, ...prMgRows]);
   };
 
   return (
