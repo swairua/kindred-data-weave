@@ -68,7 +68,8 @@ interface LogoutResponse {
 }
 
 export const buildApiUrl = (params?: Record<string, string | number | boolean | null | undefined>) => {
-  const url = new URL(API_BASE_URL);
+  // Handle relative URLs (e.g., /api.php) by providing the base origin
+  const url = new URL(API_BASE_URL, window.location.origin);
 
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
