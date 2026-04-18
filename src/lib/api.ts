@@ -17,13 +17,13 @@ export const setSessionToken = (token: string | null) => {
   const timestamp = new Date().toISOString();
   if (token) {
     localStorage.setItem(SESSION_STORAGE_KEY, token);
-    console.log(`[API] ${timestamp} Session token stored (${token.substring(0, 20)}...)`);
-    console.log("[API] Stack trace:", new Error().stack);
+    console.log(`[API] ${timestamp} ✓ Session token STORED (${token.substring(0, 20)}...)`);
+    console.log("[API] Stack trace for token storage:", new Error().stack);
   } else {
     const previousToken = localStorage.getItem(SESSION_STORAGE_KEY);
     localStorage.removeItem(SESSION_STORAGE_KEY);
-    console.log(`[API] ${timestamp} Session token cleared${previousToken ? ` (was: ${previousToken.substring(0, 20)}...)` : ""}`);
-    console.log("[API] Stack trace:", new Error().stack);
+    console.log(`[API] ${timestamp} ✗ Session token CLEARED${previousToken ? ` (was: ${previousToken.substring(0, 20)}...)` : ""}`);
+    console.log("[API] CRITICAL: Stack trace for token clearance (helps identify unexpected logouts):", new Error().stack);
   }
 };
 
@@ -161,6 +161,20 @@ export const apiRequest = async <T>(
       // Only log as error if it's unexpected (not the "me" action or status is not 401)
       if (response.status === 401 && params?.action === "me") {
         console.debug(`[API] Expected 401 on me endpoint - user not authenticated yet`);
+      } else if (response.status === 401) {
+        console.error(`[API] ⚠️ 401 UNAUTHORIZED on action: ${params?.action || 'unknown'}`);
+        console.error(`[API] This may cause unexpected logout if the user's session expired`);
+        console.error(`[API] Token was ${headers.get("X-Session-Token") ? "present" : "MISSING"}`);
+        console.error(`[API] Response data:`, JSON.stringify(data, null, 2));
+        console.error(`[API] Request URL:`, url);
+        console.error(`[API] Request headers sent:`, Object.fromEntries(headers.entries()));
+
+        // Log CORS-related headers for debugging
+        console.error(`[API] Response headers:`, {
+          "Access-Control-Allow-Credentials": response.headers.get("access-control-allow-credentials"),
+          "Access-Control-Allow-Origin": response.headers.get("access-control-allow-origin"),
+          "X-Session-Token": response.headers.get("X-Session-Token"),
+        });
       } else {
         console.error(`[API] Request failed: ${params?.action || 'unknown'} - Status: ${response.status} - ${errorMessage}`);
         console.error(`[API] Response data:`, JSON.stringify(data, null, 2));
@@ -245,33 +259,35 @@ export const loginUser = async (email: string, password: string) => {
 };
 
 export const fetchCurrentUser = async () => {
+  const timestamp = new Date().toISOString();
   try {
-    console.log("[API] === ME ENDPOINT REQUEST START ===");
+    console.log(`[API] ${timestamp} === ME ENDPOINT REQUEST START ===`);
     console.log("[API] Session token available:", getSessionToken() ? "✓ Yes" : "✗ No");
 
     const data = await apiRequest<CurrentUserResponse>(undefined, { action: "me" });
 
-    console.log("[API] === ME ENDPOINT RESPONSE ===");
+    console.log(`[API] ${timestamp} === ME ENDPOINT RESPONSE ===`);
 
     // If the response indicates not authenticated, return null
     if (data?.authenticated === false || !data?.user) {
-      console.log("[API] User not authenticated");
+      console.log(`[API] ${timestamp} User not authenticated (response indicated unauthenticated)`);
       return null;
     }
 
-    console.log("[API] User authenticated as:", data.user.name);
+    console.log(`[API] ${timestamp} ✓ User authenticated as: ${data.user.name} (${data.user.email})`);
     return data.user;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorTimestamp = new Date().toISOString();
 
     // 401 is expected when user is not authenticated - this is not an error condition
     if (errorMessage.includes("Unauthorized") || errorMessage.includes("401")) {
-      console.log("[API] User not authenticated (401 response)");
+      console.log(`[API] ${errorTimestamp} User not authenticated (401 response - session expired or not logged in)`);
       return null;
     }
 
-    console.warn("[API] me endpoint error:", errorMessage);
-    // API unavailable, network error - return null gracefully
+    console.warn(`[API] ${errorTimestamp} ⚠️ ME endpoint error (will return null and keep local session):`, errorMessage);
+    // API unavailable, network error - return null gracefully so we don't log users out unnecessarily
     return null;
   }
 };
