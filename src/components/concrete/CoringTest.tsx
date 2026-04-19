@@ -7,6 +7,7 @@ import { Plus, X } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
 import { generateTestPDF } from "@/lib/pdfGenerator";
 import { generateTestCSV } from "@/lib/csvExporter";
+import { generateTestExcel } from "@/lib/genericExcelExporter";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Label } from "@/components/ui/label";
@@ -78,8 +79,36 @@ const CoringTest = () => {
     generateTestPDF({ title: "Coring Test", ...project, tables: [tableData], chartImages });
   };
 
+  const exportXLSX = async () => {
+    let chartImages = {};
+    if (chartData.length >= 1) {
+      const chartBase64 = await captureChartAsBase64("coring-chart");
+      if (chartBase64) {
+        chartImages = { "Corrected Core Strengths": chartBase64 };
+      }
+    }
+
+    generateTestExcel({
+      data: {
+        title: "Coring Test",
+        fields: [
+          { label: "Avg Corrected Strength", value: avgStrength ? `${avgStrength} MPa` : "—" },
+          { label: "Cores Tested", value: strengths.length ? String(strengths.length) : "—" },
+        ],
+        tables: [tableData],
+        chartImages,
+      },
+      projectName: project.projectName,
+      clientName: project.clientName,
+      date: project.date,
+      labOrganization: project.labOrganization,
+      dateReported: project.dateReported,
+      checkedBy: project.checkedBy,
+    });
+  };
+
   return (
-    <TestSection title="Coring Test" onSave={() => {}} onClear={() => setRows([{ coreId: "CR1", diameter: "75", length: "", load: "" }])} onExportPDF={exportPDF}>
+    <TestSection title="Coring Test" onSave={() => {}} onClear={() => setRows([{ coreId: "CR1", diameter: "75", length: "", load: "" }])} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Core ID</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Dia (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Length (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">L/D</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Load (kN)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Strength</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Corrected</th><th className="w-10"></th></tr></thead>

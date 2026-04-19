@@ -7,6 +7,7 @@ import { Plus, X } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
 import { generateTestPDF } from "@/lib/pdfGenerator";
 import { generateTestCSV } from "@/lib/csvExporter";
+import { generateTestExcel } from "@/lib/genericExcelExporter";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine } from "recharts";
 import { Label } from "@/components/ui/label";
@@ -76,8 +77,36 @@ const ConcreteCubesTest = () => {
     generateTestPDF({ title: "Concrete Cubes", ...project, tables: [tableData], chartImages });
   };
 
+  const exportXLSX = async () => {
+    let chartImages = {};
+    if (chartData.length >= 1) {
+      const chartBase64 = await captureChartAsBase64("cubes-chart");
+      if (chartBase64) {
+        chartImages = { "Cube Strengths vs Target Grade": chartBase64 };
+      }
+    }
+
+    generateTestExcel({
+      data: {
+        title: "Concrete Cubes",
+        fields: [
+          { label: "Avg Strength", value: avgStrength ? `${avgStrength} MPa` : "—" },
+          { label: "Pass Rate", value: strengths.length ? `${passCount}/${strengths.length}` : "—" },
+        ],
+        tables: [tableData],
+        chartImages,
+      },
+      projectName: project.projectName,
+      clientName: project.clientName,
+      date: project.date,
+      labOrganization: project.labOrganization,
+      dateReported: project.dateReported,
+      checkedBy: project.checkedBy,
+    });
+  };
+
   return (
-    <TestSection title="Concrete Cubes" onSave={() => {}} onClear={() => setRows([{ cubeId: "C1", age: "7", load: "", size: "150", mass: "" }])} onExportPDF={exportPDF}>
+    <TestSection title="Concrete Cubes" onSave={() => {}} onClear={() => setRows([{ cubeId: "C1", age: "7", load: "", size: "150", mass: "" }])} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
       <div className="flex items-center gap-3 mb-4">
         <Label className="text-xs text-muted-foreground whitespace-nowrap">Target Grade (MPa)</Label>
         <Select value={gradeTarget} onValueChange={setGradeTarget}>
