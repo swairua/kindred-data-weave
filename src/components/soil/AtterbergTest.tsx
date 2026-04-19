@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import TestSection from "@/components/TestSection";
 
 import AtterbergTestCard from "./AtterbergTestCard";
+import TestTypeColumn from "./TestTypeColumn";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
@@ -597,6 +598,16 @@ const AtterbergTest = () => {
   const [previewData, setPreviewData] = useState<ExportPreviewData | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [isExporting, setIsExporting] = useState<"json" | "pdf" | "xlsx" | null>(null);
+  const [selectedTestIds, setSelectedTestIds] = useState<
+    Record<
+      string,
+      {
+        liquidLimit: string | null;
+        plasticLimit: string | null;
+        shrinkageLimit: string | null;
+      }
+    >
+  >({});
   const saveStatusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hydratedRef = useRef(false);
   const lastLoadedLookupRef = useRef<string | null>(null);
@@ -1842,6 +1853,16 @@ const AtterbergTest = () => {
                 onExportXLSX={handleRecordExportXLSX}
                 onExportJSON={handleRecordExportJSON}
                 onRegisterChartRef={registerChartRef}
+                selectedTestIds={selectedTestIds[record.id]}
+                onSelectTest={(recordId, testType, testId) => {
+                  setSelectedTestIds((prev) => ({
+                    ...prev,
+                    [recordId]: {
+                      ...(prev[recordId] || { liquidLimit: null, plasticLimit: null, shrinkageLimit: null }),
+                      [testType]: testId,
+                    },
+                  }));
+                }}
               />
             ))}
           </div>
@@ -1912,6 +1933,12 @@ interface RecordCardProps {
   onExportXLSX: (recordId: string) => Promise<boolean>;
   onExportJSON: (recordId: string) => boolean;
   onRegisterChartRef: (recordId: string, ref: HTMLDivElement | null) => void;
+  selectedTestIds?: {
+    liquidLimit: string | null;
+    plasticLimit: string | null;
+    shrinkageLimit: string | null;
+  };
+  onSelectTest?: (recordId: string, testType: AtterbergTestType, testId: string) => void;
 }
 
 const RecordCard = ({
@@ -1939,10 +1966,40 @@ const RecordCard = ({
   onExportXLSX,
   onExportJSON,
   onRegisterChartRef,
+  selectedTestIds,
+  onSelectTest,
 }: RecordCardProps) => {
   const [nextTestType, setNextTestType] = useState<AtterbergTestType>("liquidLimit");
   const [isExporting, setIsExporting] = useState<"pdf" | "xlsx" | "json" | null>(null);
   const liquidLimitChartRef = useRef<HTMLDivElement>(null);
+
+  // Group tests by type
+  const testsByType = useMemo(
+    () => ({
+      liquidLimit: record.tests.filter((t) => t.type === "liquidLimit"),
+      plasticLimit: record.tests.filter((t) => t.type === "plasticLimit"),
+      shrinkageLimit: record.tests.filter((t) => t.type === "shrinkageLimit"),
+    }),
+    [record.tests]
+  );
+
+  // Initialize selected test IDs when tests change or record changes
+  useEffect(() => {
+    if (!selectedTestIds || !onSelectTest) return;
+
+    const recordIds = selectedTestIds[record.id];
+    const types: AtterbergTestType[] = ["liquidLimit", "plasticLimit", "shrinkageLimit"];
+
+    types.forEach((type) => {
+      const testsOfType = testsByType[type];
+      const currentSelectedId = recordIds?.[type];
+
+      // If no test is selected for this type, or the selected test no longer exists, select the first one
+      if (testsOfType.length > 0 && (!currentSelectedId || !testsOfType.find((t) => t.id === currentSelectedId))) {
+        onSelectTest(record.id, type, testsOfType[0].id);
+      }
+    });
+  }, [testsByType, record.id, selectedTestIds, onSelectTest]);
 
   // Register chart refs with parent when they change
   useEffect(() => {
@@ -2129,36 +2186,61 @@ const RecordCard = ({
                 No tests added yet. Select a test type above and click "Add Test" to begin.
               </div>
             ) : (
-              <div className="space-y-3">
-                {record.tests.map((test) => {
-                  // Calculate liquid limit moisture for PR trial in PL section
-                  let liquidLimitMoisture: number | null = null;
-                  if (test.type === "plasticLimit") {
-                    const llTest = record.tests.find((t) => t.type === "liquidLimit") as LiquidLimitTest | undefined;
-                    if (llTest) {
-                      liquidLimitMoisture = calculateLiquidLimit(llTest.trials);
-                    }
-                  }
-
-                  return (
-                    <AtterbergTestCard
-                      key={test.id}
-                      test={test}
-                      recordId={record.id}
-                      liquidLimitMoisture={liquidLimitMoisture}
-                      recordPlasticLimit={record.results.plasticLimit ?? null}
-                      recordPassing425um={record.passing425um}
-                      onDelete={() => onRemoveTest(test.id)}
-                      onUpdateTitle={(title) => onUpdateTestTitle(test.id, title)}
-                      onUpdateType={(type) => onUpdateTestType(test.id, type)}
-                      onToggleExpanded={() => onToggleTestExpanded(test.id)}
-                      onUpdateLiquidLimitTrials={(trials) => onUpdateLiquidLimitTrials(test.id, trials)}
-                      onUpdatePlasticLimitTrials={(trials) => onUpdatePlasticLimitTrials(test.id, trials)}
-                      onUpdateShrinkageLimitTrials={(trials) => onUpdateShrinkageLimitTrials(test.id, trials)}
-                      onSyncResult={onSyncTest}
-                    />
-                  );
-                })}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <TestTypeColumn
+                  testType="liquidLimit"
+                  tests={testsByType.liquidLimit}
+                  selectedTestId={selectedTestIds?.[record.id]?.liquidLimit || null}
+                  onSelectTest={(testId) => onSelectTest?.(record.id, "liquidLimit", testId)}
+                  recordId={record.id}
+                  recordPlasticLimit={record.results.plasticLimit ?? null}
+                  recordPassing425um={record.passing425um}
+                  onDelete={onRemoveTest}
+                  onUpdateTitle={onUpdateTestTitle}
+                  onUpdateType={onUpdateTestType}
+                  onToggleExpanded={onToggleTestExpanded}
+                  onUpdateLiquidLimitTrials={onUpdateLiquidLimitTrials}
+                  onUpdatePlasticLimitTrials={onUpdatePlasticLimitTrials}
+                  onUpdateShrinkageLimitTrials={onUpdateShrinkageLimitTrials}
+                  onSyncResult={onSyncTest}
+                  allTests={record.tests}
+                />
+                <TestTypeColumn
+                  testType="plasticLimit"
+                  tests={testsByType.plasticLimit}
+                  selectedTestId={selectedTestIds?.[record.id]?.plasticLimit || null}
+                  onSelectTest={(testId) => onSelectTest?.(record.id, "plasticLimit", testId)}
+                  recordId={record.id}
+                  recordPlasticLimit={record.results.plasticLimit ?? null}
+                  recordPassing425um={record.passing425um}
+                  onDelete={onRemoveTest}
+                  onUpdateTitle={onUpdateTestTitle}
+                  onUpdateType={onUpdateTestType}
+                  onToggleExpanded={onToggleTestExpanded}
+                  onUpdateLiquidLimitTrials={onUpdateLiquidLimitTrials}
+                  onUpdatePlasticLimitTrials={onUpdatePlasticLimitTrials}
+                  onUpdateShrinkageLimitTrials={onUpdateShrinkageLimitTrials}
+                  onSyncResult={onSyncTest}
+                  allTests={record.tests}
+                />
+                <TestTypeColumn
+                  testType="shrinkageLimit"
+                  tests={testsByType.shrinkageLimit}
+                  selectedTestId={selectedTestIds?.[record.id]?.shrinkageLimit || null}
+                  onSelectTest={(testId) => onSelectTest?.(record.id, "shrinkageLimit", testId)}
+                  recordId={record.id}
+                  recordPlasticLimit={record.results.plasticLimit ?? null}
+                  recordPassing425um={record.passing425um}
+                  onDelete={onRemoveTest}
+                  onUpdateTitle={onUpdateTestTitle}
+                  onUpdateType={onUpdateTestType}
+                  onToggleExpanded={onToggleTestExpanded}
+                  onUpdateLiquidLimitTrials={onUpdateLiquidLimitTrials}
+                  onUpdatePlasticLimitTrials={onUpdatePlasticLimitTrials}
+                  onUpdateShrinkageLimitTrials={onUpdateShrinkageLimitTrials}
+                  onSyncResult={onSyncTest}
+                  allTests={record.tests}
+                />
               </div>
             )}
 
