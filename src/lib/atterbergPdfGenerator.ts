@@ -598,9 +598,9 @@ function drawRecordPage(
   y += 9;
 
   // ── Layout: Left side = charts, Right side = LS + Results + Classification ──
-  const leftW = contentW * 0.48;
-  const rightW = contentW * 0.5;
-  const rightX = margin + contentW * 0.5;
+  const leftW = contentW * 0.45;
+  const rightX = margin + leftW + 4;
+  const rightW = contentW - leftW - 4;
   const sectionStartY = y;
 
   // Check if we need a page break for the right-side sections (approx 75-85 units total)
