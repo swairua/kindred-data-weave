@@ -166,6 +166,7 @@ const Index = ({ initialTab }: IndexProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmittingLogin, setIsSubmittingLogin] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
   const [projectHistory, setProjectHistory] = useState<ApiProjectRow[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
   const today = new Date().toISOString().split("T")[0];
@@ -381,6 +382,7 @@ const Index = ({ initialTab }: IndexProps) => {
     }
 
     setIsSubmittingLogin(true);
+    setLoginError(null);
 
     try {
       const response = await loginUser(nextEmail, password);
@@ -390,9 +392,11 @@ const Index = ({ initialTab }: IndexProps) => {
       setPassword("");
       toast.success(`Signed in as ${response.user.name}`);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Login failed";
       setCurrentUser(null);
       setAuthStatus("unauthenticated");
-      toast.error(error instanceof Error ? error.message : "Login failed");
+      setLoginError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsSubmittingLogin(false);
     }
@@ -831,9 +835,9 @@ const Index = ({ initialTab }: IndexProps) => {
                             <Button
                               type="submit"
                               className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-all"
-                              disabled={isLoggingIn}
+                              disabled={isSubmittingLogin}
                             >
-                              {isLoggingIn ? (
+                              {isSubmittingLogin ? (
                                 <>
                                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                   Signing in...
