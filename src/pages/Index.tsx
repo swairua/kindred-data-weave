@@ -37,7 +37,7 @@ import Reports from "@/pages/Reports";
 import Admin from "@/pages/Admin";
 
 import Navigation from "@/components/Navigation";
-import { fetchCurrentUser, loginUser, logoutUser, type ApiUser, listRecords, debugAuthState } from "@/lib/api";
+import { fetchCurrentUser, loginUser, logoutUser, type ApiUser, listRecords, debugAuthState, debugApiConnectivity } from "@/lib/api";
 import { registerAllTests } from "@/lib/testRegistration";
 import { registry } from "@/lib/testRegistry";
 
@@ -166,16 +166,20 @@ const Index = ({ initialTab }: IndexProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmittingLogin, setIsSubmittingLogin] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
   const [projectHistory, setProjectHistory] = useState<ApiProjectRow[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
   const today = new Date().toISOString().split("T")[0];
 
   const isAuthenticated = authStatus === "authenticated";
 
-  // Expose debug function to window for console access
+  // Expose debug functions to window for console access
   useEffect(() => {
     (window as any).__debugAuth = debugAuthState;
-    console.log("[Index] Debug tip: Run debugAuthState() in console to check session token status");
+    (window as any).__debugApi = debugApiConnectivity;
+    console.log("[Index] Debug tips:");
+    console.log("[Index]   - Run debugAuthState() to check session token status");
+    console.log("[Index]   - Run debugApiConnectivity() to test API server connectivity");
   }, []);
 
   useEffect(() => {
@@ -381,6 +385,7 @@ const Index = ({ initialTab }: IndexProps) => {
     }
 
     setIsSubmittingLogin(true);
+    setLoginError(null);
 
     try {
       const response = await loginUser(nextEmail, password);
@@ -390,9 +395,11 @@ const Index = ({ initialTab }: IndexProps) => {
       setPassword("");
       toast.success(`Signed in as ${response.user.name}`);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Login failed";
       setCurrentUser(null);
       setAuthStatus("unauthenticated");
-      toast.error(error instanceof Error ? error.message : "Login failed");
+      setLoginError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsSubmittingLogin(false);
     }
@@ -490,7 +497,7 @@ const Index = ({ initialTab }: IndexProps) => {
           </header>
 
           <main className="flex-1 overflow-y-auto px-0 py-6 md:px-4">
-            <div className="container max-w-full md:max-w-6xl mx-auto md:px-4">
+            <div className="w-full md:max-w-6xl md:mx-auto">
             {authStatus === "checking" ? (
             <div className="flex min-h-[60vh] items-center justify-center">
               <Card className="w-full max-w-md shadow-sm">
@@ -831,9 +838,9 @@ const Index = ({ initialTab }: IndexProps) => {
                             <Button
                               type="submit"
                               className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-all"
-                              disabled={isLoggingIn}
+                              disabled={isSubmittingLogin}
                             >
-                              {isLoggingIn ? (
+                              {isSubmittingLogin ? (
                                 <>
                                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                   Signing in...

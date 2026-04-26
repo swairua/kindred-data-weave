@@ -56,6 +56,45 @@ export const debugAuthState = () => {
   console.log("[API] For next request, header will be:", token ? `X-Session-Token: ${token}` : "X-Session-Token: (not sent)");
 };
 
+// Debug function to check API connectivity - can be called from browser console
+export const debugApiConnectivity = async () => {
+  console.log("[API] === API CONNECTIVITY DEBUG ===");
+  console.log("[API] Checking API configuration...");
+  console.log("[API] VITE_API_BASE_URL env:", configuredApiBaseUrl ? `"${configuredApiBaseUrl}"` : "(not set)");
+  console.log("[API] Development mode:", import.meta.env.DEV);
+  console.log("[API] API_BASE_URL:", API_BASE_URL);
+  console.log("[API] window.location.origin:", window.location.origin);
+
+  console.log("[API] Attempting test request to API...");
+  try {
+    const url = buildApiUrl({ action: "me" });
+    console.log("[API] Test URL:", url);
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Accept": "application/json",
+      },
+    });
+
+    console.log("[API] ✓ Connected to API server!");
+    console.log("[API] Response status:", response.status);
+    console.log("[API] Response headers:", {
+      "Content-Type": response.headers.get("Content-Type"),
+      "Access-Control-Allow-Origin": response.headers.get("Access-Control-Allow-Origin"),
+    });
+
+  } catch (error) {
+    console.error("[API] ✗ Failed to connect to API server");
+    console.error("[API] Error:", error instanceof Error ? error.message : String(error));
+    console.error("[API] Troubleshooting steps:");
+    console.error("[API] 1. Check if lab.wayrus.co.ke is reachable");
+    console.error("[API] 2. Verify VITE_API_BASE_URL environment variable is set correctly");
+    console.error("[API] 3. Check browser network tab for CORS errors");
+    console.error("[API] 4. Ensure the API server is running");
+  }
+};
+
 export interface ApiUser {
   id: number;
   email: string;
@@ -133,9 +172,13 @@ export const apiRequest = async <T>(
   const url = buildApiUrl(params);
   const controller = new AbortController();
   const REQUEST_TIMEOUT = 30000; // 30 second timeout (increased from 8s for reliability)
-  const timeoutId = setTimeout(() => {
+  let timeoutId: NodeJS.Timeout | null = null;
+  let isAborted = false;
+
+  timeoutId = setTimeout(() => {
     console.warn(`[API] Request timeout after ${REQUEST_TIMEOUT}ms for action: ${params?.action || 'unknown'}`);
-    controller.abort();
+    isAborted = true;
+    controller.abort(new Error("Request timeout"));
   }, REQUEST_TIMEOUT);
 
   try {
@@ -144,6 +187,9 @@ export const apiRequest = async <T>(
       headers,
       signal: controller.signal,
     });
+
+    // Clear timeout on successful response
+    if (timeoutId) clearTimeout(timeoutId);
 
     // Check for session token in response headers
     const responseSessionToken = response.headers.get("X-Session-Token");
@@ -195,21 +241,39 @@ export const apiRequest = async <T>(
     return data as T;
   } catch (error) {
     // Ensure timeout cleanup
-    clearTimeout(timeoutId);
+    if (timeoutId) clearTimeout(timeoutId);
 
     // Handle abort errors with specific messaging
     if (error instanceof DOMException && error.name === "AbortError") {
-      throw new Error(`Request timeout: The server took too long to respond (>${REQUEST_TIMEOUT / 1000}s). Please check your network connection and try again.`);
+      const reason = (error as any).reason?.message || "Request timeout";
+      if (isAborted) {
+        console.warn(`[API] Request timeout for action: ${params?.action || 'unknown'}`);
+        throw new Error(`Request timeout: The server took too long to respond (>${REQUEST_TIMEOUT / 1000}s). Please check your network connection and try again.`);
+      }
+      throw new Error(`Request was aborted: ${reason}`);
     }
 
     if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
       // Network error - provide helpful debugging info
-      console.warn(`Network error connecting to API at ${url}. Please check if the API server is reachable.`);
-      throw new Error(`Unable to reach API server. Please ensure you have a valid internet connection and the API server is running.`);
+      const action = params?.action || 'unknown';
+      console.warn(`[API] Failed to fetch for action: ${action}`);
+      console.warn(`[API] URL attempted: ${url}`);
+      console.warn(`[API] This typically means:`);
+      console.warn(`[API]   1. The API server is unreachable`);
+      console.warn(`[API]   2. Network connectivity issue`);
+      console.warn(`[API]   3. CORS or proxy configuration issue`);
+      console.warn(`[API]   4. API_BASE_URL is incorrect`);
+
+      // For background tasks (like project loading), be less verbose
+      const isBackgroundTask = ['list', 'me', 'logout'].includes(action);
+      if (!isBackgroundTask) {
+        throw new Error(`Unable to reach API server at ${url}. Please ensure you have a valid internet connection and the API server is running.`);
+      } else {
+        throw new Error(`Unable to reach API server. Please check your connection and try again.`);
+      }
     }
+
     throw error;
-  } finally {
-    clearTimeout(timeoutId);
   }
 };
 
@@ -313,8 +377,19 @@ export interface ApiWriteResponse<T> {
   last_saved_at?: string;
 }
 
-export const listRecords = async <T>(table: string, params?: Record<string, string | number | boolean | null | undefined>) =>
-  apiRequest<ApiListResponse<T>>(undefined, { action: "list", table, ...params });
+export const listRecords = async <T>(table: string, params?: Record<string, string | number | boolean | null | undefined>) => {
+  const timestamp = new Date().toISOString();
+  console.log(`[API] ${timestamp} Starting list request for table: ${table} with params:`, params);
+  try {
+    const response = await apiRequest<ApiListResponse<T>>(undefined, { action: "list", table, ...params });
+    console.log(`[API] ${timestamp} Successfully loaded ${response.data.length} records from ${table}`);
+    return response;
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error(`[API] ${timestamp} Failed to load records from ${table}:`, errorMsg);
+    throw error;
+  }
+};
 
 export const readRecord = async <T>(table: string, id: string | number) =>
   apiRequest<ApiReadResponse<T>>(undefined, { action: "read", table, id });

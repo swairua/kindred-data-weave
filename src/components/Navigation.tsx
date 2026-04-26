@@ -9,6 +9,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarSeparator,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 
@@ -30,10 +31,23 @@ const Navigation = ({
   userEmail,
 }: NavigationProps) => {
   const navigate = useNavigate();
+  const { setOpenMobile, isMobile } = useSidebar();
 
   const handleNavigation = (view: "dashboard" | "tests" | "reports" | "admin", path: string) => {
     onViewChange(view);
     navigate(path);
+    // Close mobile drawer after navigation
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
+
+  const handleNewProject = () => {
+    onStartNewProject();
+    // Close mobile drawer after action
+    if (isMobile) {
+      setOpenMobile(false);
+    }
   };
 
   const navItems = [
@@ -41,7 +55,7 @@ const Navigation = ({
       id: "new-project",
       label: "New Project",
       icon: Plus,
-      onClick: onStartNewProject,
+      onClick: handleNewProject,
       isAction: true,
     },
     {
@@ -119,7 +133,13 @@ const Navigation = ({
               variant="ghost"
               size="sm"
               className="w-full justify-start gap-2 px-2"
-              onClick={onLogout}
+              onClick={() => {
+                onLogout();
+                // Close mobile drawer after logout
+                if (isMobile) {
+                  setOpenMobile(false);
+                }
+              }}
             >
               <LogOut className="h-4 w-4" />
               <span>Logout</span>
