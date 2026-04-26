@@ -47,10 +47,10 @@ const TestSection = ({ title, tooltip, children, onSave, onFinalSave, onClear, o
   return (
     <Card className="shadow-sm">
       <CardHeader
-        className="cursor-pointer select-none py-3 px-4"
+        className="cursor-pointer select-none py-2 px-3"
         onClick={() => setOpen(!open)}
       >
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <CardTitle
             className="text-base font-semibold flex items-center gap-2 group"
             tooltip={tooltip}
@@ -64,7 +64,7 @@ const TestSection = ({ title, tooltip, children, onSave, onFinalSave, onClear, o
             </span>
             <span className="min-w-0">{title}</span>
           </CardTitle>
-          <div className="flex flex-wrap gap-2 justify-start sm:justify-end" onClick={(e) => e.stopPropagation()}>
+          <div className="flex flex-wrap gap-1.5 justify-start sm:justify-end" onClick={(e) => e.stopPropagation()}>
             {onExportSmokeCheck && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -213,7 +213,7 @@ const TestSection = ({ title, tooltip, children, onSave, onFinalSave, onClear, o
           <Tooltip>
             <TooltipTrigger asChild>
               <div
-                className={`mt-3 rounded-md border px-3 py-2 text-xs cursor-help ${
+                className={`mt-2 rounded-md border px-2 py-1.5 text-xs cursor-help ${
                   saveStatus === "saved"
                     ? "border-emerald-200 bg-emerald-50 text-emerald-800"
                     : saveStatus === "error"
@@ -264,7 +264,7 @@ const TestSection = ({ title, tooltip, children, onSave, onFinalSave, onClear, o
           <Tooltip>
             <TooltipTrigger asChild>
               <div
-                className={`mt-3 rounded-md border px-3 py-2 text-xs cursor-help ${
+                className={`mt-2 rounded-md border px-2 py-1.5 text-xs cursor-help ${
                   smokeCheckStatus.state === "success"
                     ? "border-emerald-200 bg-emerald-50 text-emerald-800"
                     : smokeCheckStatus.state === "error"
@@ -318,9 +318,9 @@ const TestSection = ({ title, tooltip, children, onSave, onFinalSave, onClear, o
         )}
       </CardHeader>
       {open && (
-        <CardContent className="px-4 pb-4 pt-0 space-y-4">
+        <CardContent className="px-3 pb-3 pt-0 space-y-2">
           {hasHeaderHandlers && (
-            <div className="rounded-md border bg-muted/20 p-4 print:hidden">
+            <div className="rounded-md border bg-muted/20 p-2 print:hidden">
               <ProjectHeader
                 projectName={project.projectName}
                 clientName={project.clientName}
