@@ -157,8 +157,9 @@ const Index = ({ initialTab }: IndexProps) => {
   const testData = useTestData();
   const isTestsPage = location.pathname === "/tests";
   const isReportsPage = location.pathname === "/reports";
+  const isAdminPage = location.pathname === "/admin";
   const [view, setView] = useState<"dashboard" | "tests" | "reports" | "admin">(
-    isReportsPage ? "reports" : isTestsPage ? "tests" : "dashboard",
+    isAdminPage ? "admin" : isReportsPage ? "reports" : isTestsPage ? "tests" : "dashboard",
   );
   const [projectName, setProjectName] = useState("");
   const [clientName, setClientName] = useState("");
@@ -251,6 +252,19 @@ const Index = ({ initialTab }: IndexProps) => {
   useEffect(() => {
     log("[Index] authStatus changed to:", authStatus);
   }, [authStatus]);
+
+  // Sync view state with URL changes
+  useEffect(() => {
+    if (isAdminPage) {
+      setView("admin");
+    } else if (isReportsPage) {
+      setView("reports");
+    } else if (isTestsPage) {
+      setView("tests");
+    } else {
+      setView("dashboard");
+    }
+  }, [location.pathname, isAdminPage, isReportsPage, isTestsPage]);
 
   useEffect(() => {
     if (authStatus !== "authenticated") {

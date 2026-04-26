@@ -94,7 +94,7 @@ const Navigation = ({
       id: "admin",
       label: "Admin",
       icon: Hammer,
-      onClick: () => handleNavigation("admin", "/"),
+      onClick: () => handleNavigation("admin", "/admin"),
       active: currentView === "admin",
     },
   ];
