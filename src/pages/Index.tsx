@@ -497,7 +497,7 @@ const Index = ({ initialTab }: IndexProps) => {
           </header>
 
           <main className="flex-1 overflow-y-auto px-0 py-6 md:px-4">
-            <div className="container max-w-full md:max-w-6xl mx-auto md:px-4">
+            <div className="w-full md:max-w-6xl md:mx-auto">
             {authStatus === "checking" ? (
             <div className="flex min-h-[60vh] items-center justify-center">
               <Card className="w-full max-w-md shadow-sm">
