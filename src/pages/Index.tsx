@@ -100,7 +100,7 @@ const TestsView = ({ initialTab }: { initialTab?: string }) => {
   const renderTestsByCategory = (category: TestCategory) => {
     const tests = testsByCategory[category];
     return (
-      <TabsContent value={category} className="space-y-4">
+      <TabsContent value={category} className="space-y-3">
         {tests.length === 0 ? (
           <Card>
             <CardContent className="pt-6">
@@ -121,9 +121,9 @@ const TestsView = ({ initialTab }: { initialTab?: string }) => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <Tabs defaultValue={initialTab || "soil"} className="w-full">
-        <TabsList className="w-full grid grid-cols-4 mb-6 h-11">
+        <TabsList className="w-full grid grid-cols-4 mb-4 h-11">
           <TabsTrigger value="soil" className="gap-1.5 text-sm">
             <Mountain className="h-4 w-4" /> Soil
           </TabsTrigger>
@@ -496,7 +496,7 @@ const Index = ({ initialTab }: IndexProps) => {
             </div>
           </header>
 
-          <main className="flex-1 overflow-y-auto px-0 py-6">
+          <main className="flex-1 overflow-y-auto px-0 py-4">
             <div className="w-full md:max-w-6xl md:mx-auto md:px-4">
             {authStatus === "checking" ? (
             <div className="flex min-h-[60vh] items-center justify-center">

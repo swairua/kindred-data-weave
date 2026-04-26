@@ -1710,7 +1710,7 @@ const AtterbergTest = () => {
         lastSavedAt={lastSavedAt}
         lastSaveError={lastSaveError}
       >
-      <div className="space-y-4 print:space-y-3">
+      <div className="space-y-3 print:space-y-2">
         <Card className="border bg-muted/20 shadow-none print:border-border print:bg-transparent">
           <CardContent className="grid gap-1 sm:gap-2 p-2 sm:p-4 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-8">
             <OverviewMetric label="Project" value={project.projectName || "Current project"} />
@@ -2154,70 +2154,75 @@ const RecordCard = ({
         </CardHeader>
 
         <CollapsibleContent>
-          <CardContent className="space-y-4 pt-0">
-            <div className="grid grid-cols-1 gap-2 sm:gap-3 lg:gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <TestTypeColumn
-                testType="liquidLimit"
-                tests={testsByType.liquidLimit}
-                selectedTestId={selectedTestIds?.liquidLimit || null}
-                onSelectTest={(testId) => onSelectTest?.(record.id, "liquidLimit", testId)}
-                recordId={record.id}
-                recordPlasticLimit={record.results.plasticLimit ?? null}
-                recordPassing425um={record.passing425um}
-                onAddTest={() => onAddTest("liquidLimit")}
-                onDelete={onRemoveTest}
-                onUpdateTitle={onUpdateTestTitle}
-                onUpdateType={onUpdateTestType}
-                onToggleExpanded={onToggleTestExpanded}
-                onUpdateLiquidLimitTrials={onUpdateLiquidLimitTrials}
-                onUpdatePlasticLimitTrials={onUpdatePlasticLimitTrials}
-                onUpdateShrinkageLimitTrials={onUpdateShrinkageLimitTrials}
-                onSyncResult={onSyncTest}
-                allTests={record.tests}
-              />
-              <TestTypeColumn
-                testType="plasticLimit"
-                tests={testsByType.plasticLimit}
-                selectedTestId={selectedTestIds?.plasticLimit || null}
-                onSelectTest={(testId) => onSelectTest?.(record.id, "plasticLimit", testId)}
-                recordId={record.id}
-                recordPlasticLimit={record.results.plasticLimit ?? null}
-                recordPassing425um={record.passing425um}
-                onAddTest={() => onAddTest("plasticLimit")}
-                onDelete={onRemoveTest}
-                onUpdateTitle={onUpdateTestTitle}
-                onUpdateType={onUpdateTestType}
-                onToggleExpanded={onToggleTestExpanded}
-                onUpdateLiquidLimitTrials={onUpdateLiquidLimitTrials}
-                onUpdatePlasticLimitTrials={onUpdatePlasticLimitTrials}
-                onUpdateShrinkageLimitTrials={onUpdateShrinkageLimitTrials}
-                onSyncResult={onSyncTest}
-                allTests={record.tests}
-              />
-              <TestTypeColumn
-                testType="shrinkageLimit"
-                tests={testsByType.shrinkageLimit}
-                selectedTestId={selectedTestIds?.shrinkageLimit || null}
-                onSelectTest={(testId) => onSelectTest?.(record.id, "shrinkageLimit", testId)}
-                recordId={record.id}
-                recordPlasticLimit={record.results.plasticLimit ?? null}
-                recordPassing425um={record.passing425um}
-                onAddTest={() => onAddTest("shrinkageLimit")}
-                onDelete={onRemoveTest}
-                onUpdateTitle={onUpdateTestTitle}
-                onUpdateType={onUpdateTestType}
-                onToggleExpanded={onToggleTestExpanded}
-                onUpdateLiquidLimitTrials={onUpdateLiquidLimitTrials}
-                onUpdatePlasticLimitTrials={onUpdatePlasticLimitTrials}
-                onUpdateShrinkageLimitTrials={onUpdateShrinkageLimitTrials}
-                onSyncResult={onSyncTest}
-                allTests={record.tests}
-              />
-            </div>
+          <CardContent className="space-y-3 pt-0">
+            {(() => {
+              const hasExpandedTest = record.tests.some(t => t.isExpanded);
+              return (
+                <div className={`grid gap-2 sm:gap-3 ${hasExpandedTest ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
+                  <TestTypeColumn
+                    testType="liquidLimit"
+                    tests={testsByType.liquidLimit}
+                    selectedTestId={selectedTestIds?.liquidLimit || null}
+                    onSelectTest={(testId) => onSelectTest?.(record.id, "liquidLimit", testId)}
+                    recordId={record.id}
+                    recordPlasticLimit={record.results.plasticLimit ?? null}
+                    recordPassing425um={record.passing425um}
+                    onAddTest={() => onAddTest("liquidLimit")}
+                    onDelete={onRemoveTest}
+                    onUpdateTitle={onUpdateTestTitle}
+                    onUpdateType={onUpdateTestType}
+                    onToggleExpanded={onToggleTestExpanded}
+                    onUpdateLiquidLimitTrials={onUpdateLiquidLimitTrials}
+                    onUpdatePlasticLimitTrials={onUpdatePlasticLimitTrials}
+                    onUpdateShrinkageLimitTrials={onUpdateShrinkageLimitTrials}
+                    onSyncResult={onSyncTest}
+                    allTests={record.tests}
+                  />
+                  <TestTypeColumn
+                    testType="plasticLimit"
+                    tests={testsByType.plasticLimit}
+                    selectedTestId={selectedTestIds?.plasticLimit || null}
+                    onSelectTest={(testId) => onSelectTest?.(record.id, "plasticLimit", testId)}
+                    recordId={record.id}
+                    recordPlasticLimit={record.results.plasticLimit ?? null}
+                    recordPassing425um={record.passing425um}
+                    onAddTest={() => onAddTest("plasticLimit")}
+                    onDelete={onRemoveTest}
+                    onUpdateTitle={onUpdateTestTitle}
+                    onUpdateType={onUpdateTestType}
+                    onToggleExpanded={onToggleTestExpanded}
+                    onUpdateLiquidLimitTrials={onUpdateLiquidLimitTrials}
+                    onUpdatePlasticLimitTrials={onUpdatePlasticLimitTrials}
+                    onUpdateShrinkageLimitTrials={onUpdateShrinkageLimitTrials}
+                    onSyncResult={onSyncTest}
+                    allTests={record.tests}
+                  />
+                  <TestTypeColumn
+                    testType="shrinkageLimit"
+                    tests={testsByType.shrinkageLimit}
+                    selectedTestId={selectedTestIds?.shrinkageLimit || null}
+                    onSelectTest={(testId) => onSelectTest?.(record.id, "shrinkageLimit", testId)}
+                    recordId={record.id}
+                    recordPlasticLimit={record.results.plasticLimit ?? null}
+                    recordPassing425um={record.passing425um}
+                    onAddTest={() => onAddTest("shrinkageLimit")}
+                    onDelete={onRemoveTest}
+                    onUpdateTitle={onUpdateTestTitle}
+                    onUpdateType={onUpdateTestType}
+                    onToggleExpanded={onToggleTestExpanded}
+                    onUpdateLiquidLimitTrials={onUpdateLiquidLimitTrials}
+                    onUpdatePlasticLimitTrials={onUpdatePlasticLimitTrials}
+                    onUpdateShrinkageLimitTrials={onUpdateShrinkageLimitTrials}
+                    onSyncResult={onSyncTest}
+                    allTests={record.tests}
+                  />
+                </div>
+              );
+            })()}
 
-            <div className="space-y-4">
-              <div className="rounded-lg border bg-muted/20 p-4">
-                <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-3">
+              <div className="rounded-lg border bg-muted/20 p-3">
+                <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                   <h4 className="text-sm font-semibold">Record Summary</h4>
                   <div className="text-xs text-muted-foreground">
                     {record.dataPoints} valid data point{record.dataPoints === 1 ? "" : "s"} • {record.completedTests} completed test{record.completedTests === 1 ? "" : "s"}

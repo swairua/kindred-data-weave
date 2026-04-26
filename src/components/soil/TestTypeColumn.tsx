@@ -87,9 +87,9 @@ export default function TestTypeColumn({
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-1">
       <h3 className="text-sm font-semibold">{label}</h3>
-      
+
       {tests.length > 1 && (
         <Select value={selectedTestId || ""} onValueChange={onSelectTest}>
           <SelectTrigger className="h-8 text-xs">

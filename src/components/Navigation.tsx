@@ -1,5 +1,6 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Plus, LayoutDashboard, FlaskConical, FileText, Hammer, LogOut } from "lucide-react";
+import { useEffect } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -31,7 +32,16 @@ const Navigation = ({
   userEmail,
 }: NavigationProps) => {
   const navigate = useNavigate();
-  const { setOpenMobile, isMobile } = useSidebar();
+  const location = useLocation();
+  const { setOpenMobile, isMobile, toggleSidebar, state } = useSidebar();
+
+  // Auto-collapse sidebar on tests page for better space utilization
+  useEffect(() => {
+    const isTestsPage = location.pathname === "/tests";
+    if (isTestsPage && state === "expanded") {
+      toggleSidebar();
+    }
+  }, [location.pathname, state, toggleSidebar]);
 
   const handleNavigation = (view: "dashboard" | "tests" | "reports" | "admin", path: string) => {
     onViewChange(view);
