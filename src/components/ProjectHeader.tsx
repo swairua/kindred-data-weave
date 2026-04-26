@@ -69,36 +69,36 @@ const ProjectHeader = ({
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Project Name</Label>
+          <Label className="text-xs sm:text-sm text-muted-foreground">Project Name</Label>
           <Input
             value={projectName}
             onChange={(e) => onProjectNameChange(e.target.value)}
             placeholder="Enter project name"
-            className="h-9"
+            className="h-9 text-sm"
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Client Name</Label>
+          <Label className="text-xs sm:text-sm text-muted-foreground">Client Name</Label>
           <Input
             value={clientName}
             onChange={(e) => onClientNameChange(e.target.value)}
             placeholder="Enter client name"
-            className="h-9"
+            className="h-9 text-sm"
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Date</Label>
-          <Input value={date} readOnly className="h-9 calculated-field cursor-default" />
+          <Label className="text-xs sm:text-sm text-muted-foreground">Date</Label>
+          <Input value={date} readOnly className="h-9 text-sm calculated-field cursor-default" />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+          <Label className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1.5">
             <History className="h-3.5 w-3.5" /> History
           </Label>
           {projectHistory.length > 0 ? (
             <Select value="" onValueChange={onLoadProject}>
-              <SelectTrigger className="h-9">
+              <SelectTrigger className="h-9 text-sm">
                 <SelectValue placeholder="Load a project" />
               </SelectTrigger>
               <SelectContent>
@@ -136,32 +136,32 @@ const ProjectHeader = ({
           </Button>
         </CollapsibleTrigger>
         <CollapsibleContent className="mt-3 space-y-3 pt-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Lab Organization</Label>
+              <Label className="text-xs sm:text-sm text-muted-foreground">Lab Organization</Label>
               <Input
                 value={projectMetadata.labOrganization || ""}
                 onChange={(e) => onMetadataChange("labOrganization", e.target.value)}
                 placeholder="Enter lab organization"
-                className="h-9"
+                className="h-9 text-sm"
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Date Reported</Label>
+              <Label className="text-xs sm:text-sm text-muted-foreground">Date Reported</Label>
               <Input
                 type="date"
                 value={projectMetadata.dateReported || ""}
                 onChange={(e) => onMetadataChange("dateReported", e.target.value)}
-                className="h-9"
+                className="h-9 text-sm"
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Checked By</Label>
+              <Label className="text-xs sm:text-sm text-muted-foreground">Checked By</Label>
               <Input
                 value={projectMetadata.checkedBy || ""}
                 onChange={(e) => onMetadataChange("checkedBy", e.target.value)}
                 placeholder="Enter name of person who checked"
-                className="h-9"
+                className="h-9 text-sm"
               />
             </div>
           </div>

@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { useState, useEffect, useMemo, FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { ProjectContext } from "@/context/ProjectContext";
@@ -163,7 +164,6 @@ const Index = ({ initialTab }: IndexProps) => {
   const [clientName, setClientName] = useState("");
   const [projectDate, setProjectDate] = useState<string | undefined>(undefined);
   const [currentProjectId, setCurrentProjectId] = useState<number | null>(null);
-  const [showAdvancedMetadata, setShowAdvancedMetadata] = useState(false);
   const [authStatus, setAuthStatus] = useState<AuthStatus>("checking");
   const [currentUser, setCurrentUser] = useState<ApiUser | null>(null);
   const [email, setEmail] = useState("");
@@ -176,14 +176,14 @@ const Index = ({ initialTab }: IndexProps) => {
 
   const isAuthenticated = authStatus === "authenticated";
 
-  // Expose debug functions to window for console access
-  useEffect(() => {
-    (window as any).__debugAuth = debugAuthState;
-    (window as any).__debugApi = debugApiConnectivity;
-    console.log("[Index] Debug tips:");
-    console.log("[Index]   - Run debugAuthState() to check session token status");
-    console.log("[Index]   - Run debugApiConnectivity() to test API server connectivity");
-  }, []);
+  // Enable debug logging via URL param (?debug=1)
+  const debugMode = new URLSearchParams(location.search).get("debug") === "1";
+  const log = (msg: string, ...args: any[]) => {
+    if (debugMode) console.log(msg, ...args);
+  };
+  const warn = (msg: string, ...args: any[]) => {
+    if (debugMode) console.warn(msg, ...args);
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -191,7 +191,7 @@ const Index = ({ initialTab }: IndexProps) => {
 
     const restoreSession = async () => {
       try {
-        console.log("[Index] Starting session restore...");
+        log("[Index] Starting session restore...");
 
         // Race the session restore against a 3-second timeout
         const sessionPromise = fetchCurrentUser();
@@ -200,26 +200,29 @@ const Index = ({ initialTab }: IndexProps) => {
         );
 
         const user = await Promise.race([sessionPromise, timeoutPromise]);
-        console.log("[Index] Session restore complete. User:", user);
+        log("[Index] Session restore complete. User:", user);
 
         if (!isMounted) return;
 
         if (user) {
-          console.log("[Index] User authenticated, setting authStatus to authenticated");
+          log("[Index] User authenticated, setting authStatus to authenticated");
           setCurrentUser(user);
           setAuthStatus("authenticated");
         } else {
-          console.log("[Index] No user, setting authStatus to unauthenticated");
+          log("[Index] No user, setting authStatus to unauthenticated");
           setCurrentUser(null);
           setAuthStatus("unauthenticated");
         }
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : String(err);
-        console.warn("[Index] Session restore failed:", errorMessage);
+        warn("[Index] Session restore failed:", errorMessage);
         if (isMounted) {
           setCurrentUser(null);
           setAuthStatus("unauthenticated");
         }
+      } finally {
+        // Clear the fallback timeout once session restore completes
+        clearTimeout(timeoutId);
       }
     };
 
@@ -229,7 +232,7 @@ const Index = ({ initialTab }: IndexProps) => {
     // Fallback timeout (should rarely be needed now with Promise.race)
     timeoutId = setTimeout(() => {
       if (isMounted) {
-        console.warn("[Index] Fallback timeout - setting to unauthenticated");
+        warn("[Index] Fallback timeout - setting to unauthenticated");
         setCurrentUser(null);
         setAuthStatus("unauthenticated");
       }
@@ -246,17 +249,17 @@ const Index = ({ initialTab }: IndexProps) => {
   useSessionKeepAlive(authStatus === "authenticated");
 
   useEffect(() => {
-    console.log("[Index] authStatus changed to:", authStatus);
+    log("[Index] authStatus changed to:", authStatus);
   }, [authStatus]);
 
   useEffect(() => {
     if (authStatus !== "authenticated") {
-      console.log("[Index] Skipping project history load: not authenticated yet");
+      log("[Index] Skipping project history load: not authenticated yet");
       return;
     }
 
     if (!currentUser) {
-      console.log("[Index] Skipping project history load: no current user");
+      log("[Index] Skipping project history load: no current user");
       return;
     }
 
@@ -264,20 +267,20 @@ const Index = ({ initialTab }: IndexProps) => {
 
     const loadProjects = async () => {
       try {
-        console.log("[Index] Loading project history from API...");
-        console.log("[Index] Current auth status:", authStatus);
-        console.log("[Index] Current user:", currentUser);
+        log("[Index] Loading project history from API...");
+        log("[Index] Current auth status:", authStatus);
+        log("[Index] Current user:", currentUser);
         setIsLoadingProjects(true);
         const response = await listRecords<ApiProjectRow>("projects", { limit: 100 });
 
         if (!isMounted) {
-          console.log("[Index] Component unmounted before project history response");
+          log("[Index] Component unmounted before project history response");
           return;
         }
 
         const projects = response.data || [];
-        console.log(`[Index] Successfully loaded ${projects.length} projects from API`);
-        console.log("[Index] Projects:", projects);
+        log(`[Index] Successfully loaded ${projects.length} projects from API`);
+        log("[Index] Projects:", projects);
         setProjectHistory(projects);
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
@@ -287,21 +290,21 @@ const Index = ({ initialTab }: IndexProps) => {
                               errorMsg.toLowerCase().includes("unable to reach");
 
         if (!isNetworkError) {
-          console.error("[Index] Failed to load project history:", errorMsg);
+          warn("[Index] Failed to load project history:", errorMsg);
         } else {
-          console.debug("[Index] API server currently unavailable, project history will not load");
+          log("[Index] API server currently unavailable, project history will not load");
         }
 
         // If it's an authentication error, log additional context
         // Note: Don't auto-logout on 401 from project loading - it's a non-critical background task
         if (errorMsg.includes("401") || errorMsg.includes("Unauthorized")) {
-          console.warn("[Index] ⚠️ Project loading returned 401 - possible session expiration on backend");
-          console.warn("[Index] Keeping user logged in locally - will retry on next action");
+          warn("[Index] ⚠️ Project loading returned 401 - possible session expiration on backend");
+          warn("[Index] Keeping user logged in locally - will retry on next action");
           // Don't auto-logout on background task failures - let the user trigger actions that will refresh the session
         }
 
         if (isMounted && !isNetworkError) {
-          console.warn("[Index] Project history load failed - will show 'No saved projects'");
+          warn("[Index] Project history load failed - will show 'No saved projects'");
         }
         // Silently fail - not critical to operation
       } finally {
@@ -346,8 +349,8 @@ const Index = ({ initialTab }: IndexProps) => {
 
   const handleStartNewProject = () => {
     const timestamp = new Date().toISOString();
-    console.log(`[Index] ${timestamp} === START NEW PROJECT ===`);
-    console.log("[Index] Clearing project data but PRESERVING user session");
+    log(`[Index] ${timestamp} === START NEW PROJECT ===`);
+    log("[Index] Clearing project data but PRESERVING user session");
 
     // Clear form fields
     setProjectName("");
@@ -356,7 +359,7 @@ const Index = ({ initialTab }: IndexProps) => {
     setCurrentProjectId(null);
 
     // Clear project-related localStorage (BUT NOT session token)
-    console.log("[Index] Removing project state from localStorage...");
+    log("[Index] Removing project state from localStorage...");
     localStorage.removeItem("atterbergProjectState");
     localStorage.removeItem("enhancedAtterbergTests");
     // ✓ FIXED: Do NOT clear session token when starting a new project
@@ -368,14 +371,9 @@ const Index = ({ initialTab }: IndexProps) => {
     // Dispatch custom event for components to listen to (e.g., AtterbergTest)
     window.dispatchEvent(new CustomEvent("resetProject"));
 
-    // One-shot flag so AtterbergTest skips API/localStorage hydration after reload
-    sessionStorage.setItem("atterberg.newProject", "1");
-
     toast.success("New project started - form cleared and data reset");
 
-    console.log(`[Index] ${timestamp} Reloading page to refresh project state...`);
-    // Reload the page to ensure all state is fresh (but session will be restored)
-    window.location.reload();
+    log(`[Index] ${timestamp} New project initialization complete`);
   };
 
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
@@ -410,20 +408,20 @@ const Index = ({ initialTab }: IndexProps) => {
 
   const handleLogout = async () => {
     const timestamp = new Date().toISOString();
-    console.log(`[Index] ${timestamp} === USER-INITIATED LOGOUT ===`);
-    console.log("[Index] Calling logoutUser()...");
+    log(`[Index] ${timestamp} === USER-INITIATED LOGOUT ===`);
+    log("[Index] Calling logoutUser()...");
     try {
       await logoutUser();
       toast.success("Logged out");
-      console.log(`[Index] ${new Date().toISOString()} Logout successful, clearing auth state`);
+      log(`[Index] ${new Date().toISOString()} Logout successful, clearing auth state`);
     } catch (error) {
-      console.error(`[Index] ${new Date().toISOString()} Failed to logout:`, error);
+      warn(`[Index] ${new Date().toISOString()} Failed to logout:`, error);
       toast.error("Failed to end the remote session");
     } finally {
       setCurrentUser(null);
       setPassword("");
       setAuthStatus("unauthenticated");
-      console.log(`[Index] ${new Date().toISOString()} Auth state cleared (user marked as unauthenticated)`);
+      log(`[Index] ${new Date().toISOString()} Auth state cleared (user marked as unauthenticated)`);
     }
   };
 
