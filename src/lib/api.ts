@@ -57,6 +57,29 @@ export const debugAuthState = () => {
 };
 
 // Debug function to check API connectivity - can be called from browser console
+// Connectivity check utility
+export const checkApiConnectivity = async (): Promise<boolean> => {
+  try {
+    const url = buildApiUrl({ action: "me" });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout for connectivity check
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Accept": "application/json",
+      },
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+    // Any response (even 401) means server is reachable
+    return true;
+  } catch (error) {
+    return false;
+  }
+};
+
 export const debugApiConnectivity = async () => {
   console.log("[API] === API CONNECTIVITY DEBUG ===");
   console.log("[API] Checking API configuration...");
@@ -88,10 +111,11 @@ export const debugApiConnectivity = async () => {
     console.error("[API] ✗ Failed to connect to API server");
     console.error("[API] Error:", error instanceof Error ? error.message : String(error));
     console.error("[API] Troubleshooting steps:");
-    console.error("[API] 1. Check if lab.wayrus.co.ke is reachable");
+    console.error("[API] 1. Check if lab.wayrus.co.ke is reachable (try in a new tab)");
     console.error("[API] 2. Verify VITE_API_BASE_URL environment variable is set correctly");
-    console.error("[API] 3. Check browser network tab for CORS errors");
-    console.error("[API] 4. Ensure the API server is running");
+    console.error("[API] 3. Check browser network tab (F12 > Network) for CORS errors");
+    console.error("[API] 4. Ensure the API server at https://lab.wayrus.co.ke is running");
+    console.error("[API] 5. Check your internet connection and firewall settings");
   }
 };
 

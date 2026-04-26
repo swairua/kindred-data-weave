@@ -50,13 +50,36 @@ export const TestDefinitionsManager = () => {
   const loadTestDefinitions = useCallback(async () => {
     setLoading(true);
     try {
+      const timestamp = new Date().toISOString();
+      console.log(`[TestDefs] ${timestamp} Attempting to load test definitions...`);
+      console.log("[TestDefs] Checking network connectivity first...");
+
       const response = await listRecords<TestDefinition>("test_definitions", { limit: 1000 });
       if (response?.data && Array.isArray(response.data)) {
+        console.log(`[TestDefs] ${timestamp} ✓ Successfully loaded ${response.data.length} test definitions`);
         setTests(response.data);
       }
     } catch (error) {
-      console.error("Failed to load test definitions:", error);
-      toast.error("Failed to load test definitions");
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      const timestamp = new Date().toISOString();
+
+      console.error(`[TestDefs] ${timestamp} Failed to load test definitions:`, errorMsg);
+      console.error("[TestDefs] Error details:", error);
+
+      // Provide helpful error message based on the type of error
+      if (errorMsg.includes("Unable to reach API server") || errorMsg.includes("Failed to fetch")) {
+        console.error("[TestDefs] Troubleshooting: API Server Connectivity");
+        console.error("[TestDefs] 1. Check if lab.wayrus.co.ke is reachable");
+        console.error("[TestDefs] 2. Verify your internet connection");
+        console.error("[TestDefs] 3. Check browser developer tools (F12) > Network tab for failed requests");
+        console.error("[TestDefs] 4. Check if VITE_API_BASE_URL environment variable is set correctly");
+        toast.error("Cannot connect to API server. Check your internet connection and try again.");
+      } else if (errorMsg.includes("401") || errorMsg.includes("Unauthorized")) {
+        console.error("[TestDefs] Authentication failed - please log in again");
+        toast.error("Session expired. Please log in again.");
+      } else {
+        toast.error(`Failed to load test definitions: ${errorMsg}`);
+      }
     } finally {
       setLoading(false);
     }
