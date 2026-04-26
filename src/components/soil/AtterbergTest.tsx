@@ -580,7 +580,11 @@ const updateTrialsForType = (test: AtterbergTest, trials: AtterbergTest["trials"
   }
 };
 
-const AtterbergTest = () => {
+interface AtterbergTestProps {
+  testKey?: string;
+}
+
+const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
   const project = useProject();
   // Initialize with empty records if no project selected, otherwise with one empty record
   const [projectState, setProjectState] = useState<AtterbergProjectState>({
@@ -1698,6 +1702,7 @@ const AtterbergTest = () => {
     <>
       <TestSection
         title="Atterberg Limits Testing"
+        testKey={testKey}
         onSave={debouncedHandleSave}
         onFinalSave={handleFinalSave}
         onClear={handleClearRequest}

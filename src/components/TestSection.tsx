@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import ProjectHeader from "@/components/ProjectHeader";
 import { useProject } from "@/context/ProjectContext";
+import { useTestAccordion } from "@/context/TestAccordionContext";
 
 type SmokeCheckItemStatus = "idle" | "running" | "success" | "error";
 
@@ -19,6 +20,7 @@ type SmokeCheckStatus = {
 
 interface TestSectionProps {
   title: string;
+  testKey?: string;
   tooltip?: string;
   children: ReactNode;
   onSave?: () => void | boolean | Promise<void | boolean>;
@@ -34,8 +36,14 @@ interface TestSectionProps {
   lastSaveError?: string | null;
 }
 
-const TestSection = ({ title, tooltip, children, onSave, onFinalSave, onClear, onExportPDF, onExportXLSX, onExportSmokeCheck, exportSmokeCheckDisabled, smokeCheckStatus, saveStatus = "idle", lastSavedAt, lastSaveError }: TestSectionProps) => {
-  const [open, setOpen] = useState(false);
+const TestSection = ({ title, testKey, tooltip, children, onSave, onFinalSave, onClear, onExportPDF, onExportXLSX, onExportSmokeCheck, exportSmokeCheckDisabled, smokeCheckStatus, saveStatus = "idle", lastSavedAt, lastSaveError }: TestSectionProps) => {
+  const [localOpen, setLocalOpen] = useState(false);
+  const accordion = useTestAccordion();
+
+  // Use accordion context if testKey is provided, otherwise use local state
+  const isOpen = testKey ? accordion.openTestKey === testKey : localOpen;
+  const setOpen = testKey ? (value: boolean) => accordion.setOpenTestKey(value ? testKey : null) : setLocalOpen;
+
   const project = useProject();
   const hasHeaderHandlers =
     !!project.onProjectNameChange &&
@@ -58,9 +66,9 @@ const TestSection = ({ title, tooltip, children, onSave, onFinalSave, onClear, o
           >
             <span
               className="inline-flex items-center justify-center h-6 w-6 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 transition-all duration-200 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50 group-hover:shadow-md flex-shrink-0"
-              title={open ? "Click to collapse" : "Click to expand"}
+              title={isOpen ? "Click to collapse" : "Click to expand"}
             >
-              {open ? <ChevronDown className="h-5 w-5 transition-transform group-hover:scale-110" /> : <ChevronRight className="h-5 w-5 transition-transform group-hover:scale-110" />}
+              {isOpen ? <ChevronDown className="h-5 w-5 transition-transform group-hover:scale-110" /> : <ChevronRight className="h-5 w-5 transition-transform group-hover:scale-110" />}
             </span>
             <span className="min-w-0">{title}</span>
           </CardTitle>
@@ -317,7 +325,7 @@ const TestSection = ({ title, tooltip, children, onSave, onFinalSave, onClear, o
           </Tooltip>
         )}
       </CardHeader>
-      {open && (
+      {isOpen && (
         <CardContent className="px-3 pb-3 pt-0 space-y-2">
           {hasHeaderHandlers && (
             <div className="rounded-md border bg-muted/20 p-2 print:hidden">

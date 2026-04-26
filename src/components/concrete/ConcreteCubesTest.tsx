@@ -17,7 +17,11 @@ import { captureChartAsBase64 } from "@/lib/chartCapture";
 
 interface Row { cubeId: string; age: string; load: string; size: string; mass: string }
 
-const ConcreteCubesTest = () => {
+interface ConcreteCubesTestProps {
+  testKey?: string;
+}
+
+const ConcreteCubesTest = ({ testKey }: ConcreteCubesTestProps) => {
   const project = useProject();
   const [gradeTarget, setGradeTarget] = useState("25");
   const [rows, setRows] = useState<Row[]>([
@@ -106,7 +110,7 @@ const ConcreteCubesTest = () => {
   };
 
   return (
-    <TestSection title="Concrete Cubes" onSave={() => {}} onClear={() => setRows([{ cubeId: "C1", age: "7", load: "", size: "150", mass: "" }])} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
+    <TestSection title="Concrete Cubes" testKey={testKey} onSave={() => {}} onClear={() => setRows([{ cubeId: "C1", age: "7", load: "", size: "150", mass: "" }])} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
       <div className="flex items-center gap-3 mb-4">
         <Label className="text-xs text-muted-foreground whitespace-nowrap">Target Grade (MPa)</Label>
         <Select value={gradeTarget} onValueChange={setGradeTarget}>

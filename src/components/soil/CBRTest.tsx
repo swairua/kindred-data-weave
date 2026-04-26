@@ -19,7 +19,11 @@ const STANDARD_LOAD_5_0 = 19.96;
 
 interface Row { penetration: string; load: string }
 
-const CBRTest = () => {
+interface CBRTestProps {
+  testKey?: string;
+}
+
+const CBRTest = ({ testKey }: CBRTestProps) => {
   const project = useProject();
   const defaultRows: Row[] = [
     { penetration: "0.5", load: "" },{ penetration: "1.0", load: "" },{ penetration: "1.5", load: "" },{ penetration: "2.0", load: "" },
@@ -102,7 +106,7 @@ const CBRTest = () => {
   };
 
   return (
-    <TestSection title="CBR (California Bearing Ratio)" onSave={() => {}} onClear={() => setRows([{ penetration: "", load: "" }])} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
+    <TestSection title="CBR (California Bearing Ratio)" testKey={testKey} onSave={() => {}} onClear={() => setRows([{ penetration: "", load: "" }])} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
       {!hasProjectSelected && rows.length === 0 ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">

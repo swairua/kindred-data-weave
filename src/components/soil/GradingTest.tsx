@@ -19,7 +19,11 @@ interface Row {
   weightRetained: string;
 }
 
-const GradingTest = () => {
+interface GradingTestProps {
+  testKey?: string;
+}
+
+const GradingTest = ({ testKey }: GradingTestProps) => {
   const project = useProject();
   const defaultRows: Row[] = [
     { sieveSize: "75", weightRetained: "" },
@@ -139,7 +143,7 @@ const GradingTest = () => {
   };
 
   return (
-    <TestSection title="Grading (Sieve Analysis)" onSave={() => {}} onClear={() => setRows(defaultRows)} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
+    <TestSection title="Grading (Sieve Analysis)" testKey={testKey} onSave={() => {}} onClear={() => setRows(defaultRows)} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
       {!hasProjectSelected && rows.length === 0 ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">

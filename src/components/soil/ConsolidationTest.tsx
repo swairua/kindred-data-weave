@@ -14,7 +14,11 @@ import { captureChartAsBase64 } from "@/lib/chartCapture";
 
 interface Row { time: string; settlement: string }
 
-const ConsolidationTest = () => {
+interface ConsolidationTestProps {
+  testKey?: string;
+}
+
+const ConsolidationTest = ({ testKey }: ConsolidationTestProps) => {
   const project = useProject();
   const defaultRows: Row[] = [{ time: "", settlement: "" },{ time: "", settlement: "" },{ time: "", settlement: "" }];
   const [rows, setRows] = useState<Row[]>(project.currentProjectId ? defaultRows : []);
@@ -51,7 +55,7 @@ const ConsolidationTest = () => {
   };
 
   return (
-    <TestSection title="Consolidation" onSave={() => {}} onClear={() => setRows([{ time: "", settlement: "" }])} onExportPDF={exportPDF}>
+    <TestSection title="Consolidation" testKey={testKey} onSave={() => {}} onClear={() => setRows([{ time: "", settlement: "" }])} onExportPDF={exportPDF}>
       {!hasProjectSelected && rows.length === 0 ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
