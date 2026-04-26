@@ -463,7 +463,7 @@ const Index = ({ initialTab }: IndexProps) => {
               <div className="px-4 py-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">
-                    <SidebarTrigger className="md:hidden" />
+                    <SidebarTrigger className="md:hidden h-10 w-10" />
                   <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center overflow-hidden">
                     <img
                       src="https://cdn.builder.io/api/v1/image/assets%2Fedb7c735e72a41328e7ab97a48a7676d%2Fe8eac870f9c84f0c869c7c6ece6e38e5?format=webp&width=800&height=1200"
@@ -496,8 +496,8 @@ const Index = ({ initialTab }: IndexProps) => {
             </div>
           </header>
 
-          <main className="flex-1 overflow-y-auto px-0 py-6 md:px-4">
-            <div className="w-full md:max-w-6xl md:mx-auto">
+          <main className="flex-1 overflow-y-auto px-0 py-6">
+            <div className="w-full md:max-w-6xl md:mx-auto md:px-4">
             {authStatus === "checking" ? (
             <div className="flex min-h-[60vh] items-center justify-center">
               <Card className="w-full max-w-md shadow-sm">
@@ -663,14 +663,18 @@ const Index = ({ initialTab }: IndexProps) => {
                 </div>
               </div>
             </div>
-          ) : view === "dashboard" ? (
-            <Dashboard />
-          ) : view === "reports" ? (
-            <Reports />
-          ) : view === "admin" ? (
-            <Admin />
           ) : (
-            <TestsView initialTab={initialTab} />
+            <div className="px-4 md:px-0">
+              {view === "dashboard" ? (
+                <Dashboard />
+              ) : view === "reports" ? (
+                <Reports />
+              ) : view === "admin" ? (
+                <Admin />
+              ) : (
+                <TestsView initialTab={initialTab} />
+              )}
+            </div>
           )}
               </div>
             </main>
@@ -698,7 +702,7 @@ const Index = ({ initialTab }: IndexProps) => {
             </div>
           </header>
           <div className="flex-1 overflow-y-auto px-0 py-6 md:px-4">
-            <div className="container max-w-full md:max-w-6xl mx-auto md:px-4">
+            <div className="w-full md:container md:max-w-6xl md:mx-auto md:px-4">
               {authStatus === "checking" ? (
                 <div className="flex min-h-[60vh] items-center justify-center">
                   <Card className="w-full max-w-md shadow-sm">
@@ -712,14 +716,14 @@ const Index = ({ initialTab }: IndexProps) => {
                   </Card>
                 </div>
               ) : (
-                <div className="min-h-[calc(100vh-200px)] flex items-center justify-center px-0 md:px-4 py-12 relative">
+                <div className="min-h-[calc(100vh-200px)] flex items-center justify-center px-0 py-12 relative">
                   {/* Background gradient elements */}
                   <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
                     <div className="absolute top-1/4 right-0 w-96 h-96 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-full blur-3xl"></div>
                     <div className="absolute bottom-1/4 left-0 w-96 h-96 bg-gradient-to-tr from-indigo-500/5 to-transparent rounded-full blur-3xl"></div>
                   </div>
 
-                  <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-6 lg:gap-12 items-center relative z-0 px-4 md:px-0">
+                  <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-6 lg:gap-12 items-center relative z-0 px-0 md:px-0">
                     {/* Left side - Branding */}
                     <div className="hidden lg:flex flex-col justify-center space-y-8">
                       <div className="space-y-4">
