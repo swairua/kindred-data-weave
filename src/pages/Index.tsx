@@ -463,7 +463,7 @@ const Index = ({ initialTab }: IndexProps) => {
               <div className="px-4 py-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">
-                    <SidebarTrigger className="md:hidden" />
+                    <SidebarTrigger className="md:hidden h-10 w-10" />
                   <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center overflow-hidden">
                     <img
                       src="https://cdn.builder.io/api/v1/image/assets%2Fedb7c735e72a41328e7ab97a48a7676d%2Fe8eac870f9c84f0c869c7c6ece6e38e5?format=webp&width=800&height=1200"
