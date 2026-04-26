@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { toast } from "sonner";
 import {
   ChevronDown,
@@ -440,54 +441,53 @@ const Index = ({ initialTab }: IndexProps) => {
 
   return (
     <ProjectContext.Provider value={projectCtx}>
-      <div className="min-h-screen bg-background flex flex-col">
-        <header className="border-b bg-card sticky top-0 z-10">
-          <div className="px-4 py-4">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center overflow-hidden">
-                  <img
-                    src="https://cdn.builder.io/api/v1/image/assets%2Fedb7c735e72a41328e7ab97a48a7676d%2Fe8eac870f9c84f0c869c7c6ece6e38e5?format=webp&width=800&height=1200"
-                    alt="Cransfield Materials Testing Center"
-                    className="h-full w-full object-contain"
-                  />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-foreground tracking-tight">Cransfield Materials Testing Center</h1>
-                  <p className="text-xs text-muted-foreground">Quality Assurance</p>
-                </div>
-              </div>
-
-              {authStatus === "checking" ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Checking session
-                </div>
-              ) : currentUser ? (
-                <div className="flex items-center gap-3 self-start sm:self-auto">
-                  <div className="text-left sm:text-right">
-                    <p className="text-sm font-medium text-foreground">{currentUser.name}</p>
-                    <p className="text-xs text-muted-foreground">{currentUser.email}</p>
+      <SidebarProvider>
+        {isAuthenticated && (
+          <Navigation
+            currentView={view}
+            onViewChange={setView}
+            onStartNewProject={handleStartNewProject}
+            onLogout={handleLogout}
+            userName={currentUser?.name}
+            userEmail={currentUser?.email}
+          />
+        )}
+        <SidebarInset className="flex flex-col min-h-svh">
+          <header className="border-b bg-card sticky top-0 z-10">
+            <div className="px-4 py-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center overflow-hidden">
+                    <img
+                      src="https://cdn.builder.io/api/v1/image/assets%2Fedb7c735e72a41328e7ab97a48a7676d%2Fe8eac870f9c84f0c869c7c6ece6e38e5?format=webp&width=800&height=1200"
+                      alt="Cransfield Materials Testing Center"
+                      className="h-full w-full object-contain"
+                    />
                   </div>
-                  <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={handleLogout}>
-                    <LogOut className="h-4 w-4" /> Logout
-                  </Button>
+                  <div>
+                    <h1 className="text-xl font-bold text-foreground tracking-tight">Cransfield Materials Testing Center</h1>
+                    <p className="text-xs text-muted-foreground">Quality Assurance</p>
+                  </div>
                 </div>
-              ) : null}
-            </div>
-          </div>
-        </header>
 
-        <div className="flex flex-1 overflow-hidden">
-          {isAuthenticated && (
-            <Navigation
-              currentView={view}
-              onViewChange={setView}
-              onStartNewProject={handleStartNewProject}
-              onLogout={handleLogout}
-              userName={currentUser?.name}
-              userEmail={currentUser?.email}
-            />
-          )}
+                {authStatus === "checking" ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Checking session
+                  </div>
+                ) : currentUser ? (
+                  <div className="flex items-center gap-3 self-start sm:self-auto">
+                    <div className="text-left sm:text-right">
+                      <p className="text-sm font-medium text-foreground">{currentUser.name}</p>
+                      <p className="text-xs text-muted-foreground">{currentUser.email}</p>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={handleLogout}>
+                      <LogOut className="h-4 w-4" /> Logout
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </header>
 
           <main className="flex-1 overflow-y-auto px-4 py-6">
             <div className="container max-w-6xl mx-auto">
@@ -666,9 +666,9 @@ const Index = ({ initialTab }: IndexProps) => {
             <TestsView initialTab={initialTab} />
           )}
             </div>
-        </main>
-        </div>
-      </div>
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
     </ProjectContext.Provider>
   );
 };

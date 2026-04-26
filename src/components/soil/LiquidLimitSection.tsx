@@ -98,7 +98,7 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId, plasticL
 
       <div className="rounded-lg border overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-sm">
+          <table className="w-full min-w-[500px] text-sm">
             <thead>
               <tr className="bg-muted border-b">
                 <th className="px-2 py-2 text-left font-medium text-muted-foreground w-14">Trial</th>
@@ -295,7 +295,7 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId, plasticL
               <div className="lg:col-span-2 rounded-lg border bg-card p-3">
                 <h4 className="mb-3 text-sm font-medium text-foreground">Moisture Content vs Penetration (Semi-Log, ASTM D4318)</h4>
                 <div className="overflow-x-auto">
-                  <div className="h-[280px] min-w-[520px]">
+                  <div className="h-[280px] min-w-[300px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={mergedChartData} margin={{ top: 16, right: 20, left: 0, bottom: 8 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />

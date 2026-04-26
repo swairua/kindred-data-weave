@@ -1,7 +1,16 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Plus, LayoutDashboard, FlaskConical, FileText, Hammer, LogOut } from "lucide-react";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarSeparator,
+} from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Plus, LayoutDashboard, FlaskConical, FileText, Hammer } from "lucide-react";
 
 interface NavigationProps {
   currentView: "dashboard" | "tests" | "reports" | "admin";
@@ -21,7 +30,6 @@ const Navigation = ({
   userEmail,
 }: NavigationProps) => {
   const navigate = useNavigate();
-  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const handleNavigation = (view: "dashboard" | "tests" | "reports" | "admin", path: string) => {
     onViewChange(view);
@@ -67,97 +75,59 @@ const Navigation = ({
   ];
 
   return (
-    <aside
-      className={`${
-        isCollapsed ? "w-20" : "w-64"
-      } border-r bg-card transition-all duration-300 flex flex-col h-screen sticky top-0 z-20`}
-    >
-      {/* Toggle Button */}
-      <div className="p-4 flex items-center justify-between border-b">
-        <h2
-          className={`font-bold text-sm tracking-tight ${
-            isCollapsed ? "opacity-0 w-0" : "opacity-100"
-          } transition-opacity duration-300`}
-        >
-          CMTC Lab
-        </h2>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => setIsCollapsed(!isCollapsed)}
-        >
-          {isCollapsed ? (
-            <Menu className="h-4 w-4" />
-          ) : (
-            <X className="h-4 w-4" />
-          )}
-        </Button>
-      </div>
+    <Sidebar collapsible="icon" variant="sidebar">
+      <SidebarHeader className="border-b">
+        <h2 className="font-bold text-sm tracking-tight px-2">CMTC Lab</h2>
+      </SidebarHeader>
 
-      {/* Navigation Items */}
-      <nav className="flex-1 overflow-y-auto p-3 space-y-2">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          return (
-            <Button
-              key={item.id}
-              variant={
-                item.isAction
-                  ? "default"
-                  : item.active
-                    ? "default"
-                    : "ghost"
-              }
-              size="sm"
-              className={`w-full justify-start gap-2 ${isCollapsed ? "px-2" : ""}`}
-              onClick={item.onClick}
-              title={isCollapsed ? item.label : undefined}
-            >
-              <Icon className="h-4 w-4 flex-shrink-0" />
-              <span
-                className={`${
-                  isCollapsed ? "hidden" : "inline"
-                } text-sm font-medium`}
-              >
-                {item.label}
-              </span>
-            </Button>
-          );
-        })}
-      </nav>
+      <SidebarContent>
+        <SidebarMenu>
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <SidebarMenuItem key={item.id}>
+                <SidebarMenuButton
+                  onClick={item.onClick}
+                  isActive={item.active}
+                  tooltip={item.label}
+                  className={item.isAction ? "bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent" : ""}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{item.label}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
+        </SidebarMenu>
+      </SidebarContent>
 
-      {/* User Info & Logout */}
       {(userName || userEmail) && (
-        <div
-          className={`border-t p-3 space-y-2 ${
-            isCollapsed ? "text-center" : ""
-          }`}
-        >
-          {!isCollapsed && (
-            <div className="text-xs space-y-0.5 px-2">
-              <p className="font-medium text-foreground truncate">
+        <SidebarFooter>
+          <SidebarSeparator />
+          <div className="text-xs space-y-1 px-2 py-2">
+            {userName && (
+              <p className="font-medium text-sidebar-foreground truncate">
                 {userName}
               </p>
-              <p className="text-muted-foreground truncate">{userEmail}</p>
-            </div>
-          )}
+            )}
+            {userEmail && (
+              <p className="text-sidebar-foreground/70 truncate">{userEmail}</p>
+            )}
+          </div>
           {onLogout && (
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
-              className={`w-full ${isCollapsed ? "px-2" : ""}`}
+              className="w-full justify-start gap-2 px-2"
               onClick={onLogout}
-              title={isCollapsed ? "Logout" : undefined}
             >
-              <span className={isCollapsed ? "text-xs" : ""}>
-                {isCollapsed ? "→" : "Logout"}
-              </span>
+              <LogOut className="h-4 w-4" />
+              <span>Logout</span>
             </Button>
           )}
-        </div>
+        </SidebarFooter>
       )}
-    </aside>
+    </Sidebar>
   );
 };
 

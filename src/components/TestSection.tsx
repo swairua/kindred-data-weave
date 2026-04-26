@@ -50,7 +50,7 @@ const TestSection = ({ title, tooltip, children, onSave, onFinalSave, onClear, o
         className="cursor-pointer select-none py-3 px-4"
         onClick={() => setOpen(!open)}
       >
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <CardTitle
             className="text-base font-semibold flex items-center gap-2 group"
             tooltip={tooltip}
@@ -62,9 +62,9 @@ const TestSection = ({ title, tooltip, children, onSave, onFinalSave, onClear, o
             >
               {open ? <ChevronDown className="h-5 w-5 transition-transform group-hover:scale-110" /> : <ChevronRight className="h-5 w-5 transition-transform group-hover:scale-110" />}
             </span>
-            <span>{title}</span>
+            <span className="min-w-0">{title}</span>
           </CardTitle>
-          <div className="flex flex-wrap gap-2 justify-end" onClick={(e) => e.stopPropagation()}>
+          <div className="flex flex-wrap gap-2 justify-start sm:justify-end" onClick={(e) => e.stopPropagation()}>
             {onExportSmokeCheck && (
               <Tooltip>
                 <TooltipTrigger asChild>
