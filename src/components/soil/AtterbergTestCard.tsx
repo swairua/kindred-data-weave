@@ -126,7 +126,7 @@ const AtterbergTestCard = ({
 
   return (
     <Card className="border shadow-sm transition-all hover:shadow-md print:shadow-none">
-      <CardHeader className="space-y-3 pb-3">
+      <CardHeader className="space-y-2 pb-2">
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <Button
@@ -178,7 +178,7 @@ const AtterbergTestCard = ({
           </Button>
         </div>
 
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-2">
             <span className="text-xs font-medium text-muted-foreground">Test Type</span>
             <Select value={test.type} onValueChange={(value) => requestTypeChange(value as AtterbergTestType)}>
@@ -200,7 +200,7 @@ const AtterbergTestCard = ({
       </CardHeader>
 
       {test.isExpanded && (
-        <CardContent className="space-y-4 pt-0">
+        <CardContent className="space-y-3 pt-2">
           {test.type === "liquidLimit" && (
             <LiquidLimitSection
               trials={test.trials}
