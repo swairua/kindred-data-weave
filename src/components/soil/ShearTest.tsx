@@ -14,7 +14,11 @@ import { captureChartAsBase64 } from "@/lib/chartCapture";
 
 interface Row { normalStress: string; shearStress: string }
 
-const ShearTest = () => {
+interface ShearTestProps {
+  testKey?: string;
+}
+
+const ShearTest = ({ testKey }: ShearTestProps) => {
   const project = useProject();
   const defaultRows: Row[] = [{ normalStress: "", shearStress: "" },{ normalStress: "", shearStress: "" },{ normalStress: "", shearStress: "" }];
   const [rows, setRows] = useState<Row[]>(project.currentProjectId ? defaultRows : []);
@@ -78,7 +82,7 @@ const ShearTest = () => {
   };
 
   return (
-    <TestSection title="Shear Test" onSave={() => {}} onClear={() => setRows([{ normalStress: "", shearStress: "" }])} onExportPDF={exportPDF}>
+    <TestSection title="Shear Test" testKey={testKey} onSave={() => {}} onClear={() => setRows([{ normalStress: "", shearStress: "" }])} onExportPDF={exportPDF}>
       {!hasProjectSelected && rows.length === 0 ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">

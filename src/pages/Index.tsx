@@ -35,6 +35,7 @@ import {
 import Dashboard from "@/pages/Dashboard";
 import Reports from "@/pages/Reports";
 import Admin from "@/pages/Admin";
+import { TestAccordionProvider } from "@/context/TestAccordionContext";
 
 import Navigation from "@/components/Navigation";
 import { fetchCurrentUser, loginUser, logoutUser, type ApiUser, listRecords, debugAuthState, debugApiConnectivity } from "@/lib/api";
@@ -100,23 +101,25 @@ const TestsView = ({ initialTab }: { initialTab?: string }) => {
   const renderTestsByCategory = (category: TestCategory) => {
     const tests = testsByCategory[category];
     return (
-      <TabsContent value={category} className="space-y-3">
-        {tests.length === 0 ? (
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground">No tests available for this category</p>
-            </CardContent>
-          </Card>
-        ) : (
-          tests.map((test) => {
-            const TestComponent = registry.getTest(test.key);
-            if (!TestComponent) {
-              return null;
-            }
-            return <TestComponent key={test.key} />;
-          })
-        )}
-      </TabsContent>
+      <TestAccordionProvider>
+        <TabsContent value={category} className="space-y-3">
+          {tests.length === 0 ? (
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-sm text-muted-foreground">No tests available for this category</p>
+              </CardContent>
+            </Card>
+          ) : (
+            tests.map((test) => {
+              const TestComponent = registry.getTest(test.key);
+              if (!TestComponent) {
+                return null;
+              }
+              return <TestComponent key={test.key} testKey={test.key} />;
+            })
+          )}
+        </TabsContent>
+      </TestAccordionProvider>
     );
   };
 

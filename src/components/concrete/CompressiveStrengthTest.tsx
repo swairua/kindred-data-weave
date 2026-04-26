@@ -16,7 +16,11 @@ import { captureChartAsBase64 } from "@/lib/chartCapture";
 
 interface Row { cubeId: string; load: string; width: string; height: string }
 
-const CompressiveStrengthTest = () => {
+interface CompressiveStrengthTestProps {
+  testKey?: string;
+}
+
+const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   const project = useProject();
   const defaultRows: Row[] = [
     { cubeId: "C1", load: "", width: "150", height: "150" },
@@ -92,7 +96,7 @@ const CompressiveStrengthTest = () => {
   };
 
   return (
-    <TestSection title="Compressive Strength (Cube Test)" onSave={() => {}} onClear={() => setRows([{ cubeId: "", load: "", width: "150", height: "150" }])} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
+    <TestSection title="Compressive Strength (Cube Test)" testKey={testKey} onSave={() => {}} onClear={() => setRows([{ cubeId: "", load: "", width: "150", height: "150" }])} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
       {!hasProjectSelected && rows.length === 0 ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">

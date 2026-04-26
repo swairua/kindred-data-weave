@@ -16,7 +16,11 @@ import { captureChartAsBase64 } from "@/lib/chartCapture";
 
 interface Row { moisture: string; dryDensity: string }
 
-const ProctorTest = () => {
+interface ProctorTestProps {
+  testKey?: string;
+}
+
+const ProctorTest = ({ testKey }: ProctorTestProps) => {
   const project = useProject();
   const [type, setType] = useState("standard");
   const defaultRows: Row[] = [
@@ -112,7 +116,7 @@ const ProctorTest = () => {
   };
 
   return (
-    <TestSection title="Proctor Test" onSave={() => {}} onClear={() => setRows([{ moisture: "", dryDensity: "" }])} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
+    <TestSection title="Proctor Test" testKey={testKey} onSave={() => {}} onClear={() => setRows([{ moisture: "", dryDensity: "" }])} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
       {!hasProjectSelected && rows.length === 0 ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">

@@ -9,7 +9,11 @@ import { generateTestCSV } from "@/lib/csvExporter";
 import { generateTestExcel } from "@/lib/genericExcelExporter";
 import { useTestReport } from "@/hooks/useTestReport";
 
-const SlumpTest = () => {
+interface SlumpTestProps {
+  testKey?: string;
+}
+
+const SlumpTest = ({ testKey }: SlumpTestProps) => {
   const project = useProject();
   const [slump, setSlump] = useState("");
   const [remarks, setRemarks] = useState("");
@@ -44,7 +48,7 @@ const SlumpTest = () => {
   };
 
   return (
-    <TestSection title="Slump Test" onSave={() => {}} onClear={() => { setSlump(""); setRemarks(""); }} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
+    <TestSection title="Slump Test" testKey={testKey} onSave={() => {}} onClear={() => { setSlump(""); setRemarks(""); }} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
       {!hasProjectSelected && !slump ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
