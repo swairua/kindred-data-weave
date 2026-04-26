@@ -1712,7 +1712,7 @@ const AtterbergTest = () => {
       >
       <div className="space-y-4 print:space-y-3">
         <Card className="border bg-muted/20 shadow-none print:border-border print:bg-transparent">
-          <CardContent className="grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-8">
+          <CardContent className="grid gap-2 p-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-8">
             <OverviewMetric label="Project" value={project.projectName || "Current project"} />
             <OverviewMetric label="Client" value={project.clientName || "-"} />
             <OverviewMetric label="Date" value={project.date || "-"} />
@@ -1770,16 +1770,16 @@ const AtterbergTest = () => {
           </Card>
         </Collapsible>
 
-        <div className="flex flex-wrap items-center gap-2 print:hidden">
-          <Button type="button" onClick={addRecord} className="gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 print:hidden">
+          <Button type="button" onClick={addRecord} className="gap-2 w-full sm:w-auto">
             <Plus className="h-4 w-4" /> Add Record
           </Button>
 
-          <div className="ml-auto flex gap-2">
-            <Button type="button" onClick={handleExportJSON} variant="outline" size="sm" className="gap-2" disabled={computedRecords.length === 0 || isExporting === "json"}>
+          <div className="flex flex-col sm:flex-row sm:gap-2 gap-2">
+            <Button type="button" onClick={handleExportJSON} variant="outline" size="sm" className="gap-2 w-full sm:w-auto" disabled={computedRecords.length === 0 || isExporting === "json"}>
               <Download className="h-4 w-4" /> {isExporting === "json" ? "loading.." : "Export JSON"}
             </Button>
-            <Button type="button" onClick={handleImportJSON} variant="outline" size="sm" className="gap-2">
+            <Button type="button" onClick={handleImportJSON} variant="outline" size="sm" className="gap-2 w-full sm:w-auto">
               <Upload className="h-4 w-4" /> Import JSON
             </Button>
           </div>
@@ -2068,46 +2068,46 @@ const RecordCard = ({
             </Button>
 
             <div className="min-w-0 flex-1 space-y-3">
-              <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-                  <span className="text-sm font-semibold text-muted-foreground">Record {recordIndex + 1}</span>
-                  <Input value={record.title} onChange={(event) => onUpdateTitle(event.target.value)} className="h-9 max-w-xl" placeholder="Record title, borehole, or sample group" />
+              <div className="flex flex-col gap-3">
+                <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <span className="text-sm font-semibold text-muted-foreground flex-shrink-0">Record {recordIndex + 1}</span>
+                  <Input value={record.title} onChange={(event) => onUpdateTitle(event.target.value)} className="h-9 min-w-0 flex-1" placeholder="Record title, borehole, or sample group" />
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2 print:hidden">
-                  <div className="flex items-center gap-1">
+                <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-2 print:hidden">
+                  <div className="flex flex-wrap gap-1">
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="gap-1 text-xs"
+                      className="gap-1 text-xs h-8 px-2"
                       onClick={handleExportRecordPDF}
                       disabled={isExporting === "pdf"}
                       title="Export this record as PDF"
                     >
-                      <Download className="h-3 w-3" /> {isExporting === "pdf" ? "loading.." : "PDF"}
+                      <Download className="h-3 w-3" /> <span className="hidden sm:inline">PDF</span>
                     </Button>
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="gap-1 text-xs"
+                      className="gap-1 text-xs h-8 px-2"
                       onClick={handleExportRecordXLSX}
                       disabled={isExporting === "xlsx"}
                       title="Export this record as Excel"
                     >
-                      <Download className="h-3 w-3" /> {isExporting === "xlsx" ? "loading.." : "Excel"}
+                      <Download className="h-3 w-3" /> <span className="hidden sm:inline">Excel</span>
                     </Button>
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="gap-1 text-xs"
+                      className="gap-1 text-xs h-8 px-2"
                       onClick={handleExportRecordJSON}
                       disabled={isExporting === "json"}
                       title="Export this record as JSON"
                     >
-                      <Download className="h-3 w-3" /> {isExporting === "json" ? "loading.." : "JSON"}
+                      <Download className="h-3 w-3" /> <span className="hidden sm:inline">JSON</span>
                     </Button>
                   </div>
 
@@ -2123,7 +2123,7 @@ const RecordCard = ({
                 </div>
               </div>
 
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                 <div className="space-y-1">
                   <div className="text-xs font-medium text-muted-foreground">Identifier / Borehole / Sample Group</div>
                   <Input value={record.label} onChange={(event) => onUpdateLabel(event.target.value)} className="h-9" placeholder="Sample ID, borehole, depth, etc." />
@@ -2144,7 +2144,7 @@ const RecordCard = ({
                   <div className="text-xs font-medium text-muted-foreground">Tested By</div>
                   <Input value={record.testedBy || ""} onChange={(event) => onUpdateTestedBy(event.target.value)} className="h-9" placeholder="Technician name" />
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1 sm:col-span-2 lg:col-span-3">
                   <div className="text-xs font-medium text-muted-foreground">Note</div>
                   <Textarea value={record.note} onChange={(event) => onUpdateNote(event.target.value)} className="min-h-[72px] resize-y" placeholder="Optional workflow note or descriptor" />
                 </div>
@@ -2155,7 +2155,7 @@ const RecordCard = ({
 
         <CollapsibleContent>
           <CardContent className="space-y-4 pt-0">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <TestTypeColumn
                 testType="liquidLimit"
                 tests={testsByType.liquidLimit}
