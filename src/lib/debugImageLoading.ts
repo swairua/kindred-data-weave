@@ -104,9 +104,4 @@ export async function debugAdminImages() {
   }
 }
 
-// Attach to window for console access
-if (typeof window !== "undefined") {
-  (window as any).debugImages = debugAdminImages;
-  console.log("%cDebug tool ready! Run this command to diagnose image issues:", "color: #16A34A;");
-  console.log("%cwindow.debugImages()", "color: #2962A3; font-family: monospace; font-weight: bold;");
-}
+// Debug function is available for import in development, not exposed globally

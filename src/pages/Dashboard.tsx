@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTestData, TestStatus } from "@/context/TestDataContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
-  FlaskConical, Mountain, Hammer, TestTubeDiagonal,
+  Mountain, Hammer, TestTubeDiagonal,
   CheckCircle2, Clock, Circle, ArrowRight, BarChart3,
 } from "lucide-react";
 
