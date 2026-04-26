@@ -368,14 +368,9 @@ const Index = ({ initialTab }: IndexProps) => {
     // Dispatch custom event for components to listen to (e.g., AtterbergTest)
     window.dispatchEvent(new CustomEvent("resetProject"));
 
-    // One-shot flag so AtterbergTest skips API/localStorage hydration after reload
-    sessionStorage.setItem("atterberg.newProject", "1");
-
     toast.success("New project started - form cleared and data reset");
 
-    console.log(`[Index] ${timestamp} Reloading page to refresh project state...`);
-    // Reload the page to ensure all state is fresh (but session will be restored)
-    window.location.reload();
+    console.log(`[Index] ${timestamp} New project initialization complete`);
   };
 
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
