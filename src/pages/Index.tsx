@@ -698,7 +698,7 @@ const Index = ({ initialTab }: IndexProps) => {
             </div>
           </header>
           <div className="flex-1 overflow-y-auto px-0 py-6 md:px-4">
-            <div className="container max-w-full md:max-w-6xl mx-auto md:px-4">
+            <div className="w-full md:container md:max-w-6xl md:mx-auto md:px-4">
               {authStatus === "checking" ? (
                 <div className="flex min-h-[60vh] items-center justify-center">
                   <Card className="w-full max-w-md shadow-sm">
@@ -712,14 +712,14 @@ const Index = ({ initialTab }: IndexProps) => {
                   </Card>
                 </div>
               ) : (
-                <div className="min-h-[calc(100vh-200px)] flex items-center justify-center px-0 md:px-4 py-12 relative">
+                <div className="min-h-[calc(100vh-200px)] flex items-center justify-center px-0 py-12 relative">
                   {/* Background gradient elements */}
                   <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
                     <div className="absolute top-1/4 right-0 w-96 h-96 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-full blur-3xl"></div>
                     <div className="absolute bottom-1/4 left-0 w-96 h-96 bg-gradient-to-tr from-indigo-500/5 to-transparent rounded-full blur-3xl"></div>
                   </div>
 
-                  <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-6 lg:gap-12 items-center relative z-0 px-0 md:px-0">
+                  <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-6 lg:gap-12 items-center relative z-0 px-4 md:px-0">
                     {/* Left side - Branding */}
                     <div className="hidden lg:flex flex-col justify-center space-y-8">
                       <div className="space-y-4">
