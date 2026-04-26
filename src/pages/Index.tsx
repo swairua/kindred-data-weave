@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { toast } from "sonner";
 import {
   ChevronDown,
@@ -457,6 +457,7 @@ const Index = ({ initialTab }: IndexProps) => {
             <div className="px-4 py-4">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
+                  <SidebarTrigger className="md:hidden" />
                   <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center overflow-hidden">
                     <img
                       src="https://cdn.builder.io/api/v1/image/assets%2Fedb7c735e72a41328e7ab97a48a7676d%2Fe8eac870f9c84f0c869c7c6ece6e38e5?format=webp&width=800&height=1200"
@@ -489,8 +490,8 @@ const Index = ({ initialTab }: IndexProps) => {
             </div>
           </header>
 
-          <main className="flex-1 overflow-y-auto px-4 py-6">
-            <div className="container max-w-6xl mx-auto">
+          <main className="flex-1 overflow-y-auto px-0 py-6 md:px-4">
+            <div className="container max-w-full md:max-w-6xl mx-auto md:px-4">
             {authStatus === "checking" ? (
             <div className="flex min-h-[60vh] items-center justify-center">
               <Card className="w-full max-w-md shadow-sm">
