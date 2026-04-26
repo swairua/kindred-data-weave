@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { toast } from "sonner";
 import {
   ChevronDown,
@@ -441,8 +441,8 @@ const Index = ({ initialTab }: IndexProps) => {
 
   return (
     <ProjectContext.Provider value={projectCtx}>
-      <SidebarProvider>
-        {isAuthenticated && (
+      {isAuthenticated ? (
+        <SidebarProvider>
           <Navigation
             currentView={view}
             onViewChange={setView}
@@ -451,12 +451,12 @@ const Index = ({ initialTab }: IndexProps) => {
             userName={currentUser?.name}
             userEmail={currentUser?.email}
           />
-        )}
-        <SidebarInset className="flex flex-col min-h-svh">
-          <header className="border-b bg-card sticky top-0 z-10">
-            <div className="px-4 py-4">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3">
+          <SidebarInset className="flex flex-col min-h-svh">
+            <header className="border-b bg-card sticky top-0 z-10">
+              <div className="px-4 py-4">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <SidebarTrigger className="md:hidden" />
                   <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center overflow-hidden">
                     <img
                       src="https://cdn.builder.io/api/v1/image/assets%2Fedb7c735e72a41328e7ab97a48a7676d%2Fe8eac870f9c84f0c869c7c6ece6e38e5?format=webp&width=800&height=1200"
@@ -489,8 +489,8 @@ const Index = ({ initialTab }: IndexProps) => {
             </div>
           </header>
 
-          <main className="flex-1 overflow-y-auto px-4 py-6">
-            <div className="container max-w-6xl mx-auto">
+          <main className="flex-1 overflow-y-auto px-0 py-6 md:px-4">
+            <div className="container max-w-full md:max-w-6xl mx-auto md:px-4">
             {authStatus === "checking" ? (
             <div className="flex min-h-[60vh] items-center justify-center">
               <Card className="w-full max-w-md shadow-sm">
@@ -504,14 +504,14 @@ const Index = ({ initialTab }: IndexProps) => {
               </Card>
             </div>
           ) : !isAuthenticated ? (
-            <div className="min-h-[calc(100vh-200px)] flex items-center justify-center px-4 py-12 relative">
+            <div className="min-h-[calc(100vh-200px)] flex items-center justify-center px-0 md:px-4 py-12 relative">
               {/* Background gradient elements */}
               <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
                 <div className="absolute top-1/4 right-0 w-96 h-96 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-full blur-3xl"></div>
                 <div className="absolute bottom-1/4 left-0 w-96 h-96 bg-gradient-to-tr from-indigo-500/5 to-transparent rounded-full blur-3xl"></div>
               </div>
 
-              <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-8 lg:gap-12 items-center relative z-0">
+              <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-6 lg:gap-12 items-center relative z-0 px-4 md:px-0">
                 {/* Left side - Branding */}
                 <div className="hidden lg:flex flex-col justify-center space-y-8">
                   <div className="space-y-4">
@@ -580,12 +580,12 @@ const Index = ({ initialTab }: IndexProps) => {
                 <div className="w-full">
                   <Card className="border-0 shadow-xl rounded-2xl overflow-hidden">
                     {/* Card header with gradient */}
-                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 px-8 py-8 border-b">
+                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 px-4 md:px-8 py-6 md:py-8 border-b">
                       <h1 className="text-3xl font-bold text-foreground mb-2">Sign in</h1>
                       <p className="text-muted-foreground">Enter your credentials to access your account</p>
                     </div>
 
-                    <CardContent className="p-8">
+                    <CardContent className="p-4 md:p-8">
                       <form className="space-y-6" onSubmit={handleLogin}>
                         {/* Email field */}
                         <div className="space-y-2">
@@ -665,10 +665,202 @@ const Index = ({ initialTab }: IndexProps) => {
           ) : (
             <TestsView initialTab={initialTab} />
           )}
+              </div>
+            </main>
+          </SidebarInset>
+        </SidebarProvider>
+      ) : (
+        <main className="flex min-h-svh flex-col">
+          <header className="border-b bg-card sticky top-0 z-10">
+            <div className="px-4 py-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center overflow-hidden">
+                    <img
+                      src="https://cdn.builder.io/api/v1/image/assets%2Fedb7c735e72a41328e7ab97a48a7676d%2Fe8eac870f9c84f0c869c7c6ece6e38e5?format=webp&width=800&height=1200"
+                      alt="Cransfield Materials Testing Center"
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
+                  <div>
+                    <h1 className="text-xl font-bold text-foreground tracking-tight">Cransfield Materials Testing Center</h1>
+                    <p className="text-xs text-muted-foreground">Quality Assurance</p>
+                  </div>
+                </div>
+              </div>
             </div>
-          </main>
-        </SidebarInset>
-      </SidebarProvider>
+          </header>
+          <div className="flex-1 overflow-y-auto px-0 py-6 md:px-4">
+            <div className="container max-w-full md:max-w-6xl mx-auto md:px-4">
+              {authStatus === "checking" ? (
+                <div className="flex min-h-[60vh] items-center justify-center">
+                  <Card className="w-full max-w-md shadow-sm">
+                    <CardHeader>
+                      <CardTitle className="text-lg">Checking your session</CardTitle>
+                      <CardDescription>Connecting to the lab API.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Please wait
+                    </CardContent>
+                  </Card>
+                </div>
+              ) : (
+                <div className="min-h-[calc(100vh-200px)] flex items-center justify-center px-0 md:px-4 py-12 relative">
+                  {/* Background gradient elements */}
+                  <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+                    <div className="absolute top-1/4 right-0 w-96 h-96 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-full blur-3xl"></div>
+                    <div className="absolute bottom-1/4 left-0 w-96 h-96 bg-gradient-to-tr from-indigo-500/5 to-transparent rounded-full blur-3xl"></div>
+                  </div>
+
+                  <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-6 lg:gap-12 items-center relative z-0 px-4 md:px-0">
+                    {/* Left side - Branding */}
+                    <div className="hidden lg:flex flex-col justify-center space-y-8">
+                      <div className="space-y-4">
+                        <div className="inline-flex items-center justify-center h-16 w-16 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg">
+                          <img
+                            src="https://cdn.builder.io/api/v1/image/assets%2Fedb7c735e72a41328e7ab97a48a7676d%2Fe8eac870f9c84f0c869c7c6ece6e38e5?format=webp&width=800&height=1200"
+                            alt="Cransfield Materials Testing Center"
+                            className="h-10 w-10 object-contain"
+                          />
+                        </div>
+                        <h2 className="text-4xl font-bold text-foreground leading-tight">
+                          Welcome Back
+                        </h2>
+                        <p className="text-lg text-muted-foreground">
+                          Access your lab data, manage tests, and generate comprehensive reports with Cransfield Materials Testing Center.
+                        </p>
+                      </div>
+
+                      {/* Features */}
+                      <div className="space-y-4">
+                        <div className="flex gap-4">
+                          <div className="flex-shrink-0">
+                            <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                              <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                              </svg>
+                            </div>
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-foreground">Lightning Fast</h3>
+                            <p className="text-sm text-muted-foreground">Real-time data processing and reporting</p>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-4">
+                          <div className="flex-shrink-0">
+                            <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
+                              <svg className="h-6 w-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                              </svg>
+                            </div>
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-foreground">Secure & Protected</h3>
+                            <p className="text-sm text-muted-foreground">Your data is encrypted and secure</p>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-4">
+                          <div className="flex-shrink-0">
+                            <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+                              <svg className="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                              </svg>
+                            </div>
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-foreground">Smart Analytics</h3>
+                            <p className="text-sm text-muted-foreground">Detailed insights and comprehensive reports</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right side - Login form */}
+                    <div className="w-full">
+                      <Card className="border-0 shadow-xl rounded-2xl overflow-hidden">
+                        {/* Card header with gradient */}
+                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 px-4 md:px-8 py-6 md:py-8 border-b">
+                          <h1 className="text-3xl font-bold text-foreground mb-2">Sign in</h1>
+                          <p className="text-muted-foreground">Enter your credentials to access your account</p>
+                        </div>
+
+                        <CardContent className="p-4 md:p-8">
+                          <form className="space-y-6" onSubmit={handleLogin}>
+                            {/* Email field */}
+                            <div className="space-y-2">
+                              <Label htmlFor="email" className="text-sm font-semibold text-foreground">
+                                Email Address
+                              </Label>
+                              <Input
+                                id="email"
+                                type="email"
+                                value={email}
+                                onChange={(event) => setEmail(event.target.value)}
+                                placeholder="your@email.com"
+                                autoComplete="email"
+                                className="h-12 px-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                              />
+                            </div>
+
+                            {/* Password field */}
+                            <div className="space-y-2">
+                              <Label htmlFor="password" className="text-sm font-semibold text-foreground">
+                                Password
+                              </Label>
+                              <Input
+                                id="password"
+                                type="password"
+                                value={password}
+                                onChange={(event) => setPassword(event.target.value)}
+                                placeholder="••••••••"
+                                autoComplete="current-password"
+                                className="h-12 px-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                              />
+                            </div>
+
+                            {/* Error message */}
+                            {loginError && (
+                              <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                                <p className="text-sm text-red-600 dark:text-red-400">{loginError}</p>
+                              </div>
+                            )}
+
+                            {/* Sign in button */}
+                            <Button
+                              type="submit"
+                              className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-all"
+                              disabled={isLoggingIn}
+                            >
+                              {isLoggingIn ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Signing in...
+                                </>
+                              ) : (
+                                "Sign in"
+                              )}
+                            </Button>
+                          </form>
+                        </CardContent>
+
+                        {/* Card footer */}
+                        <div className="border-t bg-gray-50 dark:bg-gray-900/20 px-4 md:px-8 py-4 md:py-6">
+                          <p className="text-sm text-muted-foreground text-center mb-2">New to the lab?</p>
+                          <p className="text-xs text-muted-foreground text-center">
+                            Contact your lab administrator for access
+                          </p>
+                        </div>
+                      </Card>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </main>
+      )}
     </ProjectContext.Provider>
   );
 };
