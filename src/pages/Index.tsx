@@ -37,7 +37,7 @@ import Reports from "@/pages/Reports";
 import Admin from "@/pages/Admin";
 
 import Navigation from "@/components/Navigation";
-import { fetchCurrentUser, loginUser, logoutUser, type ApiUser, listRecords, debugAuthState } from "@/lib/api";
+import { fetchCurrentUser, loginUser, logoutUser, type ApiUser, listRecords, debugAuthState, debugApiConnectivity } from "@/lib/api";
 import { registerAllTests } from "@/lib/testRegistration";
 import { registry } from "@/lib/testRegistry";
 
@@ -173,10 +173,13 @@ const Index = ({ initialTab }: IndexProps) => {
 
   const isAuthenticated = authStatus === "authenticated";
 
-  // Expose debug function to window for console access
+  // Expose debug functions to window for console access
   useEffect(() => {
     (window as any).__debugAuth = debugAuthState;
-    console.log("[Index] Debug tip: Run debugAuthState() in console to check session token status");
+    (window as any).__debugApi = debugApiConnectivity;
+    console.log("[Index] Debug tips:");
+    console.log("[Index]   - Run debugAuthState() to check session token status");
+    console.log("[Index]   - Run debugApiConnectivity() to test API server connectivity");
   }, []);
 
   useEffect(() => {

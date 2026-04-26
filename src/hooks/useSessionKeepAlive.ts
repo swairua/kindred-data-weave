@@ -31,27 +31,28 @@ export const useSessionKeepAlive = (enabled: boolean = true, intervalMs: number 
       const pingNumber = pingCountRef.current;
 
       try {
-        console.log(`[KeepAlive] ${timestamp} Ping #${pingNumber} starting...`);
+        console.debug(`[KeepAlive] ${timestamp} Ping #${pingNumber} starting...`);
         const user = await fetchCurrentUser();
         if (user) {
           const now = Date.now();
           lastPingRef.current = now;
-          console.log(`[KeepAlive] ${timestamp} ✓ Ping #${pingNumber} SUCCESS - user: ${user.name} (${user.email})`);
+          console.debug(`[KeepAlive] ${timestamp} ✓ Ping #${pingNumber} SUCCESS - user: ${user.name} (${user.email})`);
         } else {
-          console.warn(`[KeepAlive] ${timestamp} ⚠️ Ping #${pingNumber} returned no user - session may have expired on backend`);
-          console.warn("[KeepAlive] This could happen if:");
-          console.warn("  1. Session timeout on backend");
-          console.warn("  2. Backend session was manually cleared");
-          console.warn("  3. API connection issue (but returned 401)");
-          console.warn("[KeepAlive] User should be prompted to re-authenticate on next action");
+          // 401 or session expired - this is handled gracefully in fetchCurrentUser
+          console.debug(`[KeepAlive] ${timestamp} Ping #${pingNumber} - user not authenticated (expected for session expiry)`);
         }
       } catch (error) {
+        // Silently ignore network errors in keep-alive pings since it's a background task
+        // These errors are logged by the apiRequest function already
         const errorMsg = error instanceof Error ? error.message : String(error);
-        console.error(`[KeepAlive] ${timestamp} ✗ Ping #${pingNumber} FAILED:`, errorMsg);
-        console.error("[KeepAlive] This could indicate:");
-        console.error("  1. Network connectivity issue");
-        console.error("  2. API server is unreachable");
-        console.error("  3. Session token is invalid");
+
+        // Only log as warning if it looks like a real error (not just network blip)
+        if (errorMsg.includes("401") || errorMsg.includes("Unauthorized")) {
+          console.warn(`[KeepAlive] ${timestamp} Session may have expired (401 response)`);
+        } else if (!errorMsg.includes("Failed to fetch") && !errorMsg.includes("Unable to reach")) {
+          // Log unexpected errors, but not generic network errors (which are common in background tasks)
+          console.debug(`[KeepAlive] ${timestamp} Ping #${pingNumber} network error (retrying in ${(intervalMs / 1000 / 60).toFixed(1)} minutes):`, errorMsg);
+        }
       }
     };
 
