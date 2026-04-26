@@ -56,7 +56,7 @@ const TestSection = ({ title, testKey, tooltip, children, onSave, onFinalSave, o
     <Card className="shadow-sm">
       <CardHeader
         className="cursor-pointer select-none py-2 px-3"
-        onClick={() => setOpen(!open)}
+        onClick={() => setOpen(!isOpen)}
       >
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <CardTitle
