@@ -719,7 +719,7 @@ const Index = ({ initialTab }: IndexProps) => {
                     <div className="absolute bottom-1/4 left-0 w-96 h-96 bg-gradient-to-tr from-indigo-500/5 to-transparent rounded-full blur-3xl"></div>
                   </div>
 
-                  <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-6 lg:gap-12 items-center relative z-0 px-4 md:px-0">
+                  <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-6 lg:gap-12 items-center relative z-0 px-0 md:px-0">
                     {/* Left side - Branding */}
                     <div className="hidden lg:flex flex-col justify-center space-y-8">
                       <div className="space-y-4">
