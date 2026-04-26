@@ -133,9 +133,13 @@ export const apiRequest = async <T>(
   const url = buildApiUrl(params);
   const controller = new AbortController();
   const REQUEST_TIMEOUT = 30000; // 30 second timeout (increased from 8s for reliability)
-  const timeoutId = setTimeout(() => {
+  let timeoutId: NodeJS.Timeout | null = null;
+  let isAborted = false;
+
+  timeoutId = setTimeout(() => {
     console.warn(`[API] Request timeout after ${REQUEST_TIMEOUT}ms for action: ${params?.action || 'unknown'}`);
-    controller.abort();
+    isAborted = true;
+    controller.abort(new Error("Request timeout"));
   }, REQUEST_TIMEOUT);
 
   try {
@@ -144,6 +148,9 @@ export const apiRequest = async <T>(
       headers,
       signal: controller.signal,
     });
+
+    // Clear timeout on successful response
+    if (timeoutId) clearTimeout(timeoutId);
 
     // Check for session token in response headers
     const responseSessionToken = response.headers.get("X-Session-Token");
@@ -195,11 +202,15 @@ export const apiRequest = async <T>(
     return data as T;
   } catch (error) {
     // Ensure timeout cleanup
-    clearTimeout(timeoutId);
+    if (timeoutId) clearTimeout(timeoutId);
 
     // Handle abort errors with specific messaging
     if (error instanceof DOMException && error.name === "AbortError") {
-      throw new Error(`Request timeout: The server took too long to respond (>${REQUEST_TIMEOUT / 1000}s). Please check your network connection and try again.`);
+      const reason = (error as any).reason?.message || "Request timeout";
+      if (isAborted) {
+        throw new Error(`Request timeout: The server took too long to respond (>${REQUEST_TIMEOUT / 1000}s). Please check your network connection and try again.`);
+      }
+      throw new Error(`Request was aborted: ${reason}`);
     }
 
     if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
@@ -208,8 +219,6 @@ export const apiRequest = async <T>(
       throw new Error(`Unable to reach API server. Please ensure you have a valid internet connection and the API server is running.`);
     }
     throw error;
-  } finally {
-    clearTimeout(timeoutId);
   }
 };
 
@@ -313,8 +322,19 @@ export interface ApiWriteResponse<T> {
   last_saved_at?: string;
 }
 
-export const listRecords = async <T>(table: string, params?: Record<string, string | number | boolean | null | undefined>) =>
-  apiRequest<ApiListResponse<T>>(undefined, { action: "list", table, ...params });
+export const listRecords = async <T>(table: string, params?: Record<string, string | number | boolean | null | undefined>) => {
+  const timestamp = new Date().toISOString();
+  console.log(`[API] ${timestamp} Starting list request for table: ${table} with params:`, params);
+  try {
+    const response = await apiRequest<ApiListResponse<T>>(undefined, { action: "list", table, ...params });
+    console.log(`[API] ${timestamp} Successfully loaded ${response.data.length} records from ${table}`);
+    return response;
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error(`[API] ${timestamp} Failed to load records from ${table}:`, errorMsg);
+    throw error;
+  }
+};
 
 export const readRecord = async <T>(table: string, id: string | number) =>
   apiRequest<ApiReadResponse<T>>(undefined, { action: "read", table, id });
