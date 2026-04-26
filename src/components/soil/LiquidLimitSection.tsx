@@ -98,35 +98,35 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId, plasticL
 
       <div className="rounded-lg border overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-sm">
+          <table className="w-full text-xs sm:text-sm">
             <thead>
               <tr className="bg-muted border-b">
-                <th className="px-2 py-2 text-left font-medium text-muted-foreground w-14">Trial</th>
-                <th className="px-2 py-2 text-left font-medium text-muted-foreground w-16">
+                <th className="px-1 sm:px-2 py-1.5 sm:py-2 text-left font-medium text-muted-foreground text-xs sm:text-sm w-10 sm:w-14">Trial</th>
+                <th className="px-1 sm:px-2 py-1.5 sm:py-2 text-left font-medium text-muted-foreground text-xs sm:text-sm w-12 sm:w-16">
                   <TooltipHeader label="Cont. No" tooltip="Container Number" />
                 </th>
-                <th className="px-2 py-2 text-left font-medium text-muted-foreground">
-                  <TooltipHeader label="Pen. (mm)" tooltip="Penetration in millimeters" />
+                <th className="px-1 sm:px-2 py-1.5 sm:py-2 text-left font-medium text-muted-foreground text-xs sm:text-sm">
+                  <TooltipHeader label="Pen." tooltip="Penetration in millimeters" />
                 </th>
-                <th className="px-2 py-2 text-left font-medium text-muted-foreground">
-                  <TooltipHeader label="Cont+Wet (g)" tooltip="Weight of container + wet soil (grams)" />
+                <th className="px-1 sm:px-2 py-1.5 sm:py-2 text-left font-medium text-muted-foreground text-xs sm:text-sm">
+                  <TooltipHeader label="Wet" tooltip="Weight of container + wet soil (grams)" />
                 </th>
-                <th className="px-2 py-2 text-left font-medium text-muted-foreground">
-                  <TooltipHeader label="Cont+Dry (g)" tooltip="Weight of container + dry soil (grams)" />
+                <th className="px-1 sm:px-2 py-1.5 sm:py-2 text-left font-medium text-muted-foreground text-xs sm:text-sm">
+                  <TooltipHeader label="Dry" tooltip="Weight of container + dry soil (grams)" />
                 </th>
-                <th className="px-2 py-2 text-left font-medium text-muted-foreground">
-                  <TooltipHeader label="Cont. (g)" tooltip="Weight of empty container (grams)" />
+                <th className="px-1 sm:px-2 py-1.5 sm:py-2 text-left font-medium text-muted-foreground text-xs sm:text-sm">
+                  <TooltipHeader label="Cont." tooltip="Weight of empty container (grams)" />
                 </th>
-                <th className="px-2 py-2 text-left font-medium text-muted-foreground">
-                  <TooltipHeader label="Wt Water (g)" tooltip="Weight of water (auto-calculated) | Formula: Cont+Wet (g) − Cont+Dry (g)" />
+                <th className="px-1 sm:px-2 py-1.5 sm:py-2 text-left font-medium text-muted-foreground text-xs sm:text-sm">
+                  <TooltipHeader label="Wtr" tooltip="Weight of water (auto-calculated) | Formula: Cont+Wet (g) − Cont+Dry (g)" />
                 </th>
-                <th className="px-2 py-2 text-left font-medium text-muted-foreground">
-                  <TooltipHeader label="Wt Dry (g)" tooltip="Weight of dry soil (auto-calculated) | Formula: Cont+Dry (g) − Cont. (g)" />
+                <th className="px-1 sm:px-2 py-1.5 sm:py-2 text-left font-medium text-muted-foreground text-xs sm:text-sm">
+                  <TooltipHeader label="Drs" tooltip="Weight of dry soil (auto-calculated) | Formula: Cont+Dry (g) − Cont. (g)" />
                 </th>
-                <th className="px-2 py-2 text-left font-medium text-muted-foreground">
-                  <TooltipHeader label="MC (%)" tooltip="Moisture Content as percentage of dry soil mass (auto-calculated) | Formula: (Wt Water / Wt Dry) × 100" />
+                <th className="px-1 sm:px-2 py-1.5 sm:py-2 text-left font-medium text-muted-foreground text-xs sm:text-sm">
+                  <TooltipHeader label="MC" tooltip="Moisture Content as percentage of dry soil mass (auto-calculated) | Formula: (Wt Water / Wt Dry) × 100" />
                 </th>
-                <th className="w-10" />
+                <th className="w-8 sm:w-10" />
               </tr>
             </thead>
             <tbody>
@@ -146,86 +146,86 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId, plasticL
                       started && !valid && "bg-amber-50/70 dark:bg-amber-950/20",
                     )}
                   >
-                    <td className="px-2 py-1.5">
-                      <Input value={trial.trialNo} disabled className="h-8 bg-muted/50 w-12" />
+                    <td className="px-1 sm:px-2 py-1">
+                      <Input value={trial.trialNo} disabled className="h-7 sm:h-8 text-xs sm:text-sm bg-muted/50 w-10 sm:w-12" />
                     </td>
-                    <td className="px-2 py-1.5">
+                    <td className="px-1 sm:px-2 py-1">
                       <Input
                         value={trial.containerNo || ""}
                         onChange={(e) => updateTrial(index, "containerNo", e.target.value)}
-                        className="h-8 w-16"
+                        className="h-7 sm:h-8 text-xs sm:text-sm w-12 sm:w-16"
                         placeholder="101"
                       />
                     </td>
-                    <td className="px-2 py-1.5">
+                    <td className="px-1 sm:px-2 py-1">
                       <Input
                         type="text"
                         inputMode="decimal"
                         value={trial.penetration}
                         onChange={(e) => updateTrial(index, "penetration", e.target.value)}
-                        className={cn("h-8", started && !valid && !trial.penetration && "border-amber-300")}
+                        className={cn("h-7 sm:h-8 text-xs sm:text-sm", started && !valid && !trial.penetration && "border-amber-300")}
                         placeholder="20"
                       />
                     </td>
-                    <td className="px-2 py-1.5">
+                    <td className="px-1 sm:px-2 py-1">
                       <Input
                         type="text"
                         inputMode="decimal"
                         value={trial.containerWetMass || ""}
                         onChange={(e) => updateTrial(index, "containerWetMass", e.target.value)}
-                        className="h-8"
+                        className="h-7 sm:h-8 text-xs sm:text-sm"
                         placeholder="23.8"
                       />
                     </td>
-                    <td className="px-2 py-1.5">
+                    <td className="px-1 sm:px-2 py-1">
                       <Input
                         type="text"
                         inputMode="decimal"
                         value={trial.containerDryMass || ""}
                         onChange={(e) => updateTrial(index, "containerDryMass", e.target.value)}
-                        className="h-8"
+                        className="h-7 sm:h-8 text-xs sm:text-sm"
                         placeholder="17.6"
                       />
                     </td>
-                    <td className="px-2 py-1.5">
+                    <td className="px-1 sm:px-2 py-1">
                       <Input
                         type="text"
                         inputMode="decimal"
                         value={trial.containerMass || ""}
                         onChange={(e) => updateTrial(index, "containerMass", e.target.value)}
-                        className="h-8"
+                        className="h-7 sm:h-8 text-xs sm:text-sm"
                         placeholder="5.0"
                       />
                     </td>
-                    <td className="px-2 py-1.5">
-                      <span className="text-sm text-muted-foreground">{waterMass !== null ? waterMass : "-"}</span>
+                    <td className="px-1 sm:px-2 py-1">
+                      <span className="text-xs sm:text-sm text-muted-foreground">{waterMass !== null ? waterMass : "-"}</span>
                     </td>
-                    <td className="px-2 py-1.5">
-                      <span className="text-sm text-muted-foreground">{drySoilMass !== null ? drySoilMass : "-"}</span>
+                    <td className="px-1 sm:px-2 py-1">
+                      <span className="text-xs sm:text-sm text-muted-foreground">{drySoilMass !== null ? drySoilMass : "-"}</span>
                     </td>
-                    <td className="px-2 py-1.5">
+                    <td className="px-1 sm:px-2 py-1">
                       {hasAutoMoisture ? (
-                        <span className="text-sm font-medium">{autoMoisture || "-"}</span>
+                        <span className="text-xs sm:text-sm font-medium">{autoMoisture || "-"}</span>
                       ) : (
                         <Input
                           type="text"
                           inputMode="decimal"
                           value={trial.moisture}
                           onChange={(e) => updateTrial(index, "moisture", e.target.value)}
-                          className={cn("h-8", started && !valid && !trial.moisture && "border-amber-300")}
+                          className={cn("h-7 sm:h-8 text-xs sm:text-sm", started && !valid && !trial.moisture && "border-amber-300")}
                           placeholder="35"
                         />
                       )}
                     </td>
-                    <td className="px-1 py-1.5">
+                    <td className="px-0.5 sm:px-1 py-1">
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        className="h-6 sm:h-7 w-6 sm:w-7 text-destructive hover:bg-destructive/10 hover:text-destructive"
                         onClick={() => removeTrial(index)}
                       >
-                        <X className="h-3.5 w-3.5" />
+                        <X className="h-3 sm:h-3.5 w-3 sm:w-3.5" />
                       </Button>
                     </td>
                   </tr>
@@ -290,12 +290,12 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId, plasticL
 
         return (
           <>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
               {/* Graph on the left - takes 2 columns */}
-              <div className="lg:col-span-2 rounded-lg border bg-card p-3">
-                <h4 className="mb-3 text-sm font-medium text-foreground">Moisture Content vs Penetration (Semi-Log, ASTM D4318)</h4>
+              <div className="lg:col-span-2 rounded-lg border bg-card p-2 sm:p-3">
+                <h4 className="mb-2 sm:mb-3 text-xs sm:text-sm font-medium text-foreground">Moisture Content vs Penetration (Semi-Log, ASTM D4318)</h4>
                 <div className="overflow-x-auto">
-                  <div className="h-[280px] min-w-[520px]">
+                  <div className="h-[250px] sm:h-[280px] min-w-full sm:min-w-[520px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={mergedChartData} margin={{ top: 16, right: 20, left: 0, bottom: 8 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -374,43 +374,44 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId, plasticL
               </div>
 
               {/* Live Computed Values panel */}
-              <div className="flex flex-col gap-3">
-                <div className="rounded-lg border bg-muted/40 p-3">
+              <div className="flex flex-col gap-2 sm:gap-3">
+                <div className="rounded-lg border bg-muted/40 p-2 sm:p-3">
                   <span className="text-xs font-medium text-muted-foreground">Liquid Limit (LL) @ 20mm</span>
-                  <div className="text-2xl font-bold text-primary mt-1">{llValue !== null && llValue !== undefined ? `${llValue}%` : "-"}</div>
+                  <div className="text-xl sm:text-2xl font-bold text-primary mt-1">{llValue !== null && llValue !== undefined ? `${llValue}%` : "-"}</div>
                 </div>
-                <div className="rounded-lg border bg-card p-3 space-y-2 text-xs">
-                  <div className="flex justify-between">
+                <div className="rounded-lg border bg-card p-2 sm:p-3 space-y-1.5 sm:space-y-2 text-xs">
+                  <div className="flex justify-between gap-2">
                     <span className="text-muted-foreground">Plastic Limit (PL)</span>
-                    <span className="font-medium">{plasticLimit !== null && plasticLimit !== undefined ? `${plasticLimit}%` : "-"}</span>
+                    <span className="font-medium text-right">{plasticLimit !== null && plasticLimit !== undefined ? `${plasticLimit}%` : "-"}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between gap-2">
                     <span className="text-muted-foreground">Plasticity Index (PI)</span>
-                    <span className="font-medium">{piValue !== null ? `${piValue}%` : "-"}</span>
+                    <span className="font-medium text-right">{piValue !== null ? `${piValue}%` : "-"}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">A-line PI = 0.73(LL−20)</span>
-                    <span className="font-medium">{aLineThreshold !== null ? `${aLineThreshold}` : "-"}</span>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted-foreground truncate">A-line PI = 0.73(LL−20)</span>
+                    <span className="font-medium text-right flex-shrink-0">{aLineThreshold !== null ? `${aLineThreshold}` : "-"}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between gap-2">
                     <span className="text-muted-foreground">USCS Class</span>
-                    <span className="font-semibold text-foreground">{classification}</span>
+                    <span className="font-semibold text-foreground text-right">{classification}</span>
                   </div>
                   {passing425um && (
-                    <div className="flex justify-between">
+                    <div className="flex justify-between gap-2">
                       <span className="text-muted-foreground">Passing 425µm</span>
-                      <span className="font-medium">{passing425um}%</span>
+                      <span className="font-medium text-right flex-shrink-0">{passing425um}%</span>
                     </div>
                   )}
                 </div>
-                <div className="flex items-center justify-between rounded-lg border p-2">
-                  <Label htmlFor={`a-line-toggle-${recordId ?? "x"}`} className="text-xs cursor-pointer">
-                    Show A-line preview
+                <div className="flex items-center justify-between rounded-lg border p-1.5 sm:p-2 gap-2">
+                  <Label htmlFor={`a-line-toggle-${recordId ?? "x"}`} className="text-xs cursor-pointer truncate">
+                    Show A-line
                   </Label>
                   <Switch
                     id={`a-line-toggle-${recordId ?? "x"}`}
                     checked={showALine}
                     onCheckedChange={setShowALine}
+                    className="flex-shrink-0"
                   />
                 </div>
               </div>
