@@ -58,11 +58,11 @@ const TestSection = ({ title, testKey, tooltip, children, onSave, onFinalSave, o
         className="cursor-pointer select-none py-2 px-3"
         onClick={() => setOpen(!isOpen)}
       >
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
           <CardTitle
-            className="text-base font-semibold flex items-center gap-2 group"
+            className="text-sm sm:text-base font-semibold flex items-center gap-2 group"
             tooltip={tooltip}
-            tooltipSide="right"
+            tooltipSide="top"
           >
             <span
               className="inline-flex items-center justify-center h-6 w-6 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 transition-all duration-200 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50 group-hover:shadow-md flex-shrink-0"
@@ -72,13 +72,14 @@ const TestSection = ({ title, testKey, tooltip, children, onSave, onFinalSave, o
             </span>
             <span className="min-w-0">{title}</span>
           </CardTitle>
-          <div className="flex flex-wrap gap-1.5 justify-start sm:justify-end" onClick={(e) => e.stopPropagation()}>
+          <div className="flex flex-wrap gap-1.5 justify-start sm:justify-end w-full sm:w-auto" onClick={(e) => e.stopPropagation()}>
             {onExportSmokeCheck && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     size="sm"
                     variant="secondary"
+                    className="text-xs sm:text-sm"
                     disabled={exportSmokeCheckDisabled}
                     onClick={async () => {
                       await onExportSmokeCheck();

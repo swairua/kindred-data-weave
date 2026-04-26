@@ -1,7 +1,7 @@
 import { useMemo } from "react";
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTestData, TestStatus } from "@/context/TestDataContext";
-import { useProject } from "@/context/ProjectContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,6 @@ const categoryConfig = {
 
 const Dashboard = () => {
   const { tests } = useTestData();
-  const project = useProject();
   const navigate = useNavigate();
 
   const testList = useMemo(() => Object.values(tests), [tests]);

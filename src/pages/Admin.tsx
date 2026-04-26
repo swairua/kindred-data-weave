@@ -1,4 +1,5 @@
 import { useCallback, useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -177,19 +178,11 @@ const Admin = () => {
     setUploadProgress(10);
 
     try {
-      console.log("Starting upload:", {
-        fileName: file.name,
-        fileSize: file.size,
-        imageType: selectedImageType,
-      });
-
       setUploadProgress(30);
 
       const data = await uploadFile(file, { image_type: selectedImageType });
 
       setUploadProgress(90);
-
-      console.log("Upload response:", data);
 
       setUploadedFiles((prev) => [
         {
@@ -205,7 +198,6 @@ const Admin = () => {
       toast.success(`Uploaded ${typeLabel}: ${file.name}`);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
-      console.error("Upload exception:", error);
       toast.error(`Upload error: ${errorMsg}`);
     } finally {
       setIsUploading(false);
