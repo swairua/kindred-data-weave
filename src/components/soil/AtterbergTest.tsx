@@ -1712,7 +1712,7 @@ const AtterbergTest = () => {
       >
       <div className="space-y-4 print:space-y-3">
         <Card className="border bg-muted/20 shadow-none print:border-border print:bg-transparent">
-          <CardContent className="grid gap-2 p-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-8">
+          <CardContent className="grid gap-1 sm:gap-2 p-2 sm:p-4 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-8">
             <OverviewMetric label="Project" value={project.projectName || "Current project"} />
             <OverviewMetric label="Client" value={project.clientName || "-"} />
             <OverviewMetric label="Date" value={project.date || "-"} />
@@ -1735,8 +1735,8 @@ const AtterbergTest = () => {
               </div>
             </CardHeader>
             <CollapsibleContent>
-              <CardContent className="space-y-4 pt-0">
-                <div className="grid gap-4 md:grid-cols-2">
+              <CardContent className="space-y-3 sm:space-y-4 pt-0">
+                <div className="grid gap-2 sm:gap-3 md:gap-4 md:grid-cols-2">
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">Lab Organization</label>
                     <Input
@@ -1893,9 +1893,9 @@ interface OverviewMetricProps {
 }
 
 const OverviewMetric = ({ label, value, className }: OverviewMetricProps) => (
-  <div className="rounded-lg border bg-card px-3 py-2 print:border-none print:bg-transparent print:px-0 print:py-0">
-    <div className="text-xs font-medium text-muted-foreground">{label}</div>
-    <div className={cn("mt-1 text-sm font-semibold text-foreground", className)}>{value || "-"}</div>
+  <div className="rounded-lg border bg-card px-2 sm:px-3 py-1.5 sm:py-2 print:border-none print:bg-transparent print:px-0 print:py-0">
+    <div className="text-xs font-medium text-muted-foreground truncate">{label}</div>
+    <div className={cn("mt-0.5 sm:mt-1 text-xs sm:text-sm font-semibold text-foreground truncate", className)}>{value || "-"}</div>
   </div>
 );
 
@@ -2123,7 +2123,7 @@ const RecordCard = ({
                 </div>
               </div>
 
-              <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                 <div className="space-y-1">
                   <div className="text-xs font-medium text-muted-foreground">Identifier / Borehole / Sample Group</div>
                   <Input value={record.label} onChange={(event) => onUpdateLabel(event.target.value)} className="h-9" placeholder="Sample ID, borehole, depth, etc." />
@@ -2155,7 +2155,7 @@ const RecordCard = ({
 
         <CollapsibleContent>
           <CardContent className="space-y-4 pt-0">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-2 sm:gap-3 lg:gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <TestTypeColumn
                 testType="liquidLimit"
                 tests={testsByType.liquidLimit}
@@ -2224,7 +2224,7 @@ const RecordCard = ({
                   </div>
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="grid gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   {resultCards.map((item) => (
                     <div
                       key={item.label}

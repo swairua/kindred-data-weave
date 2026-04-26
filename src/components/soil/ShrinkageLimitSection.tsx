@@ -52,21 +52,30 @@ const ShrinkageLimitSection = ({ trials, result, onChangeTrials }: ShrinkageLimi
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between text-xs text-muted-foreground">
         <span>Linear Shrinkage per BS 1377 (Standard mould length = 140mm). This measures length reduction as a percentage.</span>
-        <span>Incomplete rows are ignored.</span>
+        <span className="whitespace-nowrap">Incomplete rows are ignored.</span>
       </div>
 
       <div className="rounded-lg border overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[500px] text-sm">
+          <table className="w-full text-xs sm:text-sm">
             <thead>
               <tr className="bg-muted border-b">
-                <th className="px-3 py-2 text-left font-medium text-muted-foreground">Trial</th>
-                <th className="px-3 py-2 text-left font-medium text-muted-foreground">Initial Length (mm)</th>
-                <th className="px-3 py-2 text-left font-medium text-muted-foreground">Final Length (mm)</th>
-                <th className="px-3 py-2 text-left font-medium text-muted-foreground">Shrinkage (%)</th>
-                <th className="w-10" />
+                <th className="px-1 sm:px-3 py-2 text-left font-medium text-muted-foreground w-10 sm:auto">Trial</th>
+                <th className="px-1 sm:px-3 py-2 text-left font-medium text-muted-foreground">
+                  <span className="hidden sm:inline">Initial Length (mm)</span>
+                  <span className="sm:hidden">Init (mm)</span>
+                </th>
+                <th className="px-1 sm:px-3 py-2 text-left font-medium text-muted-foreground">
+                  <span className="hidden sm:inline">Final Length (mm)</span>
+                  <span className="sm:hidden">Final (mm)</span>
+                </th>
+                <th className="px-1 sm:px-3 py-2 text-left font-medium text-muted-foreground">
+                  <span className="hidden sm:inline">Shrinkage (%)</span>
+                  <span className="sm:hidden">Shrnk%</span>
+                </th>
+                <th className="w-8 sm:w-10" />
               </tr>
             </thead>
             <tbody>
@@ -86,41 +95,41 @@ const ShrinkageLimitSection = ({ trials, result, onChangeTrials }: ShrinkageLimi
                       started && !valid && "bg-amber-50/70 dark:bg-amber-950/20",
                     )}
                   >
-                    <td className="px-3 py-1.5">
-                      <Input value={trial.trialNo} disabled className="h-8 bg-muted/50" />
+                    <td className="px-1 sm:px-3 py-1.5">
+                      <Input value={trial.trialNo} disabled className="h-7 sm:h-8 bg-muted/50 w-9 sm:auto text-xs sm:text-sm" />
                     </td>
-                    <td className="px-3 py-1.5">
+                    <td className="px-1 sm:px-3 py-1.5">
                       <Input
                         type="text"
                         inputMode="decimal"
                         value={trial.initialLength}
                         onChange={(e) => updateTrial(index, "initialLength", e.target.value)}
-                        className={cn("h-8", started && !valid && !trial.initialLength && "border-amber-300")}
+                        className={cn("h-7 sm:h-8 text-xs sm:text-sm", started && !valid && !trial.initialLength && "border-amber-300")}
                         placeholder="140"
                       />
                     </td>
-                    <td className="px-3 py-1.5">
+                    <td className="px-1 sm:px-3 py-1.5">
                       <Input
                         type="text"
                         inputMode="decimal"
                         value={trial.finalLength}
                         onChange={(e) => updateTrial(index, "finalLength", e.target.value)}
-                        className={cn("h-8", started && !valid && !trial.finalLength && "border-amber-300")}
+                        className={cn("h-7 sm:h-8 text-xs sm:text-sm", started && !valid && !trial.finalLength && "border-amber-300")}
                         placeholder="130"
                       />
                     </td>
-                    <td className="px-3 py-1.5">
-                      <span className="text-sm text-muted-foreground">{shrinkagePct !== null ? `${shrinkagePct}%` : "-"}</span>
+                    <td className="px-1 sm:px-3 py-1.5">
+                      <span className="text-xs sm:text-sm text-muted-foreground">{shrinkagePct !== null ? `${shrinkagePct}%` : "-"}</span>
                     </td>
-                    <td className="px-1 py-1.5">
+                    <td className="px-0.5 sm:px-1 py-1.5">
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        className="h-6 w-6 sm:h-7 sm:w-7 text-destructive hover:bg-destructive/10 hover:text-destructive"
                         onClick={() => removeTrial(index)}
                       >
-                        <X className="h-3.5 w-3.5" />
+                        <X className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                       </Button>
                     </td>
                   </tr>
