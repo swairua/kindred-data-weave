@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { Plus, LayoutDashboard, FlaskConical, FileText, Hammer, LogOut } from "lucide-react";
+import { Plus, LayoutDashboard, FlaskConical, FileText, Hammer, LogOut, Zap, TestTubeDiagonal } from "lucide-react";
 import { useEffect } from "react";
 import {
   Sidebar,
@@ -99,25 +99,63 @@ const Navigation = ({
   ];
 
   return (
-    <Sidebar collapsible="icon" variant="sidebar">
-      <SidebarHeader className="border-b">
-        <h2 className="font-bold text-sm tracking-tight px-2">CMTC Lab</h2>
+    <Sidebar collapsible="icon" variant="sidebar" className="bg-gradient-to-b from-slate-900 to-slate-950 border-r border-slate-800">
+      {/* Sidebar Header with Branding */}
+      <SidebarHeader className="border-b border-slate-800 bg-gradient-to-r from-blue-600 to-indigo-600 py-6">
+        <div className="flex items-center gap-3 px-2">
+          <div className="h-10 w-10 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+            <TestTubeDiagonal className="h-6 w-6 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="font-bold text-sm text-white tracking-tight truncate">CMTC Lab</h2>
+            <p className="text-xs text-blue-100 truncate">Materials Testing</p>
+          </div>
+        </div>
       </SidebarHeader>
 
-      <SidebarContent>
-        <SidebarMenu>
-          {navItems.map((item) => {
+      {/* Sidebar Content */}
+      <SidebarContent className="py-6">
+        {/* Primary Actions */}
+        <div className="px-2 mb-2">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={handleNewProject}
+                className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0 shadow-lg mb-2 group"
+                tooltip="Create a new project"
+              >
+                <Plus className="h-5 w-5 text-white" />
+                <span className="font-semibold">New Project</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </div>
+
+        <div className="px-2 mb-4">
+          <div className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Navigation</div>
+        </div>
+
+        {/* Main Navigation */}
+        <SidebarMenu className="space-y-1">
+          {navItems.filter(item => !item.isAction).map((item) => {
             const Icon = item.icon;
+            const isActive = item.active;
             return (
               <SidebarMenuItem key={item.id}>
                 <SidebarMenuButton
                   onClick={item.onClick}
-                  isActive={item.active}
+                  isActive={isActive}
                   tooltip={item.label}
-                  className={item.isAction ? "bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent" : ""}
+                  className={`
+                    transition-all duration-200
+                    ${isActive
+                      ? "bg-gradient-to-r from-blue-500/20 to-indigo-500/20 text-blue-400 border-l-2 border-blue-500"
+                      : "text-slate-300 hover:text-white hover:bg-slate-800"
+                    }
+                  `}
                 >
-                  <Icon className="h-4 w-4" />
-                  <span>{item.label}</span>
+                  <Icon className={`h-5 w-5 ${isActive ? "text-blue-400" : ""}`} />
+                  <span className={isActive ? "font-semibold" : "font-medium"}>{item.label}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             );
@@ -125,24 +163,29 @@ const Navigation = ({
         </SidebarMenu>
       </SidebarContent>
 
+      {/* Sidebar Footer */}
       {(userName || userEmail) && (
-        <SidebarFooter>
-          <SidebarSeparator />
-          <div className="text-xs space-y-1 px-2 py-2">
+        <SidebarFooter className="border-t border-slate-800 bg-gradient-to-t from-slate-900/50 to-transparent">
+          <SidebarSeparator className="bg-slate-800" />
+
+          {/* User Info Card */}
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg p-3 space-y-2 mx-2">
             {userName && (
-              <p className="font-medium text-sidebar-foreground truncate">
+              <p className="text-sm font-semibold text-white truncate flex items-center gap-2">
+                <Zap className="h-3 w-3 text-blue-400" />
                 {userName}
               </p>
             )}
             {userEmail && (
-              <p className="text-sidebar-foreground/70 truncate">{userEmail}</p>
+              <p className="text-xs text-slate-400 truncate">{userEmail}</p>
             )}
           </div>
+
           {onLogout && (
             <Button
               variant="ghost"
               size="sm"
-              className="w-full justify-start gap-2 px-2"
+              className="w-full justify-start gap-2 px-2 text-slate-300 hover:text-red-400 hover:bg-red-500/10 transition-colors mx-2 mb-2"
               onClick={() => {
                 onLogout();
                 // Close mobile drawer after logout
@@ -152,7 +195,7 @@ const Navigation = ({
               }}
             >
               <LogOut className="h-4 w-4" />
-              <span>Logout</span>
+              <span className="text-sm">Logout</span>
             </Button>
           )}
         </SidebarFooter>

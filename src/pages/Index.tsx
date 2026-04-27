@@ -473,42 +473,43 @@ const Index = ({ initialTab }: IndexProps) => {
             userEmail={currentUser?.email}
           />
           <SidebarInset className="flex flex-col min-h-svh">
-            <header className="border-b bg-card sticky top-0 z-10">
-              <div className="px-4 py-4">
+            <header className="border-b bg-gradient-to-r from-white to-blue-50 dark:from-slate-950 dark:to-blue-950/20 sticky top-0 z-10 shadow-sm">
+              <div className="px-4 md:px-6 py-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-4">
                     <SidebarTrigger className="md:hidden h-10 w-10" />
-                  <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center overflow-hidden">
-                    <img
-                      src="https://cdn.builder.io/api/v1/image/assets%2Fedb7c735e72a41328e7ab97a48a7676d%2Fe8eac870f9c84f0c869c7c6ece6e38e5?format=webp&width=800&height=1200"
-                      alt="Cransfield Materials Testing Center"
-                      className="h-full w-full object-contain"
-                    />
-                  </div>
-                  <div>
-                    <h1 className="text-xl font-bold text-foreground tracking-tight">Cransfield Materials Testing Center</h1>
-                    <p className="text-xs text-muted-foreground">Quality Assurance</p>
-                  </div>
-                </div>
-
-                {authStatus === "checking" ? (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Checking session
-                  </div>
-                ) : currentUser ? (
-                  <div className="flex items-center gap-3 self-start sm:self-auto">
-                    <div className="text-left sm:text-right">
-                      <p className="text-sm font-medium text-foreground">{currentUser.name}</p>
-                      <p className="text-xs text-muted-foreground">{currentUser.email}</p>
+                    <div className="h-11 w-11 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center overflow-hidden shadow-lg flex-shrink-0">
+                      <img
+                        src="https://cdn.builder.io/api/v1/image/assets%2Fedb7c735e72a41328e7ab97a48a7676d%2Fe8eac870f9c84f0c869c7c6ece6e38e5?format=webp&width=800&height=1200"
+                        alt="Cransfield Materials Testing Center"
+                        className="h-8 w-8 object-contain"
+                      />
                     </div>
-                    <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={handleLogout}>
-                      <LogOut className="h-4 w-4" /> Logout
-                    </Button>
+                    <div className="hidden sm:block">
+                      <h1 className="text-lg font-bold text-foreground tracking-tight">Cransfield CMTC</h1>
+                      <p className="text-xs text-muted-foreground">Materials Testing Center</p>
+                    </div>
                   </div>
-                ) : null}
+
+                  {authStatus === "checking" ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Checking session
+                    </div>
+                  ) : currentUser ? (
+                    <div className="flex items-center gap-4">
+                      <div className="text-right hidden sm:block">
+                        <p className="text-sm font-semibold text-foreground">{currentUser.name}</p>
+                        <p className="text-xs text-muted-foreground">{currentUser.email}</p>
+                      </div>
+                      <Button type="button" variant="outline" size="sm" className="gap-1.5 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={handleLogout}>
+                        <LogOut className="h-4 w-4" />
+                        <span className="hidden sm:inline">Logout</span>
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
               </div>
-            </div>
-          </header>
+            </header>
 
           <main className="flex-1 overflow-y-auto px-0 py-4">
             <div className="w-full md:max-w-6xl md:mx-auto md:px-4">
@@ -599,17 +600,19 @@ const Index = ({ initialTab }: IndexProps) => {
 
                 {/* Right side - Login form */}
                 <div className="w-full">
-                  <Card className="border-0 shadow-xl rounded-2xl overflow-hidden">
+                  <Card className="border-0 shadow-2xl rounded-2xl overflow-hidden bg-card">
                     {/* Card header with gradient */}
-                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 px-4 md:px-8 py-6 md:py-8 border-b">
-                      <h1 className="text-3xl font-bold text-foreground mb-2">Sign in</h1>
-                      <p className="text-muted-foreground">Enter your credentials to access your account</p>
+                    <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 px-4 md:px-8 py-8 md:py-10 text-white">
+                      <div className="space-y-2">
+                        <h1 className="text-4xl font-bold">Welcome Back</h1>
+                        <p className="text-blue-100 text-lg">Sign in to your lab account</p>
+                      </div>
                     </div>
 
                     <CardContent className="p-4 md:p-8">
-                      <form className="space-y-6" onSubmit={handleLogin}>
+                      <form className="space-y-5" onSubmit={handleLogin}>
                         {/* Email field */}
-                        <div className="space-y-2">
+                        <div className="space-y-2.5">
                           <Label htmlFor="email" className="text-sm font-semibold text-foreground">
                             Email Address
                           </Label>
@@ -620,12 +623,12 @@ const Index = ({ initialTab }: IndexProps) => {
                             onChange={(event) => setEmail(event.target.value)}
                             placeholder="your@email.com"
                             autoComplete="email"
-                            className="h-12 px-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                            className="h-12 px-4 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                           />
                         </div>
 
                         {/* Password field */}
-                        <div className="space-y-2">
+                        <div className="space-y-2.5">
                           <Label htmlFor="password" className="text-sm font-semibold text-foreground">
                             Password
                           </Label>
@@ -636,43 +639,50 @@ const Index = ({ initialTab }: IndexProps) => {
                             onChange={(event) => setPassword(event.target.value)}
                             placeholder="••••••••"
                             autoComplete="current-password"
-                            className="h-12 px-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                            className="h-12 px-4 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                           />
                         </div>
+
+                        {/* Error message - moved here from below */}
+                        {loginError && (
+                          <div className="p-4 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+                            <p className="text-sm text-red-700 dark:text-red-200 font-medium">{loginError}</p>
+                          </div>
+                        )}
 
                         {/* Submit button */}
                         <Button
                           type="submit"
-                          className="w-full h-12 text-base font-semibold rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                          className="w-full h-12 text-base font-semibold rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
                           disabled={isSubmittingLogin}
                         >
                           {isSubmittingLogin ? (
                             <>
-                              <Loader2 className="h-5 w-5 animate-spin mr-2" /> Signing in
+                              <Loader2 className="h-5 w-5 animate-spin mr-2" /> Signing in...
                             </>
                           ) : (
-                            "Sign in"
+                            "Sign In"
                           )}
                         </Button>
 
                         {/* Divider */}
                         <div className="flex items-center gap-3 my-6">
-                          <div className="flex-1 border-t border-gray-200 dark:border-gray-700"></div>
-                          <span className="text-sm text-muted-foreground">New to the lab?</span>
-                          <div className="flex-1 border-t border-gray-200 dark:border-gray-700"></div>
+                          <div className="flex-1 border-t border-slate-200 dark:border-slate-700"></div>
+                          <span className="text-xs text-muted-foreground font-medium">New to the platform?</span>
+                          <div className="flex-1 border-t border-slate-200 dark:border-slate-700"></div>
                         </div>
 
                         {/* Help text */}
-                        <p className="text-center text-sm text-muted-foreground">
-                          Contact your lab administrator for access
+                        <p className="text-center text-sm text-muted-foreground bg-blue-50 dark:bg-blue-950/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+                          Contact your lab administrator to request access
                         </p>
                       </form>
                     </CardContent>
                   </Card>
 
                   {/* Footer text */}
-                  <p className="text-center text-xs text-muted-foreground mt-6">
-                    By signing in, you agree to our Terms of Service and Privacy Policy
+                  <p className="text-center text-xs text-muted-foreground mt-8">
+                    © 2024 Cransfield CMTC. All rights reserved.
                   </p>
                 </div>
               </div>
@@ -696,20 +706,20 @@ const Index = ({ initialTab }: IndexProps) => {
         </SidebarProvider>
       ) : (
         <main className="flex min-h-svh flex-col">
-          <header className="border-b bg-card sticky top-0 z-10">
-            <div className="px-4 py-4">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center overflow-hidden">
+          <header className="border-b bg-gradient-to-r from-slate-900 to-blue-950 text-white sticky top-0 z-10 shadow-lg">
+            <div className="px-4 md:px-6 py-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between max-w-7xl mx-auto">
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center overflow-hidden shadow-lg">
                     <img
                       src="https://cdn.builder.io/api/v1/image/assets%2Fedb7c735e72a41328e7ab97a48a7676d%2Fe8eac870f9c84f0c869c7c6ece6e38e5?format=webp&width=800&height=1200"
                       alt="Cransfield Materials Testing Center"
-                      className="h-full w-full object-contain"
+                      className="h-8 w-8 object-contain"
                     />
                   </div>
                   <div>
-                    <h1 className="text-xl font-bold text-foreground tracking-tight">Cransfield Materials Testing Center</h1>
-                    <p className="text-xs text-muted-foreground">Quality Assurance</p>
+                    <h1 className="text-2xl font-bold text-white tracking-tight">Cransfield CMTC</h1>
+                    <p className="text-sm text-blue-100">Materials Testing Center</p>
                   </div>
                 </div>
               </div>
@@ -804,17 +814,19 @@ const Index = ({ initialTab }: IndexProps) => {
 
                     {/* Right side - Login form */}
                     <div className="w-full">
-                      <Card className="border-0 shadow-xl rounded-2xl overflow-hidden">
+                      <Card className="border-0 shadow-2xl rounded-2xl overflow-hidden bg-card">
                         {/* Card header with gradient */}
-                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 px-4 md:px-8 py-6 md:py-8 border-b">
-                          <h1 className="text-3xl font-bold text-foreground mb-2">Sign in</h1>
-                          <p className="text-muted-foreground">Enter your credentials to access your account</p>
+                        <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 px-4 md:px-8 py-8 md:py-10 text-white">
+                          <div className="space-y-2">
+                            <h1 className="text-4xl font-bold">Welcome Back</h1>
+                            <p className="text-blue-100 text-lg">Sign in to your lab account</p>
+                          </div>
                         </div>
 
                         <CardContent className="p-4 md:p-8">
-                          <form className="space-y-6" onSubmit={handleLogin}>
+                          <form className="space-y-5" onSubmit={handleLogin}>
                             {/* Email field */}
-                            <div className="space-y-2">
+                            <div className="space-y-2.5">
                               <Label htmlFor="email" className="text-sm font-semibold text-foreground">
                                 Email Address
                               </Label>
@@ -825,12 +837,12 @@ const Index = ({ initialTab }: IndexProps) => {
                                 onChange={(event) => setEmail(event.target.value)}
                                 placeholder="your@email.com"
                                 autoComplete="email"
-                                className="h-12 px-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                className="h-12 px-4 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                               />
                             </div>
 
                             {/* Password field */}
-                            <div className="space-y-2">
+                            <div className="space-y-2.5">
                               <Label htmlFor="password" className="text-sm font-semibold text-foreground">
                                 Password
                               </Label>
@@ -841,43 +853,52 @@ const Index = ({ initialTab }: IndexProps) => {
                                 onChange={(event) => setPassword(event.target.value)}
                                 placeholder="••••••••"
                                 autoComplete="current-password"
-                                className="h-12 px-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                className="h-12 px-4 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                               />
                             </div>
 
                             {/* Error message */}
                             {loginError && (
-                              <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                                <p className="text-sm text-red-600 dark:text-red-400">{loginError}</p>
+                              <div className="p-4 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+                                <p className="text-sm text-red-700 dark:text-red-200 font-medium">{loginError}</p>
                               </div>
                             )}
 
                             {/* Sign in button */}
                             <Button
                               type="submit"
-                              className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-all"
+                              className="w-full h-12 text-base font-semibold rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
                               disabled={isSubmittingLogin}
                             >
                               {isSubmittingLogin ? (
                                 <>
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
                                   Signing in...
                                 </>
                               ) : (
-                                "Sign in"
+                                "Sign In"
                               )}
                             </Button>
+
+                            {/* Divider */}
+                            <div className="flex items-center gap-3 my-6">
+                              <div className="flex-1 border-t border-slate-200 dark:border-slate-700"></div>
+                              <span className="text-xs text-muted-foreground font-medium">New to the platform?</span>
+                              <div className="flex-1 border-t border-slate-200 dark:border-slate-700"></div>
+                            </div>
+
+                            {/* Help text */}
+                            <p className="text-center text-sm text-muted-foreground bg-blue-50 dark:bg-blue-950/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+                              Contact your lab administrator to request access
+                            </p>
                           </form>
                         </CardContent>
-
-                        {/* Card footer */}
-                        <div className="border-t bg-gray-50 dark:bg-gray-900/20 px-4 md:px-8 py-4 md:py-6">
-                          <p className="text-sm text-muted-foreground text-center mb-2">New to the lab?</p>
-                          <p className="text-xs text-muted-foreground text-center">
-                            Contact your lab administrator for access
-                          </p>
-                        </div>
                       </Card>
+
+                      {/* Footer text */}
+                      <p className="text-center text-xs text-muted-foreground mt-8">
+                        © 2024 Cransfield CMTC. All rights reserved.
+                      </p>
                     </div>
                   </div>
                 </div>
