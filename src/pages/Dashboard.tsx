@@ -83,168 +83,196 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Summary Stats - Enhanced */}
+      {/* Summary Stats - Enhanced with animations */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
-          <CardContent className="pt-6 pb-6">
+        <Card className="bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 text-white border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-2 cursor-pointer group overflow-hidden relative">
+          <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-5 transition-opacity duration-300"></div>
+          <CardContent className="pt-6 pb-6 relative z-10">
             <div className="flex items-start justify-between mb-3">
-              <BarChart3 className="h-6 w-6 text-blue-100" />
-              <span className="text-xs font-semibold text-blue-100 bg-blue-400/20 px-2 py-1 rounded-full">Total</span>
+              <BarChart3 className="h-6 w-6 text-blue-100 group-hover:scale-110 transition-transform duration-300" />
+              <span className="text-xs font-semibold text-blue-100 bg-blue-400/30 px-2 py-1 rounded-full backdrop-blur">Total</span>
             </div>
-            <p className="text-4xl font-bold">{stats.total}</p>
+            <p className="text-4xl font-bold group-hover:text-blue-100 transition-colors duration-300">{stats.total}</p>
             <p className="text-sm text-blue-100 mt-2">Tests in System</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-green-500 to-emerald-600 text-white border-0 shadow-lg">
-          <CardContent className="pt-6 pb-6">
+        <Card className="bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 text-white border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-2 cursor-pointer group overflow-hidden relative">
+          <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-5 transition-opacity duration-300"></div>
+          <CardContent className="pt-6 pb-6 relative z-10">
             <div className="flex items-start justify-between mb-3">
-              <CheckCircle2 className="h-6 w-6 text-green-100" />
-              <span className="text-xs font-semibold text-green-100 bg-green-400/20 px-2 py-1 rounded-full">{stats.completed > 0 ? Math.round((stats.completed / stats.total) * 100) : 0}%</span>
+              <CheckCircle2 className="h-6 w-6 text-green-100 group-hover:scale-110 transition-transform duration-300" />
+              <span className="text-xs font-semibold text-green-100 bg-green-400/30 px-2 py-1 rounded-full backdrop-blur">{stats.completed > 0 ? Math.round((stats.completed / stats.total) * 100) : 0}%</span>
             </div>
-            <p className="text-4xl font-bold">{stats.completed}</p>
+            <p className="text-4xl font-bold group-hover:text-green-100 transition-colors duration-300">{stats.completed}</p>
             <p className="text-sm text-green-100 mt-2">Completed</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-amber-500 to-orange-600 text-white border-0 shadow-lg">
-          <CardContent className="pt-6 pb-6">
+        <Card className="bg-gradient-to-br from-amber-500 via-orange-500 to-red-500 text-white border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-2 cursor-pointer group overflow-hidden relative">
+          <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-5 transition-opacity duration-300"></div>
+          <CardContent className="pt-6 pb-6 relative z-10">
             <div className="flex items-start justify-between mb-3">
-              <Clock className="h-6 w-6 text-amber-100" />
-              <span className="text-xs font-semibold text-amber-100 bg-amber-400/20 px-2 py-1 rounded-full">{stats.inProgress > 0 ? Math.round((stats.inProgress / stats.total) * 100) : 0}%</span>
+              <Clock className="h-6 w-6 text-amber-100 group-hover:scale-110 transition-transform duration-300" />
+              <span className="text-xs font-semibold text-amber-100 bg-amber-400/30 px-2 py-1 rounded-full backdrop-blur">{stats.inProgress > 0 ? Math.round((stats.inProgress / stats.total) * 100) : 0}%</span>
             </div>
-            <p className="text-4xl font-bold">{stats.inProgress}</p>
+            <p className="text-4xl font-bold group-hover:text-amber-100 transition-colors duration-300">{stats.inProgress}</p>
             <p className="text-sm text-amber-100 mt-2">In Progress</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-slate-500 to-slate-600 text-white border-0 shadow-lg">
-          <CardContent className="pt-6 pb-6">
+        <Card className="bg-gradient-to-br from-slate-600 via-slate-700 to-slate-800 text-white border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-2 cursor-pointer group overflow-hidden relative">
+          <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-5 transition-opacity duration-300"></div>
+          <CardContent className="pt-6 pb-6 relative z-10">
             <div className="flex items-start justify-between mb-3">
-              <Circle className="h-6 w-6 text-slate-100" />
-              <span className="text-xs font-semibold text-slate-100 bg-slate-400/20 px-2 py-1 rounded-full">{stats.notStarted > 0 ? Math.round((stats.notStarted / stats.total) * 100) : 0}%</span>
+              <Circle className="h-6 w-6 text-slate-200 group-hover:scale-110 transition-transform duration-300" />
+              <span className="text-xs font-semibold text-slate-200 bg-slate-500/30 px-2 py-1 rounded-full backdrop-blur">{stats.notStarted > 0 ? Math.round((stats.notStarted / stats.total) * 100) : 0}%</span>
             </div>
-            <p className="text-4xl font-bold">{stats.notStarted}</p>
-            <p className="text-sm text-slate-100 mt-2">Not Started</p>
+            <p className="text-4xl font-bold group-hover:text-slate-100 transition-colors duration-300">{stats.notStarted}</p>
+            <p className="text-sm text-slate-200 mt-2">Not Started</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-cyan-500 to-teal-600 text-white border-0 shadow-lg">
-          <CardContent className="pt-6 pb-6">
+        <Card className="bg-gradient-to-br from-cyan-500 via-teal-500 to-emerald-600 text-white border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-2 cursor-pointer group overflow-hidden relative">
+          <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-5 transition-opacity duration-300"></div>
+          <CardContent className="pt-6 pb-6 relative z-10">
             <div className="flex items-start justify-between mb-3">
-              <Zap className="h-6 w-6 text-cyan-100" />
-              <span className="text-xs font-semibold text-cyan-100 bg-cyan-400/20 px-2 py-1 rounded-full">Active</span>
+              <Zap className="h-6 w-6 text-cyan-100 group-hover:animate-pulse transition-colors duration-300" />
+              <span className="text-xs font-semibold text-cyan-100 bg-cyan-400/30 px-2 py-1 rounded-full backdrop-blur">Active</span>
             </div>
-            <p className="text-4xl font-bold">{stats.enabled}</p>
+            <p className="text-4xl font-bold group-hover:text-cyan-100 transition-colors duration-300">{stats.enabled}</p>
             <p className="text-sm text-cyan-100 mt-2">Enabled Tests</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Overall Progress - Modern */}
-      <Card className="border-2 border-primary/20 bg-gradient-to-r from-primary/5 to-accent/5">
-        <CardContent className="pt-6 pb-6">
+      {/* Overall Progress - Modern with animations */}
+      <Card className="border-2 border-primary/30 bg-gradient-to-r from-primary/10 via-accent/5 to-primary/5 hover:border-primary/50 transition-all duration-300 shadow-md hover:shadow-lg group overflow-hidden relative">
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+        <CardContent className="pt-6 pb-6 relative z-10">
           <div className="flex items-center justify-between mb-4">
-            <div>
-              <span className="text-sm font-semibold text-foreground">Overall Project Progress</span>
+            <div className="flex-1">
+              <span className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors duration-300">Overall Project Progress</span>
               <p className="text-xs text-muted-foreground mt-1">
                 {stats.completed} of {stats.total} tests completed
               </p>
             </div>
-            <div className="text-right">
-              <p className="text-3xl font-bold text-primary">{stats.progress}%</p>
+            <div className="text-right ml-4">
+              <p className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent group-hover:scale-110 transition-transform duration-300 origin-right">
+                {stats.progress}%
+              </p>
             </div>
           </div>
-          <Progress value={stats.progress} className="h-3 bg-primary/10" />
+          <div className="relative">
+            <Progress
+              value={stats.progress}
+              className="h-4 bg-primary/10 rounded-full overflow-hidden shadow-sm"
+            />
+            {/* Shimmer effect on progress bar */}
+            <div
+              className="absolute top-0 left-0 h-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-all duration-1000 ease-in-out"
+              style={{
+                width: `${stats.progress}%`,
+                animation: 'shimmer 2s infinite'
+              }}
+            ></div>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Category Sections - Modern */}
-      {categories.filter(c => c.total > 0).map(cat => {
+      {/* Category Sections - Modern with animations */}
+      {categories.filter(c => c.total > 0).map((cat, catIdx) => {
         const CatIcon = cat.icon;
         return (
-          <div key={cat.key}>
-            <div className="flex items-center gap-3 mb-4">
-              <div className={`h-10 w-10 rounded-lg bg-gradient-to-br ${cat.gradientFrom} ${cat.gradientTo} flex items-center justify-center`}>
+          <div key={cat.key} style={{ animationDelay: `${catIdx * 100}ms` }} className="animate-fade-in opacity-0">
+            <div className="flex items-center gap-3 mb-4 p-4 rounded-lg bg-gradient-to-r from-white/50 to-transparent dark:from-slate-800/30 backdrop-blur-sm border border-primary/10 hover:border-primary/30 transition-all duration-300 group">
+              <div className={`h-10 w-10 rounded-lg bg-gradient-to-br ${cat.gradientFrom} ${cat.gradientTo} flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:scale-110 transition-all duration-300`}>
                 <CatIcon className="h-5 w-5 text-white" />
               </div>
-              <div className="flex-1">
-                <h2 className="text-lg font-bold text-foreground">{cat.label}</h2>
-                <p className="text-xs text-muted-foreground">{cat.total} tests</p>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors duration-300">{cat.label}</h2>
+                <p className="text-xs text-muted-foreground">{cat.total} tests available</p>
               </div>
-              <Badge className="text-sm px-3 py-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0">
+              <Badge className="text-sm px-3 py-1.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0 shadow-md group-hover:shadow-lg group-hover:scale-105 transition-all duration-300 flex-shrink-0">
                 {cat.completed}/{cat.total}
               </Badge>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {cat.tests.map(test => {
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-max">
+              {cat.tests.map((test, idx) => {
                 const sc = statusConfig[test.status];
                 const StatusIcon = sc.icon;
                 const isDisabled = test.enabled === false;
                 return (
                   <Card
                     key={test.id}
-                    className={`group cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-2 ${isDisabled ? "opacity-60" : ""} ${sc.bgColor}`}
+                    className={`group cursor-pointer transition-all duration-300 hover:shadow-2xl hover:scale-105 hover:-translate-y-2 border-2 transform origin-bottom ${isDisabled ? "opacity-60" : ""} ${sc.bgColor} overflow-hidden relative`}
                     onClick={() => setSelectedTest(test)}
+                    style={{
+                      animationDelay: `${idx * 50}ms`,
+                      animation: 'fadeInUp 0.5s ease-out forwards'
+                    }}
                   >
-                    <CardHeader className="pb-3 pt-5 px-5">
+                    {/* Animated background gradient on hover */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/0 to-white/0 group-hover:from-white/10 group-hover:to-white/5 transition-all duration-500"></div>
+
+                    <CardHeader className="pb-3 pt-5 px-5 relative z-10">
                       <div className="flex items-start justify-between gap-2 mb-3">
-                        <CardTitle className="text-base font-bold text-foreground group-hover:text-primary transition-colors flex-1">
+                        <CardTitle className="text-base font-bold text-foreground group-hover:text-primary transition-all duration-300 flex-1 line-clamp-2">
                           {test.name}
                         </CardTitle>
                         {isDisabled && (
-                          <Badge variant="secondary" className="text-[10px] flex-shrink-0">
+                          <Badge variant="secondary" className="text-[10px] flex-shrink-0 animate-pulse">
                             Disabled
                           </Badge>
                         )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={sc.variant} className={`text-xs px-2 py-1 gap-1.5 ${sc.color}`}>
-                          <StatusIcon className="h-3 w-3" />
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant={sc.variant} className={`text-xs px-2 py-1 gap-1.5 ${sc.color} group-hover:shadow-md transition-all duration-300`}>
+                          <StatusIcon className="h-3 w-3 group-hover:scale-125 transition-transform duration-300" />
                           {sc.label}
                         </Badge>
-                        <span className={`text-xs font-medium ${sc.color}`}>
-                          {test.dataPoints} points
+                        <span className={`text-xs font-medium ${sc.color} group-hover:scale-110 transition-transform origin-left duration-300`}>
+                          {test.dataPoints} pts
                         </span>
                       </div>
                     </CardHeader>
-                    <CardContent className="px-5 pb-5">
+                    <CardContent className="px-5 pb-5 relative z-10">
                       {test.keyResults.length > 0 ? (
                         <div className="space-y-2 mb-4">
                           {test.keyResults.slice(0, 2).map((r, i) => (
-                            <div key={i} className="flex justify-between items-center">
-                              <span className="text-xs text-muted-foreground">{r.label}</span>
-                              <span className="font-mono text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                            <div key={i} className="flex justify-between items-center group/result hover:bg-white/5 px-2 py-1 rounded transition-colors duration-200">
+                              <span className="text-xs text-muted-foreground truncate">{r.label}</span>
+                              <span className="font-mono text-sm font-semibold text-foreground group-hover:text-primary transition-colors duration-300 ml-2 flex-shrink-0">
                                 {r.value}
                               </span>
                             </div>
                           ))}
                           {test.keyResults.length > 2 && (
-                            <div className="text-xs text-muted-foreground italic pt-1">
-                              +{test.keyResults.length - 2} more result{test.keyResults.length - 2 !== 1 ? "s" : ""}
+                            <div className="text-xs text-muted-foreground italic pt-1 px-2">
+                              +{test.keyResults.length - 2} more
                             </div>
                           )}
                         </div>
                       ) : (
-                        <p className="text-sm text-muted-foreground mb-4 italic">No data recorded yet</p>
+                        <p className="text-sm text-muted-foreground mb-4 italic px-2">No data yet</p>
                       )}
                       <Separator className="my-3" />
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">
-                          {test.status === "completed" && <span className="text-green-600 font-semibold">Complete</span>}
-                          {test.status === "in-progress" && <span className="text-blue-600 font-semibold">Active</span>}
-                          {test.status === "not-started" && <span className="text-slate-600 font-semibold">Pending</span>}
+                        <span className="text-xs text-muted-foreground font-medium">
+                          {test.status === "completed" && <span className="text-green-600">Complete</span>}
+                          {test.status === "in-progress" && <span className="text-blue-600 flex items-center gap-1"><span className="h-2 w-2 bg-blue-600 rounded-full animate-pulse"></span>Active</span>}
+                          {test.status === "not-started" && <span className="text-slate-600">Pending</span>}
                         </span>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 text-xs gap-1 text-primary group-hover:text-primary group-hover:bg-primary/10"
+                          className="h-7 text-xs gap-1 text-primary group-hover:text-white group-hover:bg-primary/80 transition-all duration-300 transform group-hover:scale-110"
                           onClick={(e) => {
                             e.stopPropagation();
                             navigate(`/tests#${test.id}`);
                           }}
                         >
-                          Edit <ChevronRight className="h-3 w-3" />
+                          Edit <ChevronRight className="h-3 w-3 group-hover:translate-x-1 transition-transform duration-300" />
                         </Button>
                       </div>
                     </CardContent>

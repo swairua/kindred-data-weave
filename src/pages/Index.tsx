@@ -526,90 +526,87 @@ const Index = ({ initialTab }: IndexProps) => {
               </Card>
             </div>
           ) : !isAuthenticated ? (
-            <div className="min-h-[calc(100vh-200px)] flex items-center justify-center px-0 md:px-4 py-12 relative">
-              {/* Background gradient elements */}
+            <div className="min-h-[calc(100vh-200px)] flex items-center justify-center px-0 md:px-4 py-12 relative overflow-hidden">
+              {/* Animated background gradient elements */}
               <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-                <div className="absolute top-1/4 right-0 w-96 h-96 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-full blur-3xl"></div>
-                <div className="absolute bottom-1/4 left-0 w-96 h-96 bg-gradient-to-tr from-indigo-500/5 to-transparent rounded-full blur-3xl"></div>
+                <div className="absolute top-1/4 right-0 w-96 h-96 bg-gradient-to-bl from-blue-500/8 to-transparent rounded-full blur-3xl animate-pulse"></div>
+                <div className="absolute bottom-1/4 left-0 w-96 h-96 bg-gradient-to-tr from-indigo-500/8 to-transparent rounded-full blur-3xl animate-pulse animation-delay-2000"></div>
+                <div className="absolute top-0 left-1/2 w-96 h-96 bg-gradient-to-b from-purple-500/5 to-transparent rounded-full blur-3xl animate-pulse animation-delay-4000"></div>
               </div>
 
               <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-6 lg:gap-12 items-center relative z-0 px-4 md:px-0">
-                {/* Left side - Branding */}
-                <div className="hidden lg:flex flex-col justify-center space-y-8">
+                {/* Left side - Branding & Features */}
+                <div className="hidden lg:flex flex-col justify-center space-y-8 animate-fade-in">
                   <div className="space-y-4">
-                    <div className="inline-flex items-center justify-center h-16 w-16 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg">
+                    <div className="inline-flex items-center justify-center h-16 w-16 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg transform hover:scale-110 transition-transform duration-300">
                       <img
                         src="https://cdn.builder.io/api/v1/image/assets%2Fedb7c735e72a41328e7ab97a48a7676d%2Fe8eac870f9c84f0c869c7c6ece6e38e5?format=webp&width=800&height=1200"
                         alt="Cransfield Materials Testing Center"
                         className="h-10 w-10 object-contain"
                       />
                     </div>
-                    <h2 className="text-4xl font-bold text-foreground leading-tight">
-                      Welcome Back
+                    <h2 className="text-5xl font-bold text-foreground leading-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                      Welcome to CMTC
                     </h2>
-                    <p className="text-lg text-muted-foreground">
-                      Access your lab data, manage tests, and generate comprehensive reports with Cransfield Materials Testing Center.
+                    <p className="text-lg text-muted-foreground leading-relaxed">
+                      Professional materials testing and laboratory management system. Access your lab data, manage comprehensive tests, and generate detailed reports with ease.
                     </p>
                   </div>
 
                   {/* Features */}
                   <div className="space-y-4 pt-4">
-                    <div className="flex gap-4">
-                      <div className="flex-shrink-0">
-                        <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                          <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                          </svg>
+                    {[
+                      { icon: "⚡", title: "Lightning Fast", desc: "Real-time data processing and instant access to test results" },
+                      { icon: "🔒", title: "Enterprise Security", desc: "End-to-end encryption and compliance with industry standards" },
+                      { icon: "📊", title: "Advanced Analytics", desc: "Comprehensive reports with visual insights and trend analysis" },
+                      { icon: "🔬", title: "Multi-Test Support", desc: "Soil, concrete, rock, and specialized testing capabilities" },
+                    ].map((feature, idx) => (
+                      <div
+                        key={idx}
+                        className="flex gap-4 p-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 backdrop-blur hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1"
+                        style={{ animationDelay: `${idx * 100}ms` }}
+                      >
+                        <div className="flex-shrink-0 text-2xl">{feature.icon}</div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-foreground">{feature.title}</h3>
+                          <p className="text-sm text-muted-foreground">{feature.desc}</p>
                         </div>
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-foreground">Fast & Reliable</h3>
-                        <p className="text-sm text-muted-foreground">Lightning-quick access to your test data</p>
-                      </div>
-                    </div>
+                    ))}
+                  </div>
 
-                    <div className="flex gap-4">
-                      <div className="flex-shrink-0">
-                        <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
-                          <svg className="h-6 w-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                          </svg>
-                        </div>
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-foreground">Secure & Protected</h3>
-                        <p className="text-sm text-muted-foreground">Your data is encrypted and secure</p>
-                      </div>
+                  {/* Stats section */}
+                  <div className="grid grid-cols-3 gap-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+                    <div className="text-center">
+                      <p className="text-3xl font-bold text-blue-600">500+</p>
+                      <p className="text-xs text-muted-foreground">Labs Active</p>
                     </div>
-
-                    <div className="flex gap-4">
-                      <div className="flex-shrink-0">
-                        <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-purple-100 dark:bg-purple-900/30">
-                          <svg className="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                          </svg>
-                        </div>
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-foreground">Smart Analytics</h3>
-                        <p className="text-sm text-muted-foreground">Detailed insights and comprehensive reports</p>
-                      </div>
+                    <div className="text-center">
+                      <p className="text-3xl font-bold text-indigo-600">10K+</p>
+                      <p className="text-xs text-muted-foreground">Tests Run</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-3xl font-bold text-purple-600">99.9%</p>
+                      <p className="text-xs text-muted-foreground">Uptime</p>
                     </div>
                   </div>
                 </div>
 
-                {/* Right side - Login form */}
-                <div className="w-full">
-                  <Card className="border-0 shadow-2xl rounded-2xl overflow-hidden bg-card">
+                {/* Right side - Login form with enhanced design */}
+                <div className="w-full animate-fade-in animation-delay-200">
+                  <Card className="border-0 shadow-2xl rounded-2xl overflow-hidden bg-card backdrop-blur-sm">
                     {/* Card header with gradient */}
-                    <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 px-4 md:px-8 py-8 md:py-10 text-white">
-                      <div className="space-y-2">
+                    <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 px-4 md:px-8 py-8 md:py-10 text-white relative overflow-hidden">
+                      <div className="absolute inset-0 opacity-20">
+                        <div className="absolute top-0 right-0 w-40 h-40 bg-white rounded-full blur-3xl opacity-20"></div>
+                      </div>
+                      <div className="space-y-2 relative z-10">
                         <h1 className="text-4xl font-bold">Welcome Back</h1>
                         <p className="text-blue-100 text-lg">Sign in to your lab account</p>
                       </div>
                     </div>
 
-                    <CardContent className="p-4 md:p-8">
+                    <CardContent className="p-4 md:p-8 space-y-5">
                       <form className="space-y-5" onSubmit={handleLogin}>
                         {/* Email field */}
                         <div className="space-y-2.5">
@@ -623,7 +620,7 @@ const Index = ({ initialTab }: IndexProps) => {
                             onChange={(event) => setEmail(event.target.value)}
                             placeholder="your@email.com"
                             autoComplete="email"
-                            className="h-12 px-4 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                            className="h-12 px-4 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-slate-300"
                           />
                         </div>
 
@@ -639,13 +636,13 @@ const Index = ({ initialTab }: IndexProps) => {
                             onChange={(event) => setPassword(event.target.value)}
                             placeholder="••••••••"
                             autoComplete="current-password"
-                            className="h-12 px-4 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                            className="h-12 px-4 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-slate-300"
                           />
                         </div>
 
-                        {/* Error message - moved here from below */}
+                        {/* Error message */}
                         {loginError && (
-                          <div className="p-4 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+                          <div className="p-4 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 animate-shake">
                             <p className="text-sm text-red-700 dark:text-red-200 font-medium">{loginError}</p>
                           </div>
                         )}
@@ -653,7 +650,7 @@ const Index = ({ initialTab }: IndexProps) => {
                         {/* Submit button */}
                         <Button
                           type="submit"
-                          className="w-full h-12 text-base font-semibold rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+                          className="w-full h-12 text-base font-semibold rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 active:scale-95"
                           disabled={isSubmittingLogin}
                         >
                           {isSubmittingLogin ? (
@@ -664,25 +661,35 @@ const Index = ({ initialTab }: IndexProps) => {
                             "Sign In"
                           )}
                         </Button>
-
-                        {/* Divider */}
-                        <div className="flex items-center gap-3 my-6">
-                          <div className="flex-1 border-t border-slate-200 dark:border-slate-700"></div>
-                          <span className="text-xs text-muted-foreground font-medium">New to the platform?</span>
-                          <div className="flex-1 border-t border-slate-200 dark:border-slate-700"></div>
-                        </div>
-
-                        {/* Help text */}
-                        <p className="text-center text-sm text-muted-foreground bg-blue-50 dark:bg-blue-950/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
-                          Contact your lab administrator to request access
-                        </p>
                       </form>
+
+                      {/* Divider */}
+                      <div className="flex items-center gap-3 my-6">
+                        <div className="flex-1 border-t border-slate-200 dark:border-slate-700"></div>
+                        <span className="text-xs text-muted-foreground font-medium">Admin Access</span>
+                        <div className="flex-1 border-t border-slate-200 dark:border-slate-700"></div>
+                      </div>
+
+                      {/* Admin CTA Button */}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full h-12 text-base font-semibold rounded-lg border-2 border-slate-300 dark:border-slate-600 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20 text-foreground transition-all duration-300 transform hover:scale-105"
+                      >
+                        <Hammer className="h-5 w-5 mr-2" />
+                        Admin Panel
+                      </Button>
+
+                      {/* Help text */}
+                      <p className="text-center text-sm text-muted-foreground bg-blue-50 dark:bg-blue-950/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+                        Don't have an account? Contact your lab administrator to request access
+                      </p>
                     </CardContent>
                   </Card>
 
                   {/* Footer text */}
                   <p className="text-center text-xs text-muted-foreground mt-8">
-                    © 2024 Cransfield CMTC. All rights reserved.
+                    © 2024 Cransfield CMTC. All rights reserved. | Secure • Reliable • Trusted
                   </p>
                 </div>
               </div>
