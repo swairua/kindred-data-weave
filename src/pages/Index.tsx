@@ -864,19 +864,19 @@ const Index = ({ initialTab }: IndexProps) => {
                           <div className="w-full px-4 md:px-0 space-y-3">
                             <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">Supported Test Categories</h3>
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full">
-                              <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 text-center hover:border-amber-400 dark:hover:border-amber-500 hover:shadow-lg hover:shadow-amber-200/50 dark:hover:shadow-amber-900/50 transition-all duration-300 transform hover:scale-110 hover:-translate-y-1 cursor-pointer group">
+                              <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 text-center hover:border-amber-400 dark:hover:border-amber-500 hover:shadow-lg hover:shadow-amber-200/50 dark:hover:shadow-amber-900/50 transition-all duration-300 transform hover:scale-110 hover:-translate-y-1 cursor-pointer group" onClick={() => navigate('/tests')}>
                                 <p className="text-xl mb-1 group-hover:scale-125 transition-transform duration-300">🏜️</p>
                                 <p className="text-xs font-semibold text-foreground">Soil Tests</p>
                               </div>
-                              <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700/50 text-center hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-lg hover:shadow-blue-200/50 dark:hover:shadow-blue-900/50 transition-all duration-300 transform hover:scale-110 hover:-translate-y-1 cursor-pointer group">
+                              <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700/50 text-center hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-lg hover:shadow-blue-200/50 dark:hover:shadow-blue-900/50 transition-all duration-300 transform hover:scale-110 hover:-translate-y-1 cursor-pointer group" onClick={() => navigate('/tests')}>
                                 <p className="text-xl mb-1 group-hover:scale-125 transition-transform duration-300">🏗️</p>
                                 <p className="text-xs font-semibold text-foreground">Concrete Tests</p>
                               </div>
-                              <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-700/20 border border-slate-200 dark:border-slate-700/50 text-center hover:border-slate-400 dark:hover:border-slate-500 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50 transition-all duration-300 transform hover:scale-110 hover:-translate-y-1 cursor-pointer group">
+                              <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-700/20 border border-slate-200 dark:border-slate-700/50 text-center hover:border-slate-400 dark:hover:border-slate-500 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50 transition-all duration-300 transform hover:scale-110 hover:-translate-y-1 cursor-pointer group" onClick={() => navigate('/tests')}>
                                 <p className="text-xl mb-1 group-hover:scale-125 transition-transform duration-300">⛰️</p>
                                 <p className="text-xs font-semibold text-foreground">Rock Tests</p>
                               </div>
-                              <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700/50 text-center hover:border-purple-400 dark:hover:border-purple-500 hover:shadow-lg hover:shadow-purple-200/50 dark:hover:shadow-purple-900/50 transition-all duration-300 transform hover:scale-110 hover:-translate-y-1 cursor-pointer group">
+                              <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700/50 text-center hover:border-purple-400 dark:hover:border-purple-500 hover:shadow-lg hover:shadow-purple-200/50 dark:hover:shadow-purple-900/50 transition-all duration-300 transform hover:scale-110 hover:-translate-y-1 cursor-pointer group" onClick={() => navigate('/tests')}>
                                 <p className="text-xl mb-1 group-hover:scale-125 transition-transform duration-300">🧪</p>
                                 <p className="text-xs font-semibold text-foreground">Special Tests</p>
                               </div>
