@@ -782,62 +782,64 @@ const Index = ({ initialTab }: IndexProps) => {
                   <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12 items-center relative z-0 px-4 sm:px-6 md:px-0">
                     {/* Left side - Branding */}
                     <div className="hidden lg:flex flex-col justify-center space-y-8 animate-fade-in">
-                      <div className="space-y-4">
-                        <div className="inline-flex items-center justify-center h-16 w-16 rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 shadow-lg">
+                      <div className="space-y-6">
+                        <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-slate-700 via-slate-700 to-slate-800 shadow-xl hover:shadow-2xl transition-all duration-300">
                           <img
                             src="https://cdn.builder.io/api/v1/image/assets%2Fedb7c735e72a41328e7ab97a48a7676d%2Fe8eac870f9c84f0c869c7c6ece6e38e5?format=webp&width=800&height=1200"
                             alt="Cransfield Materials Testing Center"
                             className="h-10 w-10 object-contain"
                           />
                         </div>
-                        <h2 className="text-4xl font-bold text-foreground leading-tight">
-                          Welcome to CMTC
-                        </h2>
-                        <p className="text-lg text-muted-foreground">
-                          Access your lab data, manage tests, and generate comprehensive reports with our trusted materials testing platform.
-                        </p>
+                        <div className="space-y-3">
+                          <h2 className="text-5xl lg:text-6xl font-bold text-foreground leading-tight tracking-tight">
+                            Welcome to <span className="bg-gradient-to-r from-slate-900 to-slate-700 dark:from-slate-100 dark:to-slate-300 bg-clip-text text-transparent">CMTC</span>
+                          </h2>
+                          <p className="text-lg lg:text-xl text-muted-foreground leading-relaxed max-w-md">
+                            Professional laboratory management. Access your lab data, manage comprehensive tests, and generate detailed reports with our trusted platform.
+                          </p>
+                        </div>
                       </div>
 
                       {/* Features */}
-                      <div className="space-y-4">
-                        <div className="flex gap-4">
+                      <div className="space-y-3">
+                        <div className="group flex gap-4 p-4 rounded-xl bg-white/40 dark:bg-slate-800/20 hover:bg-white/60 dark:hover:bg-slate-700/30 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/30 transition-all duration-300 hover:shadow-md">
                           <div className="flex-shrink-0">
-                            <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-slate-200 dark:bg-slate-700/50">
-                              <svg className="h-6 w-6 text-slate-700 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="flex items-center justify-center h-12 w-12 rounded-lg bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/40 dark:to-blue-800/20 group-hover:shadow-lg transition-all duration-300">
+                              <svg className="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                               </svg>
                             </div>
                           </div>
                           <div>
-                            <h3 className="font-semibold text-foreground">Lightning Fast</h3>
+                            <h3 className="font-semibold text-foreground text-sm lg:text-base">Lightning Fast</h3>
                             <p className="text-sm text-muted-foreground">Real-time data processing and reporting</p>
                           </div>
                         </div>
 
-                        <div className="flex gap-4">
+                        <div className="group flex gap-4 p-4 rounded-xl bg-white/40 dark:bg-slate-800/20 hover:bg-white/60 dark:hover:bg-slate-700/30 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/30 transition-all duration-300 hover:shadow-md">
                           <div className="flex-shrink-0">
-                            <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-slate-200 dark:bg-slate-700/50">
-                              <svg className="h-6 w-6 text-slate-700 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="flex items-center justify-center h-12 w-12 rounded-lg bg-gradient-to-br from-amber-100 to-amber-50 dark:from-amber-900/40 dark:to-amber-800/20 group-hover:shadow-lg transition-all duration-300">
+                              <svg className="h-6 w-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                               </svg>
                             </div>
                           </div>
                           <div>
-                            <h3 className="font-semibold text-foreground">Secure & Protected</h3>
+                            <h3 className="font-semibold text-foreground text-sm lg:text-base">Secure & Protected</h3>
                             <p className="text-sm text-muted-foreground">Your data is encrypted and secure</p>
                           </div>
                         </div>
 
-                        <div className="flex gap-4">
+                        <div className="group flex gap-4 p-4 rounded-xl bg-white/40 dark:bg-slate-800/20 hover:bg-white/60 dark:hover:bg-slate-700/30 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/30 transition-all duration-300 hover:shadow-md">
                           <div className="flex-shrink-0">
-                            <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-slate-200 dark:bg-slate-700/50">
-                              <svg className="h-6 w-6 text-slate-700 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="flex items-center justify-center h-12 w-12 rounded-lg bg-gradient-to-br from-emerald-100 to-emerald-50 dark:from-emerald-900/40 dark:to-emerald-800/20 group-hover:shadow-lg transition-all duration-300">
+                              <svg className="h-6 w-6 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                               </svg>
                             </div>
                           </div>
                           <div>
-                            <h3 className="font-semibold text-foreground">Smart Analytics</h3>
+                            <h3 className="font-semibold text-foreground text-sm lg:text-base">Smart Analytics</h3>
                             <p className="text-sm text-muted-foreground">Detailed insights and comprehensive reports</p>
                           </div>
                         </div>
@@ -848,101 +850,103 @@ const Index = ({ initialTab }: IndexProps) => {
                     <div className="w-full flex flex-col items-center justify-center">
                       {!showLoginForm ? (
                         <div className="flex flex-col items-center justify-center space-y-8 py-8 md:py-12 w-full">
-                          <div className="space-y-4 text-center px-4 md:px-0">
-                            <h2 className="text-2xl sm:text-3xl font-bold text-foreground leading-tight">Ready to Get Started?</h2>
-                            <p className="text-base sm:text-lg text-muted-foreground">
-                              Access your lab data, manage comprehensive testing workflows, and generate detailed reports with ease.
+                          <div className="space-y-4 text-center px-4 md:px-0 pt-4">
+                            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground leading-tight tracking-tight">
+                              Ready to Get Started?
+                            </h2>
+                            <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto">
+                              Access your lab data, manage comprehensive testing workflows, and generate detailed reports with our professional-grade platform.
                             </p>
                           </div>
 
                           {/* Platform Statistics */}
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full px-4 md:px-0 py-6 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800/30 dark:to-slate-900/30 rounded-lg border border-slate-200 dark:border-slate-700/50">
-                            <div className="text-center animate-fade-in" style={{ animationDelay: '0ms' }}>
-                              <p className="text-2xl sm:text-3xl font-bold text-slate-700 dark:text-slate-200">8+</p>
-                              <p className="text-xs sm:text-sm text-muted-foreground">Active Labs</p>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full px-4 md:px-0">
+                            <div className="text-center animate-fade-in p-5 rounded-2xl bg-gradient-to-br from-blue-50 to-blue-50/40 dark:from-blue-900/20 dark:to-blue-900/10 border border-blue-200/50 dark:border-blue-800/30 hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-300" style={{ animationDelay: '0ms' }}>
+                              <p className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-400 dark:to-blue-500 bg-clip-text text-transparent">8+</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground font-medium mt-1">Active Labs</p>
                             </div>
-                            <div className="text-center animate-fade-in" style={{ animationDelay: '100ms' }}>
-                              <p className="text-2xl sm:text-3xl font-bold text-slate-700 dark:text-slate-200">250+</p>
-                              <p className="text-xs sm:text-sm text-muted-foreground">Tests Processed</p>
+                            <div className="text-center animate-fade-in p-5 rounded-2xl bg-gradient-to-br from-indigo-50 to-indigo-50/40 dark:from-indigo-900/20 dark:to-indigo-900/10 border border-indigo-200/50 dark:border-indigo-800/30 hover:shadow-lg hover:border-indigo-300 dark:hover:border-indigo-700 transition-all duration-300" style={{ animationDelay: '100ms' }}>
+                              <p className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-indigo-600 to-indigo-700 dark:from-indigo-400 dark:to-indigo-500 bg-clip-text text-transparent">250+</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground font-medium mt-1">Tests Processed</p>
                             </div>
-                            <div className="text-center animate-fade-in" style={{ animationDelay: '200ms' }}>
-                              <p className="text-2xl sm:text-3xl font-bold text-slate-700 dark:text-slate-200">99.9%</p>
-                              <p className="text-xs sm:text-sm text-muted-foreground">System Uptime</p>
+                            <div className="text-center animate-fade-in p-5 rounded-2xl bg-gradient-to-br from-emerald-50 to-emerald-50/40 dark:from-emerald-900/20 dark:to-emerald-900/10 border border-emerald-200/50 dark:border-emerald-800/30 hover:shadow-lg hover:border-emerald-300 dark:hover:border-emerald-700 transition-all duration-300" style={{ animationDelay: '200ms' }}>
+                              <p className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-400 dark:to-emerald-500 bg-clip-text text-transparent">99.9%</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground font-medium mt-1">System Uptime</p>
                             </div>
-                            <div className="text-center animate-fade-in" style={{ animationDelay: '300ms' }}>
-                              <p className="text-2xl sm:text-3xl font-bold text-slate-700 dark:text-slate-200">24/7</p>
-                              <p className="text-xs sm:text-sm text-muted-foreground">Support Available</p>
+                            <div className="text-center animate-fade-in p-5 rounded-2xl bg-gradient-to-br from-purple-50 to-purple-50/40 dark:from-purple-900/20 dark:to-purple-900/10 border border-purple-200/50 dark:border-purple-800/30 hover:shadow-lg hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-300" style={{ animationDelay: '300ms' }}>
+                              <p className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-purple-600 to-purple-700 dark:from-purple-400 dark:to-purple-500 bg-clip-text text-transparent">24/7</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground font-medium mt-1">Support Available</p>
                             </div>
                           </div>
 
                           {/* Test Categories / System Capabilities */}
-                          <div className="w-full px-4 md:px-0 space-y-3">
-                            <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">Supported Test Categories</h3>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full">
-                              <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 text-center hover:border-amber-400 dark:hover:border-amber-500 hover:shadow-lg hover:shadow-amber-200/50 dark:hover:shadow-amber-900/50 transition-all duration-300 transform hover:scale-110 hover:-translate-y-1 cursor-pointer group" onClick={() => navigate('/tests')}>
-                                <p className="text-xl mb-1 group-hover:scale-125 transition-transform duration-300">🏜️</p>
+                          <div className="w-full px-4 md:px-0 space-y-4">
+                            <h3 className="text-sm font-bold text-foreground uppercase tracking-widest">Supported Test Categories</h3>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full">
+                              <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-50 to-amber-50/50 dark:from-amber-900/20 dark:to-amber-900/10 border border-amber-200/60 dark:border-amber-700/40 text-center hover:border-amber-400 dark:hover:border-amber-500 hover:shadow-xl hover:shadow-amber-200/30 dark:hover:shadow-amber-900/30 transition-all duration-300 transform hover:scale-105 hover:-translate-y-2 cursor-pointer group" onClick={() => navigate('/tests')}>
+                                <p className="text-3xl mb-2 group-hover:scale-130 transition-transform duration-300 block">🏜️</p>
                                 <p className="text-xs font-semibold text-foreground">Soil Tests</p>
                               </div>
-                              <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700/50 text-center hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-lg hover:shadow-blue-200/50 dark:hover:shadow-blue-900/50 transition-all duration-300 transform hover:scale-110 hover:-translate-y-1 cursor-pointer group" onClick={() => navigate('/tests')}>
-                                <p className="text-xl mb-1 group-hover:scale-125 transition-transform duration-300">🏗️</p>
+                              <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-50 to-blue-50/50 dark:from-blue-900/20 dark:to-blue-900/10 border border-blue-200/60 dark:border-blue-700/40 text-center hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-xl hover:shadow-blue-200/30 dark:hover:shadow-blue-900/30 transition-all duration-300 transform hover:scale-105 hover:-translate-y-2 cursor-pointer group" onClick={() => navigate('/tests')}>
+                                <p className="text-3xl mb-2 group-hover:scale-130 transition-transform duration-300 block">🏗️</p>
                                 <p className="text-xs font-semibold text-foreground">Concrete Tests</p>
                               </div>
-                              <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-700/20 border border-slate-200 dark:border-slate-700/50 text-center hover:border-slate-400 dark:hover:border-slate-500 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50 transition-all duration-300 transform hover:scale-110 hover:-translate-y-1 cursor-pointer group" onClick={() => navigate('/tests')}>
-                                <p className="text-xl mb-1 group-hover:scale-125 transition-transform duration-300">⛰️</p>
+                              <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-50/50 dark:from-slate-700/20 dark:to-slate-700/10 border border-slate-200/60 dark:border-slate-700/40 text-center hover:border-slate-400 dark:hover:border-slate-500 hover:shadow-xl hover:shadow-slate-200/30 dark:hover:shadow-slate-900/30 transition-all duration-300 transform hover:scale-105 hover:-translate-y-2 cursor-pointer group" onClick={() => navigate('/tests')}>
+                                <p className="text-3xl mb-2 group-hover:scale-130 transition-transform duration-300 block">⛰️</p>
                                 <p className="text-xs font-semibold text-foreground">Rock Tests</p>
                               </div>
-                              <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700/50 text-center hover:border-purple-400 dark:hover:border-purple-500 hover:shadow-lg hover:shadow-purple-200/50 dark:hover:shadow-purple-900/50 transition-all duration-300 transform hover:scale-110 hover:-translate-y-1 cursor-pointer group" onClick={() => navigate('/tests')}>
-                                <p className="text-xl mb-1 group-hover:scale-125 transition-transform duration-300">🧪</p>
+                              <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-50 to-purple-50/50 dark:from-purple-900/20 dark:to-purple-900/10 border border-purple-200/60 dark:border-purple-700/40 text-center hover:border-purple-400 dark:hover:border-purple-500 hover:shadow-xl hover:shadow-purple-200/30 dark:hover:shadow-purple-900/30 transition-all duration-300 transform hover:scale-105 hover:-translate-y-2 cursor-pointer group" onClick={() => navigate('/tests')}>
+                                <p className="text-3xl mb-2 group-hover:scale-130 transition-transform duration-300 block">🧪</p>
                                 <p className="text-xs font-semibold text-foreground">Special Tests</p>
                               </div>
                             </div>
                           </div>
 
                           {/* Feature highlights for unauthenticated users */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full px-4 md:px-0">
-                            <div className="p-4 rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 dark:from-slate-800/40 dark:to-slate-900/40 border border-slate-200 dark:border-slate-700/50 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 group">
-                              <p className="text-2xl mb-2 group-hover:scale-125 group-hover:rotate-12 transition-all duration-300">📊</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full px-4 md:px-0">
+                            <div className="p-6 rounded-2xl bg-gradient-to-br from-slate-100/80 to-slate-50/80 dark:from-slate-800/40 dark:to-slate-900/40 border border-slate-200/60 dark:border-slate-700/40 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 group">
+                              <p className="text-2xl mb-3 group-hover:scale-125 group-hover:rotate-12 transition-all duration-300">📊</p>
                               <p className="text-sm font-semibold text-foreground">Real-time Tracking</p>
-                              <p className="text-xs text-muted-foreground mt-1">Monitor test progress instantly with live updates</p>
+                              <p className="text-xs text-muted-foreground mt-2">Monitor test progress instantly with live updates</p>
                             </div>
-                            <div className="p-4 rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 dark:from-slate-800/40 dark:to-slate-900/40 border border-slate-200 dark:border-slate-700/50 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 group">
-                              <p className="text-2xl mb-2 group-hover:scale-125 group-hover:rotate-12 transition-all duration-300">📈</p>
+                            <div className="p-6 rounded-2xl bg-gradient-to-br from-slate-100/80 to-slate-50/80 dark:from-slate-800/40 dark:to-slate-900/40 border border-slate-200/60 dark:border-slate-700/40 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 group">
+                              <p className="text-2xl mb-3 group-hover:scale-125 group-hover:rotate-12 transition-all duration-300">📈</p>
                               <p className="text-sm font-semibold text-foreground">Smart Reports</p>
-                              <p className="text-xs text-muted-foreground mt-1">Auto-generate professional reports in seconds</p>
+                              <p className="text-xs text-muted-foreground mt-2">Auto-generate professional reports in seconds</p>
                             </div>
-                            <div className="p-4 rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 dark:from-slate-800/40 dark:to-slate-900/40 border border-slate-200 dark:border-slate-700/50 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 group">
-                              <p className="text-2xl mb-2 group-hover:scale-125 group-hover:rotate-12 transition-all duration-300">🔒</p>
+                            <div className="p-6 rounded-2xl bg-gradient-to-br from-slate-100/80 to-slate-50/80 dark:from-slate-800/40 dark:to-slate-900/40 border border-slate-200/60 dark:border-slate-700/40 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 group">
+                              <p className="text-2xl mb-3 group-hover:scale-125 group-hover:rotate-12 transition-all duration-300">🔒</p>
                               <p className="text-sm font-semibold text-foreground">Data Protection</p>
-                              <p className="text-xs text-muted-foreground mt-1">Enterprise-grade encryption & compliance</p>
+                              <p className="text-xs text-muted-foreground mt-2">Enterprise-grade encryption & compliance</p>
                             </div>
-                            <div className="p-4 rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 dark:from-slate-800/40 dark:to-slate-900/40 border border-slate-200 dark:border-slate-700/50 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 group">
-                              <p className="text-2xl mb-2 group-hover:scale-125 group-hover:rotate-12 transition-all duration-300">⚙️</p>
+                            <div className="p-6 rounded-2xl bg-gradient-to-br from-slate-100/80 to-slate-50/80 dark:from-slate-800/40 dark:to-slate-900/40 border border-slate-200/60 dark:border-slate-700/40 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 group">
+                              <p className="text-2xl mb-3 group-hover:scale-125 group-hover:rotate-12 transition-all duration-300">⚙️</p>
                               <p className="text-sm font-semibold text-foreground">Easy Integration</p>
-                              <p className="text-xs text-muted-foreground mt-1">Seamless workflow integration with your system</p>
+                              <p className="text-xs text-muted-foreground mt-2">Seamless workflow integration with your system</p>
                             </div>
                           </div>
 
                           {/* How it Works */}
-                          <div className="w-full px-4 md:px-0 space-y-3">
-                            <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">Quick Workflow</h3>
-                            <div className="flex items-center justify-between gap-2 sm:gap-3 text-xs sm:text-sm">
+                          <div className="w-full px-4 md:px-0 space-y-4">
+                            <h3 className="text-sm font-bold text-foreground uppercase tracking-widest">Quick Workflow</h3>
+                            <div className="flex items-center justify-between gap-2 sm:gap-3 text-xs sm:text-sm px-2 py-4 rounded-2xl bg-gradient-to-r from-slate-100/50 to-slate-50/50 dark:from-slate-800/30 dark:to-slate-900/30 border border-slate-200/40 dark:border-slate-700/30">
                               <div className="flex-1 text-center">
-                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center mx-auto mb-2 font-bold text-slate-700 dark:text-slate-300">1</div>
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-slate-300 to-slate-400 dark:from-slate-600 dark:to-slate-700 flex items-center justify-center mx-auto mb-2 font-bold text-white dark:text-slate-100 shadow-md">1</div>
                                 <p className="font-semibold text-foreground">Login</p>
                               </div>
                               <div className="flex-shrink-0 text-slate-400">→</div>
                               <div className="flex-1 text-center">
-                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center mx-auto mb-2 font-bold text-slate-700 dark:text-slate-300">2</div>
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-slate-300 to-slate-400 dark:from-slate-600 dark:to-slate-700 flex items-center justify-center mx-auto mb-2 font-bold text-white dark:text-slate-100 shadow-md">2</div>
                                 <p className="font-semibold text-foreground">Create Test</p>
                               </div>
                               <div className="flex-shrink-0 text-slate-400">→</div>
                               <div className="flex-1 text-center">
-                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center mx-auto mb-2 font-bold text-slate-700 dark:text-slate-300">3</div>
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-slate-300 to-slate-400 dark:from-slate-600 dark:to-slate-700 flex items-center justify-center mx-auto mb-2 font-bold text-white dark:text-slate-100 shadow-md">3</div>
                                 <p className="font-semibold text-foreground">Add Data</p>
                               </div>
                               <div className="flex-shrink-0 text-slate-400">→</div>
                               <div className="flex-1 text-center">
-                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center mx-auto mb-2 font-bold text-slate-700 dark:text-slate-300">4</div>
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-slate-300 to-slate-400 dark:from-slate-600 dark:to-slate-700 flex items-center justify-center mx-auto mb-2 font-bold text-white dark:text-slate-100 shadow-md">4</div>
                                 <p className="font-semibold text-foreground">Report</p>
                               </div>
                             </div>
