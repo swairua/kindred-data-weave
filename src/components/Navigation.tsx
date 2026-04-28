@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { Plus, LayoutDashboard, FlaskConical, FileText, Hammer, LogOut, Zap, TestTubeDiagonal, ChevronRight } from "lucide-react";
+import { LayoutDashboard, FlaskConical, FileText, Hammer, LogOut, Zap, TestTubeDiagonal, ChevronRight } from "lucide-react";
 import { useEffect } from "react";
 import {
   Sidebar,
@@ -17,7 +17,6 @@ import { Button } from "@/components/ui/button";
 interface NavigationProps {
   currentView: "dashboard" | "tests" | "reports" | "admin";
   onViewChange: (view: "dashboard" | "tests" | "reports" | "admin") => void;
-  onStartNewProject: () => void;
   onLogout?: () => void;
   userName?: string;
   userEmail?: string;
@@ -26,7 +25,6 @@ interface NavigationProps {
 const Navigation = ({
   currentView,
   onViewChange,
-  onStartNewProject,
   onLogout,
   userName,
   userEmail,
@@ -52,22 +50,7 @@ const Navigation = ({
     }
   };
 
-  const handleNewProject = () => {
-    onStartNewProject();
-    // Close mobile drawer after action
-    if (isMobile) {
-      setOpenMobile(false);
-    }
-  };
-
   const navItems = [
-    {
-      id: "new-project",
-      label: "New Project",
-      icon: Plus,
-      onClick: handleNewProject,
-      isAction: true,
-    },
     {
       id: "dashboard",
       label: "Dashboard",
@@ -101,12 +84,12 @@ const Navigation = ({
   return (
     <Sidebar collapsible="icon" variant="sidebar" className="bg-gradient-to-b from-slate-900 via-slate-950 to-slate-950 border-r border-slate-700/50 shadow-2xl">
       {/* Sidebar Header with Branding */}
-      <SidebarHeader className="border-b border-slate-700/50 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 py-5 px-3">
-        <div className="flex items-center gap-3 group">
-          <div className="h-10 w-10 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center flex-shrink-0 group-data-[state=collapsed]:flex group-data-[state=collapsed]:ring-2 group-data-[state=collapsed]:ring-blue-400/30 transition-all duration-300">
+      <SidebarHeader className="border-b border-slate-700/50 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 py-5 px-3 group-data-[collapsible=icon]:py-3 group-data-[collapsible=icon]:px-2 transition-all duration-300 flex items-center justify-center group-data-[collapsible=icon]:justify-center">
+        <div className="flex items-center gap-3 group group-data-[collapsible=icon]:justify-center">
+          <div className="h-10 w-10 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center flex-shrink-0 ring-2 ring-blue-400/30 transition-all duration-300 group-data-[collapsible=icon]:ring-white group-data-[collapsible=icon]:shadow-lg">
             <TestTubeDiagonal className="h-6 w-6 text-white" />
           </div>
-          <div className="flex-1 min-w-0 overflow-hidden">
+          <div className="flex-1 min-w-0 overflow-hidden group-data-[collapsible=icon]:hidden">
             <h2 className="font-bold text-sm text-white tracking-tight truncate">CMTC Lab</h2>
             <p className="text-xs text-blue-100/70 truncate">Materials Testing</p>
           </div>
@@ -114,28 +97,14 @@ const Navigation = ({
       </SidebarHeader>
 
       {/* Sidebar Content */}
-      <SidebarContent className="py-5 px-2 space-y-4">
-        {/* Primary Actions */}
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              onClick={handleNewProject}
-              className="bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-600 hover:via-teal-600 hover:to-emerald-700 text-white border-0 shadow-lg hover:shadow-xl mb-2 group h-10 transition-all duration-300 transform hover:scale-105 active:scale-95"
-              tooltip="Create a new project"
-            >
-              <Plus className="h-5 w-5 text-white flex-shrink-0" />
-              <span className="font-semibold text-sm">New Project</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-
-        <div className="px-2 pt-2">
+      <SidebarContent className="py-4 px-2 space-y-3 group-data-[collapsible=icon]:px-1.5">
+        <div className="px-2 pt-2 group-data-[collapsible=icon]:hidden">
           <div className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Navigation</div>
         </div>
 
         {/* Main Navigation */}
-        <SidebarMenu className="space-y-1">
-          {navItems.filter(item => !item.isAction).map((item) => {
+        <SidebarMenu className="space-y-2 group-data-[collapsible=icon]:space-y-1.5">
+          {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = item.active;
             return (
@@ -145,26 +114,21 @@ const Navigation = ({
                   isActive={isActive}
                   tooltip={item.label}
                   className={`
-                    transition-all duration-300 relative overflow-hidden group
+                    transition-all duration-300 relative overflow-hidden group px-3 py-2 rounded-lg
+                    group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-0 group-data-[collapsible=icon]:h-10 group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:mx-auto
                     ${isActive
-                      ? "bg-gradient-to-r from-blue-500/30 to-indigo-500/20 text-blue-300 border-l-2 border-blue-400 shadow-md"
-                      : "text-slate-300 hover:text-white hover:bg-slate-800/60 border-l-2 border-transparent"
+                      ? "bg-gradient-to-r from-blue-500/40 to-indigo-500/30 text-blue-200 shadow-md hover:from-blue-500/50 hover:to-indigo-500/40 border border-blue-400/30 group-data-[collapsible=icon]:bg-gradient-to-br group-data-[collapsible=icon]:from-blue-500/50 group-data-[collapsible=icon]:to-indigo-500/40 group-data-[collapsible=icon]:shadow-lg group-data-[collapsible=icon]:border-blue-400/40"
+                      : "text-slate-300 hover:text-white hover:bg-slate-800/70 border border-transparent hover:border-slate-700/50 group-data-[collapsible=icon]:hover:bg-slate-800/80 group-data-[collapsible=icon]:border-transparent"
                     }
-                    data-[state=collapsed]:rounded-lg data-[state=collapsed]:border-l-0
                   `}
                 >
-                  {/* Background gradient animation for active state */}
-                  {isActive && (
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 opacity-0 group-hover:opacity-5 transition-opacity duration-300" />
-                  )}
-
-                  <Icon className={`h-5 w-5 flex-shrink-0 transition-colors duration-300 ${isActive ? "text-blue-300" : "text-slate-400 group-hover:text-blue-300"}`} />
-                  <span className={`text-sm transition-all duration-300 ${isActive ? "font-semibold" : "font-medium"}`}>
+                  <Icon className={`h-5 w-5 flex-shrink-0 transition-colors duration-300 ${isActive ? "text-blue-200" : "text-slate-400 group-hover:text-blue-300"}`} />
+                  <span className={`text-sm transition-all duration-300 ml-2 group-data-[collapsible=icon]:hidden ${isActive ? "font-semibold" : "font-medium"}`}>
                     {item.label}
                   </span>
 
                   {isActive && (
-                    <ChevronRight className="h-4 w-4 ml-auto text-blue-300 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <ChevronRight className="h-4 w-4 ml-auto text-blue-200 opacity-0 group-hover:opacity-100 transition-opacity duration-300 group-data-[collapsible=icon]:hidden" />
                   )}
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -175,11 +139,11 @@ const Navigation = ({
 
       {/* Sidebar Footer */}
       {(userName || userEmail) && (
-        <SidebarFooter className="border-t border-slate-700/50 bg-gradient-to-t from-slate-950 via-slate-900 to-slate-900/50 py-4 px-2">
-          <SidebarSeparator className="bg-slate-700/30" />
+        <SidebarFooter className="border-t border-slate-700/50 bg-gradient-to-t from-slate-950 via-slate-900 to-slate-900/50 py-4 px-2 group-data-[collapsible=icon]:py-3 group-data-[collapsible=icon]:px-2 transition-all duration-300">
+          <SidebarSeparator className="bg-slate-700/30 group-data-[collapsible=icon]:my-2" />
 
           {/* User Info Card */}
-          <div className="bg-gradient-to-br from-slate-800/70 to-slate-900/70 rounded-lg p-3 space-y-2 mx-2 mt-2 border border-slate-700/50 backdrop-blur transition-all duration-300 hover:border-slate-600/70 hover:from-slate-800 hover:to-slate-900">
+          <div className="bg-gradient-to-br from-slate-800/70 to-slate-900/70 rounded-lg p-3 space-y-2 mx-2 mt-2 border border-slate-700/50 backdrop-blur transition-all duration-300 hover:border-slate-600/70 hover:from-slate-800 hover:to-slate-900 group-data-[collapsible=icon]:hidden">
             {userName && (
               <p className="text-sm font-semibold text-white truncate flex items-center gap-2">
                 <Zap className="h-3.5 w-3.5 text-amber-400 flex-shrink-0" />
@@ -195,7 +159,7 @@ const Navigation = ({
             <Button
               variant="ghost"
               size="sm"
-              className="w-full justify-start gap-2 px-2 text-slate-300 hover:text-red-300 hover:bg-red-500/15 transition-all duration-300 mx-2 mb-2 h-9 group"
+              className="w-full justify-start gap-2 px-2 text-slate-300 hover:text-red-300 hover:bg-red-500/15 transition-all duration-300 mx-2 mb-2 h-9 group group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:h-10 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:mb-0 group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:rounded-lg"
               onClick={() => {
                 onLogout();
                 // Close mobile drawer after logout
@@ -205,7 +169,7 @@ const Navigation = ({
               }}
             >
               <LogOut className="h-4 w-4 flex-shrink-0 group-hover:animate-pulse" />
-              <span className="text-sm">Logout</span>
+              <span className="text-sm group-data-[collapsible=icon]:hidden">Logout</span>
             </Button>
           )}
         </SidebarFooter>

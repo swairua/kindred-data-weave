@@ -486,7 +486,6 @@ const Index = ({ initialTab }: IndexProps) => {
           <Navigation
             currentView={view}
             onViewChange={setView}
-            onStartNewProject={handleStartNewProject}
             onLogout={handleLogout}
             userName={currentUser?.name}
             userEmail={currentUser?.email}
@@ -782,74 +781,8 @@ const Index = ({ initialTab }: IndexProps) => {
                     <div className="absolute bottom-1/4 left-0 w-96 h-96 bg-gradient-to-tr from-slate-400/3 to-transparent rounded-full blur-3xl"></div>
                   </div>
 
-                  <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12 items-center relative z-0 px-4 sm:px-6 md:px-0">
-                    {/* Left side - Branding */}
-                    <div className="hidden lg:flex flex-col justify-center space-y-8 animate-fade-in">
-                      <div className="space-y-6">
-                        <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-slate-700 via-slate-700 to-slate-800 shadow-xl hover:shadow-2xl transition-all duration-300">
-                          <img
-                            src="https://cdn.builder.io/api/v1/image/assets%2Fedb7c735e72a41328e7ab97a48a7676d%2Fe8eac870f9c84f0c869c7c6ece6e38e5?format=webp&width=800&height=1200"
-                            alt="Cransfield Materials Testing Center"
-                            className="h-10 w-10 object-contain"
-                          />
-                        </div>
-                        <div className="space-y-3">
-                          <h2 className="text-5xl lg:text-6xl font-bold text-foreground leading-tight tracking-tight">
-                            Welcome to <span className="bg-gradient-to-r from-slate-900 to-slate-700 dark:from-slate-100 dark:to-slate-300 bg-clip-text text-transparent">CMTC</span>
-                          </h2>
-                          <p className="text-lg lg:text-xl text-muted-foreground leading-relaxed max-w-md">
-                            Professional laboratory management. Access your lab data, manage comprehensive tests, and generate detailed reports with our trusted platform.
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Features */}
-                      <div className="space-y-3">
-                        <div className="group flex gap-4 p-4 rounded-xl bg-white/40 dark:bg-slate-800/20 hover:bg-white/60 dark:hover:bg-slate-700/30 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/30 transition-all duration-300 hover:shadow-md">
-                          <div className="flex-shrink-0">
-                            <div className="flex items-center justify-center h-12 w-12 rounded-lg bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/40 dark:to-blue-800/20 group-hover:shadow-lg transition-all duration-300">
-                              <svg className="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                              </svg>
-                            </div>
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-foreground text-sm lg:text-base">Lightning Fast</h3>
-                            <p className="text-sm text-muted-foreground">Real-time data processing and reporting</p>
-                          </div>
-                        </div>
-
-                        <div className="group flex gap-4 p-4 rounded-xl bg-white/40 dark:bg-slate-800/20 hover:bg-white/60 dark:hover:bg-slate-700/30 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/30 transition-all duration-300 hover:shadow-md">
-                          <div className="flex-shrink-0">
-                            <div className="flex items-center justify-center h-12 w-12 rounded-lg bg-gradient-to-br from-amber-100 to-amber-50 dark:from-amber-900/40 dark:to-amber-800/20 group-hover:shadow-lg transition-all duration-300">
-                              <svg className="h-6 w-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                              </svg>
-                            </div>
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-foreground text-sm lg:text-base">Secure & Protected</h3>
-                            <p className="text-sm text-muted-foreground">Your data is encrypted and secure</p>
-                          </div>
-                        </div>
-
-                        <div className="group flex gap-4 p-4 rounded-xl bg-white/40 dark:bg-slate-800/20 hover:bg-white/60 dark:hover:bg-slate-700/30 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/30 transition-all duration-300 hover:shadow-md">
-                          <div className="flex-shrink-0">
-                            <div className="flex items-center justify-center h-12 w-12 rounded-lg bg-gradient-to-br from-emerald-100 to-emerald-50 dark:from-emerald-900/40 dark:to-emerald-800/20 group-hover:shadow-lg transition-all duration-300">
-                              <svg className="h-6 w-6 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                              </svg>
-                            </div>
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-foreground text-sm lg:text-base">Smart Analytics</h3>
-                            <p className="text-sm text-muted-foreground">Detailed insights and comprehensive reports</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Right side - Login form or welcome message */}
+                  <div className="w-full max-w-6xl relative z-0 px-4 sm:px-6 md:px-0">
+                    {/* Login form or welcome message */}
                     <div className="w-full flex flex-col items-center justify-center">
                       {!showLoginForm ? (
                         <div className="flex flex-col items-center justify-center space-y-8 py-8 md:py-12 w-full">
