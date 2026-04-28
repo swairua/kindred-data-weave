@@ -552,64 +552,7 @@ const Index = ({ initialTab }: IndexProps) => {
                 <div className="absolute top-0 left-1/2 w-96 h-96 bg-gradient-to-b from-purple-500/5 to-transparent rounded-full blur-3xl animate-pulse animation-delay-4000"></div>
               </div>
 
-              <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-6 lg:gap-12 items-center relative z-0 px-4 md:px-0">
-                {/* Left side - Branding & Features */}
-                <div className="hidden lg:flex flex-col justify-center space-y-8 animate-fade-in">
-                  <div className="space-y-4">
-                    <div className="inline-flex items-center justify-center h-16 w-16 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg transform hover:scale-110 transition-transform duration-300">
-                      <img
-                        src="https://cdn.builder.io/api/v1/image/assets%2Fedb7c735e72a41328e7ab97a48a7676d%2Fe8eac870f9c84f0c869c7c6ece6e38e5?format=webp&width=800&height=1200"
-                        alt="Cransfield Materials Testing Center"
-                        className="h-10 w-10 object-contain"
-                      />
-                    </div>
-                    <h2 className="text-5xl font-bold text-foreground leading-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                      Welcome to CMTC
-                    </h2>
-                    <p className="text-lg text-muted-foreground leading-relaxed">
-                      Professional materials testing and laboratory management system. Access your lab data, manage comprehensive tests, and generate detailed reports with ease.
-                    </p>
-                  </div>
-
-                  {/* Features */}
-                  <div className="space-y-4 pt-4">
-                    {[
-                      { icon: "⚡", title: "Lightning Fast", desc: "Real-time data processing and instant access to test results" },
-                      { icon: "🔒", title: "Enterprise Security", desc: "End-to-end encryption and compliance with industry standards" },
-                      { icon: "📊", title: "Advanced Analytics", desc: "Comprehensive reports with visual insights and trend analysis" },
-                      { icon: "🔬", title: "Multi-Test Support", desc: "Soil, concrete, rock, and specialized testing capabilities" },
-                    ].map((feature, idx) => (
-                      <div
-                        key={idx}
-                        className="flex gap-4 p-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 backdrop-blur hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1"
-                        style={{ animationDelay: `${idx * 100}ms` }}
-                      >
-                        <div className="flex-shrink-0 text-2xl">{feature.icon}</div>
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-foreground">{feature.title}</h3>
-                          <p className="text-sm text-muted-foreground">{feature.desc}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Stats section */}
-                  <div className="grid grid-cols-3 gap-4 pt-4 border-t border-slate-200 dark:border-slate-800">
-                    <div className="text-center">
-                      <p className="text-3xl font-bold text-blue-600">500+</p>
-                      <p className="text-xs text-muted-foreground">Labs Active</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-3xl font-bold text-indigo-600">10K+</p>
-                      <p className="text-xs text-muted-foreground">Tests Run</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-3xl font-bold text-purple-600">99.9%</p>
-                      <p className="text-xs text-muted-foreground">Uptime</p>
-                    </div>
-                  </div>
-                </div>
-
+              <div className="w-full max-w-md mx-auto relative z-0 px-4 md:px-0">
                 {/* Right side - Login form with enhanced design */}
                 <div className="w-full animate-fade-in animation-delay-200">
                   <Card className="border-0 shadow-2xl rounded-2xl overflow-hidden bg-card backdrop-blur-sm">
