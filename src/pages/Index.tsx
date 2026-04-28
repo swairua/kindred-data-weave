@@ -714,22 +714,31 @@ const Index = ({ initialTab }: IndexProps) => {
         </SidebarProvider>
       ) : (
         <main className="flex min-h-svh flex-col bg-gradient-to-br from-white via-slate-50 to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-          <header className="border-b border-slate-200/30 dark:border-slate-800/50 bg-white/40 dark:bg-slate-950/40 backdrop-blur-md text-foreground sticky top-0 z-10">
-            <div className="px-4 md:px-6 py-4">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between max-w-7xl mx-auto">
-                <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-slate-700 to-slate-800 dark:from-slate-600 dark:to-slate-700 flex items-center justify-center overflow-hidden shadow-lg">
+          <header className="border-b border-slate-200/30 dark:border-slate-800/50 bg-gradient-to-r from-white/60 via-blue-50/40 to-slate-50/60 dark:from-slate-950/60 dark:via-slate-900/40 dark:to-slate-950/60 backdrop-blur-lg text-foreground sticky top-0 z-10 shadow-sm">
+            <div className="px-4 md:px-6 py-3 md:py-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 max-w-7xl mx-auto">
+                <div className="flex items-center gap-3 min-w-0 flex-shrink-0">
+                  <div className="h-10 w-10 md:h-12 md:w-12 rounded-lg bg-gradient-to-br from-slate-700 to-slate-800 dark:from-slate-600 dark:to-slate-700 flex items-center justify-center overflow-hidden shadow-md flex-shrink-0">
                     <img
                       src="https://cdn.builder.io/api/v1/image/assets%2Fedb7c735e72a41328e7ab97a48a7676d%2Fe8eac870f9c84f0c869c7c6ece6e38e5?format=webp&width=800&height=1200"
                       alt="Cransfield Materials Testing Center"
-                      className="h-8 w-8 object-contain"
+                      className="h-7 w-7 md:h-8 md:w-8 object-contain"
                     />
                   </div>
-                  <div>
-                    <h1 className="text-2xl font-bold text-foreground tracking-tight">Cransfield CMTC</h1>
-                    <p className="text-sm text-muted-foreground">Materials Testing Center</p>
+                  <div className="min-w-0">
+                    <h1 className="text-xl md:text-2xl font-bold text-foreground tracking-tight truncate">Cransfield CMTC</h1>
+                    <p className="text-xs md:text-sm text-muted-foreground truncate">Materials Testing Center</p>
                   </div>
                 </div>
+
+                {!showLoginForm && (
+                  <Button
+                    onClick={() => setShowLoginForm(true)}
+                    className="h-10 px-6 text-sm font-semibold rounded-lg bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-800 hover:to-slate-900 text-white shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105 whitespace-nowrap flex-shrink-0"
+                  >
+                    Sign In
+                  </Button>
+                )}
               </div>
             </div>
           </header>
@@ -755,9 +764,9 @@ const Index = ({ initialTab }: IndexProps) => {
                     <div className="absolute bottom-1/4 left-0 w-96 h-96 bg-gradient-to-tr from-slate-400/3 to-transparent rounded-full blur-3xl"></div>
                   </div>
 
-                  <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-6 lg:gap-12 items-center relative z-0 px-0 md:px-0">
+                  <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12 items-center relative z-0 px-4 sm:px-6 md:px-0">
                     {/* Left side - Branding */}
-                    <div className="hidden lg:flex flex-col justify-center space-y-8">
+                    <div className="hidden lg:flex flex-col justify-center space-y-8 animate-fade-in">
                       <div className="space-y-4">
                         <div className="inline-flex items-center justify-center h-16 w-16 rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 shadow-lg">
                           <img
@@ -820,40 +829,59 @@ const Index = ({ initialTab }: IndexProps) => {
                       </div>
                     </div>
 
-                    {/* Right side - Login button or form */}
+                    {/* Right side - Login form or welcome message */}
                     <div className="w-full flex flex-col items-center justify-center">
                       {!showLoginForm ? (
-                        <div className="flex flex-col items-center justify-center space-y-6 py-12">
-                          <div className="space-y-4 text-center">
-                            <h2 className="text-3xl font-bold text-foreground">Ready to Get Started?</h2>
-                            <p className="text-lg text-muted-foreground max-w-md">
-                              Sign in to your Cransfield CMTC account to access lab data, manage tests, and generate reports.
+                        <div className="flex flex-col items-center justify-center space-y-6 py-8 md:py-12 w-full">
+                          <div className="space-y-4 text-center px-4 md:px-0">
+                            <h2 className="text-2xl sm:text-3xl font-bold text-foreground leading-tight">Ready to Get Started?</h2>
+                            <p className="text-base sm:text-lg text-muted-foreground">
+                              Access your lab data, manage comprehensive testing workflows, and generate detailed reports with ease.
                             </p>
                           </div>
-                          <Button
-                            onClick={() => setShowLoginForm(true)}
-                            className="h-12 px-8 text-base font-semibold rounded-lg bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-800 hover:to-slate-900 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-                          >
-                            Sign In
-                          </Button>
-                          <p className="text-sm text-muted-foreground">
-                            Don't have an account? Contact your administrator
-                          </p>
-                        </div>
-                      ) : (
-                        <Card className="border border-slate-200 dark:border-slate-700 shadow-lg rounded-2xl overflow-hidden bg-card w-full max-w-md">
-                          {/* Card header with subtle gradient */}
-                          <div className="bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-800 px-4 md:px-8 py-8 md:py-10 border-b border-slate-200 dark:border-slate-700">
-                            <div className="space-y-2">
-                              <h1 className="text-3xl font-bold text-foreground">Sign In</h1>
-                              <p className="text-muted-foreground text-base">Enter your credentials to continue</p>
+
+                          {/* Feature highlights for unauthenticated users */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full px-4 md:px-0">
+                            <div className="p-4 rounded-lg bg-slate-100/50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700/50">
+                              <p className="text-2xl mb-2">📊</p>
+                              <p className="text-sm font-semibold text-foreground">Real-time Tracking</p>
+                              <p className="text-xs text-muted-foreground mt-1">Monitor test progress instantly</p>
+                            </div>
+                            <div className="p-4 rounded-lg bg-slate-100/50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700/50">
+                              <p className="text-2xl mb-2">📈</p>
+                              <p className="text-sm font-semibold text-foreground">Smart Reports</p>
+                              <p className="text-xs text-muted-foreground mt-1">Generate reports in seconds</p>
+                            </div>
+                            <div className="p-4 rounded-lg bg-slate-100/50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700/50">
+                              <p className="text-2xl mb-2">🔒</p>
+                              <p className="text-sm font-semibold text-foreground">Data Protection</p>
+                              <p className="text-xs text-muted-foreground mt-1">Enterprise-grade security</p>
+                            </div>
+                            <div className="p-4 rounded-lg bg-slate-100/50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700/50">
+                              <p className="text-2xl mb-2">⚙️</p>
+                              <p className="text-sm font-semibold text-foreground">Easy Integration</p>
+                              <p className="text-xs text-muted-foreground mt-1">Seamless workflow integration</p>
                             </div>
                           </div>
 
-                          <CardContent className="p-4 md:p-8">
-                            <form className="space-y-5" onSubmit={handleLogin}>
+                          <p className="text-sm text-muted-foreground px-4 md:px-0 text-center">
+                            Don't have an account? <span className="font-semibold">Contact your administrator</span>
+                          </p>
+                        </div>
+                      ) : (
+                        <Card className="border border-slate-200 dark:border-slate-700 shadow-lg rounded-2xl overflow-hidden bg-card w-full max-w-md mx-auto sm:mx-0">
+                          {/* Card header with subtle gradient */}
+                          <div className="bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-800 px-4 sm:px-6 md:px-8 py-6 sm:py-8 border-b border-slate-200 dark:border-slate-700">
+                            <div className="space-y-1">
+                              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Sign In</h1>
+                              <p className="text-muted-foreground text-sm sm:text-base">Enter your credentials to continue</p>
+                            </div>
+                          </div>
+
+                          <CardContent className="p-4 sm:p-6 md:p-8">
+                            <form className="space-y-4" onSubmit={handleLogin}>
                               {/* Email field */}
-                              <div className="space-y-2.5">
+                              <div className="space-y-2">
                                 <Label htmlFor="email" className="text-sm font-semibold text-foreground">
                                   Email Address
                                 </Label>
@@ -864,12 +892,12 @@ const Index = ({ initialTab }: IndexProps) => {
                                   onChange={(event) => setEmail(event.target.value)}
                                   placeholder="your@email.com"
                                   autoComplete="email"
-                                  className="h-12 px-4 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-all duration-200 hover:border-slate-300"
+                                  className="h-11 sm:h-12 px-4 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-all duration-200 hover:border-slate-300 text-sm sm:text-base"
                                 />
                               </div>
 
                               {/* Password field */}
-                              <div className="space-y-2.5">
+                              <div className="space-y-2">
                                 <Label htmlFor="password" className="text-sm font-semibold text-foreground">
                                   Password
                                 </Label>
@@ -880,26 +908,26 @@ const Index = ({ initialTab }: IndexProps) => {
                                   onChange={(event) => setPassword(event.target.value)}
                                   placeholder="••••••••"
                                   autoComplete="current-password"
-                                  className="h-12 px-4 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-all duration-200 hover:border-slate-300"
+                                  className="h-11 sm:h-12 px-4 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-all duration-200 hover:border-slate-300 text-sm sm:text-base"
                                 />
                               </div>
 
                               {/* Error message */}
                               {loginError && (
-                                <div className="p-4 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
-                                  <p className="text-sm text-red-700 dark:text-red-200 font-medium">{loginError}</p>
+                                <div className="p-3 sm:p-4 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+                                  <p className="text-xs sm:text-sm text-red-700 dark:text-red-200 font-medium">{loginError}</p>
                                 </div>
                               )}
 
                               {/* Sign in button */}
                               <Button
                                 type="submit"
-                                className="w-full h-12 text-base font-semibold rounded-lg bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-800 hover:to-slate-900 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                                className="w-full h-11 sm:h-12 text-sm sm:text-base font-semibold rounded-lg bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-800 hover:to-slate-900 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 active:scale-95"
                                 disabled={isSubmittingLogin}
                               >
                                 {isSubmittingLogin ? (
                                   <>
-                                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                                    <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin mr-2" />
                                     Signing in...
                                   </>
                                 ) : (
@@ -911,7 +939,7 @@ const Index = ({ initialTab }: IndexProps) => {
                               <Button
                                 type="button"
                                 variant="outline"
-                                className="w-full h-10 text-sm font-medium rounded-lg border-2 border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 text-foreground transition-all duration-300"
+                                className="w-full h-10 sm:h-11 text-xs sm:text-sm font-medium rounded-lg border-2 border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 text-foreground transition-all duration-300"
                                 onClick={() => setShowLoginForm(false)}
                               >
                                 Back
@@ -922,7 +950,7 @@ const Index = ({ initialTab }: IndexProps) => {
                       )}
 
                       {/* Footer text */}
-                      <p className="text-center text-xs text-muted-foreground mt-8">
+                      <p className="text-center text-xs text-muted-foreground mt-6 sm:mt-8 px-4 sm:px-0">
                         © 2024 Cransfield CMTC. All rights reserved.
                       </p>
                     </div>
