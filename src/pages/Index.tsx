@@ -843,11 +843,11 @@ const Index = ({ initialTab }: IndexProps) => {
                           {/* Platform Statistics */}
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full px-4 md:px-0 py-6 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800/30 dark:to-slate-900/30 rounded-lg border border-slate-200 dark:border-slate-700/50">
                             <div className="text-center animate-fade-in" style={{ animationDelay: '0ms' }}>
-                              <p className="text-2xl sm:text-3xl font-bold text-slate-700 dark:text-slate-200">500+</p>
+                              <p className="text-2xl sm:text-3xl font-bold text-slate-700 dark:text-slate-200">8+</p>
                               <p className="text-xs sm:text-sm text-muted-foreground">Active Labs</p>
                             </div>
                             <div className="text-center animate-fade-in" style={{ animationDelay: '100ms' }}>
-                              <p className="text-2xl sm:text-3xl font-bold text-slate-700 dark:text-slate-200">50K+</p>
+                              <p className="text-2xl sm:text-3xl font-bold text-slate-700 dark:text-slate-200">250+</p>
                               <p className="text-xs sm:text-sm text-muted-foreground">Tests Processed</p>
                             </div>
                             <div className="text-center animate-fade-in" style={{ animationDelay: '200ms' }}>
