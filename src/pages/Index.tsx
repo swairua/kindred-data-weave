@@ -172,6 +172,7 @@ const Index = ({ initialTab }: IndexProps) => {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [projectHistory, setProjectHistory] = useState<ApiProjectRow[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
+  const [showLoginForm, setShowLoginForm] = useState(false);
   const today = new Date().toISOString().split("T")[0];
 
   const isAuthenticated = authStatus === "authenticated";
@@ -526,90 +527,87 @@ const Index = ({ initialTab }: IndexProps) => {
               </Card>
             </div>
           ) : !isAuthenticated ? (
-            <div className="min-h-[calc(100vh-200px)] flex items-center justify-center px-0 md:px-4 py-12 relative">
-              {/* Background gradient elements */}
+            <div className="min-h-[calc(100vh-200px)] flex items-center justify-center px-0 md:px-4 py-12 relative overflow-hidden">
+              {/* Animated background gradient elements */}
               <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-                <div className="absolute top-1/4 right-0 w-96 h-96 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-full blur-3xl"></div>
-                <div className="absolute bottom-1/4 left-0 w-96 h-96 bg-gradient-to-tr from-indigo-500/5 to-transparent rounded-full blur-3xl"></div>
+                <div className="absolute top-1/4 right-0 w-96 h-96 bg-gradient-to-bl from-blue-500/8 to-transparent rounded-full blur-3xl animate-pulse"></div>
+                <div className="absolute bottom-1/4 left-0 w-96 h-96 bg-gradient-to-tr from-indigo-500/8 to-transparent rounded-full blur-3xl animate-pulse animation-delay-2000"></div>
+                <div className="absolute top-0 left-1/2 w-96 h-96 bg-gradient-to-b from-purple-500/5 to-transparent rounded-full blur-3xl animate-pulse animation-delay-4000"></div>
               </div>
 
               <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-6 lg:gap-12 items-center relative z-0 px-4 md:px-0">
-                {/* Left side - Branding */}
-                <div className="hidden lg:flex flex-col justify-center space-y-8">
+                {/* Left side - Branding & Features */}
+                <div className="hidden lg:flex flex-col justify-center space-y-8 animate-fade-in">
                   <div className="space-y-4">
-                    <div className="inline-flex items-center justify-center h-16 w-16 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg">
+                    <div className="inline-flex items-center justify-center h-16 w-16 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg transform hover:scale-110 transition-transform duration-300">
                       <img
                         src="https://cdn.builder.io/api/v1/image/assets%2Fedb7c735e72a41328e7ab97a48a7676d%2Fe8eac870f9c84f0c869c7c6ece6e38e5?format=webp&width=800&height=1200"
                         alt="Cransfield Materials Testing Center"
                         className="h-10 w-10 object-contain"
                       />
                     </div>
-                    <h2 className="text-4xl font-bold text-foreground leading-tight">
-                      Welcome Back
+                    <h2 className="text-5xl font-bold text-foreground leading-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                      Welcome to CMTC
                     </h2>
-                    <p className="text-lg text-muted-foreground">
-                      Access your lab data, manage tests, and generate comprehensive reports with Cransfield Materials Testing Center.
+                    <p className="text-lg text-muted-foreground leading-relaxed">
+                      Professional materials testing and laboratory management system. Access your lab data, manage comprehensive tests, and generate detailed reports with ease.
                     </p>
                   </div>
 
                   {/* Features */}
                   <div className="space-y-4 pt-4">
-                    <div className="flex gap-4">
-                      <div className="flex-shrink-0">
-                        <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                          <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                          </svg>
+                    {[
+                      { icon: "⚡", title: "Lightning Fast", desc: "Real-time data processing and instant access to test results" },
+                      { icon: "🔒", title: "Enterprise Security", desc: "End-to-end encryption and compliance with industry standards" },
+                      { icon: "📊", title: "Advanced Analytics", desc: "Comprehensive reports with visual insights and trend analysis" },
+                      { icon: "🔬", title: "Multi-Test Support", desc: "Soil, concrete, rock, and specialized testing capabilities" },
+                    ].map((feature, idx) => (
+                      <div
+                        key={idx}
+                        className="flex gap-4 p-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 backdrop-blur hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1"
+                        style={{ animationDelay: `${idx * 100}ms` }}
+                      >
+                        <div className="flex-shrink-0 text-2xl">{feature.icon}</div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-foreground">{feature.title}</h3>
+                          <p className="text-sm text-muted-foreground">{feature.desc}</p>
                         </div>
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-foreground">Fast & Reliable</h3>
-                        <p className="text-sm text-muted-foreground">Lightning-quick access to your test data</p>
-                      </div>
-                    </div>
+                    ))}
+                  </div>
 
-                    <div className="flex gap-4">
-                      <div className="flex-shrink-0">
-                        <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
-                          <svg className="h-6 w-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                          </svg>
-                        </div>
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-foreground">Secure & Protected</h3>
-                        <p className="text-sm text-muted-foreground">Your data is encrypted and secure</p>
-                      </div>
+                  {/* Stats section */}
+                  <div className="grid grid-cols-3 gap-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+                    <div className="text-center">
+                      <p className="text-3xl font-bold text-blue-600">500+</p>
+                      <p className="text-xs text-muted-foreground">Labs Active</p>
                     </div>
-
-                    <div className="flex gap-4">
-                      <div className="flex-shrink-0">
-                        <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-purple-100 dark:bg-purple-900/30">
-                          <svg className="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                          </svg>
-                        </div>
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-foreground">Smart Analytics</h3>
-                        <p className="text-sm text-muted-foreground">Detailed insights and comprehensive reports</p>
-                      </div>
+                    <div className="text-center">
+                      <p className="text-3xl font-bold text-indigo-600">10K+</p>
+                      <p className="text-xs text-muted-foreground">Tests Run</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-3xl font-bold text-purple-600">99.9%</p>
+                      <p className="text-xs text-muted-foreground">Uptime</p>
                     </div>
                   </div>
                 </div>
 
-                {/* Right side - Login form */}
-                <div className="w-full">
-                  <Card className="border-0 shadow-2xl rounded-2xl overflow-hidden bg-card">
+                {/* Right side - Login form with enhanced design */}
+                <div className="w-full animate-fade-in animation-delay-200">
+                  <Card className="border-0 shadow-2xl rounded-2xl overflow-hidden bg-card backdrop-blur-sm">
                     {/* Card header with gradient */}
-                    <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 px-4 md:px-8 py-8 md:py-10 text-white">
-                      <div className="space-y-2">
+                    <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 px-4 md:px-8 py-8 md:py-10 text-white relative overflow-hidden">
+                      <div className="absolute inset-0 opacity-20">
+                        <div className="absolute top-0 right-0 w-40 h-40 bg-white rounded-full blur-3xl opacity-20"></div>
+                      </div>
+                      <div className="space-y-2 relative z-10">
                         <h1 className="text-4xl font-bold">Welcome Back</h1>
                         <p className="text-blue-100 text-lg">Sign in to your lab account</p>
                       </div>
                     </div>
 
-                    <CardContent className="p-4 md:p-8">
+                    <CardContent className="p-4 md:p-8 space-y-5">
                       <form className="space-y-5" onSubmit={handleLogin}>
                         {/* Email field */}
                         <div className="space-y-2.5">
@@ -623,7 +621,7 @@ const Index = ({ initialTab }: IndexProps) => {
                             onChange={(event) => setEmail(event.target.value)}
                             placeholder="your@email.com"
                             autoComplete="email"
-                            className="h-12 px-4 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                            className="h-12 px-4 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-slate-300"
                           />
                         </div>
 
@@ -639,13 +637,13 @@ const Index = ({ initialTab }: IndexProps) => {
                             onChange={(event) => setPassword(event.target.value)}
                             placeholder="••••••••"
                             autoComplete="current-password"
-                            className="h-12 px-4 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                            className="h-12 px-4 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-slate-300"
                           />
                         </div>
 
-                        {/* Error message - moved here from below */}
+                        {/* Error message */}
                         {loginError && (
-                          <div className="p-4 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+                          <div className="p-4 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 animate-shake">
                             <p className="text-sm text-red-700 dark:text-red-200 font-medium">{loginError}</p>
                           </div>
                         )}
@@ -653,7 +651,7 @@ const Index = ({ initialTab }: IndexProps) => {
                         {/* Submit button */}
                         <Button
                           type="submit"
-                          className="w-full h-12 text-base font-semibold rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+                          className="w-full h-12 text-base font-semibold rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 active:scale-95"
                           disabled={isSubmittingLogin}
                         >
                           {isSubmittingLogin ? (
@@ -664,25 +662,35 @@ const Index = ({ initialTab }: IndexProps) => {
                             "Sign In"
                           )}
                         </Button>
-
-                        {/* Divider */}
-                        <div className="flex items-center gap-3 my-6">
-                          <div className="flex-1 border-t border-slate-200 dark:border-slate-700"></div>
-                          <span className="text-xs text-muted-foreground font-medium">New to the platform?</span>
-                          <div className="flex-1 border-t border-slate-200 dark:border-slate-700"></div>
-                        </div>
-
-                        {/* Help text */}
-                        <p className="text-center text-sm text-muted-foreground bg-blue-50 dark:bg-blue-950/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
-                          Contact your lab administrator to request access
-                        </p>
                       </form>
+
+                      {/* Divider */}
+                      <div className="flex items-center gap-3 my-6">
+                        <div className="flex-1 border-t border-slate-200 dark:border-slate-700"></div>
+                        <span className="text-xs text-muted-foreground font-medium">Admin Access</span>
+                        <div className="flex-1 border-t border-slate-200 dark:border-slate-700"></div>
+                      </div>
+
+                      {/* Admin CTA Button */}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full h-12 text-base font-semibold rounded-lg border-2 border-slate-300 dark:border-slate-600 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20 text-foreground transition-all duration-300 transform hover:scale-105"
+                      >
+                        <Hammer className="h-5 w-5 mr-2" />
+                        Admin Panel
+                      </Button>
+
+                      {/* Help text */}
+                      <p className="text-center text-sm text-muted-foreground bg-blue-50 dark:bg-blue-950/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+                        Don't have an account? Contact your lab administrator to request access
+                      </p>
                     </CardContent>
                   </Card>
 
                   {/* Footer text */}
                   <p className="text-center text-xs text-muted-foreground mt-8">
-                    © 2024 Cransfield CMTC. All rights reserved.
+                    © 2024 Cransfield CMTC. All rights reserved. | Secure • Reliable • Trusted
                   </p>
                 </div>
               </div>
@@ -705,23 +713,32 @@ const Index = ({ initialTab }: IndexProps) => {
           </SidebarInset>
         </SidebarProvider>
       ) : (
-        <main className="flex min-h-svh flex-col">
-          <header className="border-b bg-gradient-to-r from-slate-900 to-blue-950 text-white sticky top-0 z-10 shadow-lg">
-            <div className="px-4 md:px-6 py-4">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between max-w-7xl mx-auto">
-                <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center overflow-hidden shadow-lg">
+        <main className="flex min-h-svh flex-col bg-gradient-to-br from-white via-slate-50 to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+          <header className="border-b border-slate-200/30 dark:border-slate-800/50 bg-gradient-to-r from-white/60 via-blue-50/40 to-slate-50/60 dark:from-slate-950/60 dark:via-slate-900/40 dark:to-slate-950/60 backdrop-blur-lg text-foreground sticky top-0 z-10 shadow-sm">
+            <div className="px-4 md:px-6 py-3 md:py-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 max-w-7xl mx-auto">
+                <div className="flex items-center gap-3 min-w-0 flex-shrink-0">
+                  <div className="h-10 w-10 md:h-12 md:w-12 rounded-lg bg-gradient-to-br from-slate-700 to-slate-800 dark:from-slate-600 dark:to-slate-700 flex items-center justify-center overflow-hidden shadow-md flex-shrink-0">
                     <img
                       src="https://cdn.builder.io/api/v1/image/assets%2Fedb7c735e72a41328e7ab97a48a7676d%2Fe8eac870f9c84f0c869c7c6ece6e38e5?format=webp&width=800&height=1200"
                       alt="Cransfield Materials Testing Center"
-                      className="h-8 w-8 object-contain"
+                      className="h-7 w-7 md:h-8 md:w-8 object-contain"
                     />
                   </div>
-                  <div>
-                    <h1 className="text-2xl font-bold text-white tracking-tight">Cransfield CMTC</h1>
-                    <p className="text-sm text-blue-100">Materials Testing Center</p>
+                  <div className="min-w-0">
+                    <h1 className="text-xl md:text-2xl font-bold text-foreground tracking-tight truncate">Cransfield CMTC</h1>
+                    <p className="text-xs md:text-sm text-muted-foreground truncate">Materials Testing Center</p>
                   </div>
                 </div>
+
+                {!showLoginForm && (
+                  <Button
+                    onClick={() => setShowLoginForm(true)}
+                    className="h-10 px-6 text-sm font-semibold rounded-lg bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-800 hover:to-slate-900 text-white shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105 whitespace-nowrap flex-shrink-0"
+                  >
+                    Sign In
+                  </Button>
+                )}
               </div>
             </div>
           </header>
@@ -741,17 +758,17 @@ const Index = ({ initialTab }: IndexProps) => {
                 </div>
               ) : (
                 <div className="min-h-[calc(100vh-200px)] flex items-center justify-center px-0 py-12 relative">
-                  {/* Background gradient elements */}
+                  {/* Background gradient elements - subtle */}
                   <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-                    <div className="absolute top-1/4 right-0 w-96 h-96 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-full blur-3xl"></div>
-                    <div className="absolute bottom-1/4 left-0 w-96 h-96 bg-gradient-to-tr from-indigo-500/5 to-transparent rounded-full blur-3xl"></div>
+                    <div className="absolute top-1/4 right-0 w-96 h-96 bg-gradient-to-bl from-slate-400/3 to-transparent rounded-full blur-3xl"></div>
+                    <div className="absolute bottom-1/4 left-0 w-96 h-96 bg-gradient-to-tr from-slate-400/3 to-transparent rounded-full blur-3xl"></div>
                   </div>
 
-                  <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-6 lg:gap-12 items-center relative z-0 px-0 md:px-0">
+                  <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12 items-center relative z-0 px-4 sm:px-6 md:px-0">
                     {/* Left side - Branding */}
-                    <div className="hidden lg:flex flex-col justify-center space-y-8">
+                    <div className="hidden lg:flex flex-col justify-center space-y-8 animate-fade-in">
                       <div className="space-y-4">
-                        <div className="inline-flex items-center justify-center h-16 w-16 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg">
+                        <div className="inline-flex items-center justify-center h-16 w-16 rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 shadow-lg">
                           <img
                             src="https://cdn.builder.io/api/v1/image/assets%2Fedb7c735e72a41328e7ab97a48a7676d%2Fe8eac870f9c84f0c869c7c6ece6e38e5?format=webp&width=800&height=1200"
                             alt="Cransfield Materials Testing Center"
@@ -759,10 +776,10 @@ const Index = ({ initialTab }: IndexProps) => {
                           />
                         </div>
                         <h2 className="text-4xl font-bold text-foreground leading-tight">
-                          Welcome Back
+                          Welcome to CMTC
                         </h2>
                         <p className="text-lg text-muted-foreground">
-                          Access your lab data, manage tests, and generate comprehensive reports with Cransfield Materials Testing Center.
+                          Access your lab data, manage tests, and generate comprehensive reports with our trusted materials testing platform.
                         </p>
                       </div>
 
@@ -770,8 +787,8 @@ const Index = ({ initialTab }: IndexProps) => {
                       <div className="space-y-4">
                         <div className="flex gap-4">
                           <div className="flex-shrink-0">
-                            <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                              <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-slate-200 dark:bg-slate-700/50">
+                              <svg className="h-6 w-6 text-slate-700 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                               </svg>
                             </div>
@@ -784,8 +801,8 @@ const Index = ({ initialTab }: IndexProps) => {
 
                         <div className="flex gap-4">
                           <div className="flex-shrink-0">
-                            <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
-                              <svg className="h-6 w-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-slate-200 dark:bg-slate-700/50">
+                              <svg className="h-6 w-6 text-slate-700 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                               </svg>
                             </div>
@@ -798,8 +815,8 @@ const Index = ({ initialTab }: IndexProps) => {
 
                         <div className="flex gap-4">
                           <div className="flex-shrink-0">
-                            <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-purple-100 dark:bg-purple-900/30">
-                              <svg className="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-slate-200 dark:bg-slate-700/50">
+                              <svg className="h-6 w-6 text-slate-700 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                               </svg>
                             </div>
@@ -812,91 +829,197 @@ const Index = ({ initialTab }: IndexProps) => {
                       </div>
                     </div>
 
-                    {/* Right side - Login form */}
-                    <div className="w-full">
-                      <Card className="border-0 shadow-2xl rounded-2xl overflow-hidden bg-card">
-                        {/* Card header with gradient */}
-                        <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 px-4 md:px-8 py-8 md:py-10 text-white">
-                          <div className="space-y-2">
-                            <h1 className="text-4xl font-bold">Welcome Back</h1>
-                            <p className="text-blue-100 text-lg">Sign in to your lab account</p>
-                          </div>
-                        </div>
-
-                        <CardContent className="p-4 md:p-8">
-                          <form className="space-y-5" onSubmit={handleLogin}>
-                            {/* Email field */}
-                            <div className="space-y-2.5">
-                              <Label htmlFor="email" className="text-sm font-semibold text-foreground">
-                                Email Address
-                              </Label>
-                              <Input
-                                id="email"
-                                type="email"
-                                value={email}
-                                onChange={(event) => setEmail(event.target.value)}
-                                placeholder="your@email.com"
-                                autoComplete="email"
-                                className="h-12 px-4 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                              />
-                            </div>
-
-                            {/* Password field */}
-                            <div className="space-y-2.5">
-                              <Label htmlFor="password" className="text-sm font-semibold text-foreground">
-                                Password
-                              </Label>
-                              <Input
-                                id="password"
-                                type="password"
-                                value={password}
-                                onChange={(event) => setPassword(event.target.value)}
-                                placeholder="••••••••"
-                                autoComplete="current-password"
-                                className="h-12 px-4 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                              />
-                            </div>
-
-                            {/* Error message */}
-                            {loginError && (
-                              <div className="p-4 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
-                                <p className="text-sm text-red-700 dark:text-red-200 font-medium">{loginError}</p>
-                              </div>
-                            )}
-
-                            {/* Sign in button */}
-                            <Button
-                              type="submit"
-                              className="w-full h-12 text-base font-semibold rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
-                              disabled={isSubmittingLogin}
-                            >
-                              {isSubmittingLogin ? (
-                                <>
-                                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                                  Signing in...
-                                </>
-                              ) : (
-                                "Sign In"
-                              )}
-                            </Button>
-
-                            {/* Divider */}
-                            <div className="flex items-center gap-3 my-6">
-                              <div className="flex-1 border-t border-slate-200 dark:border-slate-700"></div>
-                              <span className="text-xs text-muted-foreground font-medium">New to the platform?</span>
-                              <div className="flex-1 border-t border-slate-200 dark:border-slate-700"></div>
-                            </div>
-
-                            {/* Help text */}
-                            <p className="text-center text-sm text-muted-foreground bg-blue-50 dark:bg-blue-950/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
-                              Contact your lab administrator to request access
+                    {/* Right side - Login form or welcome message */}
+                    <div className="w-full flex flex-col items-center justify-center">
+                      {!showLoginForm ? (
+                        <div className="flex flex-col items-center justify-center space-y-8 py-8 md:py-12 w-full">
+                          <div className="space-y-4 text-center px-4 md:px-0">
+                            <h2 className="text-2xl sm:text-3xl font-bold text-foreground leading-tight">Ready to Get Started?</h2>
+                            <p className="text-base sm:text-lg text-muted-foreground">
+                              Access your lab data, manage comprehensive testing workflows, and generate detailed reports with ease.
                             </p>
-                          </form>
-                        </CardContent>
-                      </Card>
+                          </div>
+
+                          {/* Platform Statistics */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full px-4 md:px-0 py-6 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800/30 dark:to-slate-900/30 rounded-lg border border-slate-200 dark:border-slate-700/50">
+                            <div className="text-center animate-fade-in" style={{ animationDelay: '0ms' }}>
+                              <p className="text-2xl sm:text-3xl font-bold text-slate-700 dark:text-slate-200">500+</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground">Active Labs</p>
+                            </div>
+                            <div className="text-center animate-fade-in" style={{ animationDelay: '100ms' }}>
+                              <p className="text-2xl sm:text-3xl font-bold text-slate-700 dark:text-slate-200">50K+</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground">Tests Processed</p>
+                            </div>
+                            <div className="text-center animate-fade-in" style={{ animationDelay: '200ms' }}>
+                              <p className="text-2xl sm:text-3xl font-bold text-slate-700 dark:text-slate-200">99.9%</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground">System Uptime</p>
+                            </div>
+                            <div className="text-center animate-fade-in" style={{ animationDelay: '300ms' }}>
+                              <p className="text-2xl sm:text-3xl font-bold text-slate-700 dark:text-slate-200">24/7</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground">Support Available</p>
+                            </div>
+                          </div>
+
+                          {/* Test Categories / System Capabilities */}
+                          <div className="w-full px-4 md:px-0 space-y-3">
+                            <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">Supported Test Categories</h3>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full">
+                              <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 text-center hover:border-amber-400 dark:hover:border-amber-500 hover:shadow-lg hover:shadow-amber-200/50 dark:hover:shadow-amber-900/50 transition-all duration-300 transform hover:scale-110 hover:-translate-y-1 cursor-pointer group">
+                                <p className="text-xl mb-1 group-hover:scale-125 transition-transform duration-300">🏜️</p>
+                                <p className="text-xs font-semibold text-foreground">Soil Tests</p>
+                              </div>
+                              <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700/50 text-center hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-lg hover:shadow-blue-200/50 dark:hover:shadow-blue-900/50 transition-all duration-300 transform hover:scale-110 hover:-translate-y-1 cursor-pointer group">
+                                <p className="text-xl mb-1 group-hover:scale-125 transition-transform duration-300">🏗️</p>
+                                <p className="text-xs font-semibold text-foreground">Concrete Tests</p>
+                              </div>
+                              <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-700/20 border border-slate-200 dark:border-slate-700/50 text-center hover:border-slate-400 dark:hover:border-slate-500 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50 transition-all duration-300 transform hover:scale-110 hover:-translate-y-1 cursor-pointer group">
+                                <p className="text-xl mb-1 group-hover:scale-125 transition-transform duration-300">⛰️</p>
+                                <p className="text-xs font-semibold text-foreground">Rock Tests</p>
+                              </div>
+                              <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700/50 text-center hover:border-purple-400 dark:hover:border-purple-500 hover:shadow-lg hover:shadow-purple-200/50 dark:hover:shadow-purple-900/50 transition-all duration-300 transform hover:scale-110 hover:-translate-y-1 cursor-pointer group">
+                                <p className="text-xl mb-1 group-hover:scale-125 transition-transform duration-300">🧪</p>
+                                <p className="text-xs font-semibold text-foreground">Special Tests</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Feature highlights for unauthenticated users */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full px-4 md:px-0">
+                            <div className="p-4 rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 dark:from-slate-800/40 dark:to-slate-900/40 border border-slate-200 dark:border-slate-700/50 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 group">
+                              <p className="text-2xl mb-2 group-hover:scale-125 group-hover:rotate-12 transition-all duration-300">📊</p>
+                              <p className="text-sm font-semibold text-foreground">Real-time Tracking</p>
+                              <p className="text-xs text-muted-foreground mt-1">Monitor test progress instantly with live updates</p>
+                            </div>
+                            <div className="p-4 rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 dark:from-slate-800/40 dark:to-slate-900/40 border border-slate-200 dark:border-slate-700/50 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 group">
+                              <p className="text-2xl mb-2 group-hover:scale-125 group-hover:rotate-12 transition-all duration-300">📈</p>
+                              <p className="text-sm font-semibold text-foreground">Smart Reports</p>
+                              <p className="text-xs text-muted-foreground mt-1">Auto-generate professional reports in seconds</p>
+                            </div>
+                            <div className="p-4 rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 dark:from-slate-800/40 dark:to-slate-900/40 border border-slate-200 dark:border-slate-700/50 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 group">
+                              <p className="text-2xl mb-2 group-hover:scale-125 group-hover:rotate-12 transition-all duration-300">🔒</p>
+                              <p className="text-sm font-semibold text-foreground">Data Protection</p>
+                              <p className="text-xs text-muted-foreground mt-1">Enterprise-grade encryption & compliance</p>
+                            </div>
+                            <div className="p-4 rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 dark:from-slate-800/40 dark:to-slate-900/40 border border-slate-200 dark:border-slate-700/50 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 group">
+                              <p className="text-2xl mb-2 group-hover:scale-125 group-hover:rotate-12 transition-all duration-300">⚙️</p>
+                              <p className="text-sm font-semibold text-foreground">Easy Integration</p>
+                              <p className="text-xs text-muted-foreground mt-1">Seamless workflow integration with your system</p>
+                            </div>
+                          </div>
+
+                          {/* How it Works */}
+                          <div className="w-full px-4 md:px-0 space-y-3">
+                            <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">Quick Workflow</h3>
+                            <div className="flex items-center justify-between gap-2 sm:gap-3 text-xs sm:text-sm">
+                              <div className="flex-1 text-center">
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center mx-auto mb-2 font-bold text-slate-700 dark:text-slate-300">1</div>
+                                <p className="font-semibold text-foreground">Login</p>
+                              </div>
+                              <div className="flex-shrink-0 text-slate-400">→</div>
+                              <div className="flex-1 text-center">
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center mx-auto mb-2 font-bold text-slate-700 dark:text-slate-300">2</div>
+                                <p className="font-semibold text-foreground">Create Test</p>
+                              </div>
+                              <div className="flex-shrink-0 text-slate-400">→</div>
+                              <div className="flex-1 text-center">
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center mx-auto mb-2 font-bold text-slate-700 dark:text-slate-300">3</div>
+                                <p className="font-semibold text-foreground">Add Data</p>
+                              </div>
+                              <div className="flex-shrink-0 text-slate-400">→</div>
+                              <div className="flex-1 text-center">
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center mx-auto mb-2 font-bold text-slate-700 dark:text-slate-300">4</div>
+                                <p className="font-semibold text-foreground">Report</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <p className="text-sm text-muted-foreground px-4 md:px-0 text-center">
+                            Don't have an account? <span className="font-semibold">Contact your administrator</span>
+                          </p>
+                        </div>
+                      ) : (
+                        <Card className="border border-slate-200 dark:border-slate-700 shadow-lg rounded-2xl overflow-hidden bg-card w-full max-w-md mx-auto sm:mx-0">
+                          {/* Card header with subtle gradient */}
+                          <div className="bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-800 px-4 sm:px-6 md:px-8 py-6 sm:py-8 border-b border-slate-200 dark:border-slate-700">
+                            <div className="space-y-1">
+                              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Sign In</h1>
+                              <p className="text-muted-foreground text-sm sm:text-base">Enter your credentials to continue</p>
+                            </div>
+                          </div>
+
+                          <CardContent className="p-4 sm:p-6 md:p-8">
+                            <form className="space-y-4" onSubmit={handleLogin}>
+                              {/* Email field */}
+                              <div className="space-y-2">
+                                <Label htmlFor="email" className="text-sm font-semibold text-foreground">
+                                  Email Address
+                                </Label>
+                                <Input
+                                  id="email"
+                                  type="email"
+                                  value={email}
+                                  onChange={(event) => setEmail(event.target.value)}
+                                  placeholder="your@email.com"
+                                  autoComplete="email"
+                                  className="h-11 sm:h-12 px-4 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-all duration-200 hover:border-slate-300 text-sm sm:text-base"
+                                />
+                              </div>
+
+                              {/* Password field */}
+                              <div className="space-y-2">
+                                <Label htmlFor="password" className="text-sm font-semibold text-foreground">
+                                  Password
+                                </Label>
+                                <Input
+                                  id="password"
+                                  type="password"
+                                  value={password}
+                                  onChange={(event) => setPassword(event.target.value)}
+                                  placeholder="••••••••"
+                                  autoComplete="current-password"
+                                  className="h-11 sm:h-12 px-4 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-all duration-200 hover:border-slate-300 text-sm sm:text-base"
+                                />
+                              </div>
+
+                              {/* Error message */}
+                              {loginError && (
+                                <div className="p-3 sm:p-4 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+                                  <p className="text-xs sm:text-sm text-red-700 dark:text-red-200 font-medium">{loginError}</p>
+                                </div>
+                              )}
+
+                              {/* Sign in button */}
+                              <Button
+                                type="submit"
+                                className="w-full h-11 sm:h-12 text-sm sm:text-base font-semibold rounded-lg bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-800 hover:to-slate-900 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 active:scale-95"
+                                disabled={isSubmittingLogin}
+                              >
+                                {isSubmittingLogin ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin mr-2" />
+                                    Signing in...
+                                  </>
+                                ) : (
+                                  "Sign In"
+                                )}
+                              </Button>
+
+                              {/* Back button */}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="w-full h-10 sm:h-11 text-xs sm:text-sm font-medium rounded-lg border-2 border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 text-foreground transition-all duration-300"
+                                onClick={() => setShowLoginForm(false)}
+                              >
+                                Back
+                              </Button>
+                            </form>
+                          </CardContent>
+                        </Card>
+                      )}
 
                       {/* Footer text */}
-                      <p className="text-center text-xs text-muted-foreground mt-8">
+                      <p className="text-center text-xs text-muted-foreground mt-6 sm:mt-8 px-4 sm:px-0">
                         © 2024 Cransfield CMTC. All rights reserved.
                       </p>
                     </div>
