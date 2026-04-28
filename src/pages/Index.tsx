@@ -850,32 +850,87 @@ const Index = ({ initialTab }: IndexProps) => {
                     <div className="w-full flex flex-col items-center justify-center">
                       {!showLoginForm ? (
                         <div className="flex flex-col items-center justify-center space-y-8 py-8 md:py-12 w-full">
-                          <div className="space-y-4 text-center px-4 md:px-0 pt-4">
-                            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground leading-tight tracking-tight">
-                              Ready to Get Started?
-                            </h2>
-                            <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto">
-                              Access your lab data, manage comprehensive testing workflows, and generate detailed reports with our professional-grade platform.
-                            </p>
-                          </div>
+                          {/* About CMTC Section */}
+                          <div className="space-y-6 px-4 md:px-0">
+                            <div className="space-y-4 text-center max-w-3xl mx-auto">
+                              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground leading-tight tracking-tight">
+                                About <span className="bg-gradient-to-r from-slate-900 to-slate-700 dark:from-slate-100 dark:to-slate-300 bg-clip-text text-transparent">CMTC</span>
+                              </h2>
+                              <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">
+                                Cransfield Materials Testing Center is a professional laboratory management system dedicated to materials science and construction testing. We provide comprehensive solutions for soil, concrete, rock, and specialized materials testing with industry-leading accuracy and compliance standards.
+                              </p>
+                            </div>
 
-                          {/* Platform Statistics */}
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full px-4 md:px-0">
-                            <div className="text-center animate-fade-in p-5 rounded-2xl bg-gradient-to-br from-blue-50 to-blue-50/40 dark:from-blue-900/20 dark:to-blue-900/10 border border-blue-200/50 dark:border-blue-800/30 hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-300" style={{ animationDelay: '0ms' }}>
-                              <p className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-400 dark:to-blue-500 bg-clip-text text-transparent">8+</p>
-                              <p className="text-xs sm:text-sm text-muted-foreground font-medium mt-1">Active Labs</p>
+                            {/* About Cards */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div className="p-6 rounded-2xl bg-gradient-to-br from-blue-50/80 to-blue-50/40 dark:from-blue-900/20 dark:to-blue-900/10 border border-blue-200/60 dark:border-blue-700/40 hover:shadow-lg transition-all duration-300">
+                                <div className="flex items-center gap-3 mb-3">
+                                  <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/40 dark:to-blue-800/20">
+                                    <span className="text-lg">🔬</span>
+                                  </div>
+                                  <h3 className="font-semibold text-foreground">Precision Testing</h3>
+                                </div>
+                                <p className="text-sm text-muted-foreground leading-relaxed">Accurate, reliable testing methods following international standards and specifications for all material types.</p>
+                              </div>
+
+                              <div className="p-6 rounded-2xl bg-gradient-to-br from-emerald-50/80 to-emerald-50/40 dark:from-emerald-900/20 dark:to-emerald-900/10 border border-emerald-200/60 dark:border-emerald-700/40 hover:shadow-lg transition-all duration-300">
+                                <div className="flex items-center gap-3 mb-3">
+                                  <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-gradient-to-br from-emerald-100 to-emerald-50 dark:from-emerald-900/40 dark:to-emerald-800/20">
+                                    <span className="text-lg">📋</span>
+                                  </div>
+                                  <h3 className="font-semibold text-foreground">Compliance Ready</h3>
+                                </div>
+                                <p className="text-sm text-muted-foreground leading-relaxed">Full compliance with industry standards, regulations, and quality assurance protocols for professional reporting.</p>
+                              </div>
+
+                              <div className="p-6 rounded-2xl bg-gradient-to-br from-purple-50/80 to-purple-50/40 dark:from-purple-900/20 dark:to-purple-900/10 border border-purple-200/60 dark:border-purple-700/40 hover:shadow-lg transition-all duration-300">
+                                <div className="flex items-center gap-3 mb-3">
+                                  <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-gradient-to-br from-purple-100 to-purple-50 dark:from-purple-900/40 dark:to-purple-800/20">
+                                    <span className="text-lg">🎯</span>
+                                  </div>
+                                  <h3 className="font-semibold text-foreground">Expert Driven</h3>
+                                </div>
+                                <p className="text-sm text-muted-foreground leading-relaxed">Trusted by professionals worldwide for dependable results, detailed analysis, and actionable insights.</p>
+                              </div>
                             </div>
-                            <div className="text-center animate-fade-in p-5 rounded-2xl bg-gradient-to-br from-indigo-50 to-indigo-50/40 dark:from-indigo-900/20 dark:to-indigo-900/10 border border-indigo-200/50 dark:border-indigo-800/30 hover:shadow-lg hover:border-indigo-300 dark:hover:border-indigo-700 transition-all duration-300" style={{ animationDelay: '100ms' }}>
-                              <p className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-indigo-600 to-indigo-700 dark:from-indigo-400 dark:to-indigo-500 bg-clip-text text-transparent">250+</p>
-                              <p className="text-xs sm:text-sm text-muted-foreground font-medium mt-1">Tests Processed</p>
-                            </div>
-                            <div className="text-center animate-fade-in p-5 rounded-2xl bg-gradient-to-br from-emerald-50 to-emerald-50/40 dark:from-emerald-900/20 dark:to-emerald-900/10 border border-emerald-200/50 dark:border-emerald-800/30 hover:shadow-lg hover:border-emerald-300 dark:hover:border-emerald-700 transition-all duration-300" style={{ animationDelay: '200ms' }}>
-                              <p className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-400 dark:to-emerald-500 bg-clip-text text-transparent">99.9%</p>
-                              <p className="text-xs sm:text-sm text-muted-foreground font-medium mt-1">System Uptime</p>
-                            </div>
-                            <div className="text-center animate-fade-in p-5 rounded-2xl bg-gradient-to-br from-purple-50 to-purple-50/40 dark:from-purple-900/20 dark:to-purple-900/10 border border-purple-200/50 dark:border-purple-800/30 hover:shadow-lg hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-300" style={{ animationDelay: '300ms' }}>
-                              <p className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-purple-600 to-purple-700 dark:from-purple-400 dark:to-purple-500 bg-clip-text text-transparent">24/7</p>
-                              <p className="text-xs sm:text-sm text-muted-foreground font-medium mt-1">Support Available</p>
+
+                            {/* System Capabilities */}
+                            <div className="p-6 rounded-2xl bg-gradient-to-r from-slate-100/80 to-slate-50/80 dark:from-slate-800/40 dark:to-slate-900/40 border border-slate-200/60 dark:border-slate-700/40">
+                              <h3 className="text-lg font-semibold text-foreground mb-4">Our Testing Capabilities</h3>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                                <div className="flex items-center gap-2 text-foreground">
+                                  <span className="text-base">✓</span>
+                                  <span>Soil Testing</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-foreground">
+                                  <span className="text-base">✓</span>
+                                  <span>Concrete Analysis</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-foreground">
+                                  <span className="text-base">✓</span>
+                                  <span>Rock Properties</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-foreground">
+                                  <span className="text-base">✓</span>
+                                  <span>Specialized Tests</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-foreground">
+                                  <span className="text-base">✓</span>
+                                  <span>Data Analysis</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-foreground">
+                                  <span className="text-base">✓</span>
+                                  <span>Report Generation</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-foreground">
+                                  <span className="text-base">✓</span>
+                                  <span>Quality Assurance</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-foreground">
+                                  <span className="text-base">✓</span>
+                                  <span>Secure Storage</span>
+                                </div>
+                              </div>
                             </div>
                           </div>
 
