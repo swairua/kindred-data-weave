@@ -832,7 +832,7 @@ const Index = ({ initialTab }: IndexProps) => {
                     {/* Right side - Login form or welcome message */}
                     <div className="w-full flex flex-col items-center justify-center">
                       {!showLoginForm ? (
-                        <div className="flex flex-col items-center justify-center space-y-6 py-8 md:py-12 w-full">
+                        <div className="flex flex-col items-center justify-center space-y-8 py-8 md:py-12 w-full">
                           <div className="space-y-4 text-center px-4 md:px-0">
                             <h2 className="text-2xl sm:text-3xl font-bold text-foreground leading-tight">Ready to Get Started?</h2>
                             <p className="text-base sm:text-lg text-muted-foreground">
@@ -840,27 +840,96 @@ const Index = ({ initialTab }: IndexProps) => {
                             </p>
                           </div>
 
+                          {/* Platform Statistics */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full px-4 md:px-0 py-6 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800/30 dark:to-slate-900/30 rounded-lg border border-slate-200 dark:border-slate-700/50">
+                            <div className="text-center animate-fade-in" style={{ animationDelay: '0ms' }}>
+                              <p className="text-2xl sm:text-3xl font-bold text-slate-700 dark:text-slate-200">500+</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground">Active Labs</p>
+                            </div>
+                            <div className="text-center animate-fade-in" style={{ animationDelay: '100ms' }}>
+                              <p className="text-2xl sm:text-3xl font-bold text-slate-700 dark:text-slate-200">50K+</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground">Tests Processed</p>
+                            </div>
+                            <div className="text-center animate-fade-in" style={{ animationDelay: '200ms' }}>
+                              <p className="text-2xl sm:text-3xl font-bold text-slate-700 dark:text-slate-200">99.9%</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground">System Uptime</p>
+                            </div>
+                            <div className="text-center animate-fade-in" style={{ animationDelay: '300ms' }}>
+                              <p className="text-2xl sm:text-3xl font-bold text-slate-700 dark:text-slate-200">24/7</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground">Support Available</p>
+                            </div>
+                          </div>
+
+                          {/* Test Categories / System Capabilities */}
+                          <div className="w-full px-4 md:px-0 space-y-3">
+                            <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">Supported Test Categories</h3>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full">
+                              <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 text-center hover:border-amber-400 dark:hover:border-amber-500 hover:shadow-lg hover:shadow-amber-200/50 dark:hover:shadow-amber-900/50 transition-all duration-300 transform hover:scale-110 hover:-translate-y-1 cursor-pointer group">
+                                <p className="text-xl mb-1 group-hover:scale-125 transition-transform duration-300">🏜️</p>
+                                <p className="text-xs font-semibold text-foreground">Soil Tests</p>
+                              </div>
+                              <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700/50 text-center hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-lg hover:shadow-blue-200/50 dark:hover:shadow-blue-900/50 transition-all duration-300 transform hover:scale-110 hover:-translate-y-1 cursor-pointer group">
+                                <p className="text-xl mb-1 group-hover:scale-125 transition-transform duration-300">🏗️</p>
+                                <p className="text-xs font-semibold text-foreground">Concrete Tests</p>
+                              </div>
+                              <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-700/20 border border-slate-200 dark:border-slate-700/50 text-center hover:border-slate-400 dark:hover:border-slate-500 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50 transition-all duration-300 transform hover:scale-110 hover:-translate-y-1 cursor-pointer group">
+                                <p className="text-xl mb-1 group-hover:scale-125 transition-transform duration-300">⛰️</p>
+                                <p className="text-xs font-semibold text-foreground">Rock Tests</p>
+                              </div>
+                              <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700/50 text-center hover:border-purple-400 dark:hover:border-purple-500 hover:shadow-lg hover:shadow-purple-200/50 dark:hover:shadow-purple-900/50 transition-all duration-300 transform hover:scale-110 hover:-translate-y-1 cursor-pointer group">
+                                <p className="text-xl mb-1 group-hover:scale-125 transition-transform duration-300">🧪</p>
+                                <p className="text-xs font-semibold text-foreground">Special Tests</p>
+                              </div>
+                            </div>
+                          </div>
+
                           {/* Feature highlights for unauthenticated users */}
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full px-4 md:px-0">
-                            <div className="p-4 rounded-lg bg-slate-100/50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700/50">
-                              <p className="text-2xl mb-2">📊</p>
+                            <div className="p-4 rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 dark:from-slate-800/40 dark:to-slate-900/40 border border-slate-200 dark:border-slate-700/50 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 group">
+                              <p className="text-2xl mb-2 group-hover:scale-125 group-hover:rotate-12 transition-all duration-300">📊</p>
                               <p className="text-sm font-semibold text-foreground">Real-time Tracking</p>
-                              <p className="text-xs text-muted-foreground mt-1">Monitor test progress instantly</p>
+                              <p className="text-xs text-muted-foreground mt-1">Monitor test progress instantly with live updates</p>
                             </div>
-                            <div className="p-4 rounded-lg bg-slate-100/50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700/50">
-                              <p className="text-2xl mb-2">📈</p>
+                            <div className="p-4 rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 dark:from-slate-800/40 dark:to-slate-900/40 border border-slate-200 dark:border-slate-700/50 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 group">
+                              <p className="text-2xl mb-2 group-hover:scale-125 group-hover:rotate-12 transition-all duration-300">📈</p>
                               <p className="text-sm font-semibold text-foreground">Smart Reports</p>
-                              <p className="text-xs text-muted-foreground mt-1">Generate reports in seconds</p>
+                              <p className="text-xs text-muted-foreground mt-1">Auto-generate professional reports in seconds</p>
                             </div>
-                            <div className="p-4 rounded-lg bg-slate-100/50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700/50">
-                              <p className="text-2xl mb-2">🔒</p>
+                            <div className="p-4 rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 dark:from-slate-800/40 dark:to-slate-900/40 border border-slate-200 dark:border-slate-700/50 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 group">
+                              <p className="text-2xl mb-2 group-hover:scale-125 group-hover:rotate-12 transition-all duration-300">🔒</p>
                               <p className="text-sm font-semibold text-foreground">Data Protection</p>
-                              <p className="text-xs text-muted-foreground mt-1">Enterprise-grade security</p>
+                              <p className="text-xs text-muted-foreground mt-1">Enterprise-grade encryption & compliance</p>
                             </div>
-                            <div className="p-4 rounded-lg bg-slate-100/50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700/50">
-                              <p className="text-2xl mb-2">⚙️</p>
+                            <div className="p-4 rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 dark:from-slate-800/40 dark:to-slate-900/40 border border-slate-200 dark:border-slate-700/50 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 group">
+                              <p className="text-2xl mb-2 group-hover:scale-125 group-hover:rotate-12 transition-all duration-300">⚙️</p>
                               <p className="text-sm font-semibold text-foreground">Easy Integration</p>
-                              <p className="text-xs text-muted-foreground mt-1">Seamless workflow integration</p>
+                              <p className="text-xs text-muted-foreground mt-1">Seamless workflow integration with your system</p>
+                            </div>
+                          </div>
+
+                          {/* How it Works */}
+                          <div className="w-full px-4 md:px-0 space-y-3">
+                            <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">Quick Workflow</h3>
+                            <div className="flex items-center justify-between gap-2 sm:gap-3 text-xs sm:text-sm">
+                              <div className="flex-1 text-center">
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center mx-auto mb-2 font-bold text-slate-700 dark:text-slate-300">1</div>
+                                <p className="font-semibold text-foreground">Login</p>
+                              </div>
+                              <div className="flex-shrink-0 text-slate-400">→</div>
+                              <div className="flex-1 text-center">
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center mx-auto mb-2 font-bold text-slate-700 dark:text-slate-300">2</div>
+                                <p className="font-semibold text-foreground">Create Test</p>
+                              </div>
+                              <div className="flex-shrink-0 text-slate-400">→</div>
+                              <div className="flex-1 text-center">
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center mx-auto mb-2 font-bold text-slate-700 dark:text-slate-300">3</div>
+                                <p className="font-semibold text-foreground">Add Data</p>
+                              </div>
+                              <div className="flex-shrink-0 text-slate-400">→</div>
+                              <div className="flex-1 text-center">
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center mx-auto mb-2 font-bold text-slate-700 dark:text-slate-300">4</div>
+                                <p className="font-semibold text-foreground">Report</p>
+                              </div>
                             </div>
                           </div>
 
