@@ -486,7 +486,6 @@ const Index = ({ initialTab }: IndexProps) => {
           <Navigation
             currentView={view}
             onViewChange={setView}
-            onStartNewProject={handleStartNewProject}
             onLogout={handleLogout}
             userName={currentUser?.name}
             userEmail={currentUser?.email}

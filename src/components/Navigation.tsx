@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { Plus, LayoutDashboard, FlaskConical, FileText, Hammer, LogOut, Zap, TestTubeDiagonal, ChevronRight } from "lucide-react";
+import { LayoutDashboard, FlaskConical, FileText, Hammer, LogOut, Zap, TestTubeDiagonal, ChevronRight } from "lucide-react";
 import { useEffect } from "react";
 import {
   Sidebar,
@@ -17,7 +17,6 @@ import { Button } from "@/components/ui/button";
 interface NavigationProps {
   currentView: "dashboard" | "tests" | "reports" | "admin";
   onViewChange: (view: "dashboard" | "tests" | "reports" | "admin") => void;
-  onStartNewProject: () => void;
   onLogout?: () => void;
   userName?: string;
   userEmail?: string;
@@ -26,7 +25,6 @@ interface NavigationProps {
 const Navigation = ({
   currentView,
   onViewChange,
-  onStartNewProject,
   onLogout,
   userName,
   userEmail,
@@ -52,22 +50,7 @@ const Navigation = ({
     }
   };
 
-  const handleNewProject = () => {
-    onStartNewProject();
-    // Close mobile drawer after action
-    if (isMobile) {
-      setOpenMobile(false);
-    }
-  };
-
   const navItems = [
-    {
-      id: "new-project",
-      label: "New Project",
-      icon: Plus,
-      onClick: handleNewProject,
-      isAction: true,
-    },
     {
       id: "dashboard",
       label: "Dashboard",
@@ -115,27 +98,13 @@ const Navigation = ({
 
       {/* Sidebar Content */}
       <SidebarContent className="py-5 px-2 space-y-4">
-        {/* Primary Actions */}
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              onClick={handleNewProject}
-              className="bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-600 hover:via-teal-600 hover:to-emerald-700 text-white border-0 shadow-lg hover:shadow-xl mb-2 group h-10 transition-all duration-300 transform hover:scale-105 active:scale-95 data-[state=collapsed]:w-10 data-[state=collapsed]:h-10 data-[state=collapsed]:p-0 data-[state=collapsed]:flex data-[state=collapsed]:items-center data-[state=collapsed]:justify-center data-[state=collapsed]:rounded-lg"
-              tooltip="Create a new project"
-            >
-              <Plus className="h-5 w-5 text-white flex-shrink-0" />
-              <span className="font-semibold text-sm data-[state=collapsed]:hidden">New Project</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-
         <div className="px-2 pt-2">
           <div className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Navigation</div>
         </div>
 
         {/* Main Navigation */}
         <SidebarMenu className="space-y-1">
-          {navItems.filter(item => !item.isAction).map((item) => {
+          {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = item.active;
             return (
