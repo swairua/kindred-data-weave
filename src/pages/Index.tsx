@@ -253,6 +253,21 @@ const Index = ({ initialTab }: IndexProps) => {
     log("[Index] authStatus changed to:", authStatus);
   }, [authStatus]);
 
+  // Protect routes - redirect unauthenticated users away from protected pages
+  useEffect(() => {
+    if (authStatus === "checking") {
+      return; // Still checking, don't redirect yet
+    }
+
+    const protectedRoutes = ["/tests", "/reports", "/admin"];
+    const isProtectedRoute = protectedRoutes.includes(location.pathname);
+
+    if (isProtectedRoute && !isAuthenticated) {
+      log("[Index] Redirecting unauthenticated user from protected route:", location.pathname);
+      navigate("/", { replace: true });
+    }
+  }, [authStatus, location.pathname, isAuthenticated, navigate]);
+
   // Sync view state with URL changes
   useEffect(() => {
     if (isAdminPage) {
