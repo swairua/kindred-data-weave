@@ -1012,20 +1012,25 @@ const Index = ({ initialTab }: IndexProps) => {
                           </p>
                         </div>
                       ) : (
-                        <Card className="border border-slate-200 dark:border-slate-700 shadow-lg rounded-2xl overflow-hidden bg-card w-full max-w-md mx-auto sm:mx-0">
-                          {/* Card header with subtle gradient */}
-                          <div className="bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-800 px-4 sm:px-6 md:px-8 py-6 sm:py-8 border-b border-slate-200 dark:border-slate-700">
-                            <div className="space-y-1">
-                              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Sign In</h1>
-                              <p className="text-muted-foreground text-sm sm:text-base">Enter your credentials to continue</p>
+                        <Card className="border border-slate-200/60 dark:border-slate-700/60 shadow-2xl rounded-3xl overflow-hidden bg-card w-full max-w-md mx-auto sm:mx-0 backdrop-blur-sm">
+                          {/* Card header with elegant gradient */}
+                          <div className="bg-gradient-to-br from-slate-100 via-slate-50 to-blue-50/30 dark:from-slate-800 dark:via-slate-800/80 dark:to-slate-900/40 px-4 sm:px-6 md:px-8 py-8 sm:py-10 border-b border-slate-200/40 dark:border-slate-700/40">
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-slate-700 to-slate-800 dark:from-slate-600 dark:to-slate-700 flex items-center justify-center shadow-md">
+                                  <span className="text-white text-sm font-bold">C</span>
+                                </div>
+                              </div>
+                              <h1 className="text-3xl sm:text-4xl font-bold text-foreground leading-tight tracking-tight">Sign In</h1>
+                              <p className="text-muted-foreground text-sm sm:text-base leading-relaxed">Enter your credentials to access CMTC</p>
                             </div>
                           </div>
 
-                          <CardContent className="p-4 sm:p-6 md:p-8">
-                            <form className="space-y-4" onSubmit={handleLogin}>
+                          <CardContent className="p-6 sm:p-8 md:p-10">
+                            <form className="space-y-5" onSubmit={handleLogin}>
                               {/* Email field */}
-                              <div className="space-y-2">
-                                <Label htmlFor="email" className="text-sm font-semibold text-foreground">
+                              <div className="space-y-3">
+                                <Label htmlFor="email" className="text-sm font-semibold text-foreground block">
                                   Email Address
                                 </Label>
                                 <Input
@@ -1033,15 +1038,15 @@ const Index = ({ initialTab }: IndexProps) => {
                                   type="email"
                                   value={email}
                                   onChange={(event) => setEmail(event.target.value)}
-                                  placeholder="your@email.com"
+                                  placeholder="you@example.com"
                                   autoComplete="email"
-                                  className="h-11 sm:h-12 px-4 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-all duration-200 hover:border-slate-300 text-sm sm:text-base"
+                                  className="h-12 px-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-gradient-to-r from-white to-slate-50 dark:from-slate-950 dark:to-slate-900 text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 transition-all duration-300 hover:border-slate-300 dark:hover:border-slate-600 text-sm sm:text-base"
                                 />
                               </div>
 
                               {/* Password field */}
-                              <div className="space-y-2">
-                                <Label htmlFor="password" className="text-sm font-semibold text-foreground">
+                              <div className="space-y-3">
+                                <Label htmlFor="password" className="text-sm font-semibold text-foreground block">
                                   Password
                                 </Label>
                                 <Input
@@ -1051,21 +1056,24 @@ const Index = ({ initialTab }: IndexProps) => {
                                   onChange={(event) => setPassword(event.target.value)}
                                   placeholder="••••••••"
                                   autoComplete="current-password"
-                                  className="h-11 sm:h-12 px-4 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-all duration-200 hover:border-slate-300 text-sm sm:text-base"
+                                  className="h-12 px-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-gradient-to-r from-white to-slate-50 dark:from-slate-950 dark:to-slate-900 text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 transition-all duration-300 hover:border-slate-300 dark:hover:border-slate-600 text-sm sm:text-base"
                                 />
                               </div>
 
                               {/* Error message */}
                               {loginError && (
-                                <div className="p-3 sm:p-4 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
-                                  <p className="text-xs sm:text-sm text-red-700 dark:text-red-200 font-medium">{loginError}</p>
+                                <div className="p-4 rounded-xl bg-gradient-to-r from-red-50 to-red-50/40 dark:from-red-950/30 dark:to-red-950/20 border border-red-200/60 dark:border-red-800/40 shadow-sm">
+                                  <p className="text-xs sm:text-sm text-red-700 dark:text-red-200 font-medium flex items-center gap-2">
+                                    <span className="text-red-500">⚠</span>
+                                    {loginError}
+                                  </p>
                                 </div>
                               )}
 
                               {/* Sign in button */}
                               <Button
                                 type="submit"
-                                className="w-full h-11 sm:h-12 text-sm sm:text-base font-semibold rounded-lg bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-800 hover:to-slate-900 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 active:scale-95"
+                                className="w-full h-12 text-sm sm:text-base font-semibold rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 active:scale-95 mt-2"
                                 disabled={isSubmittingLogin}
                               >
                                 {isSubmittingLogin ? (
@@ -1082,7 +1090,7 @@ const Index = ({ initialTab }: IndexProps) => {
                               <Button
                                 type="button"
                                 variant="outline"
-                                className="w-full h-10 sm:h-11 text-xs sm:text-sm font-medium rounded-lg border-2 border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 text-foreground transition-all duration-300"
+                                className="w-full h-11 text-xs sm:text-sm font-medium rounded-xl border-2 border-slate-300 dark:border-slate-600 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 text-foreground transition-all duration-300 hover:shadow-sm"
                                 onClick={() => setShowLoginForm(false)}
                               >
                                 Back
