@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import WizardStepper, { type WizardStep } from "@/components/WizardStepper";
-import { listRecords } from "@/lib/api";
+import { listRecords, fetchCurrentUser } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useTestData } from "@/context/TestDataContext";
 import { toast } from "sonner";
@@ -105,6 +105,21 @@ const RecordTestWizard = () => {
   const initialMaterial = searchParams.get("material") as Material | null;
   const initialTest = searchParams.get("test") as string | null;
   const testData = useTestData();
+
+  // Check authentication on mount - redirect to login if not authenticated
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        await fetchCurrentUser(5000); // 5 second timeout
+        // User is authenticated, proceed normally
+      } catch (error) {
+        // User is not authenticated, redirect to login
+        console.log("[RecordTestWizard] User not authenticated, redirecting to login");
+        navigate("/login", { replace: true });
+      }
+    };
+    checkAuth();
+  }, [navigate]);
 
   const [state, setState] = useState<WizardState>(() => {
     try {
