@@ -271,8 +271,8 @@ const Index = ({ initialTab }: IndexProps) => {
     log("[Index] Page mounted - attempting to restore session");
     const restoreSession = async () => {
       try {
-        // Use a shorter timeout for session check (3 seconds) so login page shows quickly
-        const user = await fetchCurrentUser(3000);
+        // Use a reasonable timeout for session check (10 seconds) - balance between responsiveness and reliability
+        const user = await fetchCurrentUser(10000);
         log("[Index] Session restored, user:", user.name);
         setCurrentUser(user);
         setAuthStatus("authenticated");

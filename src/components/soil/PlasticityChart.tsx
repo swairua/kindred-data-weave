@@ -1,7 +1,6 @@
 import {
-  LineChart,
   Line,
-  ScatterChart,
+  ComposedChart,
   Scatter,
   XAxis,
   YAxis,
@@ -160,7 +159,7 @@ const PlasticityChart: React.FC<PlasticityChartProps> = ({ liquidLimit, plastici
 
         {liquidLimit !== null ? (
           <ResponsiveContainer width="100%" height={400}>
-            <ScatterChart margin={{ top: 20, right: 20, bottom: 60, left: 60 }}>
+            <ComposedChart data={chartData} margin={{ top: 20, right: 20, bottom: 60, left: 60 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis
                 type="number"
@@ -247,7 +246,7 @@ const PlasticityChart: React.FC<PlasticityChartProps> = ({ liquidLimit, plastici
               )}
 
               <Legend />
-            </ScatterChart>
+            </ComposedChart>
           </ResponsiveContainer>
         ) : (
           <div className="flex items-center justify-center h-80 bg-muted rounded text-muted-foreground">
