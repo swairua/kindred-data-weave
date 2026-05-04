@@ -247,7 +247,10 @@ const RecordTestWizard = () => {
                   <button
                     key={mat.id}
                     type="button"
-                    onClick={() => update("material", mat.id)}
+                    onClick={() => {
+                      update("material", mat.id);
+                      setTimeout(() => setStep(1), 0);
+                    }}
                     className={cn(
                       "text-left rounded-2xl border-2 p-6 bg-card transition-all hover:border-primary/50 hover:shadow-sm",
                       selected ? "border-primary ring-2 ring-primary/20" : "border-border",
