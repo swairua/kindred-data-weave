@@ -27,42 +27,74 @@ const isLocalStorageAvailable = (): boolean => {
   }
 };
 
-const hasLocalStorage = isLocalStorageAvailable();
+// Initialize on module load: restore token from localStorage if available
+const initializeTokenFromStorage = (): string | null => {
+  try {
+    const storedToken = localStorage.getItem(SESSION_STORAGE_KEY);
+    if (storedToken) {
+      sessionTokenMemory = storedToken;
+      console.debug(`[API] ✓ Session token restored from localStorage on module load (${storedToken.substring(0, 20)}...)`);
+      return storedToken;
+    }
+  } catch (e) {
+    console.debug(`[API] Could not read token from localStorage on init:`, e instanceof Error ? e.message : e);
+  }
+  return null;
+};
+
+// Initialize token from storage immediately
+initializeTokenFromStorage();
 
 export const setSessionToken = (token: string | null) => {
   const timestamp = new Date().toISOString();
   if (token) {
+    // Always try to save to localStorage first
+    let savedToStorage = false;
     try {
-      if (hasLocalStorage) {
-        localStorage.setItem(SESSION_STORAGE_KEY, token);
-      }
+      localStorage.setItem(SESSION_STORAGE_KEY, token);
+      savedToStorage = true;
     } catch (e) {
       console.warn(`[API] Could not save token to localStorage:`, e instanceof Error ? e.message : e);
     }
+
+    // Always keep in memory as fallback
     sessionTokenMemory = token;
-    console.log(`[API] ${timestamp} ✓ Session token STORED (${token.substring(0, 20)}...)`);
+    console.log(`[API] ${timestamp} ✓ Session token STORED (${token.substring(0, 20)}...) [localStorage: ${savedToStorage ? "✓" : "✗"}, memory: ✓]`);
   } else {
+    // Clear from both storage locations
+    let clearedFromStorage = false;
+    let previousToken: string | null = null;
     try {
-      if (hasLocalStorage) {
-        const previousToken = localStorage.getItem(SESSION_STORAGE_KEY);
-        localStorage.removeItem(SESSION_STORAGE_KEY);
-        console.log(`[API] ${timestamp} ✗ Session token CLEARED${previousToken ? ` (was: ${previousToken.substring(0, 20)}...)` : ""}`);
-      }
+      previousToken = localStorage.getItem(SESSION_STORAGE_KEY);
+      localStorage.removeItem(SESSION_STORAGE_KEY);
+      clearedFromStorage = true;
     } catch (e) {
       console.warn(`[API] Could not clear token from localStorage:`, e instanceof Error ? e.message : e);
     }
     sessionTokenMemory = null;
+    console.log(`[API] ${timestamp} ✗ Session token CLEARED${previousToken ? ` (was: ${previousToken.substring(0, 20)}...)` : ""} [localStorage: ${clearedFromStorage ? "✓" : "✗"}, memory: ✓]`);
   }
 };
 
 export const getSessionToken = (): string | null => {
+  // Try localStorage first, then fall back to memory
   try {
-    if (hasLocalStorage) {
-      const token = localStorage.getItem(SESSION_STORAGE_KEY);
-      if (token) return token;
+    const token = localStorage.getItem(SESSION_STORAGE_KEY);
+    if (token) {
+      // Sync memory storage with localStorage
+      if (sessionTokenMemory !== token) {
+        console.debug(`[API] Token mismatch: localStorage has token but memory doesn't - syncing`);
+        sessionTokenMemory = token;
+      }
+      return token;
     }
   } catch (e) {
     console.debug(`[API] Could not read token from localStorage:`, e instanceof Error ? e.message : e);
+  }
+
+  // Fall back to memory storage
+  if (sessionTokenMemory) {
+    console.debug(`[API] Using token from memory (localStorage unavailable)`);
   }
   return sessionTokenMemory;
 };
@@ -80,16 +112,25 @@ export const getStoredSessionId = (): string | null => {
 export const debugAuthState = () => {
   const token = getSessionToken();
   console.log("[API] === AUTH STATE DEBUG ===");
-  console.log("[API] Session token stored:", token ? `✓ Yes` : "✗ No");
+  console.log("[API] Session token available:", token ? `✓ Yes` : "✗ No");
   if (token) {
-    console.log("[API] Token value:", token);
+    console.log("[API] Token value (first 50 chars):", token.substring(0, 50));
     console.log("[API] Token length:", token.length);
   }
   console.log("[API] API Base URL:", API_BASE_URL);
-  console.log("[API] localStorage contents:", {
-    [SESSION_STORAGE_KEY]: localStorage.getItem(SESSION_STORAGE_KEY) || "(empty)",
-  });
-  console.log("[API] For next request, header will be:", token ? `X-Session-Token: ${token}` : "X-Session-Token: (not sent)");
+
+  let localStorageToken: string | null = null;
+  try {
+    localStorageToken = localStorage.getItem(SESSION_STORAGE_KEY);
+  } catch (e) {
+    console.warn("[API] Could not access localStorage:", e instanceof Error ? e.message : e);
+  }
+
+  console.log("[API] Storage status:");
+  console.log("[API]   - localStorage token:", localStorageToken ? `✓ Present (${localStorageToken.substring(0, 20)}...)` : "✗ Empty");
+  console.log("[API]   - memory token:", (window as any).__sessionTokenMemory ? `✓ Present` : "✗ Empty");
+  console.log("[API] For next request, X-Session-Token will be:", token ? `✓ Sent (${token.substring(0, 20)}...)` : "✗ Not sent");
+  console.log("[API] If you see '✗ Not sent', the token was lost. Try logging in again.");
 };
 
 // Debug function to check API connectivity - can be called from browser console
@@ -268,9 +309,23 @@ export const apiRequest = async <T>(
       if (response.status === 401 && params?.action === "me") {
         console.debug(`[API] Expected 401 on me endpoint - user not authenticated yet`);
       } else if (response.status === 401) {
+        const tokenStatus = headers.get("X-Session-Token");
         console.error(`[API] ⚠️ 401 UNAUTHORIZED on action: ${params?.action || 'unknown'}`);
         console.error(`[API] This may cause unexpected logout if the user's session expired`);
-        console.error(`[API] Token was ${headers.get("X-Session-Token") ? "present" : "MISSING"}`);
+        console.error(`[API] Token was ${tokenStatus ? "present" : "MISSING"}`);
+
+        // Diagnostic info for debugging token issues
+        if (!tokenStatus) {
+          console.error(`[API] 🔍 DIAGNOSTIC: Token is missing! Checking storage...`);
+          try {
+            const localStorageToken = localStorage.getItem(SESSION_STORAGE_KEY);
+            console.error(`[API]   - localStorage has token: ${localStorageToken ? `✓ Yes (${localStorageToken.substring(0, 20)}...)` : "✗ No"}`);
+          } catch (e) {
+            console.error(`[API]   - localStorage inaccessible:`, e instanceof Error ? e.message : e);
+          }
+          console.error(`[API]   - Try calling 'window.__debugAuth()' in console for full auth state`);
+        }
+
         console.error(`[API] Response data:`, JSON.stringify(data, null, 2));
         console.error(`[API] Request URL:`, url);
         console.error(`[API] Request headers sent:`, Object.fromEntries(headers.entries()));

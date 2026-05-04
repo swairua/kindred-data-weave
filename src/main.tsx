@@ -4,6 +4,11 @@ import "./index.css";
 
 // Debug utilities for development
 import "./lib/debugImageLoading";
+import { debugAuthState, debugApiConnectivity } from "./lib/api";
+
+// Expose debug functions globally for console access
+(window as any).__debugAuth = debugAuthState;
+(window as any).__debugApi = debugApiConnectivity;
 
 // Add error handler for unhandled rejections
 window.addEventListener('error', (event) => {
