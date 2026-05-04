@@ -233,21 +233,24 @@ const RecordTestWizard = () => {
       </header>
 
       {/* Body */}
-      <main className="flex-1 px-4 md:px-8 py-8 max-w-5xl mx-auto w-full">
+      <main className="flex-1 px-4 md:px-8 py-8 max-w-2xl mx-auto w-full">
         {step === 0 && (
           <section className="space-y-6 animate-fade-in">
-            <div>
+            <div className="text-center">
               <h2 className="text-2xl font-semibold tracking-tight">What are you testing?</h2>
               <p className="text-sm text-muted-foreground mt-1">Pick the material you'll be working with.</p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 mx-auto">
               {MATERIAL_OPTIONS.map((mat) => {
                 const selected = state.material === mat.id;
                 return (
                   <button
                     key={mat.id}
                     type="button"
-                    onClick={() => update("material", mat.id)}
+                    onClick={() => {
+                      update("material", mat.id);
+                      setTimeout(() => setStep(1), 0);
+                    }}
                     className={cn(
                       "text-left rounded-2xl border-2 p-6 bg-card transition-all hover:border-primary/50 hover:shadow-sm",
                       selected ? "border-primary ring-2 ring-primary/20" : "border-border",
@@ -276,14 +279,17 @@ const RecordTestWizard = () => {
                 Available tests for {MATERIAL_OPTIONS.find((m) => m.id === state.material)?.label}.
               </p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               {tests.map((t) => {
                 const selected = state.testKey === t.key;
                 return (
                   <button
                     key={t.key}
                     type="button"
-                    onClick={() => update("testKey", t.key)}
+                    onClick={() => {
+                      update("testKey", t.key);
+                      setTimeout(() => setStep(2), 0);
+                    }}
                     className={cn(
                       "text-left rounded-xl border-2 p-4 bg-card transition-all hover:border-primary/50",
                       selected ? "border-primary ring-2 ring-primary/20" : "border-border",
