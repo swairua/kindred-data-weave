@@ -279,7 +279,7 @@ const RecordTestWizard = () => {
                 Available tests for {MATERIAL_OPTIONS.find((m) => m.id === state.material)?.label}.
               </p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               {tests.map((t) => {
                 const selected = state.testKey === t.key;
                 return (
