@@ -204,7 +204,7 @@ const RecordTestWizard = () => {
 
   const handleCancel = () => {
     sessionStorage.removeItem(STORAGE_KEY);
-    navigate("/");
+    navigate(-1);
   };
 
   const handleFinish = () => {
