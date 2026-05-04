@@ -240,7 +240,7 @@ const RecordTestWizard = () => {
               <h2 className="text-2xl font-semibold tracking-tight">What are you testing?</h2>
               <p className="text-sm text-muted-foreground mt-1">Pick the material you'll be working with.</p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               {MATERIAL_OPTIONS.map((mat) => {
                 const selected = state.material === mat.id;
                 return (
