@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,32 +12,57 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
-import { Layers, Plus } from "lucide-react";
+import { Layers, Plus, Loader2 } from "lucide-react";
 import Navigation from "@/components/Navigation";
-import { useTestData } from "@/context/TestDataContext";
 import { useProject } from "@/context/ProjectContext";
+import { listRecords } from "@/lib/api";
 import { toast } from "sonner";
+
+interface ApiProjectRow {
+  id: number;
+  name: string;
+  client_name: string | null;
+  project_date: string | null;
+}
 
 const Projects = () => {
   const navigate = useNavigate();
-  const { tests } = useTestData();
   const project = useProject();
   const [searchQuery, setSearchQuery] = useState("");
+  const [apiProjects, setApiProjects] = useState<ApiProjectRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // For now, treat the current project as a single "project" entry
-  // In a real app, you might have multiple projects
+  // Load projects from API
+  useEffect(() => {
+    const loadProjects = async () => {
+      try {
+        setIsLoading(true);
+        const response = await listRecords<ApiProjectRow>("projects", { limit: 100 });
+        setApiProjects(response.data || []);
+      } catch (error) {
+        console.error("Failed to load projects:", error);
+        setApiProjects([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadProjects();
+  }, []);
+
+  // Map API data to display format
   const projects = useMemo(() => {
-    if (!project.projectName) return [];
-    return [
-      {
-        id: 1,
-        name: project.projectName,
-        client_name: project.clientName || undefined,
-        created_at: project.date || new Date().toISOString(),
-        samples: Object.keys(tests).length,
-      },
-    ];
-  }, [project, tests]);
+    if (apiProjects.length > 0) {
+      return apiProjects.map((p) => ({
+        id: p.id,
+        name: p.name,
+        client_name: p.client_name || undefined,
+        created_at: p.project_date || new Date().toISOString(),
+        samples: 0,
+      }));
+    }
+    return [];
+  }, [apiProjects]);
 
   // Filter projects based on search query
   const filteredProjects = useMemo(() => {
@@ -140,7 +165,11 @@ const Projects = () => {
                 </CardHeader>
 
                 <CardContent className="pt-0">
-                  {filteredProjects.length === 0 ? (
+                  {isLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : filteredProjects.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
                       <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
                         <Layers className="h-6 w-6 text-muted-foreground" />
