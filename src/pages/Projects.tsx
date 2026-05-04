@@ -40,7 +40,7 @@ const Projects = ({}: ProjectsProps) => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const user = await fetchCurrentUser(3000);
+        const user = await fetchCurrentUser(10000);
         setCurrentUser(user);
         setIsAuthenticated(true);
       } catch (error) {
