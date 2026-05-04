@@ -204,7 +204,7 @@ const RecordTestWizard = () => {
 
   const handleCancel = () => {
     sessionStorage.removeItem(STORAGE_KEY);
-    navigate("/");
+    navigate(-1);
   };
 
   const handleFinish = () => {
@@ -234,6 +234,7 @@ const RecordTestWizard = () => {
     testData.updateProjectMetadata({
       projectName: p.name,
       clientName: p.client_name || "",
+      projectDate: p.project_date || "",
     });
     sessionStorage.removeItem(STORAGE_KEY);
     toast.success(`Opened ${p.name}`);

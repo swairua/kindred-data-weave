@@ -255,7 +255,10 @@ const Index = ({ initialTab }: IndexProps) => {
     if (testData.projectMetadata.clientName && !clientName) {
       setClientName(testData.projectMetadata.clientName);
     }
-  }, [testData.projectMetadata.projectName, testData.projectMetadata.clientName, projectName, clientName]);
+    if (testData.projectMetadata.projectDate && !projectDate) {
+      setProjectDate(testData.projectMetadata.projectDate);
+    }
+  }, [testData.projectMetadata.projectName, testData.projectMetadata.clientName, testData.projectMetadata.projectDate, projectName, clientName, projectDate]);
 
   // Enable debug logging via URL param (?debug=1)
   const debugMode = new URLSearchParams(location.search).get("debug") === "1";
@@ -419,7 +422,7 @@ const Index = ({ initialTab }: IndexProps) => {
     setClientName(project.client_name || "");
     setProjectDate(project.project_date || undefined);
     setCurrentProjectId(project.id);
-    testData.updateProjectMetadata({ projectName: project.name, clientName: project.client_name || "" });
+    testData.updateProjectMetadata({ projectName: project.name, clientName: project.client_name || "", projectDate: project.project_date || "" });
     toast.success(`Loaded project: ${project.name}`);
   };
 
