@@ -27,7 +27,7 @@ const App = () => {
                 <Sonner />
                 <Routes>
                   <Route path="/login" element={<Login />} />
-                  <Route path="/" element={<Index />} />
+                  <Route path="/" element={<RecordTestWizard />} />
                   <Route path="/tests" element={<Index initialTab="soil" />} />
                   <Route path="/reports" element={<Index />} />
                   <Route path="/results" element={<TestResults />} />
