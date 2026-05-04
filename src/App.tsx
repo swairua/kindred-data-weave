@@ -10,6 +10,8 @@ import Index from "./pages/Index.tsx";
 import Login from "./pages/Login.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import RecordTestWizard from "./pages/RecordTestWizard.tsx";
+import TestResults from "./pages/TestResults.tsx";
+import Projects from "./pages/Projects.tsx";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +30,8 @@ const App = () => {
                   <Route path="/" element={<Index />} />
                   <Route path="/tests" element={<Index initialTab="soil" />} />
                   <Route path="/reports" element={<Index />} />
+                  <Route path="/results" element={<TestResults />} />
+                  <Route path="/projects" element={<Projects />} />
                   <Route path="/admin" element={<Index />} />
                   <Route path="/record" element={<RecordTestWizard />} />
                   <Route path="*" element={<NotFound />} />

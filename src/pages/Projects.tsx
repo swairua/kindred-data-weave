@@ -1,0 +1,273 @@
+import { useEffect, useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import { Layers, Loader2, Plus } from "lucide-react";
+import Navigation from "@/components/Navigation";
+import { fetchCurrentUser, listRecords, logoutUser } from "@/lib/api";
+import { toast } from "sonner";
+
+interface ProjectRecord {
+  id: number;
+  name: string;
+  client_name?: string;
+  project_date?: string;
+  samples?: number;
+  created_at?: string;
+}
+
+interface ProjectsProps {}
+
+const Projects = ({}: ProjectsProps) => {
+  const navigate = useNavigate();
+  const [projects, setProjects] = useState<ProjectRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Load current user and check authentication
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const user = await fetchCurrentUser(3000);
+        setCurrentUser(user);
+        setIsAuthenticated(true);
+      } catch (error) {
+        setIsAuthenticated(false);
+        navigate("/login", { replace: true });
+      }
+    };
+    checkAuth();
+  }, [navigate]);
+
+  // Load projects
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const loadProjects = async () => {
+      try {
+        setIsLoading(true);
+        // Fetch from API
+        const response = await listRecords<ProjectRecord>("projects", { limit: 100 });
+        setProjects(response.data || []);
+      } catch (error) {
+        console.error("Failed to load projects:", error);
+        // For now, show empty state rather than error
+        setProjects([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadProjects();
+  }, [isAuthenticated]);
+
+  // Filter projects based on search query
+  const filteredProjects = useMemo(() => {
+    return projects.filter((project) => {
+      const searchMatch =
+        searchQuery === "" ||
+        project.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        project.client_name?.toLowerCase().includes(searchQuery.toLowerCase());
+
+      return searchMatch;
+    });
+  }, [projects, searchQuery]);
+
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+      toast.success("Logged out");
+      navigate("/login", { replace: true });
+    } catch (error) {
+      toast.error("Failed to logout");
+    }
+  };
+
+  const handleNewProject = () => {
+    // Navigate to record test wizard to create new project
+    navigate("/record");
+  };
+
+  const handleOpenProject = (projectId: number) => {
+    // This would typically open the project details or navigate to edit
+    toast.info(`Opening project ${projectId}`);
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "-";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleString("en-US", {
+        month: "short",
+        day: "2-digit",
+        year: "numeric",
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
+  if (!isAuthenticated && !isLoading) {
+    return null;
+  }
+
+  return (
+    <SidebarProvider>
+      <Navigation
+        currentView="projects"
+        onViewChange={() => {}}
+        onLogout={handleLogout}
+        userName={currentUser?.name}
+        userEmail={currentUser?.email}
+      />
+      <SidebarInset>
+        <div className="flex flex-col min-h-screen bg-background">
+          {/* Header */}
+          <header className="border-b bg-card sticky top-0 z-10">
+            <div className="flex items-center justify-between h-14 px-4 gap-2">
+              <div className="flex items-center gap-2">
+                <SidebarTrigger />
+                <div>
+                  <h1 className="text-lg font-semibold">Projects</h1>
+                  <p className="text-xs text-muted-foreground">
+                    All user engagements
+                  </p>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          {/* Main Content */}
+          <main className="flex-1 overflow-auto">
+            <div className="p-6">
+              <Card className="border-0 shadow-sm">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Projects</CardTitle>
+                      <CardDescription>
+                        {filteredProjects.length} project{filteredProjects.length !== 1 ? "s" : ""}
+                      </CardDescription>
+                    </div>
+                    <Button
+                      onClick={handleNewProject}
+                      className="gap-2 h-10"
+                      size="sm"
+                    >
+                      <Plus className="h-4 w-4" />
+                      New project
+                    </Button>
+                  </div>
+
+                  {/* Search */}
+                  <div className="mt-6 max-w-xs">
+                    <Input
+                      placeholder="Search project name, client or code..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="h-10"
+                    />
+                  </div>
+                </CardHeader>
+
+                <CardContent className="pt-0">
+                  {isLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : filteredProjects.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
+                        <Layers className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                      <p className="text-lg font-medium text-foreground mb-1">
+                        {projects.length === 0
+                          ? "No projects yet"
+                          : "No projects found"}
+                      </p>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        {projects.length === 0
+                          ? "Create a new project to get started."
+                          : "Try adjusting your search query."}
+                      </p>
+                      {projects.length === 0 && (
+                        <Button
+                          onClick={handleNewProject}
+                          className="gap-2"
+                          size="sm"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Create First Project
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/40 hover:bg-muted/40">
+                            <TableHead className="font-semibold">PROJECT</TableHead>
+                            <TableHead className="font-semibold">DATE CREATED</TableHead>
+                            <TableHead className="font-semibold text-center">SAMPLES</TableHead>
+                            <TableHead className="font-semibold text-right">ACTION</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredProjects.map((project) => (
+                            <TableRow
+                              key={project.id}
+                              className="border-b last:border-0 hover:bg-muted/50"
+                            >
+                              <TableCell>
+                                <div className="space-y-1">
+                                  <p className="font-semibold">{project.name}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {project.client_name || "No client"}
+                                  </p>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-sm">
+                                {formatDate(project.project_date || project.created_at)}
+                              </TableCell>
+                              <TableCell className="text-center font-medium">
+                                {project.samples || "0"}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8"
+                                  onClick={() => handleOpenProject(project.id)}
+                                >
+                                  Open →
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </main>
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
+  );
+};
+
+export default Projects;
