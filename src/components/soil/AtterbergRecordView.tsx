@@ -271,8 +271,8 @@ const AtterbergRecordView = ({
   // Auto-grow column counts: at least the default; grow by 1 when the last visible column is filled.
   const llLastFilled = llTrials.reduce((acc, t, i) => (isLLFilled(t) ? i : acc), -1);
   const plLastFilled = plTrials.reduce((acc, t, i) => (isPLFilled(t) ? i : acc), -1);
-  const LL_COLS = Math.max(DEFAULT_LL_COLS, llTrials.length, llLastFilled + 2);
-  const PL_COLS = Math.max(DEFAULT_PL_COLS, plTrials.length, plLastFilled + 2);
+  const LL_COLS = Math.max(DEFAULT_LL_COLS, llTrials.length, llLastFilled + 1);
+  const PL_COLS = Math.max(DEFAULT_PL_COLS, plTrials.length, plLastFilled + 1);
   const COL_LETTERS = Array.from({ length: LL_COLS + PL_COLS }, (_, i) => ALPHA[i] ?? `C${i + 1}`);
 
   // Padded display rows
