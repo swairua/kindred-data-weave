@@ -14,8 +14,8 @@ import {
 import { Button } from "@/components/ui/button";
 
 interface NavigationProps {
-  currentView: "dashboard" | "tests" | "reports" | "admin";
-  onViewChange: (view: "dashboard" | "tests" | "reports" | "admin") => void;
+  currentView: "dashboard" | "tests" | "results" | "projects" | "admin";
+  onViewChange: (view: "dashboard" | "tests" | "results" | "projects" | "admin") => void;
   onLogout?: () => void;
   userName?: string;
   userEmail?: string;
@@ -44,9 +44,9 @@ const Navigation = ({
     path: string;
   };
   const labItems: NavItem[] = [
-    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/" },
     { id: "tests", label: "Record test", icon: FlaskConical, path: "/record" },
-    { id: "reports", label: "Reports", icon: FileText, path: "/reports" },
+    { id: "results", label: "Test results", icon: FileText, path: "/results" },
+    { id: "projects", label: "Projects", icon: Layers, path: "/projects" },
   ];
   const systemItems: NavItem[] = [
     { id: "admin", label: "Admin", icon: Hammer, path: "/admin" },
