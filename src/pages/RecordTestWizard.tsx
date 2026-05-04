@@ -234,6 +234,7 @@ const RecordTestWizard = () => {
     testData.updateProjectMetadata({
       projectName: p.name,
       clientName: p.client_name || "",
+      projectDate: p.project_date || "",
     });
     sessionStorage.removeItem(STORAGE_KEY);
     toast.success(`Opened ${p.name}`);

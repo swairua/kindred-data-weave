@@ -18,6 +18,7 @@ export interface TestSummary {
 export interface ProjectMetadata {
   clientName?: string;
   projectName?: string;
+  projectDate?: string;
   labOrganization?: string;
   dateReported?: string;
   checkedBy?: string;
