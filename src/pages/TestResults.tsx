@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,73 +19,33 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
-import { Layers, Loader2 } from "lucide-react";
+import { Layers } from "lucide-react";
 import Navigation from "@/components/Navigation";
-import { fetchCurrentUser, listRecords, logoutUser } from "@/lib/api";
+import { useTestData } from "@/context/TestDataContext";
+import { useProject } from "@/context/ProjectContext";
 import { toast } from "sonner";
 
-interface TestRecord {
-  id: number;
-  project_id?: number;
-  project_name?: string;
-  test_type?: string;
-  sample_id?: string;
-  depth?: string;
-  date_created?: string;
-  created_by?: string;
-  material_type?: string;
-}
-
-interface TestResultsProps {}
-
-const TestResults = ({}: TestResultsProps) => {
+const TestResults = () => {
+  const { tests: testDataMap } = useTestData();
+  const project = useProject();
   const navigate = useNavigate();
-  const [tests, setTests] = useState<TestRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [materialFilter, setMaterialFilter] = useState<string>("all");
   const [testTypeFilter, setTestTypeFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Load current user and check authentication
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const user = await fetchCurrentUser(3000);
-        setCurrentUser(user);
-        setIsAuthenticated(true);
-      } catch (error) {
-        setIsAuthenticated(false);
-        navigate("/login", { replace: true });
-      }
-    };
-    checkAuth();
-  }, [navigate]);
-
-  // Load test results
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    const loadTests = async () => {
-      try {
-        setIsLoading(true);
-        // Fetch from API - adjust table name based on your backend schema
-        const response = await listRecords<TestRecord>("test_results", { limit: 100 });
-        setTests(response.data || []);
-      } catch (error) {
-        console.error("Failed to load test results:", error);
-        // Optionally show an error message
-        // toast.error("Failed to load test results");
-        // For now, show empty state rather than error
-        setTests([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadTests();
-  }, [isAuthenticated]);
+  // Convert test data map to array format for display
+  const tests = useMemo(() => {
+    return Object.entries(testDataMap).map(([id, test]) => ({
+      id,
+      project_name: project.projectName || "Unnamed Project",
+      test_type: test.type || "Unknown",
+      sample_id: test.label || "-",
+      depth: test.sampleNumber || "-",
+      date_created: test.dateCreated || new Date().toISOString(),
+      created_by: test.testedBy || "-",
+      material_type: test.material || "Soil",
+    }));
+  }, [testDataMap, project]);
 
   // Get unique material types from the test data
   const materialTypes = useMemo(() => {
@@ -98,6 +58,9 @@ const TestResults = ({}: TestResultsProps) => {
     const types = new Set(tests.map((t) => t.test_type).filter(Boolean));
     return Array.from(types).sort();
   }, [tests]);
+
+  // Get current user from project context
+  const currentUser = project?.user || null;
 
   // Filter tests based on selected filters and search query
   const filteredTests = useMemo(() => {
@@ -115,14 +78,9 @@ const TestResults = ({}: TestResultsProps) => {
     });
   }, [tests, materialFilter, testTypeFilter, searchQuery]);
 
-  const handleLogout = async () => {
-    try {
-      await logoutUser();
-      toast.success("Logged out");
-      navigate("/login", { replace: true });
-    } catch (error) {
-      toast.error("Failed to logout");
-    }
+  const handleLogout = () => {
+    toast.success("Logged out");
+    navigate("/login", { replace: true });
   };
 
   const formatDate = (dateString?: string) => {
@@ -140,10 +98,6 @@ const TestResults = ({}: TestResultsProps) => {
       return dateString;
     }
   };
-
-  if (!isAuthenticated && !isLoading) {
-    return null;
-  }
 
   return (
     <SidebarProvider>
@@ -253,11 +207,7 @@ const TestResults = ({}: TestResultsProps) => {
                 </CardHeader>
 
                 <CardContent className="pt-0">
-                  {isLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    </div>
-                  ) : filteredTests.length === 0 ? (
+                  {filteredTests.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
                       <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
                         <Layers className="h-6 w-6 text-muted-foreground" />
