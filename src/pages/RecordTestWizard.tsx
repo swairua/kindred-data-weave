@@ -233,14 +233,14 @@ const RecordTestWizard = () => {
       </header>
 
       {/* Body */}
-      <main className="flex-1 px-4 md:px-8 py-8 max-w-5xl mx-auto w-full">
+      <main className="flex-1 px-4 md:px-8 py-8 max-w-2xl mx-auto w-full">
         {step === 0 && (
           <section className="space-y-6 animate-fade-in">
-            <div>
+            <div className="text-center">
               <h2 className="text-2xl font-semibold tracking-tight">What are you testing?</h2>
               <p className="text-sm text-muted-foreground mt-1">Pick the material you'll be working with.</p>
             </div>
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 gap-4 mx-auto">
               {MATERIAL_OPTIONS.map((mat) => {
                 const selected = state.material === mat.id;
                 return (
