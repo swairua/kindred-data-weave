@@ -286,7 +286,10 @@ const RecordTestWizard = () => {
                   <button
                     key={t.key}
                     type="button"
-                    onClick={() => update("testKey", t.key)}
+                    onClick={() => {
+                      update("testKey", t.key);
+                      setTimeout(() => setStep(2), 0);
+                    }}
                     className={cn(
                       "text-left rounded-xl border-2 p-4 bg-card transition-all hover:border-primary/50",
                       selected ? "border-primary ring-2 ring-primary/20" : "border-border",
