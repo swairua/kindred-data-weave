@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import WizardStepper, { type WizardStep } from "@/components/WizardStepper";
-import { listRecords } from "@/lib/api";
+import { listRecords, fetchCurrentUser, getSessionToken } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useTestData } from "@/context/TestDataContext";
 import { toast } from "sonner";
@@ -105,6 +105,37 @@ const RecordTestWizard = () => {
   const initialMaterial = searchParams.get("material") as Material | null;
   const initialTest = searchParams.get("test") as string | null;
   const testData = useTestData();
+
+  // Check authentication on mount - redirect to login if not authenticated
+  useEffect(() => {
+    const checkAuth = async () => {
+      const localToken = getSessionToken();
+
+      // If we have a local token, allow access (backend session may have expired but user can refresh)
+      if (localToken) {
+        console.log("[RecordTestWizard] Local session token found, allowing access");
+        return;
+      }
+
+      // No local token, try to restore session from API
+      try {
+        const user = await fetchCurrentUser(5000); // 5 second timeout
+        // User is authenticated if fetchCurrentUser returns a user
+        if (user) {
+          console.log("[RecordTestWizard] User authenticated via API");
+          return;
+        }
+        // fetchCurrentUser returned null, user is not authenticated
+        console.log("[RecordTestWizard] No active session, redirecting to login");
+        navigate("/login", { replace: true });
+      } catch (error) {
+        // Error checking auth (network error, timeout, etc.)
+        console.log("[RecordTestWizard] Auth check error (network issue?), redirecting to login:", error instanceof Error ? error.message : error);
+        navigate("/login", { replace: true });
+      }
+    };
+    checkAuth();
+  }, [navigate]);
 
   const [state, setState] = useState<WizardState>(() => {
     try {

@@ -163,7 +163,7 @@ const PlasticityChart: React.FC<PlasticityChartProps> = ({ liquidLimit, plastici
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis
                 type="number"
-                dataKey="x"
+                dataKey="ll"
                 name="Liquid Limit (%)"
                 tick={{ fontSize: 12 }}
                 label={{ value: "Liquid Limit (%)", offset: 40, position: "insideBottomRight", fontSize: 12 }}
@@ -171,7 +171,7 @@ const PlasticityChart: React.FC<PlasticityChartProps> = ({ liquidLimit, plastici
               />
               <YAxis
                 type="number"
-                dataKey="y"
+                dataKey="pi"
                 name="Plasticity Index (%)"
                 tick={{ fontSize: 12 }}
                 label={{ value: "Plasticity Index (%)", angle: -90, position: "insideLeft", fontSize: 12 }}

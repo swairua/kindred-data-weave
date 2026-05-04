@@ -1221,20 +1221,26 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
     }
 
     for (const recordId of recordIds) {
-      // Capture the liquid limit chart (by class selector)
-      const liquidLimitChartElement = document.querySelector(`.liquid-limit-export-chart-${recordId}`);
-      console.log(`[Chart Capture] Attempting to capture liquid limit chart for record ${recordId}`, {
-        elementFound: !!liquidLimitChartElement,
-        elementVisible: liquidLimitChartElement ? (liquidLimitChartElement as HTMLElement).offsetParent !== null : false,
+      // Try to get chart element from registered ref (new approach with AtterbergRecordView)
+      let chartElement = chartRefsMap.current.get(recordId);
+
+      // Fallback: try legacy class selector (for LiquidLimitSection if still used)
+      if (!chartElement) {
+        const legacyElement = document.querySelector(`.liquid-limit-export-chart-${recordId}`);
+        chartElement = legacyElement as HTMLDivElement | null;
+      }
+
+      console.log(`[Chart Capture] Attempting to capture plasticity chart for record ${recordId}`, {
+        elementFound: !!chartElement,
+        elementVisible: chartElement ? chartElement.offsetParent !== null : false,
+        isFromRef: !!chartRefsMap.current.get(recordId),
       });
 
-      if (liquidLimitChartElement) {
-        const llElement = liquidLimitChartElement as HTMLElement;
-        // Element is rendered off-screen (absolute, left: -100000px) so Recharts has real dimensions.
-        // No display toggle needed — wait briefly for any pending render.
+      if (chartElement) {
+        // Wait briefly for any pending render
         await new Promise((resolve) => setTimeout(resolve, 50));
 
-        const svg = llElement.querySelector('svg');
+        const svg = chartElement.querySelector('svg');
         if (svg) {
           const svgWidth = svg.getAttribute('width');
           const svgHeight = svg.getAttribute('height');
@@ -1242,50 +1248,50 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
             try {
               await new Promise((resolve) => setTimeout(resolve, 150));
 
-              console.log(`[Chart Capture] Starting html2canvas for liquid limit chart of record ${recordId}`, {
-                element: llElement,
+              console.log(`[Chart Capture] Starting html2canvas for plasticity chart of record ${recordId}`, {
+                element: chartElement,
                 hasSvg: !!svg,
                 svgDimensions: { width: svgWidth, height: svgHeight },
                 elementDimensions: {
-                  width: llElement.offsetWidth,
-                  height: llElement.offsetHeight,
+                  width: chartElement.offsetWidth,
+                  height: chartElement.offsetHeight,
                 },
               });
 
-              const canvas = await html2canvas(llElement, {
+              const canvas = await html2canvas(chartElement, {
                 backgroundColor: "#ffffff",
                 scale: 4,
                 logging: false,
                 useCORS: true,
                 allowTaint: true,
                 imageTimeout: 0,
-                windowWidth: Math.max(llElement.scrollWidth, 1200),
-                windowHeight: Math.max(llElement.scrollHeight, 800),
+                windowWidth: Math.max(chartElement.scrollWidth, 1200),
+                windowHeight: Math.max(chartElement.scrollHeight, 800),
               });
 
               const imageData = canvas.toDataURL("image/png");
-              chartImages[`${recordId}-liquidLimit`] = imageData;
-              console.log(`[Chart Capture] Successfully captured liquid limit chart for record ${recordId}`, {
+              chartImages[`${recordId}-plasticity`] = imageData;
+              console.log(`[Chart Capture] Successfully captured plasticity chart for record ${recordId}`, {
                 imageDataLength: imageData.length,
                 canvasWidth: canvas.width,
                 canvasHeight: canvas.height,
               });
             } catch (error) {
-              console.error(`[Chart Capture] Failed to capture liquid limit chart for record ${recordId}:`, {
+              console.error(`[Chart Capture] Failed to capture plasticity chart for record ${recordId}:`, {
                 error: error instanceof Error ? error.message : String(error),
                 stack: error instanceof Error ? error.stack : undefined,
               });
             }
           } else {
-            console.warn(`[Chart Capture] Liquid limit chart SVG missing dimensions for record ${recordId}`, { svgWidth, svgHeight });
+            console.warn(`[Chart Capture] Plasticity chart SVG missing dimensions for record ${recordId}`, { svgWidth, svgHeight });
           }
         } else {
-          console.warn(`[Chart Capture] No SVG found in liquid limit chart for record ${recordId}`);
+          console.warn(`[Chart Capture] No SVG found in plasticity chart for record ${recordId}`);
         }
       }
     }
 
-    console.log(`[Chart Capture] Completed capturing charts for ${Object.keys(chartImages).length} chart types`);
+    console.log(`[Chart Capture] Completed capturing charts for ${Object.keys(chartImages).length} records`);
     return chartImages;
   }, []);
 
