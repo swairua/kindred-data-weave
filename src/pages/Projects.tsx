@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,98 +12,59 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
-import { Layers, Loader2, Plus } from "lucide-react";
+import { Layers, Plus } from "lucide-react";
 import Navigation from "@/components/Navigation";
-import { fetchCurrentUser, listRecords, logoutUser } from "@/lib/api";
+import { useTestData } from "@/context/TestDataContext";
+import { useProject } from "@/context/ProjectContext";
 import { toast } from "sonner";
 
-interface ProjectRecord {
-  id: number;
-  name: string;
-  client_name?: string;
-  project_date?: string;
-  samples?: number;
-  created_at?: string;
-}
-
-interface ProjectsProps {}
-
-const Projects = ({}: ProjectsProps) => {
+const Projects = () => {
   const navigate = useNavigate();
-  const [projects, setProjects] = useState<ProjectRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { tests } = useTestData();
+  const project = useProject();
   const [searchQuery, setSearchQuery] = useState("");
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Load current user and check authentication
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const user = await fetchCurrentUser(10000);
-        setCurrentUser(user);
-        setIsAuthenticated(true);
-      } catch (error) {
-        setIsAuthenticated(false);
-        navigate("/login", { replace: true });
-      }
-    };
-    checkAuth();
-  }, [navigate]);
-
-  // Load projects
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    const loadProjects = async () => {
-      try {
-        setIsLoading(true);
-        // Fetch from API
-        const response = await listRecords<ProjectRecord>("projects", { limit: 100 });
-        setProjects(response.data || []);
-      } catch (error) {
-        console.error("Failed to load projects:", error);
-        // For now, show empty state rather than error
-        setProjects([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadProjects();
-  }, [isAuthenticated]);
+  // For now, treat the current project as a single "project" entry
+  // In a real app, you might have multiple projects
+  const projects = useMemo(() => {
+    if (!project.projectName) return [];
+    return [
+      {
+        id: 1,
+        name: project.projectName,
+        client_name: project.clientName || undefined,
+        created_at: project.date || new Date().toISOString(),
+        samples: Object.keys(tests).length,
+      },
+    ];
+  }, [project, tests]);
 
   // Filter projects based on search query
   const filteredProjects = useMemo(() => {
-    return projects.filter((project) => {
+    return projects.filter((p) => {
       const searchMatch =
         searchQuery === "" ||
-        project.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        project.client_name?.toLowerCase().includes(searchQuery.toLowerCase());
-
+        p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.client_name?.toLowerCase().includes(searchQuery.toLowerCase());
       return searchMatch;
     });
   }, [projects, searchQuery]);
 
-  const handleLogout = async () => {
-    try {
-      await logoutUser();
-      toast.success("Logged out");
-      navigate("/login", { replace: true });
-    } catch (error) {
-      toast.error("Failed to logout");
-    }
+  const handleLogout = () => {
+    toast.success("Logged out");
+    navigate("/login", { replace: true });
   };
 
   const handleNewProject = () => {
-    // Navigate to record test wizard to create new project
     navigate("/record");
   };
 
   const handleOpenProject = (projectId: number) => {
-    // This would typically open the project details or navigate to edit
-    toast.info(`Opening project ${projectId}`);
+    // Navigate to tests page to view/edit the project
+    navigate("/tests");
   };
+
+  const currentUser = project?.user || null;
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return "-";
@@ -118,10 +79,6 @@ const Projects = ({}: ProjectsProps) => {
       return dateString;
     }
   };
-
-  if (!isAuthenticated && !isLoading) {
-    return null;
-  }
 
   return (
     <SidebarProvider>
@@ -183,11 +140,7 @@ const Projects = ({}: ProjectsProps) => {
                 </CardHeader>
 
                 <CardContent className="pt-0">
-                  {isLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    </div>
-                  ) : filteredProjects.length === 0 ? (
+                  {filteredProjects.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
                       <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
                         <Layers className="h-6 w-6 text-muted-foreground" />
@@ -239,7 +192,7 @@ const Projects = ({}: ProjectsProps) => {
                                 </div>
                               </TableCell>
                               <TableCell className="text-sm">
-                                {formatDate(project.project_date || project.created_at)}
+                                {formatDate(project.created_at)}
                               </TableCell>
                               <TableCell className="text-center font-medium">
                                 {project.samples || "0"}
