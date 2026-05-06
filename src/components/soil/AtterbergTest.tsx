@@ -1230,7 +1230,7 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
       toast.error("Error during save and print");
       setPrintProcessing("idle");
     }
-  }, [handleSave, computedRecords, printProcessing, generateAndPrintPDF]);
+  }, [handleSave, computedRecords, printProcessing]);
 
   const navigate = useNavigate();
 
