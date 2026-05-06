@@ -360,9 +360,9 @@ function drawRecordPage(
   let y = 10;
 
   // ── Header images: logo (left) + contacts (right) — compact, aligned to page margins ──
-  const headerH = 22;
+  const headerH = 18; // Reduced from 22
   if (images.logo || images.contacts) {
-    const imgW = contentW * 0.32;
+    const imgW = contentW * 0.28; // Reduced from 0.32
     if (images.logo) {
       try {
         console.log("Adding logo image to PDF");
@@ -383,17 +383,17 @@ function drawRecordPage(
         console.error("Failed to add contacts image:", error instanceof Error ? error.message : error);
       }
     }
-    y += headerH + 2;
+    y += headerH + 1; // Reduced spacing
   }
 
   // ── Title bar ──
   doc.setFillColor(...COLORS.primary);
-  doc.roundedRect(margin, y, contentW, 12, 2, 2, "F");
-  doc.setFontSize(10);
+  doc.roundedRect(margin, y, contentW, 10, 1.5, 1.5, "F");
+  doc.setFontSize(9.5);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(255, 255, 255);
-  doc.text("ATTERBERG LIMITS (BS 1377 PART 2, 4.3 : 1990)", pw / 2, y + 8, { align: "center" });
-  y += 16;
+  doc.text("ATTERBERG LIMITS (BS 1377 PART 2, 4.3 : 1990)", pw / 2, y + 6.5, { align: "center" });
+  y += 12; // Reduced from 16
 
   // ── Metadata section ──
   const metaRows = [
@@ -411,41 +411,41 @@ function drawRecordPage(
     ],
   ];
 
-  doc.setFontSize(7.5);
+  doc.setFontSize(7);
   for (const row of metaRows) {
     const colW = contentW / row.length;
     row.forEach((item, i) => {
       const x = margin + i * colW;
       doc.setFont("helvetica", "bold");
       doc.setTextColor(...COLORS.primary);
-      doc.text(item.label, x + 2, y + 3.5);
+      doc.text(item.label, x + 1.5, y + 2.5);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(...COLORS.dark);
-      doc.text(item.value, x + 2, y + 7.5);
+      doc.text(item.value, x + 1.5, y + 6);
       doc.setDrawColor(...COLORS.border);
-      doc.rect(x, y, colW, 9);
+      doc.rect(x, y, colW, 7.5);
     });
-    y += 9;
+    y += 7.5;
   }
 
-  y += 2;
+  y += 1; // Reduced from 2
 
   // ── Record notes (if present) ──
-  if (record.note && record.note.trim()) {
+  if (record.note && record.note.trim() && y < ph - 120) { // Only show notes if space available
     doc.setFillColor(...COLORS.headerBg);
-    doc.roundedRect(margin, y, contentW, 8, 1, 1, "F");
-    doc.setFontSize(7.5);
+    doc.roundedRect(margin, y, contentW, 6.5, 0.75, 0.75, "F");
+    doc.setFontSize(7);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...COLORS.primary);
-    doc.text("Notes", margin + 2, y + 5);
-    y += 9;
+    doc.text("Notes", margin + 1.5, y + 4);
+    y += 7.5;
 
-    doc.setFontSize(7);
+    doc.setFontSize(6.5);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...COLORS.dark);
     const splitNote = doc.splitTextToSize(record.note, contentW - 4);
-    doc.text(splitNote, margin + 2, y);
-    y += Math.max(splitNote.length * 3, 8) + 3;
+    doc.text(splitNote, margin + 1.5, y);
+    y += Math.max(splitNote.length * 2.5, 6) + 2;
   }
 
   // ── Find tests ──
@@ -470,7 +470,8 @@ function drawRecordPage(
   ];
 
   // Check if we need a page break before the combined table
-  if ((llTrials.length > 0 || plTrials.length > 0) && y > ph - 85) {
+  // For single record on single page, never page break here
+  if ((llTrials.length > 0 || plTrials.length > 0) && y > ph - 100 && options.records.length > 1) {
     doc.addPage();
     y = 20;
   }
@@ -578,7 +579,7 @@ function drawRecordPage(
       y: y,
       width: contentW,
       colWidths,
-      rowHeight: 4.5,
+      rowHeight: 4, // Reduced from 4.5
       headers: colHeaders,
       rows: combinedDataRows,
       plTrialStartIndex: llTrials.length > 0 ? llTrials.length + 1 : -1,
@@ -586,34 +587,34 @@ function drawRecordPage(
       fontSize: 5.5,
     });
 
-    y += 2;
+    y += 1; // Reduced from 2
   }
 
   // ── Plastic Limit result row ──
   doc.setDrawColor(...COLORS.border);
   doc.setFillColor(...COLORS.headerBg);
-  doc.rect(margin, y, contentW, 6, "FD");
-  doc.setFontSize(7.5);
+  doc.rect(margin, y, contentW, 5, "FD");
+  doc.setFontSize(7);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...COLORS.primary);
-  doc.text("PLASTIC LIMIT", margin + contentW * 0.55, y + 4.3);
+  doc.text("PLASTIC LIMIT", margin + contentW * 0.55, y + 3.3);
   doc.setTextColor(...COLORS.dark);
-  doc.text(fmt(record.results.plasticLimit), margin + contentW * 0.85, y + 4.3);
-  y += 7;
+  doc.text(fmt(record.results.plasticLimit), margin + contentW * 0.85, y + 3.3);
+  y += 6; // Reduced from 7
 
   // ── Layout: Left side = charts, Right side = LS + Results + Classification ──
-  const leftW = contentW * 0.45;
-  const rightX = margin + leftW + 4;
-  const rightW = contentW - leftW - 4;
+  const leftW = contentW * 0.42; // Reduced from 0.45
+  const rightX = margin + leftW + 3; // Reduced gap
+  const rightW = contentW - leftW - 3;
   const sectionStartY = y;
 
-  // Right-side stack: LINEAR SHRINKAGE (8 + 3*5 + 4 = ~27) + RESULTS (8 + 6*5 + 4 = ~42)
-  // + CLASSIFICATION (8 + 2*5 = ~18) ≈ 87mm. Footer block ≈ 6 + 28 + 5 gap = ~39mm.
-  const chartH = leftW * 0.7;
-  const rightStackH = 95;
-  const footerBlockNeeded = 39;
+  // Optimized for single-page fit
+  const chartH = leftW * 0.65; // Reduced from 0.7
+  const rightStackH = 80; // Reduced from 95
+  const footerBlockNeeded = 35; // Reduced from 39
   const requiredBottom = sectionStartY + Math.max(chartH, rightStackH) + footerBlockNeeded;
-  if (requiredBottom > ph - 10) {
+  // For single records, avoid page breaks; for multiple, allow if needed
+  if (requiredBottom > ph - 12 && options.records.length > 1) {
     doc.addPage();
     y = 20;
   }
@@ -660,26 +661,26 @@ function drawRecordPage(
   ];
 
   doc.setFillColor(...COLORS.primary);
-  doc.roundedRect(rightX, ry, rightW, 7, 1, 1, "F");
-  doc.setFontSize(8);
+  doc.roundedRect(rightX, ry, rightW, 6, 0.75, 0.75, "F");
+  doc.setFontSize(7);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(255, 255, 255);
-  doc.text("LINEAR SHRINKAGE", rightX + rightW / 2, ry + 5, { align: "center" });
-  ry += 8;
+  doc.text("LINEAR SHRINKAGE", rightX + rightW / 2, ry + 4, { align: "center" });
+  ry += 7; // Reduced from 8
 
-  doc.setFontSize(7);
+  doc.setFontSize(6.5);
   for (const [label, value] of lsData) {
     doc.setDrawColor(...COLORS.border);
-    doc.rect(rightX, ry, rightW * 0.7, 5);
-    doc.rect(rightX + rightW * 0.7, ry, rightW * 0.3, 5);
+    doc.rect(rightX, ry, rightW * 0.7, 4.5); // Reduced from 5
+    doc.rect(rightX + rightW * 0.7, ry, rightW * 0.3, 4.5);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...COLORS.dark);
-    doc.text(label, rightX + 2, ry + 3.7);
+    doc.text(label, rightX + 1.5, ry + 3.2);
     doc.setFont("helvetica", "normal");
-    doc.text(value, rightX + rightW * 0.7 + 2, ry + 3.7);
-    ry += 5;
+    doc.text(value, rightX + rightW * 0.7 + 1.5, ry + 3.2);
+    ry += 4.5;
   }
-  ry += 3;
+  ry += 2; // Reduced from 3
 
   // ── RIGHT: Results Summary ──
   const summaryData: [string, string][] = [
@@ -692,26 +693,26 @@ function drawRecordPage(
   ];
 
   doc.setFillColor(...COLORS.primary);
-  doc.roundedRect(rightX, ry, rightW, 7, 1, 1, "F");
-  doc.setFontSize(8);
+  doc.roundedRect(rightX, ry, rightW, 6, 0.75, 0.75, "F");
+  doc.setFontSize(7);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(255, 255, 255);
-  doc.text("RESULTS SUMMARY", rightX + rightW / 2, ry + 5, { align: "center" });
-  ry += 8;
+  doc.text("RESULTS SUMMARY", rightX + rightW / 2, ry + 4, { align: "center" });
+  ry += 7; // Reduced from 8
 
-  doc.setFontSize(7);
+  doc.setFontSize(6.5);
   for (const [label, value] of summaryData) {
     doc.setDrawColor(...COLORS.border);
-    doc.rect(rightX, ry, rightW * 0.7, 5);
-    doc.rect(rightX + rightW * 0.7, ry, rightW * 0.3, 5);
+    doc.rect(rightX, ry, rightW * 0.7, 4.5); // Reduced from 5
+    doc.rect(rightX + rightW * 0.7, ry, rightW * 0.3, 4.5);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...COLORS.dark);
-    doc.text(label, rightX + 2, ry + 3.7);
+    doc.text(label, rightX + 1.5, ry + 3.2);
     doc.setFont("helvetica", "normal");
-    doc.text(value, rightX + rightW * 0.7 + 2, ry + 3.7);
-    ry += 5;
+    doc.text(value, rightX + rightW * 0.7 + 1.5, ry + 3.2);
+    ry += 4.5;
   }
-  ry += 3;
+  ry += 2; // Reduced from 3
 
   // ── RIGHT: Soil Classification (uses shared classifier; falls back to plasticity-only when no grain size) ──
   const recordGrainSize = (record as unknown as { grainSize?: { gravel?: string | number; sand?: string | number; fines?: string | number } }).grainSize;
@@ -723,74 +724,73 @@ function drawRecordPage(
   const classification = classifySoilUSCS(grainSize, record.results);
 
   doc.setFillColor(...COLORS.headerBg);
-  doc.rect(rightX, ry, rightW, 7, "F");
-  doc.setFontSize(8);
+  doc.rect(rightX, ry, rightW, 6, "F");
+  doc.setFontSize(7);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...COLORS.primary);
-  doc.text("SOIL CLASSIFICATION", rightX + rightW / 2, ry + 5, { align: "center" });
-  ry += 8;
+  doc.text("SOIL CLASSIFICATION", rightX + rightW / 2, ry + 4, { align: "center" });
+  ry += 7; // Reduced from 8
 
-  doc.setFontSize(7);
+  doc.setFontSize(6.5);
   // USCS row: label | description | symbol
   doc.setDrawColor(...COLORS.border);
-  doc.rect(rightX, ry, rightW * 0.2, 5);
-  doc.rect(rightX + rightW * 0.2, ry, rightW * 0.6, 5);
-  doc.rect(rightX + rightW * 0.8, ry, rightW * 0.2, 5);
+  doc.rect(rightX, ry, rightW * 0.2, 4.5); // Reduced from 5
+  doc.rect(rightX + rightW * 0.2, ry, rightW * 0.6, 4.5);
+  doc.rect(rightX + rightW * 0.8, ry, rightW * 0.2, 4.5);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...COLORS.primary);
-  doc.text("USCS", rightX + 2, ry + 3.7);
+  doc.text("USCS", rightX + 1.5, ry + 3.2);
   doc.setTextColor(...COLORS.dark);
   doc.setFont("helvetica", "normal");
-  doc.text(classification.uscsDescription, rightX + rightW * 0.2 + 2, ry + 3.7);
+  doc.text(classification.uscsDescription, rightX + rightW * 0.2 + 1.5, ry + 3.2);
   doc.setFont("helvetica", "bold");
-  doc.text(classification.uscsSymbol, rightX + rightW * 0.8 + 2, ry + 3.7);
-  ry += 5;
+  doc.text(classification.uscsSymbol, rightX + rightW * 0.8 + 1.5, ry + 3.2);
+  ry += 4.5;
 
   // AASHTO row: label | group | description
-  doc.rect(rightX, ry, rightW * 0.2, 5);
-  doc.rect(rightX + rightW * 0.2, ry, rightW * 0.2, 5);
-  doc.rect(rightX + rightW * 0.4, ry, rightW * 0.6, 5);
+  doc.rect(rightX, ry, rightW * 0.2, 4.5);
+  doc.rect(rightX + rightW * 0.2, ry, rightW * 0.2, 4.5);
+  doc.rect(rightX + rightW * 0.4, ry, rightW * 0.6, 4.5);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...COLORS.primary);
-  doc.text("AASHTO", rightX + 2, ry + 3.7);
+  doc.text("AASHTO", rightX + 1.5, ry + 3.2);
   doc.setTextColor(...COLORS.dark);
-  doc.text(classification.aashtoGroup, rightX + rightW * 0.2 + 2, ry + 3.7);
+  doc.text(classification.aashtoGroup, rightX + rightW * 0.2 + 1.5, ry + 3.2);
   doc.setFont("helvetica", "normal");
-  doc.text(classification.aashtoDescription, rightX + rightW * 0.4 + 2, ry + 3.7);
-  ry += 5;
+  doc.text(classification.aashtoDescription, rightX + rightW * 0.4 + 1.5, ry + 3.2);
+  ry += 4.5;
 
   // ── Compute footer position AFTER all content is drawn ──
   const contentBottom = Math.max(ry, sectionStartY2 + chartH);
-  let footerY = contentBottom + 8; // 8mm gap below tables
+  let footerY = contentBottom + 5; // Reduced gap from 8mm
 
-  // Page-break guard: footer text needs ~6mm + stamp needs ~28mm + page number reserves ~10mm.
-  // If the footer + stamp would collide with the bottom margin, push to a new page.
+  // Page-break guard: for single records, avoid adding pages
   const pageBottomReserved = 12; // reserve for page number area
-  const footerBlockHeight = 6 + 28; // footer text row + stamp height
-  if (footerY + footerBlockHeight > ph - pageBottomReserved) {
+  const footerBlockHeight = 5 + 24; // footer text row + stamp height
+  if (footerY + footerBlockHeight > ph - pageBottomReserved && options.records.length > 1) {
     doc.addPage();
     footerY = 20;
   }
 
   // ── Separator line above footer ──
   doc.setDrawColor(...COLORS.border);
-  doc.setLineWidth(0.2);
-  doc.line(margin, footerY - 3, margin + contentW, footerY - 3);
+  doc.setLineWidth(0.15);
+  doc.line(margin, footerY - 2, margin + contentW, footerY - 2);
 
   // ── Stamp image: positioned beside the "Checked by" field, below the classification ──
   if (images.stamp) {
     try {
       console.log("Adding stamp image to PDF below classification");
-      const stampW = 28;
-      const stampH = 28;
+      const stampW = 22; // Reduced from 28
+      const stampH = 22;
       const checkedByFieldX = margin + contentW * 0.7;
       const checkedByFieldW = contentW * 0.3;
       const stampX = checkedByFieldX + (checkedByFieldW / 2) - (stampW / 2);
-      let stampY = footerY - 2; // sit just below the footer text baseline
+      let stampY = footerY - 1; // sit just below the footer text baseline
 
       // Final overflow guard
-      if (stampY + stampH > ph - 8) {
-        stampY = ph - 8 - stampH;
+      if (stampY + stampH > ph - 6) {
+        stampY = ph - 6 - stampH;
       }
 
       const base64String = extractBase64FromDataUrl(images.stamp);
@@ -802,12 +802,12 @@ function drawRecordPage(
   }
 
   // ── Footer text: Tested by / Date / Checked by ──
-  doc.setFontSize(7);
+  doc.setFontSize(6.5);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...COLORS.dark);
-  doc.text(`Tested by: ${record.testedBy || "____________"}`, margin, footerY);
-  doc.text(`Date reported: ${projectState.dateReported || "____________"}`, margin + contentW * 0.35, footerY);
-  doc.text(`Checked by: ${projectState.checkedBy || "____________"}`, margin + contentW * 0.7, footerY);
+  doc.text(`Tested by: ${record.testedBy || "___________"}`, margin, footerY);
+  doc.text(`Date reported: ${projectState.dateReported || "___________"}`, margin + contentW * 0.35, footerY);
+  doc.text(`Checked by: ${projectState.checkedBy || "___________"}`, margin + contentW * 0.7, footerY);
 }
 
 export const generateAtterbergPDF = async (

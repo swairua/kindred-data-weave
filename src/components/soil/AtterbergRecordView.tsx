@@ -592,7 +592,7 @@ const AtterbergRecordView = ({
       </div>
 
       {/* ===== Sticky action bar ===== */}
-      <div className="sticky bottom-0 z-10 flex items-center justify-between gap-2 border-t bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 print:hidden">
+      <div className="sticky bottom-0 z-10 flex items-center justify-between gap-2 border-t bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80" style={{ printColorAdjust: 'exact' }} data-no-print>
         <Button
           type="button"
           variant="outline"

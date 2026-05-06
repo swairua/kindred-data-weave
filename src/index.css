@@ -493,21 +493,51 @@
   body[data-print-mode="atterberg-selected"] .atterberg-record.is-print-selected {
     position: relative;
     width: 100%;
-    box-shadow: none;
-    border: none;
-    padding: 0;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
     page-break-after: always;
   }
 
-  /* Hide on-screen editing surface and surrounding page chrome */
-  body[data-print-mode="atterberg-selected"] .atterberg-record.is-print-selected .atterberg-edit-surface,
-  body[data-print-mode="atterberg-selected"] .atterberg-record.is-print-selected > *:not(.atterberg-print-sheet) {
+  /* Hide on-screen editing surface completely */
+  body[data-print-mode="atterberg-selected"] .atterberg-record.is-print-selected .atterberg-edit-surface {
     display: none !important;
+    height: 0 !important;
+    width: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    visibility: hidden !important;
   }
 
-  /* Show the print sheet */
+  /* Hide sticky action bar */
+  .atterberg-record [data-no-print],
+  body[data-print-mode="atterberg-selected"] .atterberg-record .sticky {
+    display: none !important;
+    height: 0 !important;
+    width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Show only the print sheet - all other elements hidden by default */
+  body[data-print-mode="atterberg-selected"] .atterberg-record.is-print-selected > *:not(.atterberg-print-sheet) {
+    display: none !important;
+    height: 0 !important;
+    width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    visibility: hidden !important;
+  }
+
+  /* Explicitly show the print sheet */
   body[data-print-mode="atterberg-selected"] .atterberg-record.is-print-selected .atterberg-print-sheet {
     display: block !important;
+    height: auto !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    visibility: visible !important;
   }
 
   /* Hide page chrome and siblings */
@@ -563,7 +593,6 @@
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
   width: 100%;
-  min-height: 297mm; /* A4 height */
   page-break-inside: avoid;
 }
 .atterberg-print-sheet .aps-header {
