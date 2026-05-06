@@ -513,7 +513,7 @@ export const loginUser = async (email: string, password: string) => {
   }
 };
 
-export const fetchCurrentUser = async (timeoutMs: number = 8000) => {
+export const fetchCurrentUser = async (timeoutMs: number = 15000) => {
   const timestamp = new Date().toISOString();
   const controller = new AbortController();
   let timeoutHandle: NodeJS.Timeout | null = null;
@@ -534,6 +534,10 @@ export const fetchCurrentUser = async (timeoutMs: number = 8000) => {
 
     timeoutHandle = setTimeout(() => {
       console.warn(`[API] ${timestamp} Session check timeout triggered after ${timeoutMs}ms`);
+      console.warn(`[API] This typically indicates:`);
+      console.warn(`[API]   - API server is slow to respond`);
+      console.warn(`[API]   - Network connectivity issue`);
+      console.warn(`[API]   - API endpoint is unresponsive`);
       controller.abort(new Error("Session check timeout"));
     }, timeoutMs);
 
