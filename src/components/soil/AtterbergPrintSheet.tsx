@@ -87,11 +87,11 @@ const AtterbergPrintSheet = ({ record, project, projectState }: Props) => {
   const llRows = Array.from({ length: llCols }, (_, i) => llTrials[i] ?? null);
   const plRows = Array.from({ length: plCols }, (_, i) => plTrials[i] ?? null);
 
-  const llHeaders = llRows.map((_, i) => `Trial ${i + 1} (LL)`);
-  const plHeaders = plRows.map((_, i) => `Trial ${i + 1} (PL)`);
+  const llHeaders = llRows.map((_, i) => `LL${i + 1}`);
+  const plHeaders = plRows.map((_, i) => `PL${i + 1}`);
 
   return (
-    <div className="atterberg-print-sheet">
+    <div className="atterberg-print-sheet" data-print-sheet-content>
       {/* Header */}
       <div className="aps-header">
         <div className="aps-logo">
@@ -106,31 +106,23 @@ const AtterbergPrintSheet = ({ record, project, projectState }: Props) => {
       <div className="aps-title-bar">ATTERBERG LIMITS (BS 1377 PART 2, 4.3 : 1990)</div>
 
       {/* Metadata */}
-      <table className="aps-meta">
+      <table className="aps-meta" style={{ marginLeft: '8mm', marginRight: '8mm', marginBottom: '2px' }}>
         <tbody>
           <tr>
-            <td className="lbl">Client name:</td>
-            <td colSpan={5}>{project.clientName || "-"}</td>
+            <td className="lbl" style={{ width: '25%' }}>Client:</td>
+            <td colSpan={5} style={{ width: '75%' }}>{project.clientName || "-"}</td>
           </tr>
           <tr>
-            <td className="lbl">Project/Site name:</td>
-            <td colSpan={5}>{project.projectName || "-"}</td>
+            <td className="lbl" style={{ width: '25%' }}>Project:</td>
+            <td colSpan={5} style={{ width: '75%' }}>{project.projectName || "-"}</td>
           </tr>
           <tr>
-            <td className="lbl">Sampled by:</td>
-            <td>-</td>
-            <td className="lbl">Date submitted:</td>
-            <td>{record.dateSubmitted || "-"}</td>
-            <td className="lbl">Date tested:</td>
-            <td>{record.dateTested || "-"}</td>
-          </tr>
-          <tr>
-            <td className="lbl">Sample ID:</td>
-            <td>{record.label || "-"}</td>
-            <td className="lbl">Sample depth:</td>
-            <td>{record.sampleNumber || "-"}</td>
-            <td className="lbl">Sample No:</td>
-            <td>{record.title || "-"}</td>
+            <td className="lbl" style={{ width: '15%' }}>Date Tested:</td>
+            <td style={{ width: '20%' }}>{record.dateTested || "-"}</td>
+            <td className="lbl" style={{ width: '20%' }}>Sample ID:</td>
+            <td style={{ width: '20%' }}>{record.label || "-"}</td>
+            <td className="lbl" style={{ width: '15%' }}>Depth (m):</td>
+            <td style={{ width: '10%' }}>{record.sampleNumber || "-"}</td>
           </tr>
         </tbody>
       </table>
@@ -205,9 +197,9 @@ const AtterbergPrintSheet = ({ record, project, projectState }: Props) => {
       </table>
 
       {/* Chart + side panels */}
-      <div className="aps-grid">
+      <div className="aps-grid" style={{ pageBreakInside: 'avoid' }}>
         <div className="aps-chart-box">
-          <LiquidLimitFlowChart trials={llTrials} width={520} height={320} />
+          <LiquidLimitFlowChart trials={llTrials} width={320} height={240} />
         </div>
         <div className="aps-side">
           <div className="aps-section-bar">LINEAR SHRINKAGE</div>
