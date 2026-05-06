@@ -1217,8 +1217,72 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
       if (recordIds) {
         // Step 2: Generate PDF with professional format
         setPrintProcessing("processing");
-        await generateAndPrintPDF(recordIds);
-        setPrintProcessing("idle");
+
+        // Print generation will be deferred until helper functions are available
+        // (happens during render return)
+        const performPrint = async () => {
+          try {
+            console.log(`[Print PDF] Starting PDF generation for ${recordIds.length} records`);
+
+            // Get the records to print
+            const recordsToPrint = computedRecords.filter((r) => recordIds.includes(r.id));
+            if (recordsToPrint.length === 0) {
+              toast.error("No records found to print");
+              setPrintProcessing("idle");
+              return;
+            }
+
+            // Expand records to make charts visible
+            ensureRecordsExpanded(recordIds);
+
+            // Wait for charts to be fully rendered
+            await waitForChartsToBeFullyRendered(recordIds);
+
+            // Capture all chart images
+            const chartImages = await captureAllChartImages(recordIds, ensureRecordsExpanded);
+            console.log(`[Print PDF] Captured ${Object.keys(chartImages).length} charts out of ${recordIds.length}`);
+
+            // Generate PDF using the same function as PDF export
+            const blob = await generateAtterbergPDF({
+              projectName: project.projectName,
+              clientName: project.clientName || projectState.clientName,
+              date: project.date,
+              projectState,
+              records: recordsToPrint,
+              skipDownload: true,
+              chartImages: Object.keys(chartImages).length > 0 ? chartImages : undefined,
+            });
+
+            if (blob) {
+              console.log(`[Print PDF] PDF generated successfully, opening print dialog`);
+              // Open the PDF in a new window and trigger print dialog
+              const pdfUrl = URL.createObjectURL(blob);
+              const printWindow = window.open(pdfUrl, "_blank");
+              if (printWindow) {
+                // Trigger print dialog when the PDF is loaded
+                printWindow.addEventListener("load", () => {
+                  printWindow.print();
+                });
+                // Fallback in case load event doesn't fire
+                setTimeout(() => {
+                  printWindow.print();
+                }, 500);
+              } else {
+                toast.error("Failed to open print dialog. Pop-ups may be blocked.");
+              }
+            } else {
+              toast.error("Failed to generate PDF");
+            }
+            setPrintProcessing("idle");
+          } catch (error) {
+            console.error("Error in PDF print flow:", error);
+            toast.error("Error generating PDF for print");
+            setPrintProcessing("idle");
+          }
+        };
+
+        // Execute the print operation
+        performPrint();
       } else {
         // Show dialog for record selection
         setPrintSelection(new Set(computedRecords.map((r) => r.id)));
@@ -1479,64 +1543,6 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
       }),
     }));
   }, []);
-
-  const generateAndPrintPDF = useCallback(async (recordIds: string[]) => {
-    try {
-      console.log(`[Print PDF] Starting PDF generation for ${recordIds.length} records`);
-
-      // Get the records to print
-      const recordsToPrint = computedRecords.filter((r) => recordIds.includes(r.id));
-      if (recordsToPrint.length === 0) {
-        toast.error("No records found to print");
-        return;
-      }
-
-      // Expand records to make charts visible
-      ensureRecordsExpanded(recordIds);
-
-      // Wait for charts to be fully rendered
-      await waitForChartsToBeFullyRendered(recordIds);
-
-      // Capture all chart images
-      const chartImages = await captureAllChartImages(recordIds, ensureRecordsExpanded);
-      console.log(`[Print PDF] Captured ${Object.keys(chartImages).length} charts out of ${recordIds.length}`);
-
-      // Generate PDF using the same function as PDF export
-      const blob = await generateAtterbergPDF({
-        projectName: project.projectName,
-        clientName: project.clientName || projectState.clientName,
-        date: project.date,
-        projectState,
-        records: recordsToPrint,
-        skipDownload: true,
-        chartImages: Object.keys(chartImages).length > 0 ? chartImages : undefined,
-      });
-
-      if (blob) {
-        console.log(`[Print PDF] PDF generated successfully, opening print dialog`);
-        // Open the PDF in a new window and trigger print dialog
-        const pdfUrl = URL.createObjectURL(blob);
-        const printWindow = window.open(pdfUrl, "_blank");
-        if (printWindow) {
-          // Trigger print dialog when the PDF is loaded
-          printWindow.addEventListener("load", () => {
-            printWindow.print();
-          });
-          // Fallback in case load event doesn't fire
-          setTimeout(() => {
-            printWindow.print();
-          }, 500);
-        } else {
-          toast.error("Failed to open print dialog. Pop-ups may be blocked.");
-        }
-      } else {
-        toast.error("Failed to generate PDF");
-      }
-    } catch (error) {
-      console.error("Error in PDF print flow:", error);
-      toast.error("Error generating PDF for print");
-    }
-  }, [computedRecords, project.clientName, project.date, project.projectName, projectState, captureAllChartImages, ensureRecordsExpanded, waitForChartsToBeFullyRendered]);
 
   const handleExportJSON = useCallback(async () => {
     if (computedRecords.length === 0) {
@@ -2105,7 +2111,57 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
                 if (ids.length > 0) {
                   setPrintProcessing("processing");
                   try {
-                    await generateAndPrintPDF(ids);
+                    console.log(`[Print PDF] Starting PDF generation for ${ids.length} records`);
+
+                    // Get the records to print
+                    const recordsToPrint = computedRecords.filter((r) => ids.includes(r.id));
+                    if (recordsToPrint.length === 0) {
+                      toast.error("No records found to print");
+                      setPrintProcessing("idle");
+                      return;
+                    }
+
+                    // Expand records to make charts visible
+                    ensureRecordsExpanded(ids);
+
+                    // Wait for charts to be fully rendered
+                    await waitForChartsToBeFullyRendered(ids);
+
+                    // Capture all chart images
+                    const chartImages = await captureAllChartImages(ids, ensureRecordsExpanded);
+                    console.log(`[Print PDF] Captured ${Object.keys(chartImages).length} charts out of ${ids.length}`);
+
+                    // Generate PDF using the same function as PDF export
+                    const blob = await generateAtterbergPDF({
+                      projectName: project.projectName,
+                      clientName: project.clientName || projectState.clientName,
+                      date: project.date,
+                      projectState,
+                      records: recordsToPrint,
+                      skipDownload: true,
+                      chartImages: Object.keys(chartImages).length > 0 ? chartImages : undefined,
+                    });
+
+                    if (blob) {
+                      console.log(`[Print PDF] PDF generated successfully, opening print dialog`);
+                      // Open the PDF in a new window and trigger print dialog
+                      const pdfUrl = URL.createObjectURL(blob);
+                      const printWindow = window.open(pdfUrl, "_blank");
+                      if (printWindow) {
+                        // Trigger print dialog when the PDF is loaded
+                        printWindow.addEventListener("load", () => {
+                          printWindow.print();
+                        });
+                        // Fallback in case load event doesn't fire
+                        setTimeout(() => {
+                          printWindow.print();
+                        }, 500);
+                      } else {
+                        toast.error("Failed to open print dialog. Pop-ups may be blocked.");
+                      }
+                    } else {
+                      toast.error("Failed to generate PDF");
+                    }
                     setPrintProcessing("idle");
                   } catch (error) {
                     console.error("Error in print flow:", error);
