@@ -499,8 +499,9 @@
     page-break-after: always;
   }
 
-  /* Hide on-screen editing surface */
-  body[data-print-mode="atterberg-selected"] .atterberg-record.is-print-selected .atterberg-edit-surface {
+  /* Hide on-screen editing surface and surrounding page chrome */
+  body[data-print-mode="atterberg-selected"] .atterberg-record.is-print-selected .atterberg-edit-surface,
+  body[data-print-mode="atterberg-selected"] .atterberg-record.is-print-selected > *:not(.atterberg-print-sheet) {
     display: none !important;
   }
 
@@ -515,6 +516,13 @@
   body[data-print-mode="atterberg-selected"] aside,
   body[data-print-mode="atterberg-selected"] [data-radix-popper-content-wrapper] {
     display: none !important;
+    height: 0 !important;
+    width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    overflow: hidden !important;
+    visibility: hidden !important;
   }
 
   /* Ensure print sheet stays intact across pages */
@@ -532,6 +540,8 @@
   color: #1a1a1a;
   padding: 2mm;
   box-sizing: border-box;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 .atterberg-print-sheet .aps-header {
   display: flex;
@@ -602,11 +612,15 @@
   grid-template-columns: 45% 1fr;
   gap: 8px;
   margin-top: 8px;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 .atterberg-print-sheet .aps-chart-box {
   border: 1px solid #ccc;
   padding: 6px;
   background: #fff8ec;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 .atterberg-print-sheet .aps-chart-box svg {
   width: 100% !important;
