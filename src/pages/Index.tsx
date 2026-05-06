@@ -870,7 +870,7 @@ const Index = ({ initialTab }: IndexProps) => {
           userEmail={currentUser?.email}
         />
         <SidebarInset className="flex flex-col min-h-svh">
-          <header className="border-b sticky top-0 z-10" style={{ borderColor: "#E3E1D9", backgroundColor: "#FFFFFF" }}>
+          <header className="border-b sticky top-0 z-10 print:hidden" style={{ borderColor: "#E3E1D9", backgroundColor: "#FFFFFF" }}>
             <div className="px-4 md:px-6 py-3">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
