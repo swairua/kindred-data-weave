@@ -76,6 +76,7 @@ import {
 import { generateAtterbergXLSX } from "@/lib/xlsxExporter";
 import { ExportPreviewModal, type ExportPreviewData } from "@/components/ExportPreviewModal";
 import html2canvas from "html2canvas";
+import { waitForPrintDocumentReady } from "@/lib/printDocumentReady";
 
 const STORAGE_KEY = "atterbergProjectState";
 
@@ -600,6 +601,7 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
   const [previewData, setPreviewData] = useState<ExportPreviewData | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [isExporting, setIsExporting] = useState<"json" | "pdf" | "xlsx" | null>(null);
+  const [printProcessing, setPrintProcessing] = useState<"idle" | "saving" | "processing" | "ready">("idle");
   const [selectedTestIds, setSelectedTestIds] = useState<
     Record<
       string,
@@ -1177,27 +1179,62 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
         el.classList.remove("is-print-selected");
       });
       window.removeEventListener("afterprint", cleanup);
+      // Reset print processing state after print
+      setPrintProcessing("idle");
     };
     window.addEventListener("afterprint", cleanup);
     setTimeout(() => window.print(), 50);
   }, []);
 
   const handleSaveAndPrint = useCallback(async () => {
-    if (saveDebounceTimeoutRef.current) {
-      clearTimeout(saveDebounceTimeoutRef.current);
-    }
-    await handleSave();
-    if (computedRecords.length === 0) {
-      toast.info("Nothing to print");
+    // Prevent multiple concurrent print operations
+    if (printProcessing !== "idle") {
       return;
     }
-    if (computedRecords.length === 1) {
-      runBrowserPrint([computedRecords[0].id]);
-    } else {
-      setPrintSelection(new Set(computedRecords.map((r) => r.id)));
-      setPrintDialogOpen(true);
+
+    try {
+      // Clear any pending debounced save
+      if (saveDebounceTimeoutRef.current) {
+        clearTimeout(saveDebounceTimeoutRef.current);
+      }
+
+      // Step 1: Save to database
+      setPrintProcessing("saving");
+      await handleSave();
+
+      // Check if we have records to print
+      if (computedRecords.length === 0) {
+        toast.info("Nothing to print");
+        setPrintProcessing("idle");
+        return;
+      }
+
+      // Determine which records to print
+      const recordIds = computedRecords.length === 1
+        ? [computedRecords[0].id]
+        : undefined;
+
+      // For single record, proceed to processing. For multiple, show dialog first.
+      if (recordIds) {
+        // Step 2: Process document (wait for rendering)
+        setPrintProcessing("processing");
+        await waitForPrintDocumentReady(recordIds[0], 5000);
+
+        // Step 3: Ready to print
+        setPrintProcessing("ready");
+        runBrowserPrint(recordIds);
+      } else {
+        // Show dialog for record selection
+        setPrintSelection(new Set(computedRecords.map((r) => r.id)));
+        setPrintDialogOpen(true);
+        setPrintProcessing("idle");
+      }
+    } catch (error) {
+      console.error("Error in save and print flow:", error);
+      toast.error("Error during save and print");
+      setPrintProcessing("idle");
     }
-  }, [handleSave, computedRecords, runBrowserPrint]);
+  }, [handleSave, computedRecords, runBrowserPrint, printProcessing]);
 
   const navigate = useNavigate();
 
@@ -1940,10 +1977,16 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
               type="button"
               size="sm"
               onClick={handleSaveAndPrint}
-              disabled={saveStatus === "saving"}
+              disabled={saveStatus === "saving" || printProcessing !== "idle"}
               className="bg-emerald-600 hover:bg-emerald-700 text-white"
             >
-              {saveStatus === "saving" ? "Saving…" : "Save & Print"}
+              {printProcessing === "saving" || saveStatus === "saving"
+                ? "Saving…"
+                : printProcessing === "processing"
+                ? "Processing print…"
+                : printProcessing === "ready"
+                ? "Opening print…"
+                : "Save & Print"}
             </Button>
           </div>
         )}
@@ -2003,10 +2046,22 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
             <Button variant="outline" onClick={() => setPrintDialogOpen(false)}>Cancel</Button>
             <Button
               disabled={printSelection.size === 0}
-              onClick={() => {
+              onClick={async () => {
                 const ids = Array.from(printSelection);
                 setPrintDialogOpen(false);
-                runBrowserPrint(ids);
+                // Process document for first selected record
+                if (ids.length > 0) {
+                  setPrintProcessing("processing");
+                  try {
+                    await waitForPrintDocumentReady(ids[0], 5000);
+                    setPrintProcessing("ready");
+                    runBrowserPrint(ids);
+                  } catch (error) {
+                    console.error("Error processing print document:", error);
+                    toast.error("Error preparing document for print");
+                    setPrintProcessing("idle");
+                  }
+                }
               }}
             >
               {printSelection.size === computedRecords.length
