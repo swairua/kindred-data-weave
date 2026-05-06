@@ -1,0 +1,775 @@
+{
+  "totalCells": 143,
+  "sharedStringsCount": 52,
+  "cells": {
+    "J2": {
+      "type": "n",
+      "rawValue": "0",
+      "displayValue": "0"
+    },
+    "C10": {
+      "type": "n",
+      "rawValue": "1",
+      "displayValue": "1"
+    },
+    "C13": {
+      "type": "n",
+      "rawValue": "2",
+      "displayValue": "2"
+    },
+    "F13": {
+      "type": "n",
+      "rawValue": "3",
+      "displayValue": "3"
+    },
+    "C14": {
+      "type": "n",
+      "rawValue": "4",
+      "displayValue": "4"
+    },
+    "F14": {
+      "type": "n",
+      "rawValue": "5",
+      "displayValue": "5"
+    },
+    "C15": {
+      "type": "n",
+      "rawValue": "6",
+      "displayValue": "6"
+    },
+    "F15": {
+      "type": "n",
+      "rawValue": "7",
+      "displayValue": "7"
+    },
+    "G15": {
+      "type": "n",
+      "rawValue": "45968",
+      "displayValue": "45968"
+    },
+    "I15": {
+      "type": "n",
+      "rawValue": "8",
+      "displayValue": "8"
+    },
+    "Q15": {
+      "type": "n",
+      "rawValue": "9",
+      "displayValue": "9"
+    },
+    "B16": {
+      "type": "n",
+      "rawValue": "10",
+      "displayValue": "10"
+    },
+    "C16": {
+      "type": "n",
+      "rawValue": "11",
+      "displayValue": "11"
+    },
+    "F16": {
+      "type": "n",
+      "rawValue": "12",
+      "displayValue": "12"
+    },
+    "G16": {
+      "type": "n",
+      "rawValue": "13",
+      "displayValue": "13"
+    },
+    "I16": {
+      "type": "n",
+      "rawValue": "14",
+      "displayValue": "14"
+    },
+    "J16": {
+      "type": "n",
+      "rawValue": "9",
+      "displayValue": "9"
+    },
+    "K16": {
+      "type": "n",
+      "rawValue": "15",
+      "displayValue": "15"
+    },
+    "R16": {
+      "type": "n",
+      "rawValue": "16.399999999999999",
+      "displayValue": "16.399999999999999"
+    },
+    "M17": {
+      "type": "n",
+      "rawValue": "18.100000000000001",
+      "displayValue": "18.100000000000001"
+    },
+    "N17": {
+      "type": "n",
+      "rawValue": "20.2",
+      "displayValue": "20.2"
+    },
+    "O17": {
+      "type": "n",
+      "rawValue": "22.3",
+      "displayValue": "22.3"
+    },
+    "P17": {
+      "type": "n",
+      "rawValue": "24.1",
+      "displayValue": "24.1"
+    },
+    "Q17": {
+      "type": "n",
+      "rawValue": "16",
+      "displayValue": "16"
+    },
+    "R17": {
+      "type": "n",
+      "rawValue": "17",
+      "displayValue": "17"
+    },
+    "B18": {
+      "type": "n",
+      "rawValue": "18",
+      "displayValue": "18"
+    },
+    "F18": {
+      "type": "n",
+      "rawValue": "DF",
+      "displayValue": "DF"
+    },
+    "G18": {
+      "type": "n",
+      "rawValue": "SD",
+      "displayValue": "SD"
+    },
+    "H18": {
+      "type": "n",
+      "rawValue": "AS",
+      "displayValue": "AS"
+    },
+    "I18": {
+      "type": "n",
+      "rawValue": "SDF",
+      "displayValue": "SDF"
+    },
+    "L18": {
+      "type": "n",
+      "rawValue": "36.549999999999997",
+      "displayValue": "36.549999999999997"
+    },
+    "M18": {
+      "type": "n",
+      "rawValue": "34.81",
+      "displayValue": "34.81"
+    },
+    "N18": {
+      "type": "n",
+      "rawValue": "35.32",
+      "displayValue": "35.32"
+    },
+    "O18": {
+      "type": "n",
+      "rawValue": "31.66",
+      "displayValue": "31.66"
+    },
+    "P18": {
+      "type": "n",
+      "rawValue": "38.049999999999997",
+      "displayValue": "38.049999999999997"
+    },
+    "Q18": {
+      "type": "n",
+      "rawValue": "7.22",
+      "displayValue": "7.22"
+    },
+    "R18": {
+      "type": "n",
+      "rawValue": "7.3",
+      "displayValue": "7.3"
+    },
+    "B19": {
+      "type": "n",
+      "rawValue": "19",
+      "displayValue": "19"
+    },
+    "C19": {
+      "type": "n",
+      "rawValue": "15.77",
+      "displayValue": "15.77"
+    },
+    "F19": {
+      "type": "n",
+      "rawValue": "17.850000000000001",
+      "displayValue": "17.850000000000001"
+    },
+    "G19": {
+      "type": "n",
+      "rawValue": "20.100000000000001",
+      "displayValue": "20.100000000000001"
+    },
+    "H19": {
+      "type": "n",
+      "rawValue": "21.9",
+      "displayValue": "21.9"
+    },
+    "I19": {
+      "type": "n",
+      "rawValue": "24.3",
+      "displayValue": "24.3"
+    },
+    "J19": {
+      "type": "n",
+      "rawValue": "9",
+      "displayValue": "9"
+    },
+    "K19": {
+      "type": "n",
+      "rawValue": "9",
+      "displayValue": "9"
+    },
+    "L19": {
+      "type": "n",
+      "rawValue": "26.41",
+      "displayValue": "26.41"
+    },
+    "M19": {
+      "type": "n",
+      "rawValue": "25.54",
+      "displayValue": "25.54"
+    },
+    "N19": {
+      "type": "n",
+      "rawValue": "29.36",
+      "displayValue": "29.36"
+    },
+    "O19": {
+      "type": "n",
+      "rawValue": "25.39",
+      "displayValue": "25.39"
+    },
+    "P19": {
+      "type": "n",
+      "rawValue": "25.81",
+      "displayValue": "25.81"
+    },
+    "Q19": {
+      "type": "n",
+      "rawValue": "5.42",
+      "displayValue": "5.42"
+    },
+    "R19": {
+      "type": "n",
+      "rawValue": "5.46",
+      "displayValue": "5.46"
+    },
+    "B20": {
+      "type": "n",
+      "rawValue": "20",
+      "displayValue": "20"
+    },
+    "F20": {
+      "type": "n",
+      "rawValue": "16.47",
+      "displayValue": "16.47"
+    },
+    "G20": {
+      "type": "n",
+      "rawValue": "16.5",
+      "displayValue": "16.5"
+    },
+    "H20": {
+      "type": "n",
+      "rawValue": "14",
+      "displayValue": "14"
+    },
+    "I20": {
+      "type": "n",
+      "rawValue": "56.939354838709676",
+      "displayValue": "56.939354838709676"
+    },
+    "J20": {
+      "type": "n",
+      "rawValue": "14.080332103321034",
+      "displayValue": "14.080332103321034"
+    },
+    "K20": {
+      "type": "n",
+      "rawValue": "14.827289377289375",
+      "displayValue": "14.827289377289375"
+    },
+    "M20": {
+      "type": "n",
+      "rawValue": "9.2700000000000031",
+      "displayValue": "9.2700000000000031"
+    },
+    "N20": {
+      "type": "n",
+      "rawValue": "5.9600000000000009",
+      "displayValue": "5.9600000000000009"
+    },
+    "O20": {
+      "type": "n",
+      "rawValue": "6.27",
+      "displayValue": "6.27"
+    },
+    "P20": {
+      "type": "n",
+      "rawValue": "12.239999999999998",
+      "displayValue": "12.239999999999998"
+    },
+    "Q20": {
+      "type": "n",
+      "rawValue": "1.7999999999999998",
+      "displayValue": "1.7999999999999998"
+    },
+    "R20": {
+      "type": "n",
+      "rawValue": "1.8399999999999999",
+      "displayValue": "1.8399999999999999"
+    },
+    "B21": {
+      "type": "n",
+      "rawValue": "21",
+      "displayValue": "21"
+    },
+    "F21": {
+      "type": "n",
+      "rawValue": "9.48",
+      "displayValue": "9.48"
+    },
+    "G21": {
+      "type": "n",
+      "rawValue": "9.3800000000000008",
+      "displayValue": "9.3800000000000008"
+    },
+    "H21": {
+      "type": "n",
+      "rawValue": "7.85",
+      "displayValue": "7.85"
+    },
+    "I21": {
+      "type": "n",
+      "rawValue": "31.52",
+      "displayValue": "31.52"
+    },
+    "J21": {
+      "type": "n",
+      "rawValue": "10.57",
+      "displayValue": "10.57"
+    },
+    "K21": {
+      "type": "n",
+      "rawValue": "11.09",
+      "displayValue": "11.09"
+    },
+    "B22": {
+      "type": "n",
+      "rawValue": "22",
+      "displayValue": "22"
+    },
+    "C22": {
+      "type": "n",
+      "rawValue": "9",
+      "displayValue": "9"
+    },
+    "F22": {
+      "type": "n",
+      "rawValue": "9",
+      "displayValue": "9"
+    },
+    "G22": {
+      "type": "n",
+      "rawValue": "9",
+      "displayValue": "9"
+    },
+    "H22": {
+      "type": "n",
+      "rawValue": "9",
+      "displayValue": "9"
+    },
+    "I22": {
+      "type": "n",
+      "rawValue": "9",
+      "displayValue": "9"
+    },
+    "J22": {
+      "type": "n",
+      "rawValue": "9",
+      "displayValue": "9"
+    },
+    "K22": {
+      "type": "n",
+      "rawValue": "9",
+      "displayValue": "9"
+    },
+    "B23": {
+      "type": "n",
+      "rawValue": "23",
+      "displayValue": "23"
+    },
+    "F23": {
+      "type": "n",
+      "rawValue": "6.9899999999999984",
+      "displayValue": "6.9899999999999984"
+    },
+    "G23": {
+      "type": "n",
+      "rawValue": "7.1199999999999992",
+      "displayValue": "7.1199999999999992"
+    },
+    "H23": {
+      "type": "n",
+      "rawValue": "6.15",
+      "displayValue": "6.15"
+    },
+    "I23": {
+      "type": "n",
+      "rawValue": "25.41935483870968",
+      "displayValue": "25.41935483870968"
+    },
+    "J23": {
+      "type": "n",
+      "rawValue": "3.5103321033210335",
+      "displayValue": "3.5103321033210335"
+    },
+    "K23": {
+      "type": "n",
+      "rawValue": "3.7372893772893763",
+      "displayValue": "3.7372893772893763"
+    },
+    "B24": {
+      "type": "n",
+      "rawValue": "24",
+      "displayValue": "24"
+    },
+    "I24": {
+      "type": "n",
+      "rawValue": "31.52",
+      "displayValue": "31.52"
+    },
+    "J24": {
+      "type": "n",
+      "rawValue": "10.57",
+      "displayValue": "10.57"
+    },
+    "K24": {
+      "type": "n",
+      "rawValue": "11.09",
+      "displayValue": "11.09"
+    },
+    "M24": {
+      "type": "n",
+      "rawValue": "25",
+      "displayValue": "25"
+    },
+    "N24": {
+      "type": "n",
+      "rawValue": "26",
+      "displayValue": "26"
+    },
+    "O24": {
+      "type": "n",
+      "rawValue": "27",
+      "displayValue": "27"
+    },
+    "P24": {
+      "type": "n",
+      "rawValue": "28",
+      "displayValue": "28"
+    },
+    "Q24": {
+      "type": "n",
+      "rawValue": "29",
+      "displayValue": "29"
+    },
+    "B25": {
+      "type": "n",
+      "rawValue": "30",
+      "displayValue": "30"
+    },
+    "F25": {
+      "type": "n",
+      "rawValue": "73.73417721518986",
+      "displayValue": "73.73417721518986"
+    },
+    "G25": {
+      "type": "n",
+      "rawValue": "75.906183368869918",
+      "displayValue": "75.906183368869918"
+    },
+    "H25": {
+      "type": "n",
+      "rawValue": "78.343949044585997",
+      "displayValue": "78.343949044585997"
+    },
+    "I25": {
+      "type": "n",
+      "rawValue": "80.645161290322577",
+      "displayValue": "80.645161290322577"
+    },
+    "J25": {
+      "type": "n",
+      "rawValue": "33.210332103321036",
+      "displayValue": "33.210332103321036"
+    },
+    "K25": {
+      "type": "n",
+      "rawValue": "33.699633699633694",
+      "displayValue": "33.699633699633694"
+    },
+    "M25": {
+      "type": "n",
+      "rawValue": "15.77",
+      "displayValue": "15.77"
+    },
+    "N25": {
+      "type": "n",
+      "rawValue": "17.850000000000001",
+      "displayValue": "17.850000000000001"
+    },
+    "O25": {
+      "type": "n",
+      "rawValue": "20.100000000000001",
+      "displayValue": "20.100000000000001"
+    },
+    "P25": {
+      "type": "n",
+      "rawValue": "21.9",
+      "displayValue": "21.9"
+    },
+    "Q25": {
+      "type": "n",
+      "rawValue": "24.3",
+      "displayValue": "24.3"
+    },
+    "B26": {
+      "type": "n",
+      "rawValue": "15",
+      "displayValue": "15"
+    },
+    "K26": {
+      "type": "n",
+      "rawValue": "12.36",
+      "displayValue": "12.36"
+    },
+    "N26": {
+      "type": "n",
+      "rawValue": "16.47",
+      "displayValue": "16.47"
+    },
+    "O26": {
+      "type": "n",
+      "rawValue": "16.5",
+      "displayValue": "16.5"
+    },
+    "P26": {
+      "type": "n",
+      "rawValue": "14",
+      "displayValue": "14"
+    },
+    "Q26": {
+      "type": "n",
+      "rawValue": "16.8",
+      "displayValue": "16.8"
+    },
+    "B27": {
+      "type": "n",
+      "rawValue": "7.2",
+      "displayValue": "7.2"
+    },
+    "N27": {
+      "type": "n",
+      "rawValue": "9.48",
+      "displayValue": "9.48"
+    },
+    "O27": {
+      "type": "n",
+      "rawValue": "9.3800000000000008",
+      "displayValue": "9.3800000000000008"
+    },
+    "P27": {
+      "type": "n",
+      "rawValue": "7.85",
+      "displayValue": "7.85"
+    },
+    "Q27": {
+      "type": "n",
+      "rawValue": "9.3000000000000007",
+      "displayValue": "9.3000000000000007"
+    },
+    "B31": {
+      "type": "n",
+      "rawValue": "31",
+      "displayValue": "31"
+    },
+    "H32": {
+      "type": "n",
+      "rawValue": "32",
+      "displayValue": "32"
+    },
+    "H33": {
+      "type": "n",
+      "rawValue": "140",
+      "displayValue": "140"
+    },
+    "K33": {
+      "type": "n",
+      "rawValue": "33",
+      "displayValue": "33"
+    },
+    "H34": {
+      "type": "n",
+      "rawValue": "112",
+      "displayValue": "112"
+    },
+    "K34": {
+      "type": "n",
+      "rawValue": "34",
+      "displayValue": "34"
+    },
+    "K35": {
+      "type": "n",
+      "rawValue": "35",
+      "displayValue": "35"
+    },
+    "O37": {
+      "type": "n",
+      "rawValue": "36",
+      "displayValue": "36"
+    },
+    "B38": {
+      "type": "n",
+      "rawValue": "37",
+      "displayValue": "37"
+    },
+    "O39": {
+      "type": "n",
+      "rawValue": "38",
+      "displayValue": "38"
+    },
+    "B40": {
+      "type": "n",
+      "rawValue": "39",
+      "displayValue": "39"
+    },
+    "K40": {
+      "type": "n",
+      "rawValue": "40",
+      "displayValue": "40"
+    },
+    "N41": {
+      "type": "n",
+      "rawValue": "41",
+      "displayValue": "41"
+    },
+    "K42": {
+      "type": "n",
+      "rawValue": "42",
+      "displayValue": "42"
+    },
+    "H43": {
+      "type": "n",
+      "rawValue": "88.6",
+      "displayValue": "88.6"
+    },
+    "K43": {
+      "type": "n",
+      "rawValue": "43",
+      "displayValue": "43"
+    },
+    "O44": {
+      "type": "n",
+      "rawValue": "44",
+      "displayValue": "44"
+    },
+    "K45": {
+      "type": "n",
+      "rawValue": "45",
+      "displayValue": "45"
+    },
+    "H47": {
+      "type": "n",
+      "rawValue": "46",
+      "displayValue": "46"
+    },
+    "B49": {
+      "type": "n",
+      "rawValue": "47",
+      "displayValue": "47"
+    },
+    "H49": {
+      "type": "n",
+      "rawValue": "48",
+      "displayValue": "48"
+    },
+    "C53": {
+      "type": "n",
+      "rawValue": "49",
+      "displayValue": "49"
+    },
+    "D53": {
+      "type": "n",
+      "rawValue": "50",
+      "displayValue": "50"
+    },
+    "H53": {
+      "type": "n",
+      "rawValue": "51",
+      "displayValue": "51"
+    }
+  },
+  "sharedStrings": [
+    "ATTERBERG LIMITS (BS 1377 PART 2, 4.3 : 1990)",
+    "Client name:",
+    "NILIUS KARANJA",
+    "Project/Site name:",
+    "PROPOSED CONSTRUCTION OF A PERIMETER WALL",
+    "Sampled and submitted by:",
+    "CRANSFIELD",
+    "Date submitted:",
+    "Date tested:",
+    "-",
+    "Sample ID:",
+    "BH1",
+    "Sample depth (M):",
+    "1.0-6.4",
+    "Sample No:",
+    "PLASTIC LIMIT",
+    "PR",
+    "MG",
+    "Container No",
+    "Penetration (mm)",
+    "Wt of Container + Wet Soil (g)",
+    "Wt of Container + Dry Soil (g)",
+    "Wt of Container (g)",
+    "Wt of Moisture (g)",
+    "Wt of Dry Soil (g)",
+    "TR",
+    "DF",
+    "SD",
+    "AS",
+    "SDF",
+    "Moisture Content (%)",
+    "LINEAR SHRINKAGE",
+    "Initial length                                 (mm)",
+    "Final length                                   (mm)",
+    "Shrinkage                                           (%)",
+    "A-7-5",
+    "≥",
+    "A-7-6",
+    "≤",
+    "LIQUID LIMIT                                    (%)",
+    "PLASTIC LIMIT                                  (%)",
+    "PLASTICITY INDEX                          (%)",
+    "Passing 425 µm                               (%)",
+    "MODULAS OF PLASTICITY",
+    "LINEAR SHRINKAGE                       (%)",
+    "SOIL CLASSIFICATION",
+    "USCS",
+    "AASHTO",
+    "Tested by:",
+    "JOAN NJOGU",
+    "Date reported",
+    "Checked by:_____________"
+  ]
+}

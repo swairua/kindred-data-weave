@@ -1,0 +1,519 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=DM+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Cransfield live site colors - warm off-white background (#F4F3EF) */
+    --background: 38 17% 96%;
+    --foreground: 28 21% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 28 21% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 28 21% 11%;
+
+    /* Cransfield dark green accent #2B5F3F */
+    --primary: 153 40% 32%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 38 13% 94%;
+    --secondary-foreground: 28 21% 11%;
+
+    --muted: 38 13% 94%;
+    --muted-foreground: 41 7% 42%;
+
+    /* Light green accent #EAF2ED - accent foreground text color should match primary */
+    --accent: 153 24% 94%;
+    --accent-foreground: 153 40% 32%;
+
+    --destructive: 0 88% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Live site border color #E3E1D9 */
+    --border: 38 10% 88%;
+    --input: 38 10% 88%;
+    --ring: 153 40% 32%;
+
+    --radius: 0.625rem;
+
+    --warning: 42 95% 51%;
+    --warning-foreground: 0 0% 100%;
+
+    --success: 145 35% 32%;
+    --success-foreground: 0 0% 100%;
+
+    /* Calculated field highlight - light green background */
+    --calculated: 145 15% 94%;
+    --calculated-foreground: 145 35% 32%;
+
+    /* Light sidebar matching live site */
+    --sidebar-background: 40 8% 96%;
+    --sidebar-foreground: 38 10% 20%;
+    --sidebar-primary: 145 35% 32%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 145 15% 94%;
+    --sidebar-accent-foreground: 145 35% 32%;
+    --sidebar-border: 40 10% 88%;
+    --sidebar-ring: 145 35% 32%;
+
+    --font-body: 'Outfit', system-ui, sans-serif;
+    --font-mono: 'DM Mono', 'JetBrains Mono', monospace;
+  }
+
+  .dark {
+    --background: 224 22% 10%;
+    --foreground: 210 20% 96%;
+
+    --card: 224 20% 13%;
+    --card-foreground: 210 20% 96%;
+
+    --popover: 224 20% 13%;
+    --popover-foreground: 210 20% 96%;
+
+    --primary: 214 90% 60%;
+    --primary-foreground: 222 47% 11%;
+
+    --secondary: 217 19% 20%;
+    --secondary-foreground: 210 20% 96%;
+
+    --muted: 217 19% 17%;
+    --muted-foreground: 215 16% 65%;
+
+    --accent: 160 60% 42%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 63% 45%;
+    --destructive-foreground: 210 20% 96%;
+
+    --border: 217 19% 22%;
+    --input: 217 19% 22%;
+    --ring: 214 90% 60%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --success: 160 60% 42%;
+    --success-foreground: 0 0% 100%;
+
+    --calculated: 215 70% 15%;
+    --calculated-foreground: 215 70% 85%;
+
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: var(--font-body);
+  }
+
+  input[type="text"],
+  input[type="number"],
+  input[type="date"],
+  input[type="email"],
+  input[type="password"],
+  input[type="tel"],
+  select,
+  textarea {
+    @apply px-3.5 py-2.5 rounded-lg border border-border bg-card text-foreground;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  input[type="text"]::placeholder,
+  input[type="number"]::placeholder,
+  input[type="date"]::placeholder,
+  input[type="email"]::placeholder,
+  input[type="password"]::placeholder,
+  input[type="tel"]::placeholder,
+  textarea::placeholder {
+    @apply text-muted-foreground;
+  }
+
+  input[type="text"]:focus,
+  input[type="number"]:focus,
+  input[type="date"]:focus,
+  input[type="email"]:focus,
+  input[type="password"]:focus,
+  input[type="tel"]:focus,
+  select:focus,
+  textarea:focus {
+    @apply border-primary ring-2 ring-primary/20;
+  }
+}
+
+@layer components {
+  /* Button styling matching live site */
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg border border-transparent font-medium text-sm cursor-pointer transition-all duration-150 font-body;
+    font-size: 14px;
+  }
+
+  .btn-primary {
+    @apply bg-primary text-white hover:bg-primary/90 active:bg-primary/80;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary text-foreground border-border hover:bg-secondary/80;
+  }
+
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
+
+  .btn-danger {
+    @apply bg-destructive text-white hover:bg-destructive/90;
+  }
+
+  .btn:disabled,
+  .btn-primary:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+
+  /* Form group styling */
+  .form-group {
+    @apply flex flex-col gap-1 mb-4;
+  }
+
+  .form-group label {
+    @apply text-xs font-medium text-muted-foreground;
+  }
+
+  /* Card styling matching live site */
+  .card {
+    @apply bg-card border border-border rounded-xl p-5;
+  }
+
+  .card-header {
+    @apply bg-secondary border-b border-border px-5 py-3 mb-0 rounded-t-xl -m-5 mb-5;
+  }
+
+  .card-header-title {
+    @apply font-semibold text-sm text-foreground;
+  }
+
+  /* Table styling */
+  .data-table {
+    @apply w-full border-collapse text-sm;
+  }
+
+  .data-table th {
+    @apply px-3 py-2 text-left font-medium text-muted-foreground text-xs bg-secondary border-b border-border;
+  }
+
+  .data-table td {
+    @apply px-3 py-2 border-b border-border/50;
+  }
+
+  /* Error/danger styling */
+  .error-text {
+    @apply text-xs text-destructive mt-1;
+  }
+
+  .error-box {
+    @apply bg-destructive/10 border border-destructive/30 rounded-lg p-3 mb-4 text-destructive text-sm;
+  }
+}
+
+@layer utilities {
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes shake {
+    0%, 100% {
+      transform: translateX(0);
+    }
+    25% {
+      transform: translateX(-5px);
+    }
+    75% {
+      transform: translateX(5px);
+    }
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  @keyframes slideInUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slideInLeft {
+    from {
+      opacity: 0;
+      transform: translateX(-30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes slideInRight {
+    from {
+      opacity: 0;
+      transform: translateX(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes pulse-slow {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+
+  @keyframes glow {
+    0%, 100% {
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+    }
+    50% {
+      box-shadow: 0 0 20px rgba(100, 116, 139, 0.3);
+    }
+  }
+
+  @keyframes bounce-gentle {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-5px);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.6s ease-out forwards;
+    opacity: 0;
+  }
+
+  .animate-slide-in-up {
+    animation: slideInUp 0.5s ease-out forwards;
+    opacity: 0;
+  }
+
+  .animate-slide-in-left {
+    animation: slideInLeft 0.5s ease-out forwards;
+    opacity: 0;
+  }
+
+  .animate-slide-in-right {
+    animation: slideInRight 0.5s ease-out forwards;
+    opacity: 0;
+  }
+
+  .animate-pulse-slow {
+    animation: pulse-slow 3s ease-in-out infinite;
+  }
+
+  .animate-glow {
+    animation: glow 2s ease-in-out infinite;
+  }
+
+  .animate-bounce-gentle {
+    animation: bounce-gentle 2s ease-in-out infinite;
+  }
+
+  .animate-shake {
+    animation: shake 0.3s ease-in-out;
+  }
+
+  .animation-delay-200 {
+    animation-delay: 200ms;
+  }
+
+  .animation-delay-2000 {
+    animation-delay: 2s;
+  }
+
+  .animation-delay-4000 {
+    animation-delay: 4s;
+  }
+
+  /* Atterberg data table styling */
+  .atterberg-table {
+    @apply w-full border-collapse;
+  }
+
+  .atterberg-table thead tr {
+    @apply bg-secondary border-b border-border;
+  }
+
+  .atterberg-table th {
+    @apply px-3 py-2.5 text-center font-medium text-muted-foreground text-xs sm:text-sm;
+  }
+
+  .atterberg-table tbody tr {
+    @apply border-b border-border transition-colors;
+  }
+
+  .atterberg-table td {
+    @apply px-2.5 py-1.5 text-center text-xs sm:text-sm border-r border-border/50;
+    font-family: var(--font-mono);
+  }
+
+  .atterberg-table td:last-child {
+    @apply border-r-0;
+  }
+
+  /* Calculated field styling - light green background */
+  .atterberg-calculated {
+    @apply bg-calculated text-calculated-foreground font-medium;
+  }
+
+  /* Numeric/monospace text for data cells */
+  .atterberg-numeric {
+    @apply font-mono text-center;
+  }
+
+  /* Input field styling for Atterberg data */
+  .atterberg-input {
+    @apply h-7 sm:h-8 text-xs sm:text-sm border border-border rounded-md text-center;
+    font-family: var(--font-mono);
+  }
+
+  /* Grading (Sieve Analysis) data table styling */
+  .grading-table {
+    @apply w-full border-collapse;
+  }
+
+  .grading-table thead tr {
+    @apply bg-secondary border-b border-border;
+  }
+
+  .grading-table th {
+    @apply px-3 py-2.5 text-center font-medium text-muted-foreground text-xs sm:text-sm;
+  }
+
+  .grading-table tbody tr {
+    @apply border-b border-border transition-colors;
+  }
+
+  .grading-table td {
+    @apply px-2.5 py-1.5 text-center text-xs sm:text-sm border-r border-border/50;
+    font-family: var(--font-mono);
+  }
+
+  .grading-table td:last-child {
+    @apply border-r-0;
+  }
+
+  /* Calculated field styling for grading - light green background */
+  .grading-calculated {
+    @apply bg-calculated text-calculated-foreground font-medium;
+  }
+
+  /* Input field styling for grading data */
+  .grading-input {
+    @apply h-7 sm:h-8 text-xs sm:text-sm border border-border rounded-md text-center;
+    font-family: var(--font-mono);
+  }
+}
+
+/* Atterberg selective print: when body is in atterberg-selected mode,
+   hide every record card except those with .is-print-selected. */
+@media screen {
+  .atterberg-print-sheet { display: none; }
+}
+@media print {
+  body[data-print-mode="atterberg-selected"] .atterberg-record:not(.is-print-selected) {
+    display: none !important;
+  }
+  body[data-print-mode="atterberg-selected"] .atterberg-record.is-print-selected {
+    break-inside: avoid;
+    page-break-after: always;
+  }
+  body[data-print-mode="atterberg-selected"] .atterberg-record .atterberg-edit-surface {
+    display: none !important;
+  }
+  body[data-print-mode="atterberg-selected"] .atterberg-record .atterberg-print-sheet {
+    display: block !important;
+  }
+  /* Also hide all non-Atterberg page chrome during selective print */
+  body[data-print-mode="atterberg-selected"] header,
+  body[data-print-mode="atterberg-selected"] nav,
+  body[data-print-mode="atterberg-selected"] aside { display: none !important; }
+  @page { size: A4 portrait; margin: 10mm; }
+}
+
+/* Print sheet styling — independent of Tailwind so it survives print mode */
+.atterberg-print-sheet { font-family: Arial, Helvetica, sans-serif; color: #1a1a1a; padding: 4mm; box-sizing: border-box; }
+.atterberg-print-sheet .aps-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.atterberg-print-sheet .aps-header img { max-height: 50px; }
+.atterberg-print-sheet .aps-title-bar { background: #2962A3; color: #fff; padding: 8px 12px; text-align: center; font-weight: 700; font-size: 13px; border-radius: 6px; margin-bottom: 6px; }
+.atterberg-print-sheet .aps-section-bar { background: #2962A3; color: #fff; padding: 5px 8px; text-align: center; font-weight: 700; font-size: 11px; margin: 8px 0 0; }
+.atterberg-print-sheet table { width: 100%; border-collapse: collapse; font-size: 10px; }
+.atterberg-print-sheet table.aps-meta td, .atterberg-print-sheet table.aps-trials td, .atterberg-print-sheet table.aps-trials th, .atterberg-print-sheet table.aps-kv td {
+  border: 1px solid #888; padding: 3px 5px; vertical-align: middle;
+}
+.atterberg-print-sheet table.aps-meta td.lbl, .atterberg-print-sheet table.aps-trials td.lbl, .atterberg-print-sheet table.aps-kv td.lbl {
+  background: #f4f6fa; font-weight: 600; color: #333;
+}
+.atterberg-print-sheet table.aps-trials th { background: #DCE6F5; color: #0b3a73; font-weight: 700; font-size: 9.5px; text-align: center; }
+.atterberg-print-sheet table.aps-trials td { text-align: center; }
+.atterberg-print-sheet table.aps-trials .pl-cell { background: #FFEB99; }
+.atterberg-print-sheet table.aps-trials th.pl-cell { background: #ffd966; }
+.atterberg-print-sheet .aps-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.atterberg-print-sheet .aps-chart-box { border: 1px solid #ccc; padding: 6px; background: #fff8ec; }
+.atterberg-print-sheet .aps-chart-box svg { width: 100% !important; height: auto !important; }
+.atterberg-print-sheet .aps-side .aps-section-bar { margin-top: 0; }
+.atterberg-print-sheet .aps-side > .aps-section-bar + table { margin-bottom: 6px; }
+.atterberg-print-sheet .aps-side .aps-section-bar:not(:first-child) { margin-top: 8px; }
+.atterberg-print-sheet .aps-footer { display: flex; justify-content: space-between; gap: 12px; margin-top: 10px; font-size: 10px; border-top: 1px solid #888; padding-top: 6px; align-items: center; }
+.atterberg-print-sheet .aps-footer .lbl { font-weight: 600; }
+.atterberg-print-sheet .aps-checked { position: relative; padding-right: 60px; }
+.atterberg-print-sheet .aps-stamp { position: absolute; right: -10px; top: -20px; width: 60px; height: 60px; opacity: 0.85; }
+
