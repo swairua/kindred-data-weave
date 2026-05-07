@@ -56,9 +56,9 @@ const LiquidLimitFlowChart = ({ trials, width = 900, height = 700 }: LiquidLimit
   ].sort((a, b) => a.penetration - b.penetration);
 
   return (
-    <div className="bg-white p-1 w-full" style={{ maxWidth: width, height }}>
+    <div className="bg-white w-full" style={{ maxWidth: width, height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={merged} margin={{ top: 20, right: 30, left: 45, bottom: 40 }}>
+        <LineChart data={merged} margin={{ top: 15, right: 18, left: 30, bottom: 25 }}>
           <CartesianGrid stroke="#e5e7eb" strokeWidth={1.5} fill="#F5E6D3" />
           <XAxis
             dataKey="penetration"
