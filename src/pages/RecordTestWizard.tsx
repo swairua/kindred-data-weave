@@ -74,8 +74,8 @@ interface WizardState {
   clientName: string;
   projectDate: string;
   sampleId: string;
-  sampleDepth: string;
-  sampleLocation: string;
+  sampleDepthFrom: string;
+  sampleDepthTo: string;
   sampleNotes: string;
 }
 
@@ -89,8 +89,8 @@ const emptyState: WizardState = {
   clientName: "",
   projectDate: new Date().toISOString().split("T")[0],
   sampleId: "",
-  sampleDepth: "",
-  sampleLocation: "",
+  sampleDepthFrom: "",
+  sampleDepthTo: "",
   sampleNotes: "",
 };
 
@@ -644,12 +644,12 @@ const RecordTestWizard = () => {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="sample-depth">Depth (m)</Label>
-                  <Input id="sample-depth" inputMode="decimal" value={state.sampleDepth} onChange={(e) => update("sampleDepth", e.target.value)} placeholder="e.g. 1.5–2.0" />
+                  <Label htmlFor="sample-depth-from">Depth from (m)</Label>
+                  <Input id="sample-depth-from" inputMode="decimal" value={state.sampleDepthFrom} onChange={(e) => update("sampleDepthFrom", e.target.value)} placeholder="e.g. 1.5" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="sample-location">Borehole / Location</Label>
-                  <Input id="sample-location" value={state.sampleLocation} onChange={(e) => update("sampleLocation", e.target.value)} placeholder="e.g. BH-01" />
+                  <Label htmlFor="sample-depth-to">Depth to (m)</Label>
+                  <Input id="sample-depth-to" inputMode="decimal" value={state.sampleDepthTo} onChange={(e) => update("sampleDepthTo", e.target.value)} placeholder="e.g. 2.0" />
                 </div>
               </div>
               <div className="space-y-2">
@@ -673,8 +673,7 @@ const RecordTestWizard = () => {
                 <Row label="Project" value={state.projectName || "—"} />
                 {state.clientName && <Row label="Client" value={state.clientName} />}
                 <Row label="Sample ID" value={state.sampleId || "—"} />
-                {state.sampleDepth && <Row label="Depth" value={state.sampleDepth} />}
-                {state.sampleLocation && <Row label="Location" value={state.sampleLocation} />}
+                {(state.sampleDepthFrom || state.sampleDepthTo) && <Row label="Depth" value={`${state.sampleDepthFrom || "—"} to ${state.sampleDepthTo || "—"}`} />}
                 {state.sampleNotes && <Row label="Notes" value={state.sampleNotes} />}
               </CardContent>
             </Card>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ChevronDown, ChevronRight, Download, Plus, Trash2, Upload, AlertTriangle } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 import TestSection from "@/components/TestSection";
@@ -66,10 +66,7 @@ import {
   updateRecord as updateApiRecord,
 } from "@/lib/api";
 import {
-  downloadJSON,
-  exportAsJSON,
   extractAtterbergPayload,
-  importFromJSON,
   normalizeAtterbergProjectState,
   type AtterbergExportPayload,
 } from "@/lib/jsonExporter";
@@ -1595,60 +1592,6 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
     }));
   }, []);
 
-  const handleExportJSON = useCallback(async () => {
-    if (computedRecords.length === 0) {
-      toast.error("No records to export");
-      return;
-    }
-
-    // Collect data warnings from records (export proceeds with warnings)
-    const recordsWithWarnings = computedRecords.filter(record => {
-      const { warningMessages } = canRecordBeExported(record);
-      if (warningMessages.length > 0) {
-        console.warn(`Export record "${record.title}" with warnings: ${warningMessages.join("; ")}`);
-      }
-      return warningMessages.length > 0;
-    });
-
-    // Show warning toast if records have data issues, but allow export to proceed
-    if (recordsWithWarnings.length > 0) {
-      toast.warning(`Exporting ${recordsWithWarnings.length} record(s) with data issues (PL > LL) — review and correct the data after export.`);
-    }
-
-    setIsExporting("json");
-    try {
-      const jsonString = exportAsJSON(buildExportPayload());
-      downloadJSON(jsonString, `atterberg-limits-${new Date().toISOString().split("T")[0]}.json`);
-      toast.success("Atterberg project exported");
-    } finally {
-      setIsExporting(null);
-    }
-  }, [buildExportPayload, computedRecords]);
-
-  const handleImportJSON = useCallback(() => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".json";
-    input.onchange = (event: Event) => {
-      const target = event.target as HTMLInputElement;
-      const file = target.files?.[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = () => {
-        const imported = importFromJSON(String(reader.result ?? ""));
-        if (!imported) {
-          toast.error("Invalid JSON file format");
-          return;
-        }
-
-        setProjectState(imported);
-        toast.success(`Imported ${imported.records.length} record(s)`);
-      };
-      reader.readAsText(file);
-    };
-    input.click();
-  }, []);
 
   const exportTables = useMemo(() => buildTablesForExport(computedRecords), [computedRecords]);
 
@@ -2035,15 +1978,6 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
           <Button type="button" onClick={addRecord} className="gap-2 w-full sm:w-auto">
             <Plus className="h-4 w-4" /> Add Record
           </Button>
-
-          <div className="flex flex-col sm:flex-row sm:gap-2 gap-2">
-            <Button type="button" onClick={handleExportJSON} variant="outline" size="sm" className="gap-2 w-full sm:w-auto" disabled={computedRecords.length === 0 || isExporting === "json"}>
-              <Download className="h-4 w-4" /> {isExporting === "json" ? "loading.." : "Export JSON"}
-            </Button>
-            <Button type="button" onClick={handleImportJSON} variant="outline" size="sm" className="gap-2 w-full sm:w-auto">
-              <Upload className="h-4 w-4" /> Import JSON
-            </Button>
-          </div>
         </div>
 
         {computedRecords.length === 0 ? (
