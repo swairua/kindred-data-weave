@@ -2033,6 +2033,7 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
                 onUpdateShrinkageLimitTrials={(testId, trials) => updateTestTrials(record.id, testId, trials)}
                 onSyncTest={(test) => syncComputedTest(record.id, test)}
                 onRegisterChartRef={registerChartRef}
+                adminImages={adminImages}
               />
             ))}
           </div>
@@ -2249,6 +2250,7 @@ interface RecordCardProps {
   onUpdateShrinkageLimitTrials: (testId: string, trials: ShrinkageLimitTrial[]) => void;
   onSyncTest: (test: AtterbergTest) => void;
   onRegisterChartRef: (recordId: string, ref: HTMLDivElement | null) => void;
+  adminImages?: { logo?: string; contacts?: string; stamp?: string };
 }
 
 /**
@@ -2277,6 +2279,7 @@ const RecordCard = ({
   onUpdatePlasticLimitTrials,
   onUpdateShrinkageLimitTrials,
   onRegisterChartRef,
+  adminImages,
 }: RecordCardProps) => {
   // Cleanup chart ref on unmount
   useEffect(() => {
