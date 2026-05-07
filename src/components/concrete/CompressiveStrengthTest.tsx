@@ -229,15 +229,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
 
   return (
     <TestSection title="Compressive Strength (Cube Test)" testKey={testKey} onSave={handleSave} onClear={() => setRows([{ mark: "", dateOfCast: "", dateOfTest: "", load: "", width: "150", height: "150", depth: "150", mass: "", remarks: "" }])} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
-      {!hasProjectSelected && rows.length === 0 ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground mb-2">No project selected</p>
-            <p className="text-xs text-muted-foreground">Select an existing project or create a new one to begin testing</p>
-          </div>
-        </div>
-      ) : (
-        <>
+      <>
           <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-muted/30 rounded-lg">
             <div>
               <Label className="text-xs font-medium mb-1 block">Cement</Label>
@@ -343,8 +335,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
               </ChartContainer>
             </div>
           )}
-        </>
-      )}
+      </>
     </TestSection>
   );
 };
