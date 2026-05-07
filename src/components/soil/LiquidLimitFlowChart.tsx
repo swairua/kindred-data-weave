@@ -56,9 +56,9 @@ const LiquidLimitFlowChart = ({ trials, width = 900, height = 700 }: LiquidLimit
   ].sort((a, b) => a.penetration - b.penetration);
 
   return (
-    <div className="bg-white p-2 w-full" style={{ maxWidth: width, height }}>
+    <div className="bg-white p-1 w-full" style={{ maxWidth: width, height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={merged} margin={{ top: 20, right: 30, left: 60, bottom: 60 }}>
+        <LineChart data={merged} margin={{ top: 20, right: 30, left: 45, bottom: 40 }}>
           <CartesianGrid stroke="#e5e7eb" strokeWidth={1.5} fill="#F5E6D3" />
           <XAxis
             dataKey="penetration"
@@ -69,14 +69,14 @@ const LiquidLimitFlowChart = ({ trials, width = 900, height = 700 }: LiquidLimit
             allowDataOverflow
             stroke="#000"
             strokeWidth={2}
-            label={{ value: "Penetration (mm, Log Scale)", position: "bottom", offset: 15, fontSize: 16, fontWeight: "bold", fill: "#111827" }}
+            label={{ value: "Penetration (mm, Log Scale)", position: "bottom", offset: 8, fontSize: 16, fontWeight: "bold", fill: "#111827" }}
             tick={{ fontSize: 14, fill: "#111827" }}
           />
           <YAxis
             stroke="#000"
             strokeWidth={2}
             domain={["auto", "auto"]}
-            label={{ value: "Moisture Content (%)", angle: -90, position: "left", offset: 15, fontSize: 16, fontWeight: "bold", fill: "#111827" }}
+            label={{ value: "Moisture Content (%)", angle: -90, position: "left", offset: 8, fontSize: 16, fontWeight: "bold", fill: "#111827" }}
             tick={{ fontSize: 14, fill: "#111827" }}
           />
           <ReferenceLine x={20} stroke="#000" strokeDasharray="4 4" />
