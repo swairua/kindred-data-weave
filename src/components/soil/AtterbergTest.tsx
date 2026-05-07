@@ -1115,11 +1115,6 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
         setLastSavedAt(now);
       }
       setLastSaveError(null);
-
-      // Auto-clear success status after 4 seconds (gives users time to continue editing)
-      saveStatusTimeoutRef.current = setTimeout(() => {
-        setSaveStatus("idle");
-      }, 4000);
     } catch (error) {
       let errorMessage = 'Failed to save project';
 
