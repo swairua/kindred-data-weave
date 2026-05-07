@@ -216,13 +216,33 @@ const RecordTestWizard = () => {
     let active = true;
     setLoadingProjects(true);
     setProjectsLoadError(null);
-    const query: Record<string, any> = { limit: 100 };
-    if (state.material) {
-      query.material = state.material;
-    }
-    listRecords<ApiProjectRow>("projects", query)
-      .then((res) => {
-        if (active) setProjects(res.data || []);
+    listRecords<ApiProjectRow>("projects", { limit: 100 })
+      .then(async (res) => {
+        if (!active) return;
+
+        let filteredProjects = res.data || [];
+
+        // If a material is selected, filter projects to only those with records for that material
+        if (state.material) {
+          const projectsWithMaterial: ApiProjectRow[] = [];
+
+          for (const project of filteredProjects) {
+            try {
+              const records = await listRecords<any>("records", { project_id: project.id, limit: 1 });
+              const hasRecordForMaterial = records.data?.some((r: any) => r.material === state.material);
+              if (hasRecordForMaterial) {
+                projectsWithMaterial.push(project);
+              }
+            } catch {
+              // If we can't check records for this project, include it anyway
+              projectsWithMaterial.push(project);
+            }
+          }
+
+          filteredProjects = projectsWithMaterial;
+        }
+
+        if (active) setProjects(filteredProjects);
       })
       .catch((err) => {
         if (!active) return;
