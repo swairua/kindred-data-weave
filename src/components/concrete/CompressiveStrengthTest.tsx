@@ -50,7 +50,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   const defaultRows: Row[] = [
     { mark: "", dateOfCast: "", dateOfTest: "", load: "", width: "150", height: "150", depth: "150", mass: "", remarks: "" },
   ];
-  const [rows, setRows] = useState<Row[]>(project.currentProjectId ? defaultRows : []);
+  const [rows, setRows] = useState<Row[]>(defaultRows);
   const [isSaving, setIsSaving] = useState(false);
   const [testDetails, setTestDetails] = useState<TestDetails>({
     cement: "",
