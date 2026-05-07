@@ -698,7 +698,7 @@
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
   page-break-inside: avoid;
-  min-height: 110mm;
+  min-height: 160mm;
   display: flex;
   align-items: stretch;
   justify-content: stretch;
@@ -707,7 +707,7 @@
   width: 100% !important;
   height: 100% !important;
   max-width: none !important;
-  min-height: 105mm;
+  min-height: 160mm;
   padding: 0 !important;
 }
 .atterberg-print-sheet .aps-chart-box svg {
@@ -734,7 +734,7 @@
   display: flex;
   justify-content: space-between;
   gap: 6mm;
-  margin: 30mm 8mm 0 8mm;
+  margin: 8mm 8mm 0 8mm;
   font-size: 8px;
   border-top: 1px solid #888;
   padding-top: 6mm;
