@@ -230,46 +230,26 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   return (
     <TestSection title="Compressive Strength (Cube Test)" testKey={testKey} onSave={handleSave} onClear={() => setRows([{ mark: "", dateOfCast: "", dateOfTest: "", load: "", width: "150", height: "150", depth: "150", mass: "", remarks: "" }])} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
       <>
-          <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-muted/30 rounded-lg">
-            <div>
-              <Label className="text-xs font-medium mb-1 block">Cement</Label>
-              <Input value={testDetails.cement} onChange={(e) => updateTestDetail("cement", e.target.value)} className="h-8 text-sm" />
-            </div>
-            <div>
-              <Label className="text-xs font-medium mb-1 block">Fine Aggregate</Label>
-              <Input value={testDetails.fineAggregate} onChange={(e) => updateTestDetail("fineAggregate", e.target.value)} className="h-8 text-sm" />
-            </div>
-            <div>
-              <Label className="text-xs font-medium mb-1 block">Coarse Aggregate</Label>
-              <Input value={testDetails.coarseAggregate} onChange={(e) => updateTestDetail("coarseAggregate", e.target.value)} className="h-8 text-sm" />
-            </div>
-            <div>
-              <Label className="text-xs font-medium mb-1 block">Contractor</Label>
-              <Input value={testDetails.contractor} onChange={(e) => updateTestDetail("contractor", e.target.value)} className="h-8 text-sm" />
-            </div>
-            <div>
-              <Label className="text-xs font-medium mb-1 block">Concrete Class</Label>
-              <Input value={testDetails.concreteClass} onChange={(e) => updateTestDetail("concreteClass", e.target.value)} className="h-8 text-sm" />
-            </div>
-            <div>
-              <Label className="text-xs font-medium mb-1 block">Section</Label>
-              <Input value={testDetails.section} onChange={(e) => updateTestDetail("section", e.target.value)} className="h-8 text-sm" />
-            </div>
-            <div>
-              <Label className="text-xs font-medium mb-1 block">Made By</Label>
-              <Input value={testDetails.madeBy} onChange={(e) => updateTestDetail("madeBy", e.target.value)} className="h-8 text-sm" />
-            </div>
-            <div>
-              <Label className="text-xs font-medium mb-1 block">Slump</Label>
-              <Input value={testDetails.slump} onChange={(e) => updateTestDetail("slump", e.target.value)} className="h-8 text-sm" />
-            </div>
-            <div>
-              <Label className="text-xs font-medium mb-1 block">Client Ref</Label>
-              <Input value={testDetails.clientRef} onChange={(e) => updateTestDetail("clientRef", e.target.value)} className="h-8 text-sm" />
-            </div>
-            <div>
-              <Label className="text-xs font-medium mb-1 block">Date Tested</Label>
-              <Input type="date" value={testDetails.dateTested} onChange={(e) => updateTestDetail("dateTested", e.target.value)} className="h-8 text-sm" />
+          <div className="mb-6 p-4 bg-gradient-to-r from-amber-50 to-amber-100 rounded-lg border border-amber-200">
+            <h3 className="text-sm font-semibold text-gray-800 mb-3">Test Details</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+              {[
+                { label: "Cement", value: testDetails.cement },
+                { label: "Fine Aggregate", value: testDetails.fineAggregate },
+                { label: "Coarse Aggregate", value: testDetails.coarseAggregate },
+                { label: "Contractor", value: testDetails.contractor },
+                { label: "Concrete Class", value: testDetails.concreteClass },
+                { label: "Section", value: testDetails.section },
+                { label: "Made By", value: testDetails.madeBy },
+                { label: "Slump", value: testDetails.slump },
+                { label: "Client Ref", value: testDetails.clientRef },
+                { label: "Date Tested", value: testDetails.dateTested },
+              ].map((item) => (
+                <div key={item.label} className="flex flex-col">
+                  <span className="text-xs text-gray-600 font-medium">{item.label}</span>
+                  <span className="text-sm font-semibold text-gray-900">{item.value || "—"}</span>
+                </div>
+              ))}
             </div>
           </div>
 
