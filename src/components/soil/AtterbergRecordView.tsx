@@ -130,6 +130,7 @@ const AtterbergRecordView = ({
   onUpdateShrinkageLimitTrials,
   onUpdatePassing425um,
   onRegisterChartRef,
+  adminImages,
 }: AtterbergRecordViewProps) => {
   const chartRef = useRef<HTMLDivElement | null>(null);
   const autoCreatedRef = useRef<Set<AtterbergTestType>>(new Set());
@@ -612,9 +613,9 @@ const AtterbergRecordView = ({
         project={{
           projectName: project.projectName,
           clientName: project.clientName,
-          logoUrl: project.logoUrl,
-          contactsImageUrl: project.contactsImageUrl,
-          stampImageUrl: project.stampImageUrl,
+          logoUrl: adminImages?.logo ?? project.logoUrl,
+          contactsImageUrl: adminImages?.contacts ?? project.contactsImageUrl,
+          stampImageUrl: adminImages?.stamp ?? project.stampImageUrl,
         }}
         projectState={{
           dateReported: project.dateReported,
