@@ -77,6 +77,16 @@ interface WizardState {
   sampleDepthFrom: string;
   sampleDepthTo: string;
   sampleNotes: string;
+  cement: string;
+  fineAggregate: string;
+  coarseAggregate: string;
+  contractor: string;
+  concreteClass: string;
+  section: string;
+  madeBy: string;
+  slump: string;
+  clientRef: string;
+  dateTested: string;
 }
 
 const STORAGE_KEY = "cransfield_record_wizard";
@@ -92,6 +102,16 @@ const emptyState: WizardState = {
   sampleDepthFrom: "",
   sampleDepthTo: "",
   sampleNotes: "",
+  cement: "",
+  fineAggregate: "",
+  coarseAggregate: "",
+  contractor: "",
+  concreteClass: "",
+  section: "",
+  madeBy: "",
+  slump: "",
+  clientRef: "",
+  dateTested: new Date().toISOString().split("T")[0],
 };
 
 interface ApiProjectRow {
@@ -634,33 +654,51 @@ const RecordTestWizard = () => {
               {step === 3 && (
                 <section className="space-y-6 animate-fade-in max-w-2xl">
             <div>
-              <h2 className="text-2xl font-semibold tracking-tight">Sample setup</h2>
-              <p className="text-sm text-muted-foreground mt-1">Identify the sample you're testing.</p>
+              <h2 className="text-2xl font-semibold tracking-tight">Test details</h2>
+              <p className="text-sm text-muted-foreground mt-1">Enter the concrete sample details.</p>
             </div>
-            <Card>
-              <CardContent className="p-6 space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="sample-id" className="text-sm font-medium mb-2 block">Sample ID *</Label>
-                    <Input id="sample-id" value={state.sampleId} onChange={(e) => update("sampleId", e.target.value)} placeholder="e.g. BH-01 / S-3" className="h-9" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="sample-depth-from" className="text-sm font-medium mb-2 block">Depth from (m)</Label>
-                    <Input id="sample-depth-from" inputMode="decimal" value={state.sampleDepthFrom} onChange={(e) => update("sampleDepthFrom", e.target.value)} placeholder="e.g. 1.5" className="h-9" />
-                  </div>
-                  <div>
-                    <Label htmlFor="sample-depth-to" className="text-sm font-medium mb-2 block">Depth to (m)</Label>
-                    <Input id="sample-depth-to" inputMode="decimal" value={state.sampleDepthTo} onChange={(e) => update("sampleDepthTo", e.target.value)} placeholder="e.g. 2.0" className="h-9" />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="sample-notes" className="text-sm font-medium mb-2 block">Notes (optional)</Label>
-                  <Textarea id="sample-notes" value={state.sampleNotes} onChange={(e) => update("sampleNotes", e.target.value)} placeholder="Visual description, conditions…" rows={4} />
-                </div>
-              </CardContent>
-            </Card>
+            <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-muted/30 rounded-lg">
+              <div>
+                <Label className="text-xs font-medium mb-1 block">Cement</Label>
+                <Input value={state.cement} onChange={(e) => update("cement", e.target.value)} className="h-8 text-sm" />
+              </div>
+              <div>
+                <Label className="text-xs font-medium mb-1 block">Fine Aggregate</Label>
+                <Input value={state.fineAggregate} onChange={(e) => update("fineAggregate", e.target.value)} className="h-8 text-sm" />
+              </div>
+              <div>
+                <Label className="text-xs font-medium mb-1 block">Coarse Aggregate</Label>
+                <Input value={state.coarseAggregate} onChange={(e) => update("coarseAggregate", e.target.value)} className="h-8 text-sm" />
+              </div>
+              <div>
+                <Label className="text-xs font-medium mb-1 block">Contractor</Label>
+                <Input value={state.contractor} onChange={(e) => update("contractor", e.target.value)} className="h-8 text-sm" />
+              </div>
+              <div>
+                <Label className="text-xs font-medium mb-1 block">Concrete Class</Label>
+                <Input value={state.concreteClass} onChange={(e) => update("concreteClass", e.target.value)} className="h-8 text-sm" />
+              </div>
+              <div>
+                <Label className="text-xs font-medium mb-1 block">Section</Label>
+                <Input value={state.section} onChange={(e) => update("section", e.target.value)} className="h-8 text-sm" />
+              </div>
+              <div>
+                <Label className="text-xs font-medium mb-1 block">Made By</Label>
+                <Input value={state.madeBy} onChange={(e) => update("madeBy", e.target.value)} className="h-8 text-sm" />
+              </div>
+              <div>
+                <Label className="text-xs font-medium mb-1 block">Slump</Label>
+                <Input value={state.slump} onChange={(e) => update("slump", e.target.value)} className="h-8 text-sm" />
+              </div>
+              <div>
+                <Label className="text-xs font-medium mb-1 block">Client Ref</Label>
+                <Input value={state.clientRef} onChange={(e) => update("clientRef", e.target.value)} className="h-8 text-sm" />
+              </div>
+              <div>
+                <Label className="text-xs font-medium mb-1 block">Date Tested</Label>
+                <Input type="date" value={state.dateTested} onChange={(e) => update("dateTested", e.target.value)} className="h-8 text-sm" />
+              </div>
+            </div>
           </section>
               )}
 
