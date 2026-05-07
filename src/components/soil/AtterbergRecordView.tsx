@@ -62,6 +62,7 @@ interface AtterbergRecordViewProps {
   onUpdateShrinkageLimitTrials: (testId: string, trials: ShrinkageLimitTrial[]) => void;
   onUpdatePassing425um: (value: string) => void;
   onRegisterChartRef: (recordId: string, ref: HTMLDivElement | null) => void;
+  adminImages?: { logo?: string; contacts?: string; stamp?: string };
 }
 
 const DEFAULT_LL_COLS = 4;
