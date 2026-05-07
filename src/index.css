@@ -706,7 +706,7 @@
 }
 .atterberg-print-sheet .aps-chart-box > div {
   width: 100% !important;
-  height: auto !important;
+  height: 100% !important;
   max-width: none !important;
   padding: 0 !important;
 }
