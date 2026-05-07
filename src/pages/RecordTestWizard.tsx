@@ -637,26 +637,30 @@ const RecordTestWizard = () => {
               <h2 className="text-2xl font-semibold tracking-tight">Sample setup</h2>
               <p className="text-sm text-muted-foreground mt-1">Identify the sample you're testing.</p>
             </div>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="sample-id">Sample ID *</Label>
-                <Input id="sample-id" value={state.sampleId} onChange={(e) => update("sampleId", e.target.value)} placeholder="e.g. BH-01 / S-3" />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="sample-depth-from">Depth from (m)</Label>
-                  <Input id="sample-depth-from" inputMode="decimal" value={state.sampleDepthFrom} onChange={(e) => update("sampleDepthFrom", e.target.value)} placeholder="e.g. 1.5" />
+            <Card>
+              <CardContent className="p-6 space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="sample-id" className="text-sm font-medium mb-2 block">Sample ID *</Label>
+                    <Input id="sample-id" value={state.sampleId} onChange={(e) => update("sampleId", e.target.value)} placeholder="e.g. BH-01 / S-3" className="h-9" />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="sample-depth-to">Depth to (m)</Label>
-                  <Input id="sample-depth-to" inputMode="decimal" value={state.sampleDepthTo} onChange={(e) => update("sampleDepthTo", e.target.value)} placeholder="e.g. 2.0" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="sample-depth-from" className="text-sm font-medium mb-2 block">Depth from (m)</Label>
+                    <Input id="sample-depth-from" inputMode="decimal" value={state.sampleDepthFrom} onChange={(e) => update("sampleDepthFrom", e.target.value)} placeholder="e.g. 1.5" className="h-9" />
+                  </div>
+                  <div>
+                    <Label htmlFor="sample-depth-to" className="text-sm font-medium mb-2 block">Depth to (m)</Label>
+                    <Input id="sample-depth-to" inputMode="decimal" value={state.sampleDepthTo} onChange={(e) => update("sampleDepthTo", e.target.value)} placeholder="e.g. 2.0" className="h-9" />
+                  </div>
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="sample-notes">Notes (optional)</Label>
-                <Textarea id="sample-notes" value={state.sampleNotes} onChange={(e) => update("sampleNotes", e.target.value)} placeholder="Visual description, conditions…" rows={3} />
-              </div>
-            </div>
+                <div>
+                  <Label htmlFor="sample-notes" className="text-sm font-medium mb-2 block">Notes (optional)</Label>
+                  <Textarea id="sample-notes" value={state.sampleNotes} onChange={(e) => update("sampleNotes", e.target.value)} placeholder="Visual description, conditions…" rows={4} />
+                </div>
+              </CardContent>
+            </Card>
           </section>
               )}
 
