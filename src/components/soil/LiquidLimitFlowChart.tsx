@@ -19,11 +19,11 @@ const LiquidLimitFlowChart = ({ trials, width, height, variant = "preview" }: Li
   const finalWidth = width ?? "100%";
   const finalHeight = height ?? 480;
   const isPrint = variant === "print";
-  const axisTickSize = isPrint ? 9 : 14;
-  const axisLabelSize = isPrint ? 10 : 16;
-  const dotR = isPrint ? 3.5 : 6;
+  const axisTickSize = isPrint ? 10 : 14;
+  const axisLabelSize = isPrint ? 11 : 16;
+  const dotR = isPrint ? 4.5 : 6;
   const chartMargin = isPrint
-    ? { top: 6, right: 14, left: 6, bottom: 18 }
+    ? { top: 10, right: 18, left: 10, bottom: 22 }
     : { top: 12, right: 20, left: 12, bottom: 24 };
 
   if (graphData.length === 0) {
