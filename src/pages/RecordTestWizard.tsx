@@ -456,10 +456,12 @@ const RecordTestWizard = () => {
               <div className="grid grid-cols-1 gap-3">
                 {tests.map((t) => {
                   const selected = state.testKey === t.key;
+                  const isDisabled = state.material === "concrete" && t.key !== "compressive";
                   return (
                     <button
                       key={t.key}
                       type="button"
+                      disabled={isDisabled}
                       onClick={() => {
                         update("testKey", t.key);
                         setTimeout(() => setStep(2), 0);
@@ -467,6 +469,7 @@ const RecordTestWizard = () => {
                       className={cn(
                         "text-left rounded-xl border-2 p-4 bg-card transition-all hover:border-primary/50",
                         selected ? "border-primary ring-2 ring-primary/20" : "border-border",
+                        isDisabled && "opacity-50 cursor-not-allowed",
                       )}
                     >
                       <div className="flex items-start gap-3">
