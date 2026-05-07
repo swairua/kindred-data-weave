@@ -229,7 +229,7 @@ const RecordTestWizard = () => {
           for (const project of filteredProjects) {
             try {
               const testResults = await listRecords<any>("test_results", { project_id: project.id, limit: 1 });
-              const hasResultForMaterial = testResults.data?.some((r: any) => r.material === state.material);
+              const hasResultForMaterial = testResults.data?.some((r: any) => r.category === state.material);
               if (hasResultForMaterial) {
                 projectsWithMaterial.push(project);
               }
