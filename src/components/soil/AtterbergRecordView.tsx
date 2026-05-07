@@ -476,19 +476,19 @@ const AtterbergRecordView = ({
         </section>
 
         {/* Chart + Linear Shrinkage + Results */}
-        <section className="grid gap-4 lg:grid-cols-5">
+        <section className="grid gap-4 lg:grid-cols-10">
           {/* Liquid Limit flow curve (Moisture % vs Penetration log scale) — also captured for PDF/Excel exports */}
-          <div className="lg:col-span-3 card p-3 print:col-span-5" ref={setChartRef} data-record-chart>
+          <div className="lg:col-span-7 card p-3 print:col-span-5 h-full flex flex-col" ref={setChartRef} data-record-chart>
             <div className="mb-2 text-sm font-semibold text-foreground">
               Liquid Limit Flow Curve
             </div>
-            <div className="w-full">
-              <LiquidLimitFlowChart trials={llTrials} width={900} height={560} />
+            <div className="flex-1 w-full min-h-0">
+              <LiquidLimitFlowChart trials={llTrials} width={900} height={480} />
             </div>
           </div>
 
           {/* Right column: shrinkage + results stacked */}
-          <div className="lg:col-span-2 space-y-4">
+          <div className="lg:col-span-3 space-y-4">
             {/* Linear Shrinkage */}
             <div className="card overflow-hidden">
               <div className="card-header border-b-0 rounded-b-none">

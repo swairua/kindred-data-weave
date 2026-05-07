@@ -13,7 +13,7 @@ interface LiquidLimitFlowChartProps {
  * Data points + log-linear regression line, ASTM D4318 compliant.
  * Used both for in-app preview and for off-screen capture into PDF/Excel exports.
  */
-const LiquidLimitFlowChart = ({ trials, width = 900, height = 700 }: LiquidLimitFlowChartProps) => {
+const LiquidLimitFlowChart = ({ trials, width = 900, height = 480 }: LiquidLimitFlowChartProps) => {
   const graphData = getLiquidLimitGraphData(trials);
 
   if (graphData.length === 0) {
@@ -58,7 +58,7 @@ const LiquidLimitFlowChart = ({ trials, width = 900, height = 700 }: LiquidLimit
   return (
     <div className="bg-white w-full" style={{ maxWidth: width, height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={merged} margin={{ top: 15, right: 18, left: 30, bottom: 25 }}>
+        <LineChart data={merged} margin={{ top: 8, right: 8, left: 12, bottom: 24 }}>
           <CartesianGrid stroke="#e5e7eb" strokeWidth={1.5} fill="#F5E6D3" />
           <XAxis
             dataKey="penetration"
