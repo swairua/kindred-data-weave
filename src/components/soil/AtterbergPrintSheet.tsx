@@ -95,10 +95,10 @@ const AtterbergPrintSheet = ({ record, project, projectState }: Props) => {
       {/* Header */}
       <div className="aps-header">
         <div className="aps-logo">
-          {project.logoUrl ? <img src={project.logoUrl} alt="Logo" /> : null}
+          {project.logoUrl ? <img src={project.logoUrl} alt="Logo" crossOrigin="anonymous" /> : null}
         </div>
         <div className="aps-contacts">
-          {project.contactsImageUrl ? <img src={project.contactsImageUrl} alt="Contacts" /> : null}
+          {project.contactsImageUrl ? <img src={project.contactsImageUrl} alt="Contacts" crossOrigin="anonymous" /> : null}
         </div>
       </div>
 
@@ -199,7 +199,7 @@ const AtterbergPrintSheet = ({ record, project, projectState }: Props) => {
       {/* Chart + side panels */}
       <div className="aps-grid" style={{ pageBreakInside: 'avoid' }}>
         <div className="aps-chart-box">
-          <LiquidLimitFlowChart trials={llTrials} width={320} height={240} />
+          <LiquidLimitFlowChart trials={llTrials} width={640} height={420} />
         </div>
         <div className="aps-side">
           <div className="aps-section-bar">LINEAR SHRINKAGE</div>
@@ -246,7 +246,7 @@ const AtterbergPrintSheet = ({ record, project, projectState }: Props) => {
         <div><span className="lbl">Date reported:</span> {projectState.dateReported || "_______________"}</div>
         <div className="aps-checked">
           <span className="lbl">Checked by:</span> {projectState.checkedBy || "_______________"}
-          {project.stampImageUrl ? <img src={project.stampImageUrl} alt="Stamp" className="aps-stamp" /> : null}
+          {project.stampImageUrl ? <img src={project.stampImageUrl} alt="Stamp" className="aps-stamp" crossOrigin="anonymous" /> : null}
         </div>
       </div>
     </div>

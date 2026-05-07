@@ -602,10 +602,12 @@
   margin-bottom: 4px;
   padding: 0 8mm;
   gap: 8mm;
+  min-height: 64px;
 }
 .atterberg-print-sheet .aps-header img {
-  max-height: 30px;
-  max-width: 35%;
+  max-height: 64px;
+  max-width: 45%;
+  object-fit: contain;
 }
 .atterberg-print-sheet .aps-title-bar {
   background: #2962A3;
@@ -682,8 +684,8 @@
 }
 .atterberg-print-sheet .aps-grid {
   display: grid;
-  grid-template-columns: 50% 1fr;
-  gap: 4mm;
+  grid-template-columns: 60% 1fr;
+  gap: 3mm;
   margin: 3px 8mm;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
@@ -691,16 +693,26 @@
 }
 .atterberg-print-sheet .aps-chart-box {
   border: 1px solid #ccc;
-  padding: 3mm;
+  padding: 1mm;
   background: #fff8ec;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
   page-break-inside: avoid;
+  min-height: 110mm;
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+}
+.atterberg-print-sheet .aps-chart-box > div {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  min-height: 105mm;
+  padding: 0 !important;
 }
 .atterberg-print-sheet .aps-chart-box svg {
   width: 100% !important;
-  height: auto !important;
-  max-height: 120mm;
+  height: 100% !important;
 }
 .atterberg-print-sheet .aps-side {
   page-break-inside: avoid;
@@ -722,11 +734,11 @@
   display: flex;
   justify-content: space-between;
   gap: 6mm;
-  margin: 4px 8mm 0 8mm;
+  margin: 18mm 8mm 0 8mm;
   font-size: 8px;
   border-top: 1px solid #888;
-  padding-top: 3mm;
-  align-items: center;
+  padding-top: 6mm;
+  align-items: flex-start;
   page-break-inside: avoid;
 }
 .atterberg-print-sheet .aps-footer .lbl {
@@ -734,13 +746,15 @@
 }
 .atterberg-print-sheet .aps-checked {
   position: relative;
-  padding-right: 40px;
+  padding-right: 70px;
+  min-height: 60px;
 }
 .atterberg-print-sheet .aps-stamp {
   position: absolute;
   right: 0;
-  top: -15px;
-  width: 40px;
-  height: 40px;
-  opacity: 0.85;
+  top: 8px;
+  width: 64px;
+  height: 64px;
+  opacity: 0.9;
+  object-fit: contain;
 }

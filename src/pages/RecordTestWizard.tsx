@@ -281,7 +281,10 @@ const RecordTestWizard = () => {
     toast.success(`Started ${tests.find((t) => t.key === state.testKey)?.name ?? "test"} record`);
     // If wizard was launched against an existing project (not creating a new one),
     // signal the test screen to start a fresh record under that project.
-    const fromExisting = !creatingNewProject && state.projectId !== null;
+    // Always force a fresh record when an existing project is selected.
+    // (Creating a new project leaves projectId null until first save, so this
+    // condition cleanly distinguishes the two flows.)
+    const fromExisting = state.projectId !== null;
     const suffix = fromExisting ? `?newRecord=1&fromProject=${state.projectId}` : "";
     navigate(`/tests${suffix}#${state.testKey}`);
   };

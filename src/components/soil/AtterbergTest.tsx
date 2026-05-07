@@ -601,6 +601,20 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [isExporting, setIsExporting] = useState<"json" | "pdf" | "xlsx" | null>(null);
   const [printProcessing, setPrintProcessing] = useState<"idle" | "saving" | "processing" | "ready">("idle");
+  const [adminImages, setAdminImages] = useState<{ logo?: string; contacts?: string; stamp?: string }>({});
+
+  // Load admin images (logo, contacts, stamp) once for use in HTML print sheet
+  useEffect(() => {
+    let active = true;
+    import("@/lib/imageUtils")
+      .then(({ fetchAdminImagesAsBase64 }) => fetchAdminImagesAsBase64())
+      .then((imgs) => {
+        if (active) setAdminImages(imgs || {});
+      })
+      .catch(() => { /* images optional */ });
+    return () => { active = false; };
+  }, []);
+
   const [selectedTestIds, setSelectedTestIds] = useState<
     Record<
       string,
@@ -1182,7 +1196,40 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
       setPrintProcessing("idle");
     };
     window.addEventListener("afterprint", cleanup);
-    setTimeout(() => window.print(), 50);
+
+    // Wait for all images inside print sheets to be fully loaded/decoded before printing
+    const printSheets = document.querySelectorAll<HTMLElement>("[data-print-sheet-content]");
+    const imgs: HTMLImageElement[] = [];
+    printSheets.forEach((sheet) => {
+      sheet.querySelectorAll<HTMLImageElement>("img").forEach((img) => imgs.push(img));
+    });
+
+    const waitForImg = (img: HTMLImageElement) =>
+      new Promise<void>((resolve) => {
+        if (img.complete && img.naturalWidth > 0) {
+          if (typeof img.decode === "function") {
+            img.decode().then(() => resolve()).catch(() => resolve());
+          } else {
+            resolve();
+          }
+          return;
+        }
+        const done = () => {
+          img.removeEventListener("load", done);
+          img.removeEventListener("error", done);
+          resolve();
+        };
+        img.addEventListener("load", done);
+        img.addEventListener("error", done);
+      });
+
+    const allReady = Promise.all(imgs.map(waitForImg));
+    // Hard cap so a slow image never blocks the print dialog forever
+    const timeout = new Promise<void>((resolve) => setTimeout(resolve, 5000));
+    Promise.race([allReady, timeout]).then(() => {
+      // One more frame so layout settles after images decode
+      requestAnimationFrame(() => window.print());
+    });
   }, []);
 
   const handleSaveAndPrint = useCallback(async () => {
@@ -2019,6 +2066,7 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
                 onUpdateShrinkageLimitTrials={(testId, trials) => updateTestTrials(record.id, testId, trials)}
                 onSyncTest={(test) => syncComputedTest(record.id, test)}
                 onRegisterChartRef={registerChartRef}
+                adminImages={adminImages}
               />
             ))}
           </div>
@@ -2235,6 +2283,7 @@ interface RecordCardProps {
   onUpdateShrinkageLimitTrials: (testId: string, trials: ShrinkageLimitTrial[]) => void;
   onSyncTest: (test: AtterbergTest) => void;
   onRegisterChartRef: (recordId: string, ref: HTMLDivElement | null) => void;
+  adminImages?: { logo?: string; contacts?: string; stamp?: string };
 }
 
 /**
@@ -2263,6 +2312,7 @@ const RecordCard = ({
   onUpdatePlasticLimitTrials,
   onUpdateShrinkageLimitTrials,
   onRegisterChartRef,
+  adminImages,
 }: RecordCardProps) => {
   // Cleanup chart ref on unmount
   useEffect(() => {
@@ -2289,6 +2339,7 @@ const RecordCard = ({
       onUpdatePlasticLimitTrials={onUpdatePlasticLimitTrials}
       onUpdateShrinkageLimitTrials={onUpdateShrinkageLimitTrials}
       onRegisterChartRef={onRegisterChartRef}
+      adminImages={adminImages}
     />
   );
 };
