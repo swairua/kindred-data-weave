@@ -8,7 +8,7 @@ interface TestAccordionContextType {
 const TestAccordionContext = createContext<TestAccordionContextType | undefined>(undefined);
 
 export const TestAccordionProvider = ({ children }: { children: ReactNode }) => {
-  const [openTestKey, setOpenTestKey] = useState<string | null>(null);
+  const [openTestKey, setOpenTestKey] = useState<string | null>("compressive");
 
   return (
     <TestAccordionContext.Provider value={{ openTestKey, setOpenTestKey }}>
