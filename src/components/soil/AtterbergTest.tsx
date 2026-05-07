@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ChevronDown, ChevronRight, Plus, Trash2, AlertTriangle } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Trash2, AlertTriangle, Printer } from "lucide-react";
 import { toast } from "sonner";
 
 import TestSection from "@/components/TestSection";
@@ -1233,46 +1233,28 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
     });
   }, []);
 
-  const handleSaveAndPrint = useCallback(async () => {
-    // Prevent multiple concurrent print operations
+  const handlePrintSaved = useCallback(async () => {
     if (printProcessing !== "idle") {
       return;
     }
 
     try {
-      // Clear any pending debounced save
-      if (saveDebounceTimeoutRef.current) {
-        clearTimeout(saveDebounceTimeoutRef.current);
-      }
-
-      // Step 1: Save to database
-      setPrintProcessing("saving");
-      await handleSave();
-
-      // Check if we have records to print
       if (computedRecords.length === 0) {
         toast.info("Nothing to print");
-        setPrintProcessing("idle");
         return;
       }
 
-      // Determine which records to print
       const recordIds = computedRecords.length === 1
         ? [computedRecords[0].id]
         : undefined;
 
-      // For single record, proceed to PDF generation. For multiple, show dialog first.
       if (recordIds) {
-        // Step 2: Generate PDF with professional format
         setPrintProcessing("processing");
 
-        // Print generation will be deferred until helper functions are available
-        // (happens during render return)
         const performPrint = async () => {
           try {
             console.log(`[Print PDF] Starting PDF generation for ${recordIds.length} records`);
 
-            // Get the records to print
             const recordsToPrint = computedRecords.filter((r) => recordIds.includes(r.id));
             if (recordsToPrint.length === 0) {
               toast.error("No records found to print");
@@ -1280,17 +1262,12 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
               return;
             }
 
-            // Expand records to make charts visible
             ensureRecordsExpanded(recordIds);
-
-            // Wait for charts to be fully rendered
             await waitForChartsToBeFullyRendered(recordIds);
 
-            // Capture all chart images
             const chartImages = await captureAllChartImages(recordIds, ensureRecordsExpanded);
             console.log(`[Print PDF] Captured ${Object.keys(chartImages).length} charts out of ${recordIds.length}`);
 
-            // Generate PDF using the same function as PDF export
             const blob = await generateAtterbergPDF({
               projectName: project.projectName,
               clientName: project.clientName || projectState.clientName,
@@ -1303,15 +1280,12 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
 
             if (blob) {
               console.log(`[Print PDF] PDF generated successfully, opening print dialog`);
-              // Open the PDF in a new window and trigger print dialog
               const pdfUrl = URL.createObjectURL(blob);
               const printWindow = window.open(pdfUrl, "_blank");
               if (printWindow) {
-                // Trigger print dialog when the PDF is loaded
                 printWindow.addEventListener("load", () => {
                   printWindow.print();
                 });
-                // Fallback in case load event doesn't fire
                 setTimeout(() => {
                   printWindow.print();
                 }, 500);
@@ -1329,20 +1303,40 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
           }
         };
 
-        // Execute the print operation
         performPrint();
       } else {
-        // Show dialog for record selection
         setPrintSelection(new Set(computedRecords.map((r) => r.id)));
         setPrintDialogOpen(true);
-        setPrintProcessing("idle");
       }
     } catch (error) {
-      console.error("Error in save and print flow:", error);
-      toast.error("Error during save and print");
+      console.error("Error in print flow:", error);
+      toast.error("Error during print");
       setPrintProcessing("idle");
     }
-  }, [handleSave, computedRecords, printProcessing]);
+  }, [computedRecords, printProcessing]);
+
+  const handleAddRecordAfterSave = useCallback(() => {
+    addRecord();
+    // Reset to idle state so Save button reappears
+    setSaveStatus("idle");
+  }, []);
+
+  const handleSaveOnly = useCallback(async () => {
+    if (saveStatus === "saving") {
+      return;
+    }
+
+    try {
+      if (saveDebounceTimeoutRef.current) {
+        clearTimeout(saveDebounceTimeoutRef.current);
+      }
+
+      await handleSave();
+    } catch (error) {
+      console.error("Error during save:", error);
+      toast.error("Error during save");
+    }
+  }, [handleSave, saveStatus]);
 
   const navigate = useNavigate();
 
@@ -2021,19 +2015,42 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
               {saveStatus === "error" && (lastSaveError || "Save failed")}
               {saveStatus === "idle" && `${computedRecords.length} record${computedRecords.length === 1 ? "" : "s"} ready`}
             </div>
-            <Button
-              type="button"
-              size="sm"
-              onClick={handleSaveAndPrint}
-              disabled={saveStatus === "saving" || printProcessing !== "idle"}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
-            >
-              {printProcessing === "saving" || saveStatus === "saving"
-                ? "Saving…"
-                : printProcessing === "processing"
-                ? "Generating PDF…"
-                : "Save & Print"}
-            </Button>
+            {saveStatus === "saved" ? (
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddRecordAfterSave}
+                  className="gap-2"
+                >
+                  <Plus className="h-4 w-4" /> Add Record
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handlePrintSaved}
+                  disabled={printProcessing !== "idle"}
+                  className="gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {printProcessing === "processing" ? (
+                    <>Generating PDF…</>
+                  ) : (
+                    <><Printer className="h-4 w-4" /> Print</>
+                  )}
+                </Button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSaveOnly}
+                disabled={saveStatus === "saving" || printProcessing !== "idle"}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {saveStatus === "saving" ? "Saving…" : "Save"}
+              </Button>
+            )}
           </div>
         )}
       </div>
