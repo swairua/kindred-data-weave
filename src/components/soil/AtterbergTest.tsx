@@ -2306,6 +2306,7 @@ const RecordCard = ({
       onUpdatePlasticLimitTrials={onUpdatePlasticLimitTrials}
       onUpdateShrinkageLimitTrials={onUpdateShrinkageLimitTrials}
       onRegisterChartRef={onRegisterChartRef}
+      adminImages={adminImages}
     />
   );
 };
