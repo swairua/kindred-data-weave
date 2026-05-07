@@ -216,7 +216,11 @@ const RecordTestWizard = () => {
     let active = true;
     setLoadingProjects(true);
     setProjectsLoadError(null);
-    listRecords<ApiProjectRow>("projects", { limit: 100 })
+    const query: Record<string, any> = { limit: 100 };
+    if (state.material) {
+      query.material = state.material;
+    }
+    listRecords<ApiProjectRow>("projects", query)
       .then((res) => {
         if (active) setProjects(res.data || []);
       })
@@ -235,7 +239,7 @@ const RecordTestWizard = () => {
       })
       .finally(() => active && setLoadingProjects(false));
     return () => { active = false; };
-  }, [step, projectsReloadKey, authChecking, navigate]);
+  }, [step, projectsReloadKey, authChecking, navigate, state.material]);
 
   const update = <K extends keyof WizardState>(key: K, value: WizardState[K]) => {
     setState((prev) => ({ ...prev, [key]: value }));
