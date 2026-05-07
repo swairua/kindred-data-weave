@@ -1,10 +1,11 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import TestSection from "@/components/TestSection";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import CalculatedInput from "@/components/CalculatedInput";
 import { Plus, X, Save as SaveIcon, Printer, Loader2, CheckCircle2 } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
+import { useTestData } from "@/context/TestDataContext";
 import { generateTestPDF } from "@/lib/pdfGenerator";
 import { generateTestCSV } from "@/lib/csvExporter";
 import { generateTestExcel } from "@/lib/genericExcelExporter";
@@ -47,24 +48,27 @@ interface CompressiveStrengthTestProps {
 
 const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   const project = useProject();
+  const testData = useTestData();
   const defaultRows: Row[] = [
     { mark: "", dateOfCast: "", dateOfTest: "", load: "", width: "150", height: "150", depth: "150", mass: "", remarks: "" },
   ];
   const [rows, setRows] = useState<Row[]>(defaultRows);
   const [isSaving, setIsSaving] = useState(false);
   const [saveCompleted, setSaveCompleted] = useState(false);
-  const [testDetails, setTestDetails] = useState<TestDetails>({
-    cement: "",
-    fineAggregate: "",
-    coarseAggregate: "",
-    contractor: "",
-    concreteClass: "",
-    section: "",
-    madeBy: "",
-    slump: "",
-    clientRef: "",
-    dateTested: "",
-  });
+  const [testDetails, setTestDetails] = useState<TestDetails>(() =>
+    testData.concreteTestMetadata || {
+      cement: "",
+      fineAggregate: "",
+      coarseAggregate: "",
+      contractor: "",
+      concreteClass: "",
+      section: "",
+      madeBy: "",
+      slump: "",
+      clientRef: "",
+      dateTested: "",
+    }
+  );
   const hasProjectSelected = !!project.currentProjectId;
 
   const getAge = (dateOfCast: string, dateOfTest: string) => {
