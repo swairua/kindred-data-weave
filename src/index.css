@@ -684,7 +684,7 @@
 }
 .atterberg-print-sheet .aps-grid {
   display: grid;
-  grid-template-columns: 70% 30%;
+  grid-template-columns: 1fr 1fr;
   gap: 3mm;
   margin: 3px 8mm;
   -webkit-print-color-adjust: exact;
