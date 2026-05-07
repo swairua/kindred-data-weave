@@ -217,8 +217,32 @@ const RecordTestWizard = () => {
     setLoadingProjects(true);
     setProjectsLoadError(null);
     listRecords<ApiProjectRow>("projects", { limit: 100 })
-      .then((res) => {
-        if (active) setProjects(res.data || []);
+      .then(async (res) => {
+        if (!active) return;
+
+        let filteredProjects = res.data || [];
+
+        // If a material is selected, filter projects to only those with test results for that material
+        if (state.material) {
+          const projectsWithMaterial: ApiProjectRow[] = [];
+
+          for (const project of filteredProjects) {
+            try {
+              const testResults = await listRecords<any>("test_results", { project_id: project.id, limit: 1 });
+              const hasResultForMaterial = testResults.data?.some((r: any) => r.category === state.material);
+              if (hasResultForMaterial) {
+                projectsWithMaterial.push(project);
+              }
+            } catch {
+              // If we can't check test results for this project, include it anyway
+              projectsWithMaterial.push(project);
+            }
+          }
+
+          filteredProjects = projectsWithMaterial;
+        }
+
+        if (active) setProjects(filteredProjects);
       })
       .catch((err) => {
         if (!active) return;
@@ -235,7 +259,7 @@ const RecordTestWizard = () => {
       })
       .finally(() => active && setLoadingProjects(false));
     return () => { active = false; };
-  }, [step, projectsReloadKey, authChecking, navigate]);
+  }, [step, projectsReloadKey, authChecking, navigate, state.material]);
 
   const update = <K extends keyof WizardState>(key: K, value: WizardState[K]) => {
     setState((prev) => ({ ...prev, [key]: value }));
@@ -440,7 +464,7 @@ const RecordTestWizard = () => {
                 Available tests for {MATERIAL_OPTIONS.find((m) => m.id === state.material)?.label}.
               </p>
             </div>
-            {state.material !== "soil" ? (
+            {tests.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
                   <Layers className="h-6 w-6 text-muted-foreground" />
@@ -449,17 +473,19 @@ const RecordTestWizard = () => {
                   Coming soon
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {MATERIAL_OPTIONS.find((m) => m.id === state.material)?.label} testing is not yet available. Please select Soil to continue.
+                  {MATERIAL_OPTIONS.find((m) => m.id === state.material)?.label} testing is not yet available.
                 </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-3">
                 {tests.map((t) => {
                   const selected = state.testKey === t.key;
+                  const isDisabled = state.material === "concrete" && t.key !== "compressive";
                   return (
                     <button
                       key={t.key}
                       type="button"
+                      disabled={isDisabled}
                       onClick={() => {
                         update("testKey", t.key);
                         setTimeout(() => setStep(2), 0);
@@ -467,6 +493,7 @@ const RecordTestWizard = () => {
                       className={cn(
                         "text-left rounded-xl border-2 p-4 bg-card transition-all hover:border-primary/50",
                         selected ? "border-primary ring-2 ring-primary/20" : "border-border",
+                        isDisabled && "opacity-50 cursor-not-allowed",
                       )}
                     >
                       <div className="flex items-start gap-3">
