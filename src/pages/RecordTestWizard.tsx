@@ -222,19 +222,19 @@ const RecordTestWizard = () => {
 
         let filteredProjects = res.data || [];
 
-        // If a material is selected, filter projects to only those with records for that material
+        // If a material is selected, filter projects to only those with test results for that material
         if (state.material) {
           const projectsWithMaterial: ApiProjectRow[] = [];
 
           for (const project of filteredProjects) {
             try {
-              const records = await listRecords<any>("records", { project_id: project.id, limit: 1 });
-              const hasRecordForMaterial = records.data?.some((r: any) => r.material === state.material);
-              if (hasRecordForMaterial) {
+              const testResults = await listRecords<any>("test_results", { project_id: project.id, limit: 1 });
+              const hasResultForMaterial = testResults.data?.some((r: any) => r.material === state.material);
+              if (hasResultForMaterial) {
                 projectsWithMaterial.push(project);
               }
             } catch {
-              // If we can't check records for this project, include it anyway
+              // If we can't check test results for this project, include it anyway
               projectsWithMaterial.push(project);
             }
           }
