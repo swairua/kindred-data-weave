@@ -16,7 +16,17 @@ import { captureChartAsBase64 } from "@/lib/chartCapture";
 import { saveCompressiveTest } from "@/lib/api";
 import { toast } from "sonner";
 
-interface Row { cubeId: string; load: string; width: string; height: string }
+interface Row {
+  mark: string;
+  dateOfCast: string;
+  dateOfTest: string;
+  load: string;
+  width: string;
+  height: string;
+  depth: string;
+  mass: string;
+  remarks: string;
+}
 
 interface TestDetails {
   cement: string;
@@ -38,9 +48,7 @@ interface CompressiveStrengthTestProps {
 const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   const project = useProject();
   const defaultRows: Row[] = [
-    { cubeId: "C1", load: "", width: "150", height: "150" },
-    { cubeId: "C2", load: "", width: "150", height: "150" },
-    { cubeId: "C3", load: "", width: "150", height: "150" },
+    { mark: "", dateOfCast: "", dateOfTest: "", load: "", width: "150", height: "150", depth: "150", mass: "", remarks: "" },
   ];
   const [rows, setRows] = useState<Row[]>(project.currentProjectId ? defaultRows : []);
   const [isSaving, setIsSaving] = useState(false);
@@ -57,6 +65,24 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     dateTested: "",
   });
   const hasProjectSelected = !!project.currentProjectId;
+
+  const getAge = (dateOfCast: string, dateOfTest: string) => {
+    if (!dateOfCast || !dateOfTest) return "";
+    const cast = new Date(dateOfCast);
+    const test = new Date(dateOfTest);
+    const days = Math.floor((test.getTime() - cast.getTime()) / (1000 * 60 * 60 * 24));
+    return days >= 0 ? String(days) : "";
+  };
+
+  const getDensity = (row: Row) => {
+    const mass = parseFloat(row.mass);
+    const w = parseFloat(row.width);
+    const h = parseFloat(row.height);
+    const d = parseFloat(row.depth);
+    if (!mass || !w || !h || !d) return "";
+    const volume = (w * h * d) / 1000000; // mm³ to cm³
+    return (mass / volume).toFixed(0);
+  };
 
   const getStrength = (row: Row) => {
     const load = parseFloat(row.load);
@@ -91,11 +117,17 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     setIsSaving(true);
     try {
       const cubesPayload = cubesWithData.map(row => ({
-        cube_id: row.cubeId || "Unknown",
+        cube_mark: row.mark || "Unknown",
+        date_of_cast: row.dateOfCast,
+        date_of_test: row.dateOfTest,
         load_kn: parseFloat(row.load),
         width_mm: parseFloat(row.width),
         height_mm: parseFloat(row.height),
+        depth_mm: parseFloat(row.depth),
+        mass_g: parseFloat(row.mass),
         calculated_strength_mpa: parseFloat(getStrength(row) || "0"),
+        density_kg_m3: parseFloat(getDensity(row) || "0"),
+        remarks: row.remarks,
       }));
 
       const testDataPayload = {
@@ -130,7 +162,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   const chartData = useMemo(() =>
     rows
       .filter(r => getStrength(r))
-      .map(r => ({ name: r.cubeId || "—", strength: parseFloat(getStrength(r)) })),
+      .map(r => ({ name: r.mark || "—", strength: parseFloat(getStrength(r)) })),
     [rows]
   );
 
@@ -153,7 +185,15 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
       }
     }
 
-    generateTestPDF({ title: "Compressive Strength (Cube Test)", ...project, tables: [{ headers: ["Cube ID", "Load (kN)", "Width (mm)", "Height (mm)", "Strength (MPa)"], rows: rows.map(r => [r.cubeId, r.load || "—", r.width, r.height, getStrength(r) || "—"]) }], chartImages });
+    generateTestPDF({
+      title: "Compressive Strength (Cube Test)",
+      ...project,
+      tables: [{
+        headers: ["#", "Cube Mark", "Date of Cast", "Date of Test", "Age", "Dims", "Mass", "Density", "Load", "Strength", "Remarks"],
+        rows: rows.map((r, i) => [i + 1, r.mark || "—", r.dateOfCast || "—", r.dateOfTest || "—", getAge(r.dateOfCast, r.dateOfTest) || "—", `${r.width}×${r.height}×${r.depth}`, r.mass || "—", getDensity(r) || "—", r.load || "—", getStrength(r) || "—", r.remarks || "—"])
+      }],
+      chartImages
+    });
   };
 
   const exportXLSX = async () => {
@@ -172,7 +212,10 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
           { label: "Avg Strength", value: avgStrength ? `${avgStrength} MPa` : "—" },
           { label: "Cubes Tested", value: strengths.length ? String(strengths.length) : "—" },
         ],
-        tables: [{ headers: ["Cube ID", "Load (kN)", "Width (mm)", "Height (mm)", "Strength (MPa)"], rows: rows.map(r => [r.cubeId, r.load || "—", r.width, r.height, getStrength(r) || "—"]) }],
+        tables: [{
+          headers: ["#", "Cube Mark", "Date of Cast", "Date of Test", "Age", "Dims", "Mass", "Density", "Load", "Strength", "Remarks"],
+          rows: rows.map((r, i) => [i + 1, r.mark || "—", r.dateOfCast || "—", r.dateOfTest || "—", getAge(r.dateOfCast, r.dateOfTest) || "—", `${r.width}×${r.height}×${r.depth}`, r.mass || "—", getDensity(r) || "—", r.load || "—", getStrength(r) || "—", r.remarks || "—"])
+        }],
         chartImages,
       },
       projectName: project.projectName,
@@ -185,16 +228,8 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   };
 
   return (
-    <TestSection title="Compressive Strength (Cube Test)" testKey={testKey} onSave={handleSave} onClear={() => setRows([{ cubeId: "", load: "", width: "150", height: "150" }])} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
-      {!hasProjectSelected && rows.length === 0 ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground mb-2">No project selected</p>
-            <p className="text-xs text-muted-foreground">Select an existing project or create a new one to begin testing</p>
-          </div>
-        </div>
-      ) : (
-        <>
+    <TestSection title="Compressive Strength (Cube Test)" testKey={testKey} onSave={handleSave} onClear={() => setRows([{ mark: "", dateOfCast: "", dateOfTest: "", load: "", width: "150", height: "150", depth: "150", mass: "", remarks: "" }])} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
+      <>
           <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-muted/30 rounded-lg">
             <div>
               <Label className="text-xs font-medium mb-1 block">Cement</Label>
@@ -239,23 +274,52 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Cube ID</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Load (kN)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Width (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Height (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Strength (MPa)</th><th className="w-10"></th></tr></thead>
+            <table className="w-full text-sm border border-border rounded-lg">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">#</th>
+                  <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Cube Mark</th>
+                  <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Date of Cast</th>
+                  <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Date of Test</th>
+                  <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Age (days)</th>
+                  <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Cube Dim (mm)<br/>L × W × H</th>
+                  <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Mass (g)</th>
+                  <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Density (kg/m³)</th>
+                  <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Max Load (kN)</th>
+                  <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Strength (N/mm²)</th>
+                  <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Remarks</th>
+                  <th className="w-10"></th>
+                </tr>
+              </thead>
               <tbody>
                 {rows.map((row, i) => (
                   <tr key={i} className="border-b border-border/50">
-                    <td className="py-1.5 px-2"><Input value={row.cubeId} onChange={(e) => update(i, "cubeId", e.target.value)} className="h-8" /></td>
-                    <td className="py-1.5 px-2"><Input type="number" value={row.load} onChange={(e) => update(i, "load", e.target.value)} className="h-8" placeholder="0" /></td>
-                    <td className="py-1.5 px-2"><Input type="number" value={row.width} onChange={(e) => update(i, "width", e.target.value)} className="h-8" /></td>
-                    <td className="py-1.5 px-2"><Input type="number" value={row.height} onChange={(e) => update(i, "height", e.target.value)} className="h-8" /></td>
+                    <td className="py-1.5 px-2 text-muted-foreground">{i + 1}</td>
+                    <td className="py-1.5 px-2"><Input value={row.mark} onChange={(e) => update(i, "mark", e.target.value)} className="h-8 text-sm" placeholder="—" /></td>
+                    <td className="py-1.5 px-2"><Input type="date" value={row.dateOfCast} onChange={(e) => update(i, "dateOfCast", e.target.value)} className="h-8 text-sm" /></td>
+                    <td className="py-1.5 px-2"><Input type="date" value={row.dateOfTest} onChange={(e) => update(i, "dateOfTest", e.target.value)} className="h-8 text-sm" /></td>
+                    <td className="py-1.5 px-2"><CalculatedInput value={getAge(row.dateOfCast, row.dateOfTest)} /></td>
+                    <td className="py-1.5 px-2">
+                      <div className="flex gap-1 text-xs">
+                        <Input type="number" value={row.width} onChange={(e) => update(i, "width", e.target.value)} className="h-8 w-14" placeholder="L" />
+                        <span className="text-muted-foreground">×</span>
+                        <Input type="number" value={row.height} onChange={(e) => update(i, "height", e.target.value)} className="h-8 w-14" placeholder="W" />
+                        <span className="text-muted-foreground">×</span>
+                        <Input type="number" value={row.depth} onChange={(e) => update(i, "depth", e.target.value)} className="h-8 w-14" placeholder="H" />
+                      </div>
+                    </td>
+                    <td className="py-1.5 px-2"><Input type="number" value={row.mass} onChange={(e) => update(i, "mass", e.target.value)} className="h-8 text-sm" placeholder="—" /></td>
+                    <td className="py-1.5 px-2"><CalculatedInput value={getDensity(row)} /></td>
+                    <td className="py-1.5 px-2"><Input type="number" value={row.load} onChange={(e) => update(i, "load", e.target.value)} className="h-8 text-sm" placeholder="0" /></td>
                     <td className="py-1.5 px-2"><CalculatedInput value={getStrength(row)} /></td>
+                    <td className="py-1.5 px-2"><Input value={row.remarks} onChange={(e) => update(i, "remarks", e.target.value)} className="h-8 text-sm" placeholder="—" /></td>
                     <td className="py-1.5 px-1"><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setRows(rows.filter((_, j) => j !== i))}><X className="h-3.5 w-3.5" /></Button></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <Button variant="outline" size="sm" className="mt-3" onClick={() => setRows([...rows, { cubeId: `C${rows.length + 1}`, load: "", width: "150", height: "150" }])}><Plus className="h-3.5 w-3.5 mr-1" /> Add Row</Button>
+          <Button variant="outline" size="sm" className="mt-3" onClick={() => setRows([...rows, { mark: "", dateOfCast: "", dateOfTest: "", load: "", width: "150", height: "150", depth: "150", mass: "", remarks: "" }])}><Plus className="h-3.5 w-3.5 mr-1" /> Add row</Button>
 
           {chartData.length >= 1 && (
             <div className="mt-6">
@@ -271,8 +335,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
               </ChartContainer>
             </div>
           )}
-        </>
-      )}
+      </>
     </TestSection>
   );
 };
