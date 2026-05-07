@@ -300,7 +300,7 @@ const RecordTestWizard = () => {
         if (state.material === "concrete") {
           return state.cement.trim().length > 0;
         } else {
-          return state.sampleId.trim().length > 0;
+          return state.sampleId.trim().length > 0 && state.sampleDepthFrom.trim().length > 0 && state.sampleDepthTo.trim().length > 0;
         }
       case 4: return true;
       default: return false;
@@ -726,7 +726,7 @@ const RecordTestWizard = () => {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-2">
-                      <Label htmlFor="depth-from">Depth from</Label>
+                      <Label htmlFor="depth-from">Depth from *</Label>
                       <Input
                         id="depth-from"
                         value={state.sampleDepthFrom}
@@ -735,7 +735,7 @@ const RecordTestWizard = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="depth-to">Depth to</Label>
+                      <Label htmlFor="depth-to">Depth to *</Label>
                       <Input
                         id="depth-to"
                         value={state.sampleDepthTo}
