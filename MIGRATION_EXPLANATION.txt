@@ -1,0 +1,134 @@
+================================================================================
+PROJECT NAME MISMATCH - ISSUE & SOLUTION EXPLANATION
+================================================================================
+
+PROBLEM IDENTIFIED
+================================================================================
+
+The test results table had data inconsistencies where test results with the name
+"Thika Road Mall" were being associated with the "Atterberg Limits Testing" 
+project (project_id=1) instead of their own project.
+
+This caused:
+- Incorrect UI display of test projects
+- Mixed test results from different projects
+- Data integrity issues
+
+ROOT CAUSE
+================================================================================
+
+In src/components/soil/AtterbergTest.tsx, the project lookup logic had a 
+dangerous fallback:
+
+BEFORE (BUGGY - line 398):
+  const projectRow = projectId
+    ? projectsResponse.data.find((row) => row.id === projectId) ?? null
+    : hasLookupCriteria(lookup)
+      ? projectsResponse.data.find((row) => matchesProjectLookup(row, lookup)) ?? null
+      : projectsResponse.data[0];  // ← DANGEROUS FALLBACK!
+
+The fallback to projectsResponse.data[0] meant that when a new test result's
+project didn't exist in the system yet, it would silently save to the FIRST
+project (usually "Atterberg Limits Testing") instead of creating a new project.
+
+AFTER (FIXED - line 398):
+  const projectRow = projectId
+    ? projectsResponse.data.find((row) => row.id === projectId) ?? null
+    : hasLookupCriteria(lookup)
+      ? projectsResponse.data.find((row) => matchesProjectLookup(row, lookup)) ?? null
+      : null;  // ← Returns null to trigger new project creation
+
+DATA CORRUPTION ANALYSIS
+================================================================================
+
+Affected test_results rows (all with name="Thika Road Mall"):
+- Row ID 1: project_id=1 (wrong), name="Thika Road Mall"
+- Row ID 2: project_id=1 (wrong), name="Thika Road Mall"  
+- Row ID 5: project_id=1 (wrong), name="Thika Road Mall"
+
+All three should belong to a "Thika Road Mall" project, but that project didn't
+exist, so they got saved to project_id=1 ("Atterberg Limits Testing") by the
+buggy fallback logic.
+
+Correct associations (no action needed):
+- Row ID 3: project_id=2 ("Atterberg Limits Testing"), name="Atterberg Limits Testing" ✓
+- Row ID 4: project_id=2 ("Atterberg Limits Testing"), name="Atterberg Limits Testing" ✓
+- Row ID 6: project_id=1 ("Atterberg Limits Testing"), name="Atterberg Limits Testing" ✓
+- Row ID 7: project_id=1 ("Atterberg Limits Testing"), name="Atterberg Limits Testing" ✓
+- Row ID 8: project_id=1 ("Atterberg Limits Testing"), name="Atterberg Limits Testing" ✓
+
+SOLUTION
+================================================================================
+
+Two-part fix implemented:
+
+1. CODE FIX (ALREADY DONE)
+   - Updated AtterbergTest.tsx to return null instead of fallback
+   - This prevents future corruption of new test results
+   - Code change: Line 398 in src/components/soil/AtterbergTest.tsx
+
+2. DATA MIGRATION (READY TO EXECUTE)
+   - File: migrate_fix_project_associations.php
+   - Automatically:
+     a) Creates the missing "Thika Road Mall" project in the database
+     b) Updates the 3 corrupted test_results rows to point to it
+     c) Validates all associations are now correct
+     d) Provides detailed before/after reporting
+
+MIGRATION EXECUTION
+================================================================================
+
+To run the migration, execute in your project root:
+
+    php migrate_fix_project_associations.php
+
+The script will:
+1. Check if "Thika Road Mall" project exists
+2. Create it if missing (with data from existing test results)
+3. Find rows with mismatched project associations
+4. Update them to the correct project
+5. Report all changes and validate success
+
+Expected output:
+- "Created 'Thika Road Mall' project with id: 3"
+- "Successfully updated 3 test result(s) to project_id=3"
+- Validation shows 0 mismatches
+- All test results correctly associated
+
+MIGRATION SAFETY
+================================================================================
+
+The migration script is safe to run because:
+- It's idempotent (can be run multiple times without issues)
+- It only updates rows with mismatched names and project_ids
+- It preserves all correct associations
+- It validates before and after
+- It extracts project data from existing test results for accuracy
+- It provides detailed logging of all changes
+
+VERIFICATION
+================================================================================
+
+After running the migration, verify in the UI:
+
+1. Go to "Atterberg Limits Testing" project
+   - Should show test results with matching names
+   - Should NOT show "Thika Road Mall" results
+
+2. Go to "Thika Road Mall" project
+   - Should show all 3 "Thika Road Mall" test results
+   - Should NOT show "Atterberg Limits Testing" results
+
+3. Check the test results list
+   - Each row should have matching project_name and test_name
+
+TIMELINE
+================================================================================
+
+- Code bug introduced: Unknown (before April 16, 2026)
+- Bug discovered: May 5, 2026
+- Code fix applied: May 5, 2026
+- Data migration script created: May 5, 2026
+- Data migration ready for execution: May 5, 2026
+
+================================================================================
