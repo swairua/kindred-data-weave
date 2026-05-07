@@ -296,7 +296,7 @@ const RecordTestWizard = () => {
       case 0: return !!state.material;
       case 1: return !!state.testKey;
       case 2: return creatingNewProject ? state.projectName.trim().length > 0 : state.projectId !== null;
-      case 3: return state.sampleId.trim().length > 0;
+      case 3: return state.cement.trim().length > 0;
       case 4: return true;
       default: return false;
     }
