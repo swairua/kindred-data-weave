@@ -3,7 +3,7 @@ import TestSection from "@/components/TestSection";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import CalculatedInput from "@/components/CalculatedInput";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Save as SaveIcon, Printer, Loader2, CheckCircle2 } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
 import { generateTestPDF } from "@/lib/pdfGenerator";
 import { generateTestCSV } from "@/lib/csvExporter";
@@ -50,8 +50,9 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   const defaultRows: Row[] = [
     { mark: "", dateOfCast: "", dateOfTest: "", load: "", width: "150", height: "150", depth: "150", mass: "", remarks: "" },
   ];
-  const [rows, setRows] = useState<Row[]>(project.currentProjectId ? defaultRows : []);
+  const [rows, setRows] = useState<Row[]>(defaultRows);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveCompleted, setSaveCompleted] = useState(false);
   const [testDetails, setTestDetails] = useState<TestDetails>({
     cement: "",
     fineAggregate: "",
@@ -151,6 +152,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
       });
 
       toast.success("Compressive strength test saved successfully");
+      setSaveCompleted(true);
     } catch (error) {
       console.error("Failed to save test:", error);
       toast.error(error instanceof Error ? error.message : "Failed to save test");
@@ -227,49 +229,33 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     });
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
-    <TestSection title="Compressive Strength (Cube Test)" testKey={testKey} onSave={handleSave} onClear={() => setRows([{ mark: "", dateOfCast: "", dateOfTest: "", load: "", width: "150", height: "150", depth: "150", mass: "", remarks: "" }])} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
+    <TestSection title="Compressive Strength (Cube Test)" testKey={testKey} onClear={() => setRows([{ mark: "", dateOfCast: "", dateOfTest: "", load: "", width: "150", height: "150", depth: "150", mass: "", remarks: "" }])}>
       <>
-          <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-muted/30 rounded-lg">
-            <div>
-              <Label className="text-xs font-medium mb-1 block">Cement</Label>
-              <Input value={testDetails.cement} onChange={(e) => updateTestDetail("cement", e.target.value)} className="h-8 text-sm" />
-            </div>
-            <div>
-              <Label className="text-xs font-medium mb-1 block">Fine Aggregate</Label>
-              <Input value={testDetails.fineAggregate} onChange={(e) => updateTestDetail("fineAggregate", e.target.value)} className="h-8 text-sm" />
-            </div>
-            <div>
-              <Label className="text-xs font-medium mb-1 block">Coarse Aggregate</Label>
-              <Input value={testDetails.coarseAggregate} onChange={(e) => updateTestDetail("coarseAggregate", e.target.value)} className="h-8 text-sm" />
-            </div>
-            <div>
-              <Label className="text-xs font-medium mb-1 block">Contractor</Label>
-              <Input value={testDetails.contractor} onChange={(e) => updateTestDetail("contractor", e.target.value)} className="h-8 text-sm" />
-            </div>
-            <div>
-              <Label className="text-xs font-medium mb-1 block">Concrete Class</Label>
-              <Input value={testDetails.concreteClass} onChange={(e) => updateTestDetail("concreteClass", e.target.value)} className="h-8 text-sm" />
-            </div>
-            <div>
-              <Label className="text-xs font-medium mb-1 block">Section</Label>
-              <Input value={testDetails.section} onChange={(e) => updateTestDetail("section", e.target.value)} className="h-8 text-sm" />
-            </div>
-            <div>
-              <Label className="text-xs font-medium mb-1 block">Made By</Label>
-              <Input value={testDetails.madeBy} onChange={(e) => updateTestDetail("madeBy", e.target.value)} className="h-8 text-sm" />
-            </div>
-            <div>
-              <Label className="text-xs font-medium mb-1 block">Slump</Label>
-              <Input value={testDetails.slump} onChange={(e) => updateTestDetail("slump", e.target.value)} className="h-8 text-sm" />
-            </div>
-            <div>
-              <Label className="text-xs font-medium mb-1 block">Client Ref</Label>
-              <Input value={testDetails.clientRef} onChange={(e) => updateTestDetail("clientRef", e.target.value)} className="h-8 text-sm" />
-            </div>
-            <div>
-              <Label className="text-xs font-medium mb-1 block">Date Tested</Label>
-              <Input type="date" value={testDetails.dateTested} onChange={(e) => updateTestDetail("dateTested", e.target.value)} className="h-8 text-sm" />
+          <div className="mb-6 p-4 bg-gradient-to-r from-amber-50 to-amber-100 rounded-lg border border-amber-200">
+            <h3 className="text-sm font-semibold text-gray-800 mb-3">Test Details</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+              {[
+                { label: "Cement", value: testDetails.cement },
+                { label: "Fine Aggregate", value: testDetails.fineAggregate },
+                { label: "Coarse Aggregate", value: testDetails.coarseAggregate },
+                { label: "Contractor", value: testDetails.contractor },
+                { label: "Concrete Class", value: testDetails.concreteClass },
+                { label: "Section", value: testDetails.section },
+                { label: "Made By", value: testDetails.madeBy },
+                { label: "Slump", value: testDetails.slump },
+                { label: "Client Ref", value: testDetails.clientRef },
+                { label: "Date Tested", value: testDetails.dateTested },
+              ].map((item) => (
+                <div key={item.label} className="flex flex-col">
+                  <span className="text-xs text-gray-600 font-medium">{item.label}</span>
+                  <span className="text-sm font-semibold text-gray-900">{item.value || "—"}</span>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -319,7 +305,16 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
               </tbody>
             </table>
           </div>
-          <Button variant="outline" size="sm" className="mt-3" onClick={() => setRows([...rows, { mark: "", dateOfCast: "", dateOfTest: "", load: "", width: "150", height: "150", depth: "150", mass: "", remarks: "" }])}><Plus className="h-3.5 w-3.5 mr-1" /> Add row</Button>
+          <div className="flex items-center justify-between mt-3">
+            <Button variant="outline" size="sm" onClick={() => setRows([...rows, { mark: "", dateOfCast: "", dateOfTest: "", load: "", width: "150", height: "150", depth: "150", mass: "", remarks: "" }])}><Plus className="h-3.5 w-3.5 mr-1" /> Add row</Button>
+            {saveCompleted ? (
+              <Button size="sm" variant="default" onClick={handlePrint}><Printer className="h-3.5 w-3.5 mr-1" /> Print to Browser</Button>
+            ) : isSaving ? (
+              <Button size="sm" variant="default" disabled><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Saving...</Button>
+            ) : (
+              <Button size="sm" variant="default" onClick={handleSave}><SaveIcon className="h-3.5 w-3.5 mr-1" /> Save</Button>
+            )}
+          </div>
 
           {chartData.length >= 1 && (
             <div className="mt-6">
