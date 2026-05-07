@@ -33,13 +33,20 @@ header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
 // Database connection for session handling
 function createSessionDb(): mysqli
 {
-    $host = 'localhost';
-    $user = 'wayrusc1_labdatacraft';
-    $pass = 'Sirgeorge.12';
-    $name = 'wayrusc1_labdatacraft';
-    $port = 3306;
+    // Support environment variables for remote database configuration
+    $host = getenv('DB_HOST') ?: 'localhost';
+    $user = getenv('DB_USER') ?: 'wayrusc1_labdatacraft';
+    $pass = getenv('DB_PASS') ?: 'Sirgeorge.12';
+    $name = getenv('DB_NAME') ?: 'wayrusc1_labdatacraft';
+    $port = (int) (getenv('DB_PORT') ?: 3306);
 
     $conn = new mysqli($host, $user, $pass, $name, $port);
+
+    if ($conn->connect_error) {
+        error_log("[Session DB Connection ERROR] Connection failed: " . $conn->connect_error);
+        throw new Exception("Session database connection failed: " . $conn->connect_error);
+    }
+
     $conn->set_charset('utf8mb4');
 
     return $conn;
@@ -284,14 +291,26 @@ function requireAuth(mysqli $conn): ?array
 
 function db(): mysqli
 {
-    $host = 'localhost';
-    $user = 'wayrusc1_labdatacraft';
-    $pass = 'Sirgeorge.12';
-    $name = 'wayrusc1_labdatacraft';
-    $port = 3306;
+    // Support environment variables for remote database configuration
+    $host = getenv('DB_HOST') ?: 'localhost';
+    $user = getenv('DB_USER') ?: 'wayrusc1_labdatacraft';
+    $pass = getenv('DB_PASS') ?: 'Sirgeorge.12';
+    $name = getenv('DB_NAME') ?: 'wayrusc1_labdatacraft';
+    $port = (int) (getenv('DB_PORT') ?: 3306);
+
+    error_log("[DB Connection] Attempting to connect to: $host:$port/$name (user: $user)");
 
     $conn = new mysqli($host, $user, $pass, $name, $port);
+
+    if ($conn->connect_error) {
+        error_log("[DB Connection ERROR] Connection failed: " . $conn->connect_error);
+        error_log("[DB Connection DEBUG] Host: $host, Port: $port, Database: $name");
+        // Return a connection object that will fail when used - error handling in catch block
+        throw new Exception("Database connection failed: " . $conn->connect_error);
+    }
+
     $conn->set_charset('utf8mb4');
+    error_log("[DB Connection] Successfully connected to database");
 
     return $conn;
 }

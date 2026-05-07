@@ -1,12 +1,21 @@
 const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
 
-// In development, use the proxied path to bypass CORS. In production, use the full URL.
-export const API_BASE_URL = configuredApiBaseUrl || (import.meta.env.DEV ? "/api.php" : "https://lab.wayrus.co.ke/api.php");
+// Detect if running in a Builder.io preview or sandbox environment
+const isBuilderPreview = typeof window !== 'undefined' &&
+  (window.location.hostname.includes('builderio.xyz') ||
+   window.location.hostname.includes('lovable.app'));
+
+// In development (localhost), use the proxied path to bypass CORS
+// In preview/production, use the full URL to the actual API server
+// If VITE_API_BASE_URL is set, always use that
+export const API_BASE_URL = configuredApiBaseUrl ||
+  (import.meta.env.DEV && !isBuilderPreview ? "/api.php" : "https://lab.wayrus.co.ke/api.php");
 
 // Log API configuration on module load
 console.log("[API] === CONFIGURATION ===");
 console.log("[API] VITE_API_BASE_URL env:", configuredApiBaseUrl ? `"${configuredApiBaseUrl}"` : "(not set)");
 console.log("[API] Development mode:", import.meta.env.DEV);
+console.log("[API] Builder.io preview detected:", isBuilderPreview);
 console.log("[API] Final API_BASE_URL:", API_BASE_URL);
 console.log("[API] window.location.origin:", window.location.origin);
 
