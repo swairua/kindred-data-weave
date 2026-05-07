@@ -1966,7 +1966,7 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
         onRecordClick={computedRecords.length === 0 && !project.projectName ? handleStartRecording : undefined}
       >
       <div className="space-y-3 print:space-y-2">
-        <Card className="border bg-muted/20 shadow-none print:border-border print:bg-transparent">
+        <Card className="hidden border bg-muted/20 shadow-none print:border-border print:bg-transparent">
           <CardContent className="grid gap-1 sm:gap-2 p-2 sm:p-4 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-8">
             <OverviewMetric label="Project" value={project.projectName || "Current project"} />
             <OverviewMetric label="Client" value={project.clientName || "-"} />
