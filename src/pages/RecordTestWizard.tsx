@@ -326,6 +326,7 @@ const RecordTestWizard = () => {
     testData.updateProjectMetadata({
       projectName: state.projectName,
       clientName: state.clientName,
+      currentProjectId: state.projectId,
     });
 
     // If concrete material, also push concrete test details to context
