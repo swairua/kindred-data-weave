@@ -724,25 +724,14 @@ const RecordTestWizard = () => {
                       placeholder="e.g. BH-01 / S-3"
                     />
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="depth">Depth (m)</Label>
-                      <Input
-                        id="depth"
-                        value={state.sampleDepthFrom}
-                        onChange={(e) => update("sampleDepthFrom", e.target.value)}
-                        placeholder="e.g. 1.5-2.0"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="borehole">Borehole / Location</Label>
-                      <Input
-                        id="borehole"
-                        value={state.sampleDepthTo}
-                        onChange={(e) => update("sampleDepthTo", e.target.value)}
-                        placeholder="e.g. BH-01"
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="depth">Depth from</Label>
+                    <Input
+                      id="depth"
+                      value={state.sampleDepthFrom}
+                      onChange={(e) => update("sampleDepthFrom", e.target.value)}
+                      placeholder="e.g. 1.5-2.0"
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="notes">Notes (optional)</Label>
