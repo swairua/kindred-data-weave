@@ -327,6 +327,23 @@ const RecordTestWizard = () => {
       projectName: state.projectName,
       clientName: state.clientName,
     });
+
+    // If concrete material, also push concrete test details to context
+    if (state.material === "concrete") {
+      testData.updateConcreteTestMetadata({
+        cement: state.cement,
+        fineAggregate: state.fineAggregate,
+        coarseAggregate: state.coarseAggregate,
+        contractor: state.contractor,
+        concreteClass: state.concreteClass,
+        section: state.section,
+        madeBy: state.madeBy,
+        slump: state.slump,
+        clientRef: state.clientRef,
+        dateTested: state.dateTested,
+      });
+    }
+
     sessionStorage.removeItem(STORAGE_KEY);
     toast.success(`Started ${tests.find((t) => t.key === state.testKey)?.name ?? "test"} record`);
     // If wizard was launched against an existing project (not creating a new one),

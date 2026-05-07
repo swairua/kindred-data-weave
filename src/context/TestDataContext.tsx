@@ -33,6 +33,20 @@ export interface RecordMetadata {
   testedBy?: string;
 }
 
+// Concrete-specific test metadata
+export interface ConcreteTestMetadata {
+  cement?: string;
+  fineAggregate?: string;
+  coarseAggregate?: string;
+  contractor?: string;
+  concreteClass?: string;
+  section?: string;
+  madeBy?: string;
+  slump?: string;
+  clientRef?: string;
+  dateTested?: string;
+}
+
 export type AtterbergTestType = "liquidLimit" | "plasticLimit" | "shrinkageLimit";
 
 export interface LiquidLimitTrial {
@@ -131,6 +145,8 @@ interface TestDataContextType {
   updateProjectMetadata: (data: Partial<ProjectMetadata>) => void;
   recordMetadata: Record<string, RecordMetadata>;
   updateRecordMetadata: (testId: string, data: Partial<RecordMetadata>) => void;
+  concreteTestMetadata: ConcreteTestMetadata | null;
+  updateConcreteTestMetadata: (data: ConcreteTestMetadata) => void;
   resetProjectData: () => void;
   currentProjectId: number | null;
 }
@@ -162,6 +178,8 @@ const TestDataContext = createContext<TestDataContextType>({
   updateProjectMetadata: () => {},
   recordMetadata: {},
   updateRecordMetadata: () => {},
+  concreteTestMetadata: null,
+  updateConcreteTestMetadata: () => {},
   resetProjectData: () => {},
   currentProjectId: null,
 });
@@ -172,6 +190,7 @@ export const TestDataProvider = ({ children }: { children: ReactNode }) => {
   const [tests, setTests] = useState<Record<string, TestSummary>>(defaultTests);
   const [projectMetadata, setProjectMetadata] = useState<ProjectMetadata>({});
   const [recordMetadata, setRecordMetadata] = useState<Record<string, RecordMetadata>>({});
+  const [concreteTestMetadata, setConcreteTestMetadata] = useState<ConcreteTestMetadata | null>(null);
   const [currentProjectId, setCurrentProjectId] = useState<number | null>(null);
 
   useEffect(() => {
@@ -255,16 +274,21 @@ export const TestDataProvider = ({ children }: { children: ReactNode }) => {
     }));
   }, []);
 
+  const updateConcreteTestMetadata = useCallback((data: ConcreteTestMetadata) => {
+    setConcreteTestMetadata(data);
+  }, []);
+
   const resetProjectData = useCallback(() => {
     setTests(defaultTests);
     setProjectMetadata({});
     setRecordMetadata({});
+    setConcreteTestMetadata(null);
     setCurrentProjectId(null);
   }, []);
 
   return (
     <TestDataContext.Provider
-      value={{ tests, updateTest, projectMetadata, updateProjectMetadata, recordMetadata, updateRecordMetadata, resetProjectData, currentProjectId }}
+      value={{ tests, updateTest, projectMetadata, updateProjectMetadata, recordMetadata, updateRecordMetadata, concreteTestMetadata, updateConcreteTestMetadata, resetProjectData, currentProjectId }}
     >
       {children}
     </TestDataContext.Provider>
