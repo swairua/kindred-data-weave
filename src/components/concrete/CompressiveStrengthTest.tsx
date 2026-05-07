@@ -3,7 +3,7 @@ import TestSection from "@/components/TestSection";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import CalculatedInput from "@/components/CalculatedInput";
-import { Plus, X, Save } from "lucide-react";
+import { Plus, X, Save as SaveIcon } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
 import { generateTestPDF } from "@/lib/pdfGenerator";
 import { generateTestCSV } from "@/lib/csvExporter";
@@ -301,7 +301,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
           </div>
           <div className="flex items-center justify-between mt-3">
             <Button variant="outline" size="sm" onClick={() => setRows([...rows, { mark: "", dateOfCast: "", dateOfTest: "", load: "", width: "150", height: "150", depth: "150", mass: "", remarks: "" }])}><Plus className="h-3.5 w-3.5 mr-1" /> Add row</Button>
-            <Button size="sm" variant="default" onClick={handleSave}><Save className="h-3.5 w-3.5 mr-1" /> Save</Button>
+            <Button size="sm" variant="default" onClick={handleSave}><SaveIcon className="h-3.5 w-3.5 mr-1" /> Save</Button>
           </div>
 
           {chartData.length >= 1 && (
