@@ -1196,7 +1196,40 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
       setPrintProcessing("idle");
     };
     window.addEventListener("afterprint", cleanup);
-    setTimeout(() => window.print(), 50);
+
+    // Wait for all images inside print sheets to be fully loaded/decoded before printing
+    const printSheets = document.querySelectorAll<HTMLElement>("[data-print-sheet-content]");
+    const imgs: HTMLImageElement[] = [];
+    printSheets.forEach((sheet) => {
+      sheet.querySelectorAll<HTMLImageElement>("img").forEach((img) => imgs.push(img));
+    });
+
+    const waitForImg = (img: HTMLImageElement) =>
+      new Promise<void>((resolve) => {
+        if (img.complete && img.naturalWidth > 0) {
+          if (typeof img.decode === "function") {
+            img.decode().then(() => resolve()).catch(() => resolve());
+          } else {
+            resolve();
+          }
+          return;
+        }
+        const done = () => {
+          img.removeEventListener("load", done);
+          img.removeEventListener("error", done);
+          resolve();
+        };
+        img.addEventListener("load", done);
+        img.addEventListener("error", done);
+      });
+
+    const allReady = Promise.all(imgs.map(waitForImg));
+    // Hard cap so a slow image never blocks the print dialog forever
+    const timeout = new Promise<void>((resolve) => setTimeout(resolve, 5000));
+    Promise.race([allReady, timeout]).then(() => {
+      // One more frame so layout settles after images decode
+      requestAnimationFrame(() => window.print());
+    });
   }, []);
 
   const handleSaveAndPrint = useCallback(async () => {
