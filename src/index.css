@@ -693,7 +693,7 @@
 }
 .atterberg-print-sheet .aps-chart-box {
   border: 1px solid #ccc;
-  padding: 1mm;
+  padding: 0;
   background: #fff8ec;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
