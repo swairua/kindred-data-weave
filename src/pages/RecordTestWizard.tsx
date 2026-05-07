@@ -162,11 +162,12 @@ const RecordTestWizard = () => {
   }, [navigate]);
 
   const [state, setState] = useState<WizardState>(() => {
+    const defaults = { ...emptyState, material: initialMaterial, testKey: initialTest };
     try {
       const raw = sessionStorage.getItem(STORAGE_KEY);
-      if (raw) return { ...emptyState, ...JSON.parse(raw) } as WizardState;
+      if (raw) return { ...defaults, ...JSON.parse(raw) } as WizardState;
     } catch {}
-    return { ...emptyState, material: initialMaterial, testKey: initialTest };
+    return defaults;
   });
 
   // If both material and test are pre-selected via query params, skip to project step
