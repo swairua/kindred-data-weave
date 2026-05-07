@@ -601,6 +601,20 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [isExporting, setIsExporting] = useState<"json" | "pdf" | "xlsx" | null>(null);
   const [printProcessing, setPrintProcessing] = useState<"idle" | "saving" | "processing" | "ready">("idle");
+  const [adminImages, setAdminImages] = useState<{ logo?: string; contacts?: string; stamp?: string }>({});
+
+  // Load admin images (logo, contacts, stamp) once for use in HTML print sheet
+  useEffect(() => {
+    let active = true;
+    import("@/lib/imageUtils")
+      .then(({ fetchAdminImagesAsBase64 }) => fetchAdminImagesAsBase64())
+      .then((imgs) => {
+        if (active) setAdminImages(imgs || {});
+      })
+      .catch(() => { /* images optional */ });
+    return () => { active = false; };
+  }, []);
+
   const [selectedTestIds, setSelectedTestIds] = useState<
     Record<
       string,
