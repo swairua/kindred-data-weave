@@ -246,7 +246,7 @@ const AtterbergPrintSheet = ({ record, project, projectState }: Props) => {
         <div><span className="lbl">Date reported:</span> {projectState.dateReported || "_______________"}</div>
         <div className="aps-checked">
           <span className="lbl">Checked by:</span> {projectState.checkedBy || "_______________"}
-          {project.stampImageUrl ? <img src={project.stampImageUrl} alt="Stamp" className="aps-stamp" /> : null}
+          {project.stampImageUrl ? <img src={project.stampImageUrl} alt="Stamp" className="aps-stamp" crossOrigin="anonymous" /> : null}
         </div>
       </div>
     </div>
