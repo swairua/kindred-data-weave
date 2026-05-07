@@ -3,7 +3,7 @@ import TestSection from "@/components/TestSection";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import CalculatedInput from "@/components/CalculatedInput";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Sheet, FileDown } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
 import { generateTestPDF } from "@/lib/pdfGenerator";
 import { generateTestCSV } from "@/lib/csvExporter";
@@ -228,7 +228,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   };
 
   return (
-    <TestSection title="Compressive Strength (Cube Test)" testKey={testKey} onSave={handleSave} onClear={() => setRows([{ mark: "", dateOfCast: "", dateOfTest: "", load: "", width: "150", height: "150", depth: "150", mass: "", remarks: "" }])} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
+    <TestSection title="Compressive Strength (Cube Test)" testKey={testKey} onSave={handleSave} onClear={() => setRows([{ mark: "", dateOfCast: "", dateOfTest: "", load: "", width: "150", height: "150", depth: "150", mass: "", remarks: "" }])}>
       <>
           <div className="mb-6 p-4 bg-gradient-to-r from-amber-50 to-amber-100 rounded-lg border border-amber-200">
             <h3 className="text-sm font-semibold text-gray-800 mb-3">Test Details</h3>
@@ -299,7 +299,13 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
               </tbody>
             </table>
           </div>
-          <Button variant="outline" size="sm" className="mt-3" onClick={() => setRows([...rows, { mark: "", dateOfCast: "", dateOfTest: "", load: "", width: "150", height: "150", depth: "150", mass: "", remarks: "" }])}><Plus className="h-3.5 w-3.5 mr-1" /> Add row</Button>
+          <div className="flex items-center justify-between mt-3">
+            <Button variant="outline" size="sm" onClick={() => setRows([...rows, { mark: "", dateOfCast: "", dateOfTest: "", load: "", width: "150", height: "150", depth: "150", mass: "", remarks: "" }])}><Plus className="h-3.5 w-3.5 mr-1" /> Add row</Button>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={exportXLSX}><Sheet className="h-3.5 w-3.5 mr-1" /> Excel</Button>
+              <Button size="sm" variant="outline" onClick={exportPDF}><FileDown className="h-3.5 w-3.5 mr-1" /> PDF</Button>
+            </div>
+          </div>
 
           {chartData.length >= 1 && (
             <div className="mt-6">
