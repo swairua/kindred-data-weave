@@ -698,16 +698,15 @@
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
   page-break-inside: avoid;
-  min-height: 160mm;
+  min-height: 100mm;
   display: flex;
   align-items: stretch;
   justify-content: stretch;
 }
 .atterberg-print-sheet .aps-chart-box > div {
   width: 100% !important;
-  height: 100% !important;
+  height: auto !important;
   max-width: none !important;
-  min-height: 160mm;
   padding: 0 !important;
 }
 .atterberg-print-sheet .aps-chart-box svg {
