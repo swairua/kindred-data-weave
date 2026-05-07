@@ -480,7 +480,7 @@ const RecordTestWizard = () => {
               <div className="grid grid-cols-1 gap-3">
                 {tests.map((t) => {
                   const selected = state.testKey === t.key;
-                  const isDisabled = (state.material === "concrete" && t.key === "compressive") || state.material === "rock" || state.material === "special" || (state.material === "soil" && t.key !== "atterberg");
+                  const isDisabled = state.material === "concrete" || state.material === "rock" || state.material === "special" || (state.material === "soil" && t.key !== "atterberg");
                   return (
                     <button
                       key={t.key}
