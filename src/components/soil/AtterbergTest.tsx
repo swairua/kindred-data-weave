@@ -1979,8 +1979,9 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
           </CardContent>
         </Card>
 
-        <Collapsible defaultOpen={false}>
-          <Card className="border shadow-sm print:shadow-none">
+        <div className="hidden">
+          <Collapsible defaultOpen={false}>
+            <Card className="border shadow-sm print:shadow-none">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold">Project Metadata</h3>
@@ -2022,8 +2023,9 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
                 </div>
               </CardContent>
             </CollapsibleContent>
-          </Card>
-        </Collapsible>
+            </Card>
+          </Collapsible>
+        </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 print:hidden">
           <Button type="button" onClick={addRecord} className="gap-2 w-full sm:w-auto">

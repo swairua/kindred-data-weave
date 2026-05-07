@@ -85,7 +85,7 @@ const ProjectHeader = ({
       )}
 
       {/* History dropdown - minimal layout */}
-      <div className="space-y-1">
+      <div className="hidden space-y-1">
         <Label className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1.5">
           <History className="h-3.5 w-3.5" /> History
         </Label>
