@@ -440,7 +440,7 @@ const RecordTestWizard = () => {
                 Available tests for {MATERIAL_OPTIONS.find((m) => m.id === state.material)?.label}.
               </p>
             </div>
-            {state.material !== "soil" ? (
+            {tests.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
                   <Layers className="h-6 w-6 text-muted-foreground" />
@@ -449,7 +449,7 @@ const RecordTestWizard = () => {
                   Coming soon
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {MATERIAL_OPTIONS.find((m) => m.id === state.material)?.label} testing is not yet available. Please select Soil to continue.
+                  {MATERIAL_OPTIONS.find((m) => m.id === state.material)?.label} testing is not yet available.
                 </p>
               </div>
             ) : (
