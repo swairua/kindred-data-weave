@@ -482,8 +482,8 @@ const AtterbergRecordView = ({
             <div className="mb-2 text-sm font-semibold text-foreground">
               Liquid Limit Flow Curve
             </div>
-            <div className="flex-1 w-full min-h-0">
-              <LiquidLimitFlowChart trials={llTrials} width={900} height={480} />
+            <div className="flex-1 w-full min-h-0 overflow-hidden">
+              <LiquidLimitFlowChart trials={llTrials} />
             </div>
           </div>
 

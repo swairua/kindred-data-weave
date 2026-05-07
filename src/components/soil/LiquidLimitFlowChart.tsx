@@ -4,7 +4,7 @@ import { getLiquidLimitGraphData, calculateLogLinearRegression } from "@/lib/att
 
 interface LiquidLimitFlowChartProps {
   trials: LiquidLimitTrial[];
-  width?: number;
+  width?: number | string;
   height?: number;
 }
 
@@ -13,14 +13,16 @@ interface LiquidLimitFlowChartProps {
  * Data points + log-linear regression line, ASTM D4318 compliant.
  * Used both for in-app preview and for off-screen capture into PDF/Excel exports.
  */
-const LiquidLimitFlowChart = ({ trials, width = 900, height = 480 }: LiquidLimitFlowChartProps) => {
+const LiquidLimitFlowChart = ({ trials, width, height }: LiquidLimitFlowChartProps) => {
   const graphData = getLiquidLimitGraphData(trials);
+  const finalWidth = width ?? "100%";
+  const finalHeight = height ?? 480;
 
   if (graphData.length === 0) {
     return (
       <div
         className="flex items-center justify-center bg-white text-sm text-muted-foreground"
-        style={{ width, height }}
+        style={{ width: finalWidth, height: finalHeight }}
       >
         Enter penetration & moisture to view the flow curve
       </div>
@@ -56,7 +58,7 @@ const LiquidLimitFlowChart = ({ trials, width = 900, height = 480 }: LiquidLimit
   ].sort((a, b) => a.penetration - b.penetration);
 
   return (
-    <div className="bg-white w-full" style={{ maxWidth: width, height }}>
+    <div className="bg-white w-full" style={{ width: finalWidth, height: finalHeight }}>
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={merged} margin={{ top: 8, right: 8, left: 12, bottom: 24 }}>
           <CartesianGrid stroke="#e5e7eb" strokeWidth={1.5} fill="#F5E6D3" />
