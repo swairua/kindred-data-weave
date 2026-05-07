@@ -3,7 +3,7 @@ import TestSection from "@/components/TestSection";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import CalculatedInput from "@/components/CalculatedInput";
-import { Plus, X, Save as SaveIcon } from "lucide-react";
+import { Plus, X, Save as SaveIcon, Printer, Loader2, CheckCircle2 } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
 import { generateTestPDF } from "@/lib/pdfGenerator";
 import { generateTestCSV } from "@/lib/csvExporter";
@@ -52,6 +52,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   ];
   const [rows, setRows] = useState<Row[]>(defaultRows);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveCompleted, setSaveCompleted] = useState(false);
   const [testDetails, setTestDetails] = useState<TestDetails>({
     cement: "",
     fineAggregate: "",
@@ -151,6 +152,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
       });
 
       toast.success("Compressive strength test saved successfully");
+      setSaveCompleted(true);
     } catch (error) {
       console.error("Failed to save test:", error);
       toast.error(error instanceof Error ? error.message : "Failed to save test");
@@ -227,6 +229,10 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     });
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <TestSection title="Compressive Strength (Cube Test)" testKey={testKey} onClear={() => setRows([{ mark: "", dateOfCast: "", dateOfTest: "", load: "", width: "150", height: "150", depth: "150", mass: "", remarks: "" }])}>
       <>
@@ -301,7 +307,13 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
           </div>
           <div className="flex items-center justify-between mt-3">
             <Button variant="outline" size="sm" onClick={() => setRows([...rows, { mark: "", dateOfCast: "", dateOfTest: "", load: "", width: "150", height: "150", depth: "150", mass: "", remarks: "" }])}><Plus className="h-3.5 w-3.5 mr-1" /> Add row</Button>
-            <Button size="sm" variant="default" onClick={handleSave}><SaveIcon className="h-3.5 w-3.5 mr-1" /> Save</Button>
+            {saveCompleted ? (
+              <Button size="sm" variant="default" onClick={handlePrint}><Printer className="h-3.5 w-3.5 mr-1" /> Print to Browser</Button>
+            ) : isSaving ? (
+              <Button size="sm" variant="default" disabled><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Saving...</Button>
+            ) : (
+              <Button size="sm" variant="default" onClick={handleSave}><SaveIcon className="h-3.5 w-3.5 mr-1" /> Save</Button>
+            )}
           </div>
 
           {chartData.length >= 1 && (
