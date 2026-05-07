@@ -1,0 +1,12 @@
+node_modules/
+dist/
+bun.lock
+bun.lockb
+.DS_Store
+coverage/
+.env
+.env.local
+npm-debug.log*
+yarn.lock
+package-lock.json
+*.log
