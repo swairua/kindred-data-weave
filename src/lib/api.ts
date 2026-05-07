@@ -760,3 +760,119 @@ export const logoutUser = async () => {
     throw error;
   }
 };
+
+// Compressive Strength Test API helpers
+export const saveCompressiveTest = async ({
+  projectId,
+  testData,
+  cubes,
+}: {
+  projectId: number;
+  testData: Record<string, unknown>;
+  cubes: Array<Record<string, unknown>>;
+}): Promise<{ testId: number; cubeIds: number[] }> => {
+  try {
+    // Create or find test record
+    const testPayload = {
+      project_id: projectId,
+      test_key: "compressive",
+      ...testData,
+    };
+
+    const testResponse = await createRecord<{ id: number }>("compressive_tests", testPayload);
+    const testId = testResponse.data?.id;
+
+    if (!testId) {
+      throw new Error("Failed to create compressive test record");
+    }
+
+    // Create cube records linked to test
+    const cubeIds: number[] = [];
+    for (const cube of cubes) {
+      const cubePayload = {
+        test_id: testId,
+        ...cube,
+      };
+
+      const cubeResponse = await createRecord<{ id: number }>("compressive_cubes", cubePayload);
+      if (cubeResponse.data?.id) {
+        cubeIds.push(cubeResponse.data.id);
+      }
+    }
+
+    return { testId, cubeIds };
+  } catch (error) {
+    console.error("[API] Failed to save compressive test:", error);
+    throw error;
+  }
+};
+
+export const getCompressiveTest = async (testId: number) => {
+  try {
+    const response = await readRecord("compressive_tests", testId);
+    return response;
+  } catch (error) {
+    console.error("[API] Failed to fetch compressive test:", error);
+    throw error;
+  }
+};
+
+export const listCompressiveTests = async (projectId?: number) => {
+  try {
+    const params = projectId ? { filter: `project_id=${projectId}` } : undefined;
+    const response = await listRecords("compressive_tests", params);
+    return response;
+  } catch (error) {
+    console.error("[API] Failed to list compressive tests:", error);
+    throw error;
+  }
+};
+
+export const updateCompressiveTest = async (testId: number, data: Record<string, unknown>) => {
+  try {
+    const response = await updateRecord("compressive_tests", testId, data);
+    return response;
+  } catch (error) {
+    console.error("[API] Failed to update compressive test:", error);
+    throw error;
+  }
+};
+
+export const deleteCompressiveTest = async (testId: number) => {
+  try {
+    await deleteRecord("compressive_tests", testId);
+  } catch (error) {
+    console.error("[API] Failed to delete compressive test:", error);
+    throw error;
+  }
+};
+
+export const addCompressiveCube = async (testId: number, cubeData: Record<string, unknown>) => {
+  try {
+    const payload = { test_id: testId, ...cubeData };
+    const response = await createRecord<{ id: number }>("compressive_cubes", payload);
+    return response;
+  } catch (error) {
+    console.error("[API] Failed to add compressive cube:", error);
+    throw error;
+  }
+};
+
+export const updateCompressiveCube = async (cubeId: number, data: Record<string, unknown>) => {
+  try {
+    const response = await updateRecord("compressive_cubes", cubeId, data);
+    return response;
+  } catch (error) {
+    console.error("[API] Failed to update compressive cube:", error);
+    throw error;
+  }
+};
+
+export const deleteCompressiveCube = async (cubeId: number) => {
+  try {
+    await deleteRecord("compressive_cubes", cubeId);
+  } catch (error) {
+    console.error("[API] Failed to delete compressive cube:", error);
+    throw error;
+  }
+};
