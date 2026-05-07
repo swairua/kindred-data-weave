@@ -296,7 +296,7 @@ const RecordTestWizard = () => {
       case 0: return !!state.material;
       case 1: return !!state.testKey;
       case 2: return creatingNewProject ? state.projectName.trim().length > 0 : state.projectId !== null;
-      case 3: return state.cement.trim().length > 0;
+      case 3: return state.material === "concrete" ? state.cement.trim().length > 0 : true;
       case 4: return true;
       default: return false;
     }
@@ -656,50 +656,54 @@ const RecordTestWizard = () => {
                 <section className="space-y-6 animate-fade-in max-w-2xl">
             <div>
               <h2 className="text-2xl font-semibold tracking-tight">Test details</h2>
-              <p className="text-sm text-muted-foreground mt-1">Enter the concrete sample details.</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {state.material === "concrete" ? "Enter the concrete sample details." : "Sample details will be entered in the next step."}
+              </p>
             </div>
-            <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-muted/30 rounded-lg">
-              <div>
-                <Label className="text-xs font-medium mb-1 block">Cement</Label>
-                <Input value={state.cement} onChange={(e) => update("cement", e.target.value)} className="h-8 text-sm" />
+            {state.material === "concrete" && (
+              <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-muted/30 rounded-lg">
+                <div>
+                  <Label className="text-xs font-medium mb-1 block">Cement</Label>
+                  <Input value={state.cement} onChange={(e) => update("cement", e.target.value)} className="h-8 text-sm" />
+                </div>
+                <div>
+                  <Label className="text-xs font-medium mb-1 block">Fine Aggregate</Label>
+                  <Input value={state.fineAggregate} onChange={(e) => update("fineAggregate", e.target.value)} className="h-8 text-sm" />
+                </div>
+                <div>
+                  <Label className="text-xs font-medium mb-1 block">Coarse Aggregate</Label>
+                  <Input value={state.coarseAggregate} onChange={(e) => update("coarseAggregate", e.target.value)} className="h-8 text-sm" />
+                </div>
+                <div>
+                  <Label className="text-xs font-medium mb-1 block">Contractor</Label>
+                  <Input value={state.contractor} onChange={(e) => update("contractor", e.target.value)} className="h-8 text-sm" />
+                </div>
+                <div>
+                  <Label className="text-xs font-medium mb-1 block">Concrete Class</Label>
+                  <Input value={state.concreteClass} onChange={(e) => update("concreteClass", e.target.value)} className="h-8 text-sm" />
+                </div>
+                <div>
+                  <Label className="text-xs font-medium mb-1 block">Section</Label>
+                  <Input value={state.section} onChange={(e) => update("section", e.target.value)} className="h-8 text-sm" />
+                </div>
+                <div>
+                  <Label className="text-xs font-medium mb-1 block">Made By</Label>
+                  <Input value={state.madeBy} onChange={(e) => update("madeBy", e.target.value)} className="h-8 text-sm" />
+                </div>
+                <div>
+                  <Label className="text-xs font-medium mb-1 block">Slump</Label>
+                  <Input value={state.slump} onChange={(e) => update("slump", e.target.value)} className="h-8 text-sm" />
+                </div>
+                <div>
+                  <Label className="text-xs font-medium mb-1 block">Client Ref</Label>
+                  <Input value={state.clientRef} onChange={(e) => update("clientRef", e.target.value)} className="h-8 text-sm" />
+                </div>
+                <div>
+                  <Label className="text-xs font-medium mb-1 block">Date Tested</Label>
+                  <Input type="date" value={state.dateTested} onChange={(e) => update("dateTested", e.target.value)} className="h-8 text-sm" />
+                </div>
               </div>
-              <div>
-                <Label className="text-xs font-medium mb-1 block">Fine Aggregate</Label>
-                <Input value={state.fineAggregate} onChange={(e) => update("fineAggregate", e.target.value)} className="h-8 text-sm" />
-              </div>
-              <div>
-                <Label className="text-xs font-medium mb-1 block">Coarse Aggregate</Label>
-                <Input value={state.coarseAggregate} onChange={(e) => update("coarseAggregate", e.target.value)} className="h-8 text-sm" />
-              </div>
-              <div>
-                <Label className="text-xs font-medium mb-1 block">Contractor</Label>
-                <Input value={state.contractor} onChange={(e) => update("contractor", e.target.value)} className="h-8 text-sm" />
-              </div>
-              <div>
-                <Label className="text-xs font-medium mb-1 block">Concrete Class</Label>
-                <Input value={state.concreteClass} onChange={(e) => update("concreteClass", e.target.value)} className="h-8 text-sm" />
-              </div>
-              <div>
-                <Label className="text-xs font-medium mb-1 block">Section</Label>
-                <Input value={state.section} onChange={(e) => update("section", e.target.value)} className="h-8 text-sm" />
-              </div>
-              <div>
-                <Label className="text-xs font-medium mb-1 block">Made By</Label>
-                <Input value={state.madeBy} onChange={(e) => update("madeBy", e.target.value)} className="h-8 text-sm" />
-              </div>
-              <div>
-                <Label className="text-xs font-medium mb-1 block">Slump</Label>
-                <Input value={state.slump} onChange={(e) => update("slump", e.target.value)} className="h-8 text-sm" />
-              </div>
-              <div>
-                <Label className="text-xs font-medium mb-1 block">Client Ref</Label>
-                <Input value={state.clientRef} onChange={(e) => update("clientRef", e.target.value)} className="h-8 text-sm" />
-              </div>
-              <div>
-                <Label className="text-xs font-medium mb-1 block">Date Tested</Label>
-                <Input type="date" value={state.dateTested} onChange={(e) => update("dateTested", e.target.value)} className="h-8 text-sm" />
-              </div>
-            </div>
+            )}
           </section>
               )}
 
