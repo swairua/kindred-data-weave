@@ -199,7 +199,7 @@ const AtterbergPrintSheet = ({ record, project, projectState }: Props) => {
       {/* Chart + side panels */}
       <div className="aps-grid" style={{ pageBreakInside: 'avoid' }}>
         <div className="aps-chart-box">
-          <LiquidLimitFlowChart trials={llTrials} variant="print" />
+          <LiquidLimitFlowChart trials={llTrials} variant="print" height={600} />
         </div>
         <div className="aps-side">
           <div className="aps-section-bar">LINEAR SHRINKAGE</div>
