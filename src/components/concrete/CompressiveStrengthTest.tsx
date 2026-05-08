@@ -16,7 +16,6 @@ import { useTestReport } from "@/hooks/useTestReport";
 import { captureChartAsBase64 } from "@/lib/chartCapture";
 import { saveCompressiveTest } from "@/lib/api";
 import { toast } from "sonner";
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Row {
@@ -673,15 +672,14 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   return (
     <TestSection title="Compressive Strength (Cube Test)" testKey={testKey} onClear={() => setRows([{ mark: "", dateOfCast: "", dateOfTest: "", load: "", width: "150", height: "150", depth: "150", mass: "", remarks: "" }])}>
       <>
-        <ResizablePanelGroup direction="horizontal" className="w-full gap-0">
-          <ResizablePanel defaultSize={60} minSize={30} className="overflow-y-auto">
+        <div className="flex flex-col gap-6 w-full">
+          <div className="w-full">
             {renderTable()}
-          </ResizablePanel>
-          <ResizableHandle withHandle />
-          <ResizablePanel defaultSize={40} minSize={25} className="overflow-y-auto">
+          </div>
+          <div className="w-full">
             {renderAnalytics()}
-          </ResizablePanel>
-        </ResizablePanelGroup>
+          </div>
+        </div>
       </>
     </TestSection>
   );
