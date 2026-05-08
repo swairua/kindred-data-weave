@@ -3,6 +3,7 @@ import { useWizard } from "@/context/WizardContext";
 import { Button } from "@/components/ui/button";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import FormCard from "./FormCard";
 
 interface TestTypeSelectionProps {
   onNext: () => void;
@@ -49,23 +50,25 @@ const TestTypeSelection: React.FC<TestTypeSelectionProps> = ({ onNext, onPrev })
         <p className="text-muted-foreground">Choose the test to run for {state.material || "material"}</p>
       </div>
 
-      <div className="space-y-3">
-        {availableTests.map((test) => (
-          <button
-            key={test.id}
-            onClick={() => handleSelect(test.id)}
-            className={cn(
-              "w-full p-4 rounded-lg border-2 transition-all text-left",
-              state.testType === test.id
-                ? "border-primary bg-primary/5"
-                : "border-border hover:border-primary/50 bg-card",
-            )}
-          >
-            <h3 className="font-semibold text-foreground">{test.name}</h3>
-            <p className="text-sm text-muted-foreground mt-1">{test.description}</p>
-          </button>
-        ))}
-      </div>
+      <FormCard>
+        <div className="space-y-3">
+          {availableTests.map((test) => (
+            <button
+              key={test.id}
+              onClick={() => handleSelect(test.id)}
+              className={cn(
+                "w-full p-4 rounded-lg border-2 transition-all text-left",
+                state.testType === test.id
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:border-primary/50 bg-card",
+              )}
+            >
+              <h3 className="font-semibold text-foreground">{test.name}</h3>
+              <p className="text-sm text-muted-foreground mt-1">{test.description}</p>
+            </button>
+          ))}
+        </div>
+      </FormCard>
 
       <div className="flex justify-between pt-8">
         <Button type="button" variant="outline" onClick={onPrev}>
