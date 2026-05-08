@@ -69,6 +69,8 @@ import {
   extractAtterbergPayload,
   normalizeAtterbergProjectState,
   type AtterbergExportPayload,
+  exportAsJSON,
+  downloadJSON,
 } from "@/lib/jsonExporter";
 import { generateAtterbergXLSX } from "@/lib/xlsxExporter";
 import { ExportPreviewModal, type ExportPreviewData } from "@/components/ExportPreviewModal";
