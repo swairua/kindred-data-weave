@@ -611,7 +611,7 @@ function drawRecordPage(
   // Optimized for single-page fit
   const chartH = leftW * 0.72; // Taller box to match captured chart aspect
   const rightStackH = 80;
-  const footerBlockNeeded = 42; // Reserve more space for the larger footer gap
+  const footerBlockNeeded = 52; // Reserve more space for the 24mm footer gap
   const requiredBottom = sectionStartY + Math.max(chartH, rightStackH) + footerBlockNeeded;
   // For single records, avoid page breaks; for multiple, allow if needed
   if (requiredBottom > ph - 12 && options.records.length > 1) {
@@ -762,7 +762,7 @@ function drawRecordPage(
 
   // ── Compute footer position AFTER all content is drawn ──
   const contentBottom = Math.max(ry, sectionStartY2 + chartH);
-  let footerY = contentBottom + 14; // ~14mm clearance from content above
+  let footerY = contentBottom + 24; // ~24mm clearance from content above
 
   // Page-break guard: for single records, avoid adding pages
   const pageBottomReserved = 12; // reserve for page number area

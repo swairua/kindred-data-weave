@@ -74,13 +74,19 @@ export const isShrinkageLimitTrialStarted = (trial: ShrinkageLimitTrial) =>
   isFilled(trial.initialLength) || isFilled(trial.finalLength);
 
 export const isLiquidLimitTrialValid = (trial: LiquidLimitTrial): boolean => {
-  const moisture = getTrialMoisture(trial);
-  return (
-    isFiniteNumber(trial.penetration) &&
-    Number(trial.penetration) > 0 &&
-    isFiniteNumber(moisture) &&
-    Number(moisture) >= 0
-  );
+  // Penetration must be valid and > 0
+  if (!isFiniteNumber(trial.penetration) || Number(trial.penetration) <= 0) {
+    return false;
+  }
+
+  // Moisture must be available from either:
+  // 1. Direct entry (trial.moisture), OR
+  // 2. Calculated from mass data
+  const directMoisture = trial.moisture;
+  const calculatedMoisture = calculateMoistureFromMass(trial.containerWetMass, trial.containerDryMass, trial.containerMass);
+
+  const hasValidMoisture = isFiniteNumber(directMoisture) || calculatedMoisture !== null;
+  return hasValidMoisture;
 };
 
 export const isPlasticLimitTrialValid = (trial: PlasticLimitTrial): boolean => {
