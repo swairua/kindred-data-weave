@@ -82,8 +82,11 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
 
   const getAge = (dateOfCast: string, dateOfTest: string) => {
     if (!dateOfCast || !dateOfTest) return "";
-    const cast = new Date(dateOfCast);
-    const test = new Date(dateOfTest);
+    // Parse YYYY-MM-DD strings and create dates in local timezone
+    const [castYear, castMonth, castDay] = dateOfCast.split('-').map(Number);
+    const [testYear, testMonth, testDay] = dateOfTest.split('-').map(Number);
+    const cast = new Date(castYear, castMonth - 1, castDay, 0, 0, 0, 0);
+    const test = new Date(testYear, testMonth - 1, testDay, 0, 0, 0, 0);
     const days = Math.floor((test.getTime() - cast.getTime()) / (1000 * 60 * 60 * 24));
     return days >= 0 ? String(days) : "";
   };
