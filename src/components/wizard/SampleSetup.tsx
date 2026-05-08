@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ChevronRight } from "lucide-react";
+import FormCard from "./FormCard";
 
 interface SampleSetupProps {
   onNext: () => void;
@@ -32,7 +33,7 @@ const SampleSetup: React.FC<SampleSetupProps> = ({ onNext, onPrev }) => {
         <p className="text-muted-foreground">Enter sample identification and depth information</p>
       </div>
 
-      <div className="space-y-6 max-w-md mx-auto">
+      <FormCard className="max-w-md mx-auto w-full">
         {/* Sample ID */}
         <div className="space-y-2">
           <Label htmlFor="sample-id" className="font-medium">
@@ -49,7 +50,7 @@ const SampleSetup: React.FC<SampleSetupProps> = ({ onNext, onPrev }) => {
         </div>
 
         {/* Depth Fields */}
-        <div className="space-y-2">
+        <div className="space-y-2 mt-6">
           <Label className="font-medium">Sample depth (M) *</Label>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -77,7 +78,7 @@ const SampleSetup: React.FC<SampleSetupProps> = ({ onNext, onPrev }) => {
         </div>
 
         {/* Status Message */}
-        <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+        <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 mt-6">
           <p className="text-sm text-primary font-medium">
             ✓ Sample setup complete
           </p>
@@ -85,7 +86,7 @@ const SampleSetup: React.FC<SampleSetupProps> = ({ onNext, onPrev }) => {
             Ready to proceed to data entry
           </p>
         </div>
-      </div>
+      </FormCard>
 
       {/* Navigation */}
       <div className="flex justify-between pt-8 max-w-md mx-auto w-full">

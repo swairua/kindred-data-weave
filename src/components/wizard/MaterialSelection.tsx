@@ -3,6 +3,7 @@ import { useWizard, type MaterialType } from "@/context/WizardContext";
 import { Button } from "@/components/ui/button";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import FormCard from "./FormCard";
 
 interface MaterialSelectionProps {
   onNext: () => void;
@@ -34,24 +35,26 @@ const MaterialSelection: React.FC<MaterialSelectionProps> = ({ onNext }) => {
         <p className="text-muted-foreground">Select the material type for this test</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        {materials.map((material) => (
-          <button
-            key={material.id}
-            onClick={() => handleSelect(material.id)}
-            className={cn(
-              "p-6 rounded-lg border-2 transition-all text-left",
-              state.material === material.id
-                ? "border-primary bg-primary/5"
-                : "border-border hover:border-primary/50 bg-card",
-            )}
-          >
-            <div className="text-4xl mb-3">{material.emoji}</div>
-            <h3 className="font-semibold text-foreground mb-1">{material.name}</h3>
-            <p className="text-sm text-muted-foreground">{material.description}</p>
-          </button>
-        ))}
-      </div>
+      <FormCard>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {materials.map((material) => (
+            <button
+              key={material.id}
+              onClick={() => handleSelect(material.id)}
+              className={cn(
+                "p-6 rounded-lg border-2 transition-all text-left",
+                state.material === material.id
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:border-primary/50 bg-card",
+              )}
+            >
+              <div className="text-4xl mb-3">{material.emoji}</div>
+              <h3 className="font-semibold text-foreground mb-1">{material.name}</h3>
+              <p className="text-sm text-muted-foreground">{material.description}</p>
+            </button>
+          ))}
+        </div>
+      </FormCard>
 
       <div className="flex justify-end pt-8">
         <Button

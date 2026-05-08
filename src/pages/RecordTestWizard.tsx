@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import WizardStepper, { type WizardStep } from "@/components/WizardStepper";
+import FormCard from "@/components/wizard/FormCard";
 import { listRecords, fetchCurrentUser, setSessionToken, logoutUser, fetchFullProject } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useTestData } from "@/context/TestDataContext";
@@ -469,94 +470,98 @@ const RecordTestWizard = () => {
               <h2 className="text-2xl font-semibold tracking-tight">What are you testing?</h2>
               <p className="text-sm text-muted-foreground mt-1">Pick the material you'll be working with.</p>
             </div>
-            <div className="grid grid-cols-1 gap-4 mx-auto">
-              {MATERIAL_OPTIONS.map((mat) => {
-                const selected = state.material === mat.id;
-                return (
-                  <button
-                    key={mat.id}
-                    type="button"
-                    onClick={() => {
-                      update("material", mat.id);
-                      setTimeout(() => setStep(1), 0);
-                    }}
-                    className={cn(
-                      "text-left rounded-2xl border-2 p-6 bg-card transition-all hover:border-primary/50 hover:shadow-sm",
-                      selected ? "border-primary ring-2 ring-primary/20" : "border-border",
-                    )}
-                  >
-                    <div className="flex items-center gap-4">
-                      <span className="text-4xl">{mat.emoji}</span>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-semibold text-foreground">{mat.label}</h3>
-                        <p className="text-sm text-muted-foreground mt-0.5">{mat.description}</p>
+            <FormCard>
+              <div className="grid grid-cols-1 gap-4 mx-auto">
+                {MATERIAL_OPTIONS.map((mat) => {
+                  const selected = state.material === mat.id;
+                  return (
+                    <button
+                      key={mat.id}
+                      type="button"
+                      onClick={() => {
+                        update("material", mat.id);
+                        setTimeout(() => setStep(1), 0);
+                      }}
+                      className={cn(
+                        "text-left rounded-2xl border-2 p-6 bg-card transition-all hover:border-primary/50 hover:shadow-sm",
+                        selected ? "border-primary ring-2 ring-primary/20" : "border-border",
+                      )}
+                    >
+                      <div className="flex items-center gap-4">
+                        <span className="text-4xl">{mat.emoji}</span>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-lg font-semibold text-foreground">{mat.label}</h3>
+                          <p className="text-sm text-muted-foreground mt-0.5">{mat.description}</p>
+                        </div>
+                        <ArrowRight className={cn("h-5 w-5 transition-colors", selected ? "text-primary" : "text-muted-foreground")} />
                       </div>
-                      <ArrowRight className={cn("h-5 w-5 transition-colors", selected ? "text-primary" : "text-muted-foreground")} />
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </FormCard>
           </section>
               )}
 
               {step === 1 && (
-                <section className="space-y-6 animate-fade-in">
+                <section className="space-y-6 animate-fade-in max-w-2xl">
             <div>
               <h2 className="text-2xl font-semibold tracking-tight">Choose the test</h2>
               <p className="text-sm text-muted-foreground mt-1">
                 Available tests for {MATERIAL_OPTIONS.find((m) => m.id === state.material)?.label}.
               </p>
             </div>
-            {tests.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
-                  <Layers className="h-6 w-6 text-muted-foreground" />
+            <FormCard>
+              {tests.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
+                    <Layers className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <p className="text-lg font-medium text-foreground mb-1">
+                    Coming soon
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {MATERIAL_OPTIONS.find((m) => m.id === state.material)?.label} testing is not yet available.
+                  </p>
                 </div>
-                <p className="text-lg font-medium text-foreground mb-1">
-                  Coming soon
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {MATERIAL_OPTIONS.find((m) => m.id === state.material)?.label} testing is not yet available.
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-3">
-                {tests.map((t) => {
-                  const selected = state.testKey === t.key;
-                  const isDisabled = state.material === "rock" || state.material === "special" || (state.material === "concrete" && t.key !== "compressive") || (state.material === "soil" && t.key !== "atterberg");
-                  return (
-                    <button
-                      key={t.key}
-                      type="button"
-                      disabled={isDisabled}
-                      onClick={() => {
-                        update("testKey", t.key);
-                        setTimeout(() => setStep(2), 0);
-                      }}
-                      className={cn(
-                        "text-left rounded-xl border-2 p-4 bg-card transition-all hover:border-primary/50",
-                        selected ? "border-primary ring-2 ring-primary/20" : "border-border",
-                        isDisabled && "opacity-50 cursor-not-allowed",
-                      )}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className={cn(
-                          "h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0",
-                          selected ? "bg-primary text-primary-foreground" : "bg-accent text-accent-foreground",
-                        )}>
-                          <FlaskConical className="h-4 w-4" />
+              ) : (
+                <div className="grid grid-cols-1 gap-3">
+                  {tests.map((t) => {
+                    const selected = state.testKey === t.key;
+                    const isDisabled = state.material === "rock" || state.material === "special" || (state.material === "concrete" && t.key !== "compressive") || (state.material === "soil" && t.key !== "atterberg");
+                    return (
+                      <button
+                        key={t.key}
+                        type="button"
+                        disabled={isDisabled}
+                        onClick={() => {
+                          update("testKey", t.key);
+                          setTimeout(() => setStep(2), 0);
+                        }}
+                        className={cn(
+                          "text-left rounded-xl border-2 p-4 bg-card transition-all hover:border-primary/50",
+                          selected ? "border-primary ring-2 ring-primary/20" : "border-border",
+                          isDisabled && "opacity-50 cursor-not-allowed",
+                        )}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={cn(
+                            "h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0",
+                            selected ? "bg-primary text-primary-foreground" : "bg-accent text-accent-foreground",
+                          )}>
+                            <FlaskConical className="h-4 w-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-sm font-semibold text-foreground">{t.name}</h3>
+                            <p className="text-xs text-muted-foreground mt-1 leading-snug">{t.description}</p>
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-sm font-semibold text-foreground">{t.name}</h3>
-                          <p className="text-xs text-muted-foreground mt-1 leading-snug">{t.description}</p>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </FormCard>
           </section>
               )}
 
@@ -567,9 +572,9 @@ const RecordTestWizard = () => {
               <p className="text-sm text-muted-foreground mt-1">Pick an existing project or create a new one.</p>
             </div>
 
-            {creatingNewProject ? (
-              <Card>
-                <CardContent className="p-5 space-y-4">
+            <FormCard>
+              {creatingNewProject ? (
+                <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold text-sm">{state.projectId ? "Project details" : "New project details"}</h3>
                     <Button
@@ -597,81 +602,81 @@ const RecordTestWizard = () => {
                       <Input id="proj-date" type="date" value={state.projectDate} onChange={(e) => update("projectDate", e.target.value)} />
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Existing project</Label>
-                  <Select
-                    value={state.projectId ? String(state.projectId) : ""}
-                    onValueChange={(v) => pickProject(Number(v))}
-                    disabled={loadingProjects || !!projectsLoadError || projects.length === 0}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Existing project</Label>
+                    <Select
+                      value={state.projectId ? String(state.projectId) : ""}
+                      onValueChange={(v) => pickProject(Number(v))}
+                      disabled={loadingProjects || !!projectsLoadError || projects.length === 0}
+                    >
+                      <SelectTrigger className="h-11">
+                        <SelectValue
+                          placeholder={
+                            loadingProjects
+                              ? "Loading projects…"
+                              : projectsLoadError
+                                ? "Couldn't load projects"
+                                : projects.length === 0
+                                  ? "No saved projects yet"
+                                  : "Select an existing project"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {projects.map((p) => (
+                          <SelectItem key={p.id} value={String(p.id)}>
+                            <div className="flex items-center gap-2">
+                              <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                              <span className="font-medium">{p.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                · {p.client_name || "No client"}{p.project_date ? ` · ${p.project_date}` : ""}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {projectsLoadError ? (
+                      <div className="flex items-center justify-between gap-3 text-xs">
+                        <span className="text-destructive">{projectsLoadError}</span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setProjectsReloadKey((k) => k + 1)}
+                        >
+                          Retry
+                        </Button>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Selecting an existing project opens it directly for editing.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 h-px bg-border" />
+                    <span className="text-xs uppercase tracking-wider text-muted-foreground">or</span>
+                    <div className="flex-1 h-px bg-border" />
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start gap-2 h-11"
+                    onClick={() => {
+                      setCreatingNewProject(true);
+                      setState((p) => ({ ...p, projectId: null, projectName: "", clientName: "" }));
+                    }}
                   >
-                    <SelectTrigger className="h-11">
-                      <SelectValue
-                        placeholder={
-                          loadingProjects
-                            ? "Loading projects…"
-                            : projectsLoadError
-                              ? "Couldn't load projects"
-                              : projects.length === 0
-                                ? "No saved projects yet"
-                                : "Select an existing project"
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {projects.map((p) => (
-                        <SelectItem key={p.id} value={String(p.id)}>
-                          <div className="flex items-center gap-2">
-                            <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium">{p.name}</span>
-                            <span className="text-xs text-muted-foreground">
-                              · {p.client_name || "No client"}{p.project_date ? ` · ${p.project_date}` : ""}
-                            </span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {projectsLoadError ? (
-                    <div className="flex items-center justify-between gap-3 text-xs">
-                      <span className="text-destructive">{projectsLoadError}</span>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setProjectsReloadKey((k) => k + 1)}
-                      >
-                        Retry
-                      </Button>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">
-                      Selecting an existing project opens it directly for editing.
-                    </p>
-                  )}
+                    <Plus className="h-4 w-4" /> Create new project
+                  </Button>
                 </div>
-
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 h-px bg-border" />
-                  <span className="text-xs uppercase tracking-wider text-muted-foreground">or</span>
-                  <div className="flex-1 h-px bg-border" />
-                </div>
-
-                <Button
-                  variant="outline"
-                  className="w-full justify-start gap-2 h-11"
-                  onClick={() => {
-                    setCreatingNewProject(true);
-                    setState((p) => ({ ...p, projectId: null, projectName: "", clientName: "" }));
-                  }}
-                >
-                  <Plus className="h-4 w-4" /> Create new project
-                </Button>
-              </div>
-            )}
+              )}
+            </FormCard>
           </section>
               )}
 
@@ -683,48 +688,50 @@ const RecordTestWizard = () => {
                   <h2 className="text-2xl font-semibold tracking-tight">Test details</h2>
                   <p className="text-sm text-muted-foreground mt-1">Enter the concrete sample details.</p>
                 </div>
-                <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-muted/30 rounded-lg">
-                  <div>
-                    <Label className="text-xs font-medium mb-1 block">Cement</Label>
-                    <Input value={state.cement} onChange={(e) => update("cement", e.target.value)} className="h-8 text-sm" />
+                <FormCard>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-xs font-medium mb-1 block">Cement</Label>
+                      <Input value={state.cement} onChange={(e) => update("cement", e.target.value)} className="h-8 text-sm" />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium mb-1 block">Fine Aggregate</Label>
+                      <Input value={state.fineAggregate} onChange={(e) => update("fineAggregate", e.target.value)} className="h-8 text-sm" />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium mb-1 block">Coarse Aggregate</Label>
+                      <Input value={state.coarseAggregate} onChange={(e) => update("coarseAggregate", e.target.value)} className="h-8 text-sm" />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium mb-1 block">Contractor</Label>
+                      <Input value={state.contractor} onChange={(e) => update("contractor", e.target.value)} className="h-8 text-sm" />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium mb-1 block">Concrete Class</Label>
+                      <Input value={state.concreteClass} onChange={(e) => update("concreteClass", e.target.value)} className="h-8 text-sm" />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium mb-1 block">Section</Label>
+                      <Input value={state.section} onChange={(e) => update("section", e.target.value)} className="h-8 text-sm" />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium mb-1 block">Made By</Label>
+                      <Input value={state.madeBy} onChange={(e) => update("madeBy", e.target.value)} className="h-8 text-sm" />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium mb-1 block">Slump</Label>
+                      <Input value={state.slump} onChange={(e) => update("slump", e.target.value)} className="h-8 text-sm" />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium mb-1 block">Client Ref</Label>
+                      <Input value={state.clientRef} onChange={(e) => update("clientRef", e.target.value)} className="h-8 text-sm" />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium mb-1 block">Date Tested</Label>
+                      <Input type="date" value={state.dateTested} onChange={(e) => update("dateTested", e.target.value)} className="h-8 text-sm" />
+                    </div>
                   </div>
-                  <div>
-                    <Label className="text-xs font-medium mb-1 block">Fine Aggregate</Label>
-                    <Input value={state.fineAggregate} onChange={(e) => update("fineAggregate", e.target.value)} className="h-8 text-sm" />
-                  </div>
-                  <div>
-                    <Label className="text-xs font-medium mb-1 block">Coarse Aggregate</Label>
-                    <Input value={state.coarseAggregate} onChange={(e) => update("coarseAggregate", e.target.value)} className="h-8 text-sm" />
-                  </div>
-                  <div>
-                    <Label className="text-xs font-medium mb-1 block">Contractor</Label>
-                    <Input value={state.contractor} onChange={(e) => update("contractor", e.target.value)} className="h-8 text-sm" />
-                  </div>
-                  <div>
-                    <Label className="text-xs font-medium mb-1 block">Concrete Class</Label>
-                    <Input value={state.concreteClass} onChange={(e) => update("concreteClass", e.target.value)} className="h-8 text-sm" />
-                  </div>
-                  <div>
-                    <Label className="text-xs font-medium mb-1 block">Section</Label>
-                    <Input value={state.section} onChange={(e) => update("section", e.target.value)} className="h-8 text-sm" />
-                  </div>
-                  <div>
-                    <Label className="text-xs font-medium mb-1 block">Made By</Label>
-                    <Input value={state.madeBy} onChange={(e) => update("madeBy", e.target.value)} className="h-8 text-sm" />
-                  </div>
-                  <div>
-                    <Label className="text-xs font-medium mb-1 block">Slump</Label>
-                    <Input value={state.slump} onChange={(e) => update("slump", e.target.value)} className="h-8 text-sm" />
-                  </div>
-                  <div>
-                    <Label className="text-xs font-medium mb-1 block">Client Ref</Label>
-                    <Input value={state.clientRef} onChange={(e) => update("clientRef", e.target.value)} className="h-8 text-sm" />
-                  </div>
-                  <div>
-                    <Label className="text-xs font-medium mb-1 block">Date Tested</Label>
-                    <Input type="date" value={state.dateTested} onChange={(e) => update("dateTested", e.target.value)} className="h-8 text-sm" />
-                  </div>
-                </div>
+                </FormCard>
               </>
             ) : (
               <>
@@ -732,47 +739,49 @@ const RecordTestWizard = () => {
                   <h2 className="text-2xl font-semibold tracking-tight">Sample setup</h2>
                   <p className="text-sm text-muted-foreground mt-1">Identify the sample you're testing.</p>
                 </div>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="sample-id">Sample ID *</Label>
-                    <Input
-                      id="sample-id"
-                      value={state.sampleId}
-                      onChange={(e) => update("sampleId", e.target.value)}
-                      placeholder="e.g. BH-01 / S-3"
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <FormCard>
+                  <div className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="depth-from">Depth from *</Label>
+                      <Label htmlFor="sample-id">Sample ID *</Label>
                       <Input
-                        id="depth-from"
-                        value={state.sampleDepthFrom}
-                        onChange={(e) => update("sampleDepthFrom", e.target.value)}
-                        placeholder="e.g. 1.5-2.0"
+                        id="sample-id"
+                        value={state.sampleId}
+                        onChange={(e) => update("sampleId", e.target.value)}
+                        placeholder="e.g. BH-01 / S-3"
                       />
                     </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="depth-from">Depth from *</Label>
+                        <Input
+                          id="depth-from"
+                          value={state.sampleDepthFrom}
+                          onChange={(e) => update("sampleDepthFrom", e.target.value)}
+                          placeholder="e.g. 1.5-2.0"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="depth-to">Depth to *</Label>
+                        <Input
+                          id="depth-to"
+                          value={state.sampleDepthTo}
+                          onChange={(e) => update("sampleDepthTo", e.target.value)}
+                          placeholder="e.g. 2.0"
+                        />
+                      </div>
+                    </div>
                     <div className="space-y-2">
-                      <Label htmlFor="depth-to">Depth to *</Label>
-                      <Input
-                        id="depth-to"
-                        value={state.sampleDepthTo}
-                        onChange={(e) => update("sampleDepthTo", e.target.value)}
-                        placeholder="e.g. 2.0"
+                      <Label htmlFor="notes">Notes (optional)</Label>
+                      <Textarea
+                        id="notes"
+                        value={state.sampleNotes}
+                        onChange={(e) => update("sampleNotes", e.target.value)}
+                        placeholder="Visual description, conditions…"
+                        rows={4}
                       />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="notes">Notes (optional)</Label>
-                    <Textarea
-                      id="notes"
-                      value={state.sampleNotes}
-                      onChange={(e) => update("sampleNotes", e.target.value)}
-                      placeholder="Visual description, conditions…"
-                      rows={4}
-                    />
-                  </div>
-                </div>
+                </FormCard>
               </>
             )}
           </section>

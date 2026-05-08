@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronRight, Search, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import FormCard from "./FormCard";
 
 interface ProjectSelectionProps {
   onNext: () => void;
@@ -59,80 +60,84 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ onNext, onPrev }) =
         <p className="text-muted-foreground">Choose the project or create a new one</p>
       </div>
 
-      {/* Search Input */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search projects..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10"
-        />
-      </div>
+      <FormCard>
+        {/* Search Input */}
+        <div className="space-y-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search projects..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
 
-      {/* Projects List */}
-      <div className="space-y-2 max-h-64 overflow-y-auto">
-        {filteredProjects.map((project) => (
-          <button
-            key={project.id}
-            onClick={() => handleSelectProject(project.id, project.name)}
-            className={cn(
-              "w-full p-4 rounded-lg border-2 transition-all text-left",
-              state.projectId === project.id
-                ? "border-primary bg-primary/5"
-                : "border-border hover:border-primary/50 bg-card",
-            )}
-          >
-            <h3 className="font-semibold text-foreground">{project.name}</h3>
-            <p className="text-sm text-muted-foreground mt-1">{project.clientName}</p>
-          </button>
-        ))}
-      </div>
+          {/* Projects List */}
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {filteredProjects.map((project) => (
+              <button
+                key={project.id}
+                onClick={() => handleSelectProject(project.id, project.name)}
+                className={cn(
+                  "w-full p-4 rounded-lg border-2 transition-all text-left",
+                  state.projectId === project.id
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-primary/50 bg-card",
+                )}
+              >
+                <h3 className="font-semibold text-foreground">{project.name}</h3>
+                <p className="text-sm text-muted-foreground mt-1">{project.clientName}</p>
+              </button>
+            ))}
+          </div>
 
-      {/* Create New Project */}
-      {!showNewProject && (
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => setShowNewProject(true)}
-          className="w-full gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Create New Project
-        </Button>
-      )}
-
-      {showNewProject && (
-        <div className="space-y-3 p-4 rounded-lg bg-secondary">
-          <Input
-            placeholder="Project name"
-            value={newProjectName}
-            onChange={(e) => setNewProjectName(e.target.value)}
-            autoFocus
-          />
-          <div className="flex gap-2">
+          {/* Create New Project */}
+          {!showNewProject && (
             <Button
               type="button"
               variant="outline"
-              onClick={() => {
-                setShowNewProject(false);
-                setNewProjectName("");
-              }}
-              className="flex-1"
+              onClick={() => setShowNewProject(true)}
+              className="w-full gap-2"
             >
-              Cancel
+              <Plus className="h-4 w-4" />
+              Create New Project
             </Button>
-            <Button
-              type="button"
-              onClick={handleCreateProject}
-              disabled={!newProjectName.trim()}
-              className="flex-1"
-            >
-              Create
-            </Button>
-          </div>
+          )}
+
+          {showNewProject && (
+            <div className="space-y-3 p-4 rounded-lg bg-secondary">
+              <Input
+                placeholder="Project name"
+                value={newProjectName}
+                onChange={(e) => setNewProjectName(e.target.value)}
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowNewProject(false);
+                    setNewProjectName("");
+                  }}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleCreateProject}
+                  disabled={!newProjectName.trim()}
+                  className="flex-1"
+                >
+                  Create
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </FormCard>
 
       {/* Navigation */}
       <div className="flex justify-between pt-8">
