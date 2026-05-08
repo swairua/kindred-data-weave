@@ -302,13 +302,37 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
       }
     }
 
+    const summaryFields = [
+      { label: "Avg Strength", value: avgStrength ? `${avgStrength} MPa` : "—" },
+      { label: "Cubes Tested", value: strengths.length ? String(strengths.length) : "—" },
+      { label: "Pass/Fail Threshold", value: `${passFailThreshold} MPa` },
+      { label: "Pass Count", value: String(passFailData.passCount) },
+      { label: "Fail Count", value: String(passFailData.failCount) },
+      { label: "Pass Rate", value: `${passFailData.passRate.toFixed(0)}%` },
+    ];
+
+    const dist = getStrengthDistribution(rows);
+    const classificationTable = [{
+      headers: ["Classification", "Count"],
+      rows: [
+        ["Very Low (< 7 MPa)", String(dist.veryLow)],
+        ["Low (7–20 MPa)", String(dist.low)],
+        ["Normal (20–40 MPa)", String(dist.normal)],
+        ["High (> 40 MPa)", String(dist.high)],
+      ]
+    }];
+
     generateTestPDF({
       title: "Compressive Strength (Cube Test)",
       ...project,
-      tables: [{
-        headers: ["#", "Cube Mark", "Date of Cast", "Date of Test", "Age", "Dims", "Mass", "Density", "Load", "Strength", "Remarks"],
-        rows: rows.map((r, i) => [String(i + 1), r.mark || "—", r.dateOfCast || "—", r.dateOfTest || "—", getAge(r.dateOfCast, r.dateOfTest) || "—", `${r.width}×${r.height}×${r.depth}`, r.mass || "—", getDensity(r) || "—", r.load || "—", getStrength(r) || "—", r.remarks || getRemarks(r) || "—"])
-      }],
+      fields: summaryFields,
+      tables: [
+        classificationTable[0],
+        {
+          headers: ["#", "Cube Mark", "Date of Cast", "Date of Test", "Age", "Dims", "Mass", "Density", "Load", "Strength", "Remarks"],
+          rows: rows.map((r, i) => [String(i + 1), r.mark || "—", r.dateOfCast || "—", r.dateOfTest || "—", getAge(r.dateOfCast, r.dateOfTest) || "—", `${r.width}×${r.height}×${r.depth}`, r.mass || "—", getDensity(r) || "—", r.load || "—", getStrength(r) || "—", r.remarks || getRemarks(r) || "—"])
+        }
+      ],
       chartImages
     });
   };
@@ -322,17 +346,37 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
       }
     }
 
+    const summaryFields = [
+      { label: "Avg Strength", value: avgStrength ? `${avgStrength} MPa` : "—" },
+      { label: "Cubes Tested", value: strengths.length ? String(strengths.length) : "—" },
+      { label: "Pass/Fail Threshold", value: `${passFailThreshold} MPa` },
+      { label: "Pass Count", value: String(passFailData.passCount) },
+      { label: "Fail Count", value: String(passFailData.failCount) },
+      { label: "Pass Rate", value: `${passFailData.passRate.toFixed(0)}%` },
+    ];
+
+    const dist = getStrengthDistribution(rows);
+    const classificationTable = {
+      headers: ["Classification", "Count"],
+      rows: [
+        ["Very Low (< 7 MPa)", String(dist.veryLow)],
+        ["Low (7–20 MPa)", String(dist.low)],
+        ["Normal (20–40 MPa)", String(dist.normal)],
+        ["High (> 40 MPa)", String(dist.high)],
+      ]
+    };
+
     generateTestExcel({
       data: {
         title: "Compressive Strength (Cube Test)",
-        fields: [
-          { label: "Avg Strength", value: avgStrength ? `${avgStrength} MPa` : "—" },
-          { label: "Cubes Tested", value: strengths.length ? String(strengths.length) : "—" },
+        fields: summaryFields,
+        tables: [
+          classificationTable,
+          {
+            headers: ["#", "Cube Mark", "Date of Cast", "Date of Test", "Age", "Dims", "Mass", "Density", "Load", "Strength", "Remarks"],
+            rows: rows.map((r, i) => [String(i + 1), r.mark || "—", r.dateOfCast || "—", r.dateOfTest || "—", getAge(r.dateOfCast, r.dateOfTest) || "—", `${r.width}×${r.height}×${r.depth}`, r.mass || "—", getDensity(r) || "—", r.load || "—", getStrength(r) || "—", r.remarks || getRemarks(r) || "—"])
+          }
         ],
-        tables: [{
-          headers: ["#", "Cube Mark", "Date of Cast", "Date of Test", "Age", "Dims", "Mass", "Density", "Load", "Strength", "Remarks"],
-          rows: rows.map((r, i) => [String(i + 1), r.mark || "—", r.dateOfCast || "—", r.dateOfTest || "—", getAge(r.dateOfCast, r.dateOfTest) || "—", `${r.width}×${r.height}×${r.depth}`, r.mass || "—", getDensity(r) || "—", r.load || "—", getStrength(r) || "—", r.remarks || getRemarks(r) || "—"])
-        }],
         chartImages,
       },
       projectName: project.projectName,
@@ -348,117 +392,296 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     window.print();
   };
 
+  const handleChartClick = (index: number) => {
+    setHighlightedRowIndex(highlightedRowIndex === index ? null : index);
+  };
+
+  const handleRowClick = (index: number) => {
+    setHighlightedRowIndex(highlightedRowIndex === index ? null : index);
+  };
+
+  const renderTable = () => (
+    <div className="flex flex-col gap-4">
+      <div className="mb-6 p-4 bg-gradient-to-r from-amber-50 to-amber-100 rounded-lg border border-amber-200">
+        <h3 className="text-sm font-semibold text-gray-800 mb-3">Test Details</h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          {[
+            { label: "Cement", value: testDetails.cement },
+            { label: "Fine Aggregate", value: testDetails.fineAggregate },
+            { label: "Coarse Aggregate", value: testDetails.coarseAggregate },
+            { label: "Contractor", value: testDetails.contractor },
+            { label: "Concrete Class", value: testDetails.concreteClass },
+            { label: "Section", value: testDetails.section },
+            { label: "Made By", value: testDetails.madeBy },
+            { label: "Slump", value: testDetails.slump },
+            { label: "Client Ref", value: testDetails.clientRef },
+            { label: "Date Tested", value: testDetails.dateTested },
+          ].map((item) => (
+            <div key={item.label} className="flex flex-col">
+              <span className="text-xs text-gray-600 font-medium">{item.label}</span>
+              <span className="text-sm font-semibold text-gray-900">{item.value || "—"}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm border border-border rounded-lg">
+          <thead className="bg-muted/50">
+            <tr>
+              <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">#</th>
+              <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Cube Mark</th>
+              <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Date of Cast</th>
+              <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Date of Test</th>
+              <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Age (days)</th>
+              <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Cube Dim (mm)<br/>L × W × H</th>
+              <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Mass (g)</th>
+              <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Density (kg/m³)</th>
+              <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Max Load (kN)</th>
+              <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Strength (N/mm²)</th>
+              <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Remarks</th>
+              <th className="w-10"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => {
+              const isDensityAbnormal = isAbnormalDensity(row);
+              const isHighlighted = highlightedRowIndex === i;
+              return (
+                <tr
+                  key={i}
+                  className={`border-b border-border/50 cursor-pointer transition-colors ${isHighlighted ? "bg-blue-100" : isDensityAbnormal ? "bg-red-50" : "hover:bg-muted/30"}`}
+                  onClick={() => handleRowClick(i)}
+                >
+                  <td className="py-1.5 px-2 text-muted-foreground">{i + 1}</td>
+                  <td className="py-1.5 px-2"><Input value={row.mark} onChange={(e) => update(i, "mark", e.target.value)} className="h-8 text-sm" placeholder="—" /></td>
+                  <td className="py-1.5 px-2"><Input type="date" value={row.dateOfCast} onChange={(e) => update(i, "dateOfCast", e.target.value)} className="h-8 text-sm" /></td>
+                  <td className="py-1.5 px-2"><Input type="date" value={row.dateOfTest} onChange={(e) => update(i, "dateOfTest", e.target.value)} className="h-8 text-sm" /></td>
+                  <td className="py-1.5 px-2"><CalculatedInput value={getAge(row.dateOfCast, row.dateOfTest)} /></td>
+                  <td className="py-1.5 px-2">
+                    <div className="flex gap-1 text-xs">
+                      <Input type="number" value={row.width} onChange={(e) => update(i, "width", e.target.value)} className="h-8 w-14" placeholder="L" />
+                      <span className="text-muted-foreground">×</span>
+                      <Input type="number" value={row.height} onChange={(e) => update(i, "height", e.target.value)} className="h-8 w-14" placeholder="W" />
+                      <span className="text-muted-foreground">×</span>
+                      <Input type="number" value={row.depth} onChange={(e) => update(i, "depth", e.target.value)} className="h-8 w-14" placeholder="H" />
+                    </div>
+                  </td>
+                  <td className="py-1.5 px-2"><Input type="number" value={row.mass} onChange={(e) => update(i, "mass", e.target.value)} className="h-8 text-sm" placeholder="—" /></td>
+                  <td className={`py-1.5 px-2 ${isDensityAbnormal ? "text-red-600 font-semibold" : ""}`}><CalculatedInput value={getDensity(row)} /></td>
+                  <td className="py-1.5 px-2"><Input type="number" value={row.load} onChange={(e) => update(i, "load", e.target.value)} className="h-8 text-sm" placeholder="0" /></td>
+                  <td className="py-1.5 px-2"><CalculatedInput value={getStrength(row)} /></td>
+                  <td className="py-1.5 px-2">
+                    {editingRemarksIndex === i ? (
+                      <div className="flex gap-1">
+                        <Input value={row.remarks} onChange={(e) => update(i, "remarks", e.target.value)} className="h-8 text-sm flex-1" placeholder="—" />
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingRemarksIndex(null)}><CheckCircle2 className="h-3.5 w-3.5" /></Button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-1 items-center group">
+                        <CalculatedInput value={row.remarks || getRemarks(row)} />
+                        <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100" onClick={() => setEditingRemarksIndex(i)}>
+                          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                        </Button>
+                      </div>
+                    )}
+                  </td>
+                  <td className="py-1.5 px-1"><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setRows(rows.filter((_, j) => j !== i))}><X className="h-3.5 w-3.5" /></Button></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex items-center justify-between mt-3">
+        <Button variant="outline" size="sm" onClick={() => setRows([...rows, { mark: "", dateOfCast: "", dateOfTest: "", load: "", width: "150", height: "150", depth: "150", mass: "", remarks: "" }])}><Plus className="h-3.5 w-3.5 mr-1" /> Add row</Button>
+        {saveCompleted ? (
+          <Button size="sm" variant="default" onClick={handlePrint}><Printer className="h-3.5 w-3.5 mr-1" /> Print to Browser</Button>
+        ) : isSaving ? (
+          <Button size="sm" variant="default" disabled><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Saving...</Button>
+        ) : (
+          <Button size="sm" variant="default" onClick={handleSave}><SaveIcon className="h-3.5 w-3.5 mr-1" /> Save</Button>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderAnalytics = () => (
+    <div className="flex flex-col gap-4">
+      {strengthTrendData.length >= 1 && (
+        <div className="rounded-lg border bg-card p-4">
+          <Label className="text-xs font-semibold mb-2 block">Strength Trend</Label>
+          <ChartContainer config={chartConfig} className="h-[250px] w-full">
+            <LineChart data={strengthTrendData} margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" className="text-xs" />
+              <YAxis className="text-xs" />
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <Line
+                type="monotone"
+                dataKey="strength"
+                stroke="var(--color-strength)"
+                dot={{ r: 4, cursor: "pointer" }}
+                onClick={(e: any) => handleChartClick(e.payload.index)}
+              />
+            </LineChart>
+          </ChartContainer>
+        </div>
+      )}
+
+      {densityChartData.length >= 1 && (
+        <div className="rounded-lg border bg-card p-4">
+          <Label className="text-xs font-semibold mb-2 block">Density Distribution</Label>
+          <ChartContainer config={chartConfig} className="h-[200px] w-full">
+            <BarChart data={densityChartData} margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" className="text-xs" />
+              <YAxis className="text-xs" />
+              <ChartTooltip
+                content={<ChartTooltipContent />}
+              />
+              <Bar
+                dataKey="density"
+                fill="hsl(var(--primary))"
+                onClick={(e: any) => handleChartClick(e.payload.index)}
+                radius={[4, 4, 0, 0]}
+              >
+                {densityChartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.isAbnormal ? "#ef4444" : "hsl(var(--primary))"} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ChartContainer>
+        </div>
+      )}
+
+      {strengthDistribution.some(d => d.value > 0) && (
+        <div className="rounded-lg border bg-card p-4">
+          <Label className="text-xs font-semibold mb-2 block">Strength Classification</Label>
+          <ChartContainer config={chartConfig} className="h-[200px] w-full">
+            <PieChart>
+              <Pie data={strengthDistribution} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80}>
+                {strengthDistribution.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <ChartTooltip content={<ChartTooltipContent />} />
+            </PieChart>
+          </ChartContainer>
+        </div>
+      )}
+
+      <div className="rounded-lg border bg-card p-4">
+        <Label className="text-xs font-semibold mb-3 block">Pass/Fail Summary</Label>
+        <Tabs value={passFailMode} onValueChange={(v) => setPassFailMode(v as "simple" | "multi")}>
+          <TabsList className="mb-3 w-full">
+            <TabsTrigger value="simple" className="flex-1">Simple Mode</TabsTrigger>
+            <TabsTrigger value="multi" className="flex-1">Multi-Standard</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="simple" className="space-y-3 mt-0">
+            <div className="flex items-center gap-2">
+              <Label className="text-xs">Threshold (MPa):</Label>
+              <Input
+                type="number"
+                value={passFailThreshold}
+                onChange={(e) => setPassFailThreshold(parseFloat(e.target.value) || 25)}
+                className="h-8 w-20 text-sm"
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded bg-green-50 border border-green-200 p-3 text-center">
+                <div className="text-2xl font-bold text-green-600">{passFailData.passCount}</div>
+                <div className="text-xs text-green-700">Pass</div>
+              </div>
+              <div className="rounded bg-red-50 border border-red-200 p-3 text-center">
+                <div className="text-2xl font-bold text-red-600">{passFailData.failCount}</div>
+                <div className="text-xs text-red-700">Fail</div>
+              </div>
+              <div className={`rounded p-3 text-center border ${passFailData.passRate >= 80 ? "bg-green-50 border-green-200" : passFailData.passRate >= 50 ? "bg-yellow-50 border-yellow-200" : "bg-red-50 border-red-200"}`}>
+                <div className={`text-2xl font-bold ${passFailData.passRate >= 80 ? "text-green-600" : passFailData.passRate >= 50 ? "text-yellow-600" : "text-red-600"}`}>
+                  {passFailData.passRate.toFixed(0)}%
+                </div>
+                <div className={`text-xs ${passFailData.passRate >= 80 ? "text-green-700" : passFailData.passRate >= 50 ? "text-yellow-700" : "text-red-700"}`}>Pass Rate</div>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="multi" className="space-y-3 mt-0">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Label className="text-xs w-20">7-Day (MPa):</Label>
+                <Input
+                  type="number"
+                  value={multiStandardTargets.sevenDay}
+                  onChange={(e) => setMultiStandardTargets(prev => ({ ...prev, sevenDay: parseFloat(e.target.value) || 17 }))}
+                  className="h-8 flex-1 text-sm"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Label className="text-xs w-20">28-Day (MPa):</Label>
+                <Input
+                  type="number"
+                  value={multiStandardTargets.twentyEightDay}
+                  onChange={(e) => setMultiStandardTargets(prev => ({ ...prev, twentyEightDay: parseFloat(e.target.value) || 25 }))}
+                  className="h-8 flex-1 text-sm"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Label className="text-xs w-20">Custom (MPa):</Label>
+                <Input
+                  type="number"
+                  value={multiStandardTargets.custom}
+                  onChange={(e) => setMultiStandardTargets(prev => ({ ...prev, custom: parseFloat(e.target.value) || 30 }))}
+                  className="h-8 flex-1 text-sm"
+                />
+              </div>
+            </div>
+            {multiStandardResults.sevenDay && (
+              <div className="rounded bg-blue-50 border border-blue-200 p-3">
+                <div className="text-xs font-semibold text-blue-900 mb-2">7-Day Results</div>
+                <div className="text-sm text-blue-700">Pass: {multiStandardResults.sevenDay.pass} / {multiStandardResults.sevenDay.total}</div>
+              </div>
+            )}
+            {multiStandardResults.twentyEightDay && (
+              <div className="rounded bg-purple-50 border border-purple-200 p-3">
+                <div className="text-xs font-semibold text-purple-900 mb-2">28-Day Results</div>
+                <div className="text-sm text-purple-700">Pass: {multiStandardResults.twentyEightDay.pass} / {multiStandardResults.twentyEightDay.total}</div>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      {chartData.length >= 1 && (
+        <div className="rounded-lg border bg-card p-4">
+          <Label className="text-xs font-semibold mb-2 block">Cube Compressive Strengths</Label>
+          <ChartContainer id="compressive-chart" config={chartConfig} className="h-[250px] w-full">
+            <BarChart data={chartData} margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" className="text-xs" />
+              <YAxis className="text-xs" />
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <Bar dataKey="strength" name="strength" fill="var(--color-strength)" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ChartContainer>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <TestSection title="Compressive Strength (Cube Test)" testKey={testKey} onClear={() => setRows([{ mark: "", dateOfCast: "", dateOfTest: "", load: "", width: "150", height: "150", depth: "150", mass: "", remarks: "" }])}>
       <>
-          <div className="mb-6 p-4 bg-gradient-to-r from-amber-50 to-amber-100 rounded-lg border border-amber-200">
-            <h3 className="text-sm font-semibold text-gray-800 mb-3">Test Details</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-              {[
-                { label: "Cement", value: testDetails.cement },
-                { label: "Fine Aggregate", value: testDetails.fineAggregate },
-                { label: "Coarse Aggregate", value: testDetails.coarseAggregate },
-                { label: "Contractor", value: testDetails.contractor },
-                { label: "Concrete Class", value: testDetails.concreteClass },
-                { label: "Section", value: testDetails.section },
-                { label: "Made By", value: testDetails.madeBy },
-                { label: "Slump", value: testDetails.slump },
-                { label: "Client Ref", value: testDetails.clientRef },
-                { label: "Date Tested", value: testDetails.dateTested },
-              ].map((item) => (
-                <div key={item.label} className="flex flex-col">
-                  <span className="text-xs text-gray-600 font-medium">{item.label}</span>
-                  <span className="text-sm font-semibold text-gray-900">{item.value || "—"}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border border-border rounded-lg">
-              <thead className="bg-muted/50">
-                <tr>
-                  <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">#</th>
-                  <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Cube Mark</th>
-                  <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Date of Cast</th>
-                  <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Date of Test</th>
-                  <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Age (days)</th>
-                  <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Cube Dim (mm)<br/>L × W × H</th>
-                  <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Mass (g)</th>
-                  <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Density (kg/m³)</th>
-                  <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Max Load (kN)</th>
-                  <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Strength (N/mm²)</th>
-                  <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Remarks</th>
-                  <th className="w-10"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, i) => (
-                  <tr key={i} className="border-b border-border/50">
-                    <td className="py-1.5 px-2 text-muted-foreground">{i + 1}</td>
-                    <td className="py-1.5 px-2"><Input value={row.mark} onChange={(e) => update(i, "mark", e.target.value)} className="h-8 text-sm" placeholder="—" /></td>
-                    <td className="py-1.5 px-2"><Input type="date" value={row.dateOfCast} onChange={(e) => update(i, "dateOfCast", e.target.value)} className="h-8 text-sm" /></td>
-                    <td className="py-1.5 px-2"><Input type="date" value={row.dateOfTest} onChange={(e) => update(i, "dateOfTest", e.target.value)} className="h-8 text-sm" /></td>
-                    <td className="py-1.5 px-2"><CalculatedInput value={getAge(row.dateOfCast, row.dateOfTest)} /></td>
-                    <td className="py-1.5 px-2">
-                      <div className="flex gap-1 text-xs">
-                        <Input type="number" value={row.width} onChange={(e) => update(i, "width", e.target.value)} className="h-8 w-14" placeholder="L" />
-                        <span className="text-muted-foreground">×</span>
-                        <Input type="number" value={row.height} onChange={(e) => update(i, "height", e.target.value)} className="h-8 w-14" placeholder="W" />
-                        <span className="text-muted-foreground">×</span>
-                        <Input type="number" value={row.depth} onChange={(e) => update(i, "depth", e.target.value)} className="h-8 w-14" placeholder="H" />
-                      </div>
-                    </td>
-                    <td className="py-1.5 px-2"><Input type="number" value={row.mass} onChange={(e) => update(i, "mass", e.target.value)} className="h-8 text-sm" placeholder="—" /></td>
-                    <td className="py-1.5 px-2"><CalculatedInput value={getDensity(row)} /></td>
-                    <td className="py-1.5 px-2"><Input type="number" value={row.load} onChange={(e) => update(i, "load", e.target.value)} className="h-8 text-sm" placeholder="0" /></td>
-                    <td className="py-1.5 px-2"><CalculatedInput value={getStrength(row)} /></td>
-                    <td className="py-1.5 px-2">
-                      {editingRemarksIndex === i ? (
-                        <div className="flex gap-1">
-                          <Input value={row.remarks} onChange={(e) => update(i, "remarks", e.target.value)} className="h-8 text-sm flex-1" placeholder="—" />
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingRemarksIndex(null)}><CheckCircle2 className="h-3.5 w-3.5" /></Button>
-                        </div>
-                      ) : (
-                        <div className="flex gap-1 items-center group">
-                          <CalculatedInput value={row.remarks || getRemarks(row)} />
-                          <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100" onClick={() => setEditingRemarksIndex(i)}>
-                            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                          </Button>
-                        </div>
-                      )}
-                    </td>
-                    <td className="py-1.5 px-1"><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setRows(rows.filter((_, j) => j !== i))}><X className="h-3.5 w-3.5" /></Button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="flex items-center justify-between mt-3">
-            <Button variant="outline" size="sm" onClick={() => setRows([...rows, { mark: "", dateOfCast: "", dateOfTest: "", load: "", width: "150", height: "150", depth: "150", mass: "", remarks: "" }])}><Plus className="h-3.5 w-3.5 mr-1" /> Add row</Button>
-            {saveCompleted ? (
-              <Button size="sm" variant="default" onClick={handlePrint}><Printer className="h-3.5 w-3.5 mr-1" /> Print to Browser</Button>
-            ) : isSaving ? (
-              <Button size="sm" variant="default" disabled><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Saving...</Button>
-            ) : (
-              <Button size="sm" variant="default" onClick={handleSave}><SaveIcon className="h-3.5 w-3.5 mr-1" /> Save</Button>
-            )}
-          </div>
-
-          {chartData.length >= 1 && (
-            <div className="mt-6">
-              <Label className="text-xs text-muted-foreground mb-2 block">Cube Compressive Strengths</Label>
-              <ChartContainer id="compressive-chart" config={chartConfig} className="h-[300px] w-full">
-                <BarChart data={chartData} margin={{ top: 10, right: 20, bottom: 20, left: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" label={{ value: "Cube ID", position: "insideBottom", offset: -10, className: "fill-muted-foreground text-xs" }} />
-                  <YAxis domain={[0, "dataMax + 5"]} label={{ value: "Strength (MPa)", angle: -90, position: "insideLeft", offset: 5, className: "fill-muted-foreground text-xs" }} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="strength" name="strength" fill="var(--color-strength)" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ChartContainer>
-            </div>
-          )}
+        <ResizablePanelGroup direction="horizontal" className="w-full gap-0">
+          <ResizablePanel defaultSize={60} minSize={30} className="overflow-y-auto">
+            {renderTable()}
+          </ResizablePanel>
+          <ResizableHandle withHandle />
+          <ResizablePanel defaultSize={40} minSize={25} className="overflow-y-auto">
+            {renderAnalytics()}
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </>
     </TestSection>
   );
