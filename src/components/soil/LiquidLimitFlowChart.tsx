@@ -65,54 +65,70 @@ const LiquidLimitFlowChart = ({ trials, width, height, variant = "preview" }: Li
       : []),
   ].sort((a, b) => a.penetration - b.penetration);
 
+  const chartInner = (
+    <LineChart
+      data={merged}
+      margin={chartMargin}
+      {...(isPrint ? { width: 560, height: 380 } : {})}
+    >
+      <CartesianGrid stroke="#e5e7eb" strokeWidth={1.5} fill="#F5E6D3" />
+      <XAxis
+        dataKey="penetration"
+        type="number"
+        scale="log"
+        domain={[xStart, xEnd]}
+        ticks={[10, 12, 15, 18, 20, 22, 25, 30, 40].filter((t) => t >= xStart && t <= xEnd)}
+        allowDataOverflow
+        stroke="#000"
+        strokeWidth={2}
+        label={{ value: "Penetration (mm, Log Scale)", position: "bottom", offset: 8, fontSize: axisLabelSize, fontWeight: "bold", fill: "#111827" }}
+        tick={{ fontSize: axisTickSize, fill: "#111827" }}
+      />
+      <YAxis
+        stroke="#000"
+        strokeWidth={2}
+        domain={["auto", "auto"]}
+        label={{ value: "Moisture Content (%)", angle: -90, position: "left", offset: 8, fontSize: axisLabelSize, fontWeight: "bold", fill: "#111827" }}
+        tick={{ fontSize: axisTickSize, fill: "#111827" }}
+      />
+      <ReferenceLine x={20} stroke="#000" strokeDasharray="4 4" />
+      <Line
+        type="linear"
+        dataKey="moisture"
+        name="Data Points"
+        stroke="none"
+        strokeWidth={3}
+        dot={{ fill: "#ef4444", r: dotR, strokeWidth: 0 }}
+        activeDot={{ r: dotR + 1 }}
+        isAnimationActive={false}
+      />
+      {regression && (
+        <Line
+          type="linear"
+          dataKey="regressionMoisture"
+          name="Line of Best Fit"
+          stroke="#000000"
+          strokeWidth={2.5}
+          dot={false}
+          connectNulls
+          isAnimationActive={false}
+        />
+      )}
+    </LineChart>
+  );
+
+  if (isPrint) {
+    return (
+      <div className="bg-white" style={{ width: 560, height: 380 }}>
+        {chartInner}
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white w-full" style={{ width: finalWidth, height: finalHeight }}>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={merged} margin={chartMargin}>
-          <CartesianGrid stroke="#e5e7eb" strokeWidth={1.5} fill="#F5E6D3" />
-          <XAxis
-            dataKey="penetration"
-            type="number"
-            scale="log"
-            domain={[xStart, xEnd]}
-            ticks={[10, 12, 15, 18, 20, 22, 25, 30, 40].filter((t) => t >= xStart && t <= xEnd)}
-            allowDataOverflow
-            stroke="#000"
-            strokeWidth={2}
-            label={{ value: "Penetration (mm, Log Scale)", position: "bottom", offset: 8, fontSize: axisLabelSize, fontWeight: "bold", fill: "#111827" }}
-            tick={{ fontSize: axisTickSize, fill: "#111827" }}
-          />
-          <YAxis
-            stroke="#000"
-            strokeWidth={2}
-            domain={["auto", "auto"]}
-            label={{ value: "Moisture Content (%)", angle: -90, position: "left", offset: 8, fontSize: axisLabelSize, fontWeight: "bold", fill: "#111827" }}
-            tick={{ fontSize: axisTickSize, fill: "#111827" }}
-          />
-          <ReferenceLine x={20} stroke="#000" strokeDasharray="4 4" />
-          <Line
-            type="linear"
-            dataKey="moisture"
-            name="Data Points"
-            stroke="none"
-            strokeWidth={3}
-            dot={{ fill: "#ef4444", r: dotR, strokeWidth: 0 }}
-            activeDot={{ r: dotR + 1 }}
-            isAnimationActive={false}
-          />
-          {regression && (
-            <Line
-              type="linear"
-              dataKey="regressionMoisture"
-              name="Line of Best Fit"
-              stroke="#000000"
-              strokeWidth={2.5}
-              dot={false}
-              connectNulls
-              isAnimationActive={false}
-            />
-          )}
-        </LineChart>
+        {chartInner}
       </ResponsiveContainer>
     </div>
   );

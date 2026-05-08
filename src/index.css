@@ -684,37 +684,31 @@
 }
 .atterberg-print-sheet .aps-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: 560px minmax(0, 1fr);
   gap: 3mm;
   margin: 3px 8mm;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
   page-break-inside: avoid;
   align-items: start;
-  min-height: 180mm;
 }
 .atterberg-print-sheet .aps-chart-box {
   border: 1px solid #ccc;
-  padding: 2px;
+  padding: 2mm;
   background: #fff8ec;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
   page-break-inside: avoid;
-  height: 100%;
+  display: block;
   overflow: visible;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 .atterberg-print-sheet .aps-chart-box > div {
-  width: 100%;
-  height: 100%;
-  margin: 0 auto;
+  width: auto;
+  height: auto;
+  margin: 0;
 }
 .atterberg-print-sheet .aps-chart-box svg {
   display: block;
-  max-width: 100%;
-  height: auto;
 }
 .atterberg-print-sheet .aps-side {
   page-break-inside: avoid;
@@ -736,10 +730,10 @@
   display: flex;
   justify-content: space-between;
   gap: 6mm;
-  margin: 6mm 8mm 0 8mm;
+  margin: 14mm 8mm 0 8mm;
   font-size: 8px;
   border-top: 1px solid #888;
-  padding-top: 3mm;
+  padding-top: 6mm;
   align-items: flex-start;
   page-break-inside: avoid;
 }
@@ -754,7 +748,7 @@
 .atterberg-print-sheet .aps-stamp {
   position: absolute;
   right: 0;
-  top: 8px;
+  top: 14px;
   width: 64px;
   height: 64px;
   opacity: 0.9;
