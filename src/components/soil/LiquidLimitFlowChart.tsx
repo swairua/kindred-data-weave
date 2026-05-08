@@ -17,7 +17,7 @@ interface LiquidLimitFlowChartProps {
 const LiquidLimitFlowChart = ({ trials, width, height, variant = "preview" }: LiquidLimitFlowChartProps) => {
   const graphData = getLiquidLimitGraphData(trials);
   const finalWidth = width ?? "100%";
-  const finalHeight = height ?? 480;
+  const finalHeight = height ?? (variant === "print" ? 600 : 480);
   const isPrint = variant === "print";
   const axisTickSize = isPrint ? 10 : 14;
   const axisLabelSize = isPrint ? 11 : 16;
