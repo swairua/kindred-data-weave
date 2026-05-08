@@ -55,20 +55,19 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   const [rows, setRows] = useState<Row[]>(defaultRows);
   const [isSaving, setIsSaving] = useState(false);
   const [saveCompleted, setSaveCompleted] = useState(false);
-  const [testDetails, setTestDetails] = useState<TestDetails>(() =>
-    testData.concreteTestMetadata || {
-      cement: "",
-      fineAggregate: "",
-      coarseAggregate: "",
-      contractor: "",
-      concreteClass: "",
-      section: "",
-      madeBy: "",
-      slump: "",
-      clientRef: "",
-      dateTested: "",
-    }
-  );
+  const [testDetails, setTestDetails] = useState<TestDetails>(() => ({
+    cement: "",
+    fineAggregate: "",
+    coarseAggregate: "",
+    contractor: "",
+    concreteClass: "",
+    section: "",
+    madeBy: "",
+    slump: "",
+    clientRef: "",
+    dateTested: "",
+    ...(testData.concreteTestMetadata ?? {})
+  }));
   const hasProjectSelected = !!project.currentProjectId;
 
   const getAge = (dateOfCast: string, dateOfTest: string) => {
@@ -196,7 +195,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
       ...project,
       tables: [{
         headers: ["#", "Cube Mark", "Date of Cast", "Date of Test", "Age", "Dims", "Mass", "Density", "Load", "Strength", "Remarks"],
-        rows: rows.map((r, i) => [i + 1, r.mark || "—", r.dateOfCast || "—", r.dateOfTest || "—", getAge(r.dateOfCast, r.dateOfTest) || "—", `${r.width}×${r.height}×${r.depth}`, r.mass || "—", getDensity(r) || "—", r.load || "—", getStrength(r) || "—", r.remarks || "—"])
+        rows: rows.map((r, i) => [String(i + 1), r.mark || "—", r.dateOfCast || "—", r.dateOfTest || "—", getAge(r.dateOfCast, r.dateOfTest) || "—", `${r.width}×${r.height}×${r.depth}`, r.mass || "—", getDensity(r) || "—", r.load || "—", getStrength(r) || "—", r.remarks || "—"])
       }],
       chartImages
     });
@@ -220,7 +219,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
         ],
         tables: [{
           headers: ["#", "Cube Mark", "Date of Cast", "Date of Test", "Age", "Dims", "Mass", "Density", "Load", "Strength", "Remarks"],
-          rows: rows.map((r, i) => [i + 1, r.mark || "—", r.dateOfCast || "—", r.dateOfTest || "—", getAge(r.dateOfCast, r.dateOfTest) || "—", `${r.width}×${r.height}×${r.depth}`, r.mass || "—", getDensity(r) || "—", r.load || "—", getStrength(r) || "—", r.remarks || "—"])
+          rows: rows.map((r, i) => [String(i + 1), r.mark || "—", r.dateOfCast || "—", r.dateOfTest || "—", getAge(r.dateOfCast, r.dateOfTest) || "—", `${r.width}×${r.height}×${r.depth}`, r.mass || "—", getDensity(r) || "—", r.load || "—", getStrength(r) || "—", r.remarks || "—"])
         }],
         chartImages,
       },
