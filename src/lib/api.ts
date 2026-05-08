@@ -456,6 +456,17 @@ export const apiRequest = async <T>(
       console.warn(`[API]   3. CORS or proxy configuration issue`);
       console.warn(`[API]   4. API_BASE_URL is incorrect`);
 
+      // Check if we're in a Builder.io/preview environment
+      const isPreview = typeof window !== 'undefined' &&
+        (window.location.hostname.includes('builderio.xyz') ||
+         window.location.hostname.includes('lovable.app'));
+
+      if (isPreview) {
+        console.warn(`[API] ⚠️ PREVIEW ENVIRONMENT DETECTED: Cross-origin requests may be blocked by CORS`);
+        console.warn(`[API] The API at ${url} is not accessible from this preview domain`);
+        console.warn(`[API] To fix: Configure CORS headers on the backend or set VITE_API_BASE_URL to a relative path`);
+      }
+
       // For background tasks (like project loading), be less verbose
       const isBackgroundTask = ['list', 'me', 'logout'].includes(String(action));
       if (!isBackgroundTask) {
@@ -595,6 +606,14 @@ export const fetchCurrentUser = async (timeoutMs: number = 15000) => {
     // Check if it's an abort (timeout)
     if (error instanceof DOMException && error.name === "AbortError") {
       console.warn(`[API] ${errorTimestamp} Session check timed out or was aborted after ${timeoutMs}ms`);
+      return null;
+    }
+
+    // Handle CORS or network errors gracefully
+    if (error instanceof TypeError && (error.message.includes("Failed to fetch") || error.message.includes("CORS"))) {
+      console.warn(`[API] ${errorTimestamp} Session check failed due to network/CORS error`);
+      console.warn(`[API] This may be a preview environment issue - CORS headers may not be configured on the API server`);
+      console.warn(`[API] Returning null to allow app to continue`);
       return null;
     }
 
