@@ -55,6 +55,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   const [rows, setRows] = useState<Row[]>(defaultRows);
   const [isSaving, setIsSaving] = useState(false);
   const [saveCompleted, setSaveCompleted] = useState(false);
+  const [editingRemarksIndex, setEditingRemarksIndex] = useState<number | null>(null);
   const [testDetails, setTestDetails] = useState<TestDetails>(() => ({
     cement: "",
     fineAggregate: "",
@@ -84,8 +85,9 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     const h = parseFloat(row.height);
     const d = parseFloat(row.depth);
     if (!mass || !w || !h || !d) return "";
-    const volume = (w * h * d) / 1000000; // mm³ to cm³
-    return (mass / volume).toFixed(0);
+    const volume = (w * h * d) / 1000000000; // mm³ to m³
+    const massKg = mass / 1000;
+    return (massKg / volume).toFixed(0);
   };
 
   const getStrength = (row: Row) => {
@@ -94,6 +96,15 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     const h = parseFloat(row.height);
     if (!load || !w || !h) return "";
     return ((load * 1000) / (w * h)).toFixed(2);
+  };
+
+  const getRemarks = (row: Row) => {
+    const strength = parseFloat(getStrength(row));
+    if (!strength) return "";
+    if (strength < 7) return "Very low strength";
+    if (strength < 20) return "Low strength";
+    if (strength < 40) return "Normal structural concrete";
+    return "High strength";
   };
 
   const update = (i: number, field: keyof Row, val: string) => {
@@ -195,7 +206,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
       ...project,
       tables: [{
         headers: ["#", "Cube Mark", "Date of Cast", "Date of Test", "Age", "Dims", "Mass", "Density", "Load", "Strength", "Remarks"],
-        rows: rows.map((r, i) => [String(i + 1), r.mark || "—", r.dateOfCast || "—", r.dateOfTest || "—", getAge(r.dateOfCast, r.dateOfTest) || "—", `${r.width}×${r.height}×${r.depth}`, r.mass || "—", getDensity(r) || "—", r.load || "—", getStrength(r) || "—", r.remarks || "—"])
+        rows: rows.map((r, i) => [String(i + 1), r.mark || "—", r.dateOfCast || "—", r.dateOfTest || "—", getAge(r.dateOfCast, r.dateOfTest) || "—", `${r.width}×${r.height}×${r.depth}`, r.mass || "—", getDensity(r) || "—", r.load || "—", getStrength(r) || "—", r.remarks || getRemarks(r) || "—"])
       }],
       chartImages
     });
@@ -219,7 +230,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
         ],
         tables: [{
           headers: ["#", "Cube Mark", "Date of Cast", "Date of Test", "Age", "Dims", "Mass", "Density", "Load", "Strength", "Remarks"],
-          rows: rows.map((r, i) => [String(i + 1), r.mark || "—", r.dateOfCast || "—", r.dateOfTest || "—", getAge(r.dateOfCast, r.dateOfTest) || "—", `${r.width}×${r.height}×${r.depth}`, r.mass || "—", getDensity(r) || "—", r.load || "—", getStrength(r) || "—", r.remarks || "—"])
+          rows: rows.map((r, i) => [String(i + 1), r.mark || "—", r.dateOfCast || "—", r.dateOfTest || "—", getAge(r.dateOfCast, r.dateOfTest) || "—", `${r.width}×${r.height}×${r.depth}`, r.mass || "—", getDensity(r) || "—", r.load || "—", getStrength(r) || "—", r.remarks || getRemarks(r) || "—"])
         }],
         chartImages,
       },
@@ -301,7 +312,21 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
                     <td className="py-1.5 px-2"><CalculatedInput value={getDensity(row)} /></td>
                     <td className="py-1.5 px-2"><Input type="number" value={row.load} onChange={(e) => update(i, "load", e.target.value)} className="h-8 text-sm" placeholder="0" /></td>
                     <td className="py-1.5 px-2"><CalculatedInput value={getStrength(row)} /></td>
-                    <td className="py-1.5 px-2"><Input value={row.remarks} onChange={(e) => update(i, "remarks", e.target.value)} className="h-8 text-sm" placeholder="—" /></td>
+                    <td className="py-1.5 px-2">
+                      {editingRemarksIndex === i ? (
+                        <div className="flex gap-1">
+                          <Input value={row.remarks} onChange={(e) => update(i, "remarks", e.target.value)} className="h-8 text-sm flex-1" placeholder="—" />
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingRemarksIndex(null)}><CheckCircle2 className="h-3.5 w-3.5" /></Button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-1 items-center group">
+                          <CalculatedInput value={row.remarks || getRemarks(row)} />
+                          <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100" onClick={() => setEditingRemarksIndex(i)}>
+                            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                          </Button>
+                        </div>
+                      )}
+                    </td>
                     <td className="py-1.5 px-1"><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setRows(rows.filter((_, j) => j !== i))}><X className="h-3.5 w-3.5" /></Button></td>
                   </tr>
                 ))}
