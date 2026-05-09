@@ -354,18 +354,23 @@ const Index = ({ initialTab }: IndexProps) => {
       return;
     }
 
-    // Get project ID from query parameter
+    // Get project ID from query parameters
     const searchParams = new URLSearchParams(location.search);
     const projectIdFromQuery = searchParams.get("projectId");
+    const fromProjectParam = searchParams.get("fromProject");
     const projectIdParam = projectIdFromQuery ? parseInt(projectIdFromQuery, 10) : null;
+    const fromProjectId = fromProjectParam ? parseInt(fromProjectParam, 10) : null;
 
-    // Prioritize query parameter over hash
+    // Prioritize: projectId query param > fromProject query param > hash
     let projectIdToLoad: number | null = null;
     let source = "";
 
     if (projectIdParam !== null) {
       projectIdToLoad = projectIdParam;
       source = "query parameter";
+    } else if (fromProjectId !== null) {
+      projectIdToLoad = fromProjectId;
+      source = "fromProject parameter";
     } else {
       const hash = location.hash.slice(1); // Remove '#'
       const isNumericHash = hash && /^\d+$/.test(hash);
