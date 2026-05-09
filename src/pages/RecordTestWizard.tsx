@@ -852,6 +852,10 @@ const RecordTestWizard = () => {
                 <FormCard>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
+                      <Label className="text-xs font-medium mb-1 block">Sample ID</Label>
+                      <Input value={state.sampleId} onChange={(e) => update("sampleId", e.target.value)} className="h-8 text-sm" placeholder="e.g. BH-01 / S-3" />
+                    </div>
+                    <div>
                       <Label className="text-xs font-medium mb-1 block">Cement</Label>
                       <Input value={state.cement} onChange={(e) => update("cement", e.target.value)} className="h-8 text-sm" />
                     </div>
