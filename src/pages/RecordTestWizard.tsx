@@ -350,12 +350,36 @@ const RecordTestWizard = () => {
     navigate(-1);
   };
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
+    // If creating a new project (projectId is null), save it first for compressive strength tests
+    let finalProjectId = state.projectId;
+    if (isCompressiveStrengthTest && finalProjectId === null) {
+      try {
+        const projectPayload = {
+          name: state.projectName,
+          client_name: state.clientName,
+          project_date: state.projectDate,
+        };
+        const createResponse = await createRecord<{ id: number }>("projects", projectPayload);
+        finalProjectId = createResponse.data?.id ?? null;
+        if (!finalProjectId) {
+          toast.error("Failed to create project");
+          return;
+        }
+        console.log(`[RecordTestWizard] Created new project with ID: ${finalProjectId}`);
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error("[RecordTestWizard] Failed to create project:", errorMsg);
+        toast.error("Failed to create project");
+        return;
+      }
+    }
+
     // Push project info into TestDataContext so the test screens have it
     const projectMetadata: any = {
       projectName: state.projectName,
       clientName: state.clientName,
-      currentProjectId: state.projectId,
+      currentProjectId: finalProjectId,
     };
 
     if (isCompressiveStrengthTest) {
@@ -380,6 +404,7 @@ const RecordTestWizard = () => {
         slump: state.slump,
         clientRef: state.clientRef,
         dateTested: state.dateTested,
+        sampleId: state.sampleId,
       };
 
       if (!isCompressiveStrengthTest) {
@@ -396,8 +421,8 @@ const RecordTestWizard = () => {
     // Always force a fresh record when an existing project is selected.
     // (Creating a new project leaves projectId null until first save, so this
     // condition cleanly distinguishes the two flows.)
-    const fromExisting = state.projectId !== null;
-    const suffix = fromExisting ? `?newRecord=1&fromProject=${state.projectId}` : "";
+    const fromExisting = finalProjectId !== null;
+    const suffix = fromExisting ? `?newRecord=1&fromProject=${finalProjectId}` : "";
     navigate(`/tests${suffix}#${state.testKey}`);
   };
 
