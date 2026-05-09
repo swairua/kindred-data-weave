@@ -23,6 +23,11 @@ export interface ProjectMetadata {
   dateReported?: string;
   checkedBy?: string;
   currentProjectId?: number | null;
+  contractor?: string;
+  county?: string;
+  submittedBy?: string;
+  dateSubmitted?: string;
+  customFields?: Array<{ name: string; value: string }>;
 }
 
 // Generic record-level metadata (used across test types)
