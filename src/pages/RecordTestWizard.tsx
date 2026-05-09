@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import WizardStepper, { type WizardStep } from "@/components/WizardStepper";
 import FormCard from "@/components/wizard/FormCard";
@@ -59,13 +60,16 @@ const TESTS_BY_MATERIAL: Record<Material, TestOption[]> = {
   ],
 };
 
-const STEPS: WizardStep[] = [
-  { id: "material", label: "Material" },
-  { id: "test", label: "Test type" },
-  { id: "project", label: "Project" },
-  { id: "sample", label: "Sample" },
-  { id: "entry", label: "Record" },
-];
+const getSteps = (material: Material | null, testKey: string | null): WizardStep[] => {
+  const isCompressiveStrengthTest = material === "concrete" && testKey === "compressive";
+  return [
+    { id: "material", label: "Material" },
+    { id: "test", label: "Test type" },
+    { id: "project", label: "Project" },
+    { id: "sample", label: isCompressiveStrengthTest ? "Concrete cube details" : "Sample" },
+    { id: "entry", label: "Record" },
+  ];
+};
 
 interface WizardState {
   material: Material | null;
@@ -74,6 +78,11 @@ interface WizardState {
   projectName: string;
   clientName: string;
   projectDate: string;
+  contractor: string;
+  county: string;
+  submittedBy: string;
+  dateSubmitted: string;
+  customFields: Array<{ name: string; value: string }>;
   sampleId: string;
   sampleDepthFrom: string;
   sampleDepthTo: string;
@@ -81,7 +90,6 @@ interface WizardState {
   cement: string;
   fineAggregate: string;
   coarseAggregate: string;
-  contractor: string;
   concreteClass: string;
   section: string;
   madeBy: string;
@@ -99,6 +107,11 @@ const emptyState: WizardState = {
   projectName: "",
   clientName: "",
   projectDate: new Date().toISOString().split("T")[0],
+  contractor: "",
+  county: "",
+  submittedBy: "",
+  dateSubmitted: new Date().toISOString().split("T")[0],
+  customFields: [],
   sampleId: "",
   sampleDepthFrom: "",
   sampleDepthTo: "",
@@ -106,7 +119,6 @@ const emptyState: WizardState = {
   cement: "",
   fineAggregate: "",
   coarseAggregate: "",
-  contractor: "",
   concreteClass: "",
   section: "",
   madeBy: "",
@@ -292,11 +304,25 @@ const RecordTestWizard = () => {
     [state.material],
   );
 
+  const isCompressiveStrengthTest = state.material === "concrete" && state.testKey === "compressive";
+
   const canAdvance = useMemo(() => {
     switch (step) {
       case 0: return !!state.material;
       case 1: return !!state.testKey;
-      case 2: return creatingNewProject ? state.projectName.trim().length > 0 : state.projectId !== null;
+      case 2:
+        if (creatingNewProject) {
+          const hasProjectName = state.projectName.trim().length > 0;
+          if (isCompressiveStrengthTest) {
+            return hasProjectName && state.contractor.trim().length > 0 && state.county.trim().length > 0;
+          }
+          return hasProjectName;
+        } else {
+          if (isCompressiveStrengthTest) {
+            return state.projectId !== null && state.contractor.trim().length > 0 && state.county.trim().length > 0;
+          }
+          return state.projectId !== null;
+        }
       case 3:
         if (state.material === "concrete") {
           return state.cement.trim().length > 0;
@@ -306,10 +332,12 @@ const RecordTestWizard = () => {
       case 4: return true;
       default: return false;
     }
-  }, [step, state, creatingNewProject]);
+  }, [step, state, creatingNewProject, isCompressiveStrengthTest]);
+
+  const steps = getSteps(state.material, state.testKey);
 
   const handleNext = () => {
-    if (step < STEPS.length - 1) setStep(step + 1);
+    if (step < steps.length - 1) setStep(step + 1);
   };
 
   const handleBack = () => {
@@ -324,26 +352,41 @@ const RecordTestWizard = () => {
 
   const handleFinish = () => {
     // Push project info into TestDataContext so the test screens have it
-    testData.updateProjectMetadata({
+    const projectMetadata: any = {
       projectName: state.projectName,
       clientName: state.clientName,
       currentProjectId: state.projectId,
-    });
+    };
+
+    if (isCompressiveStrengthTest) {
+      projectMetadata.contractor = state.contractor;
+      projectMetadata.county = state.county;
+      projectMetadata.submittedBy = state.submittedBy;
+      projectMetadata.dateSubmitted = state.dateSubmitted;
+      projectMetadata.customFields = state.customFields;
+    }
+
+    testData.updateProjectMetadata(projectMetadata);
 
     // If concrete material, also push concrete test details to context
     if (state.material === "concrete") {
-      testData.updateConcreteTestMetadata({
+      const concreteMetadata: any = {
         cement: state.cement,
         fineAggregate: state.fineAggregate,
         coarseAggregate: state.coarseAggregate,
-        contractor: state.contractor,
         concreteClass: state.concreteClass,
         section: state.section,
         madeBy: state.madeBy,
         slump: state.slump,
         clientRef: state.clientRef,
         dateTested: state.dateTested,
-      });
+      };
+
+      if (!isCompressiveStrengthTest) {
+        concreteMetadata.contractor = state.contractor;
+      }
+
+      testData.updateConcreteTestMetadata(concreteMetadata);
     }
 
     sessionStorage.removeItem(STORAGE_KEY);
@@ -452,7 +495,7 @@ const RecordTestWizard = () => {
           </div>
           <div className="px-4 md:px-8 pb-4 max-w-5xl mx-auto w-full">
             <WizardStepper
-              steps={STEPS}
+              steps={steps}
               currentIndex={step}
               onStepClick={setStep}
               disabledSteps={state.material !== "soil" ? [1, 2, 3, 4] : []}
@@ -582,7 +625,7 @@ const RecordTestWizard = () => {
                       size="sm"
                       onClick={() => {
                         setCreatingNewProject(false);
-                        setState((prev) => ({ ...prev, projectId: null, projectName: "", clientName: "" }));
+                        setState((prev) => ({ ...prev, projectId: null, projectName: "", clientName: "", contractor: "", county: "", submittedBy: "", dateSubmitted: prev.dateSubmitted, customFields: [] }));
                       }}
                     >
                       Cancel
@@ -590,18 +633,113 @@ const RecordTestWizard = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="proj-name">Project name *</Label>
-                    <Input id="proj-name" value={state.projectName} onChange={(e) => update("projectName", e.target.value)} placeholder="e.g. Highway A14 Section 2" />
+                    <Input id="proj-name" value={state.projectName} onChange={(e) => update("projectName", e.target.value)} placeholder="e.g. Thika Road Bridge Foundation" />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-2">
-                      <Label htmlFor="proj-client">Client</Label>
-                      <Input id="proj-client" value={state.clientName} onChange={(e) => update("clientName", e.target.value)} placeholder="Client name" />
+                      <Label htmlFor="proj-client">Client name *</Label>
+                      <Input id="proj-client" value={state.clientName} onChange={(e) => update("clientName", e.target.value)} placeholder="e.g. Kenya National Highways Authority" />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="proj-date">Date</Label>
+                      <Label htmlFor="proj-date">Project date</Label>
                       <Input id="proj-date" type="date" value={state.projectDate} onChange={(e) => update("projectDate", e.target.value)} />
                     </div>
                   </div>
+
+                  {isCompressiveStrengthTest && (
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="proj-contractor">Contractor *</Label>
+                          <Input id="proj-contractor" value={state.contractor} onChange={(e) => update("contractor", e.target.value)} placeholder="e.g. BuildWell Contractors Ltd" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="proj-county">County *</Label>
+                          <Input id="proj-county" value={state.county} onChange={(e) => update("county", e.target.value)} placeholder="e.g. Nairobi" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="proj-submitted-by">Submitted by</Label>
+                          <Input id="proj-submitted-by" value={state.submittedBy} onChange={(e) => update("submittedBy", e.target.value)} placeholder="Name of submitting engineer" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="proj-date-submitted">Date submitted</Label>
+                          <Input id="proj-date-submitted" type="date" value={state.dateSubmitted} onChange={(e) => update("dateSubmitted", e.target.value)} />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-medium">Custom fields (optional)</h4>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-auto px-2 py-1 text-xs"
+                            onClick={() => {
+                              setState((prev) => ({
+                                ...prev,
+                                customFields: [...prev.customFields, { name: "", value: "" }]
+                              }));
+                            }}
+                          >
+                            <Plus className="h-3 w-3 mr-1" /> Add custom field
+                          </Button>
+                        </div>
+                        {state.customFields.length > 0 && (
+                          <div className="space-y-2 pt-2">
+                            {state.customFields.map((field, idx) => (
+                              <div key={idx} className="flex items-end gap-2">
+                                <div className="flex-1 space-y-1">
+                                  <Input
+                                    placeholder="Field name"
+                                    value={field.name}
+                                    onChange={(e) => {
+                                      setState((prev) => {
+                                        const updated = [...prev.customFields];
+                                        updated[idx].name = e.target.value;
+                                        return { ...prev, customFields: updated };
+                                      });
+                                    }}
+                                    className="text-xs h-8"
+                                  />
+                                </div>
+                                <div className="flex-1 space-y-1">
+                                  <Input
+                                    placeholder="Field value"
+                                    value={field.value}
+                                    onChange={(e) => {
+                                      setState((prev) => {
+                                        const updated = [...prev.customFields];
+                                        updated[idx].value = e.target.value;
+                                        return { ...prev, customFields: updated };
+                                      });
+                                    }}
+                                    className="text-xs h-8"
+                                  />
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => {
+                                    setState((prev) => ({
+                                      ...prev,
+                                      customFields: prev.customFields.filter((_, i) => i !== idx)
+                                    }));
+                                  }}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -658,6 +796,29 @@ const RecordTestWizard = () => {
                     )}
                   </div>
 
+                  {isCompressiveStrengthTest && state.projectId !== null && (state.contractor === "" || state.county === "") && (
+                    <Accordion type="single" collapsible defaultValue="missing-details">
+                      <AccordionItem value="missing-details">
+                        <AccordionTrigger className="bg-amber-50 px-3 rounded-lg hover:bg-amber-100 py-2 text-sm font-medium text-amber-900">
+                          Missing project details
+                        </AccordionTrigger>
+                        <AccordionContent className="pt-4 space-y-3">
+                          <p className="text-xs text-amber-900">This project is missing details required for compressive strength tests. Add them below to continue.</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                              <Label htmlFor="proj-contractor-missing">Contractor *</Label>
+                              <Input id="proj-contractor-missing" value={state.contractor} onChange={(e) => update("contractor", e.target.value)} placeholder="e.g. BuildWell Contractors Ltd" />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="proj-county-missing">County *</Label>
+                              <Input id="proj-county-missing" value={state.county} onChange={(e) => update("county", e.target.value)} placeholder="e.g. Nairobi" />
+                            </div>
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  )}
+
                   <div className="flex items-center gap-3">
                     <div className="flex-1 h-px bg-border" />
                     <span className="text-xs uppercase tracking-wider text-muted-foreground">or</span>
@@ -669,7 +830,7 @@ const RecordTestWizard = () => {
                     className="w-full justify-start gap-2 h-11"
                     onClick={() => {
                       setCreatingNewProject(true);
-                      setState((p) => ({ ...p, projectId: null, projectName: "", clientName: "" }));
+                      setState((p) => ({ ...p, projectId: null, projectName: "", clientName: "", contractor: "", county: "", submittedBy: "", dateSubmitted: p.dateSubmitted, customFields: [] }));
                     }}
                   >
                     <Plus className="h-4 w-4" /> Create new project
@@ -685,7 +846,7 @@ const RecordTestWizard = () => {
             {state.material === "concrete" ? (
               <>
                 <div>
-                  <h2 className="text-2xl font-semibold tracking-tight">Test details</h2>
+                  <h2 className="text-2xl font-semibold tracking-tight">{isCompressiveStrengthTest ? "Concrete cube details" : "Test details"}</h2>
                   <p className="text-sm text-muted-foreground mt-1">Enter the concrete sample details.</p>
                 </div>
                 <FormCard>
@@ -702,10 +863,12 @@ const RecordTestWizard = () => {
                       <Label className="text-xs font-medium mb-1 block">Coarse Aggregate</Label>
                       <Input value={state.coarseAggregate} onChange={(e) => update("coarseAggregate", e.target.value)} className="h-8 text-sm" />
                     </div>
-                    <div>
-                      <Label className="text-xs font-medium mb-1 block">Contractor</Label>
-                      <Input value={state.contractor} onChange={(e) => update("contractor", e.target.value)} className="h-8 text-sm" />
-                    </div>
+                    {!isCompressiveStrengthTest && (
+                      <div>
+                        <Label className="text-xs font-medium mb-1 block">Contractor</Label>
+                        <Input value={state.contractor} onChange={(e) => update("contractor", e.target.value)} className="h-8 text-sm" />
+                      </div>
+                    )}
                     <div>
                       <Label className="text-xs font-medium mb-1 block">Concrete Class</Label>
                       <Input value={state.concreteClass} onChange={(e) => update("concreteClass", e.target.value)} className="h-8 text-sm" />
@@ -816,7 +979,7 @@ const RecordTestWizard = () => {
             <Button variant="outline" onClick={handleBack} className="gap-1.5">
               <ArrowLeft className="h-4 w-4" /> {step === 0 ? "Cancel" : "Back"}
             </Button>
-            {step < STEPS.length - 1 ? (
+            {step < steps.length - 1 ? (
               <Button onClick={handleNext} disabled={!canAdvance} className="gap-1.5">
                 Next <ArrowRight className="h-4 w-4" />
               </Button>
