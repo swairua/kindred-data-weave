@@ -355,10 +355,12 @@ const RecordTestWizard = () => {
     let finalProjectId = state.projectId;
     if (isCompressiveStrengthTest && finalProjectId === null) {
       try {
-        const projectPayload = {
+        const projectPayload: Record<string, unknown> = {
           name: state.projectName,
           client_name: state.clientName,
           project_date: state.projectDate,
+          contractor: state.contractor,
+          county: state.county,
         };
         const createResponse = await createRecord<{ id: number }>("projects", projectPayload);
         finalProjectId = createResponse.data?.id ?? null;
