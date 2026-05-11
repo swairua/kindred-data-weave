@@ -25,4 +25,6 @@ INSERT INTO `user_allowed_tables` (`user_id`, `table_name`) VALUES
 (1, 'atterberg_rows'),
 (1, 'admin_images'),
 (1, 'admin_images_audit'),
-(1, 'users');
+(1, 'users'),
+(1, 'compressive_tests'),
+(1, 'compressive_cubes');
