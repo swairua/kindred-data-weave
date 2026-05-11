@@ -1,11 +1,5 @@
 import { createContext, useContext } from "react";
-
-interface ApiProjectRow {
-  id: number;
-  name: string;
-  client_name: string | null;
-  project_date: string | null;
-}
+import { type ApiProjectRow } from "@/types/api";
 
 interface ProjectMetadata {
   labOrganization?: string;
