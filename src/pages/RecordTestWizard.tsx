@@ -366,31 +366,9 @@ const RecordTestWizard = () => {
     setLoadingProjects(true);
     setProjectsLoadError(null);
     listRecords<ApiProjectRow>("projects", { limit: 100 })
-      .then(async (res) => {
+      .then((res) => {
         if (!active) return;
-
-        let filteredProjects = res.data || [];
-
-        // If a material is selected, filter projects to only those with test results for that material
-        if (state.material) {
-          const projectsWithMaterial: ApiProjectRow[] = [];
-
-          for (const project of filteredProjects) {
-            try {
-              const testResults = await listRecords<any>("test_results", { project_id: project.id, limit: 1 });
-              const hasResultForMaterial = testResults.data?.some((r: any) => r.category === state.material);
-              if (hasResultForMaterial) {
-                projectsWithMaterial.push(project);
-              }
-            } catch {
-              // If we can't check test results for this project, include it anyway
-              projectsWithMaterial.push(project);
-            }
-          }
-
-          filteredProjects = projectsWithMaterial;
-        }
-
+        const filteredProjects = res.data || [];
         if (active) setProjects(filteredProjects);
       })
       .catch((err) => {
@@ -582,11 +560,10 @@ const RecordTestWizard = () => {
       projectName: p.name,
       clientName: p.client_name || "",
       projectDate: p.project_date || prev.projectDate,
-      contractor: (p as any).contractor || "",
-      county: (p as any).county || "",
+      contractor: "",
+      county: "",
     }));
 
-    // Show the same details card the "Create new project" path uses
     setCreatingNewProject(true);
 
     testData.updateProjectMetadata({
@@ -596,7 +573,7 @@ const RecordTestWizard = () => {
       currentProjectId: id,
     });
 
-    // Background: load full project record and sync into both state and context
+    // Background: load full project record to get contractor/county and sync into both state and context
     (async () => {
       try {
         const fullProject = await fetchFullProject(id);
@@ -1071,29 +1048,6 @@ const RecordTestWizard = () => {
                     )}
                   </div>
 
-                  {isCompressiveStrengthTest && state.projectId !== null && (state.contractor === "" || state.county === "") && (
-                    <Accordion type="single" collapsible defaultValue="missing-details">
-                      <AccordionItem value="missing-details">
-                        <AccordionTrigger className="bg-amber-50 px-3 rounded-lg hover:bg-amber-100 py-2 text-sm font-medium text-amber-900">
-                          Missing project details
-                        </AccordionTrigger>
-                        <AccordionContent className="pt-4 space-y-3">
-                          <p className="text-xs text-amber-900">This project is missing details required for compressive strength tests. Add them below to continue.</p>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div className="space-y-2">
-                              <Label htmlFor="proj-contractor-missing">Contractor *</Label>
-                              <Input id="proj-contractor-missing" value={state.contractor} onChange={(e) => update("contractor", e.target.value)} placeholder="e.g. BuildWell Contractors Ltd" />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="proj-county-missing">County *</Label>
-                              <Input id="proj-county-missing" value={state.county} onChange={(e) => update("county", e.target.value)} placeholder="e.g. Nairobi" />
-                            </div>
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                  )}
-
                   <div className="flex items-center gap-3">
                     <div className="flex-1 h-px bg-border" />
                     <span className="text-xs uppercase tracking-wider text-muted-foreground">or</span>
@@ -1116,7 +1070,7 @@ const RecordTestWizard = () => {
           </section>
               )}
 
-              {step === 3 && (
+              {steps[step]?.id === "sample" && (
                 <section className="space-y-6 animate-fade-in max-w-2xl">
             {state.material === "concrete" ? (
               <>
@@ -1229,7 +1183,7 @@ const RecordTestWizard = () => {
           </section>
               )}
 
-              {step === 4 && (
+              {steps[step]?.id === "entry" && (
                 <section className="space-y-6 animate-fade-in max-w-2xl">
             <div>
               <h2 className="text-2xl font-semibold tracking-tight">Ready to record</h2>
