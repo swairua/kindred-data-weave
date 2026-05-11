@@ -2,8 +2,7 @@ const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
 
 // Detect if running in a Builder.io preview or sandbox environment
 const isBuilderPreview = typeof window !== 'undefined' &&
-  (window.location.hostname.includes('builderio.xyz') ||
-   window.location.hostname.includes('lovable.app'));
+  window.location.hostname.includes('builderio.xyz');
 
 // In development (localhost), use the proxied path to bypass CORS
 // In preview/production, use the full URL to the actual API server
@@ -456,10 +455,9 @@ export const apiRequest = async <T>(
       console.warn(`[API]   3. CORS or proxy configuration issue`);
       console.warn(`[API]   4. API_BASE_URL is incorrect`);
 
-      // Check if we're in a Builder.io/preview environment
+      // Check if we're in a Builder.io preview environment
       const isPreview = typeof window !== 'undefined' &&
-        (window.location.hostname.includes('builderio.xyz') ||
-         window.location.hostname.includes('lovable.app'));
+        window.location.hostname.includes('builderio.xyz');
 
       if (isPreview) {
         console.warn(`[API] ⚠️ PREVIEW ENVIRONMENT DETECTED: Cross-origin requests may be blocked by CORS`);

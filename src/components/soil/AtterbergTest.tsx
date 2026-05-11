@@ -387,11 +387,11 @@ const persistAtterbergProjectToApi = async ({
     );
 
     // Find or create project
-    let projectRow = projectId
-      ? projectsResponse.data.find((row) => row.id === projectId) ?? null
-      : hasLookupCriteria(lookup)
-        ? projectsResponse.data.find((row) => matchesProjectLookup(row, lookup)) ?? null
-        : null;
+    // Note: When projectId is provided from the wizard, we ignore it to force new project creation.
+    // The wizard selection is treated as metadata/template, not as the actual project to use.
+    let projectRow = hasLookupCriteria(lookup)
+      ? projectsResponse.data.find((row) => matchesProjectLookup(row, lookup)) ?? null
+      : null;
 
     const projectName = normalizeLookupValue(payload.project.title) || "Atterberg Limits Testing";
     const clientName = normalizeLookupValue(payload.project.clientName);
