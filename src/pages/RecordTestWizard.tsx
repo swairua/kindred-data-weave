@@ -1070,28 +1070,6 @@ const RecordTestWizard = () => {
                     )}
                   </div>
 
-                  {isCompressiveStrengthTest && state.projectId !== null && (state.contractor === "" || state.county === "") && (
-                    <Accordion type="single" collapsible defaultValue="missing-details">
-                      <AccordionItem value="missing-details">
-                        <AccordionTrigger className="bg-amber-50 px-3 rounded-lg hover:bg-amber-100 py-2 text-sm font-medium text-amber-900">
-                          Add details
-                        </AccordionTrigger>
-                        <AccordionContent className="pt-4 space-y-3">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div className="space-y-2">
-                              <Label htmlFor="proj-contractor-missing">Contractor *</Label>
-                              <Input id="proj-contractor-missing" value={state.contractor} onChange={(e) => update("contractor", e.target.value)} placeholder="e.g. BuildWell Contractors Ltd" />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="proj-county-missing">County *</Label>
-                              <Input id="proj-county-missing" value={state.county} onChange={(e) => update("county", e.target.value)} placeholder="e.g. Nairobi" />
-                            </div>
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                  )}
-
                   <div className="flex items-center gap-3">
                     <div className="flex-1 h-px bg-border" />
                     <span className="text-xs uppercase tracking-wider text-muted-foreground">or</span>
