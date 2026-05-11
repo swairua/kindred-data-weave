@@ -61,8 +61,16 @@ const TESTS_BY_MATERIAL: Record<Material, TestOption[]> = {
   ],
 };
 
-const getSteps = (material: Material | null, testKey: string | null, hasExistingTests: boolean): WizardStep[] => {
+const getSteps = (
+  material: Material | null,
+  testKey: string | null,
+  hasExistingTests: boolean,
+  selectedExistingTestId: number | null,
+): WizardStep[] => {
   const isCompressiveStrengthTest = material === "concrete" && testKey === "compressive";
+  // Only skip project step if a specific existing test instance has been selected
+  const existingTestSelected = selectedExistingTestId !== null;
+
   const steps: WizardStep[] = [
     { id: "material", label: "Material" },
     { id: "test", label: "Test type" },
@@ -72,8 +80,12 @@ const getSteps = (material: Material | null, testKey: string | null, hasExisting
     steps.push({ id: "existing", label: "Select test" });
   }
 
+  // Skip project step only if an existing test instance has been selected
+  if (!existingTestSelected) {
+    steps.push({ id: "project", label: "Project" });
+  }
+
   steps.push(
-    { id: "project", label: "Project" },
     { id: "sample", label: isCompressiveStrengthTest ? "Concrete cube details" : "Sample" },
     { id: "entry", label: "Record" },
   );
@@ -326,7 +338,7 @@ const RecordTestWizard = () => {
 
   const isCompressiveStrengthTest = state.material === "concrete" && state.testKey === "compressive";
   const hasExistingCompressiveTests = isCompressiveStrengthTest && compressiveTests.length > 0;
-  const steps = getSteps(state.material, state.testKey, hasExistingCompressiveTests);
+  const steps = getSteps(state.material, state.testKey, hasExistingCompressiveTests, selectedExistingTestId);
 
   const canAdvance = useMemo(() => {
     const currentStepId = steps[step]?.id;
