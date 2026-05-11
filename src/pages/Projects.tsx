@@ -20,6 +20,19 @@ import { type ApiProjectRow } from "@/types/api";
 import { listRecords, fetchFullProject } from "@/lib/api";
 import { toast } from "sonner";
 
+interface ApiTestResult {
+  id: number;
+  project_id: number;
+  test_key: string;
+  name: string;
+  category: string;
+  project_name?: string;
+  status?: string;
+  payload_json?: Record<string, unknown>;
+  created_at?: string;
+  updated_at?: string;
+}
+
 const Projects = () => {
   const navigate = useNavigate();
   const project = useProject();
@@ -30,13 +43,30 @@ const Projects = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Load projects from API
+  // Load projects and test results from API
   useEffect(() => {
     const loadProjects = async () => {
       try {
         setIsLoading(true);
-        const response = await listRecords<ApiProjectRow>("projects", { limit: 100 });
-        setApiProjects(response.data || []);
+        const [projectsResponse, testResultsResponse] = await Promise.all([
+          listRecords<ApiProjectRow>("projects", { limit: 100 }),
+          listRecords<ApiTestResult>("test_results", { limit: 1000 }),
+        ]);
+
+        // Count test results by project_id
+        const testCountByProject = new Map<number, number>();
+        (testResultsResponse.data || []).forEach((testResult) => {
+          const count = testCountByProject.get(testResult.project_id) || 0;
+          testCountByProject.set(testResult.project_id, count + 1);
+        });
+
+        // Enrich projects with sample counts
+        const enrichedProjects = (projectsResponse.data || []).map((p) => ({
+          ...p,
+          sample_count: testCountByProject.get(p.id) || 0,
+        }));
+
+        setApiProjects(enrichedProjects);
       } catch (error) {
         console.error("Failed to load projects:", error);
         setApiProjects([]);
@@ -56,7 +86,7 @@ const Projects = () => {
         name: p.name,
         client_name: p.client_name || undefined,
         created_at: p.project_date || new Date().toISOString(),
-        samples: 0,
+        samples: p.sample_count || 0,
       }));
     }
     return [];
