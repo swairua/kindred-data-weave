@@ -615,6 +615,7 @@ const RecordTestWizard = () => {
           checkedBy: fullProject.checked_by || "",
           contractor: (fullProject as any).contractor || "",
           county: (fullProject as any).county || "",
+          currentProjectId: id,
         });
       } catch (error) {
         console.warn("[RecordTestWizard] Background project preload failed:", error);

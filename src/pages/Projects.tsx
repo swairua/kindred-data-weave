@@ -130,6 +130,8 @@ const Projects = () => {
           labOrganization: fullProject.lab_organization || "",
           dateReported: fullProject.date_reported || "",
           checkedBy: fullProject.checked_by || "",
+          contractor: (fullProject as any).contractor || "",
+          county: (fullProject as any).county || "",
         });
 
         console.log(`[Projects] ✓ Full project data preloaded and context updated`);

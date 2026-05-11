@@ -438,6 +438,8 @@ const Index = ({ initialTab }: IndexProps) => {
             labOrganization: (fullProject as any).lab_organization || "",
             dateReported: (fullProject as any).date_reported || "",
             checkedBy: (fullProject as any).checked_by || "",
+            contractor: (fullProject as any).contractor || "",
+            county: (fullProject as any).county || "",
           });
           toast.success(`Loaded project: ${fullProject.name}`);
           log(`[Index] Successfully loaded project: ${fullProject.name}`);
@@ -493,7 +495,13 @@ const Index = ({ initialTab }: IndexProps) => {
           setClientName(project.client_name || "");
           setProjectDate(project.project_date || undefined);
           setCurrentProjectId(project.id);
-          testData.updateProjectMetadata({ projectName: project.name, clientName: project.client_name || "", projectDate: project.project_date || "" });
+          testData.updateProjectMetadata({
+            projectName: project.name,
+            clientName: project.client_name || "",
+            projectDate: project.project_date || "",
+            contractor: (project as any).contractor || "",
+            county: (project as any).county || "",
+          });
           toast.success(`Loaded project: ${project.name}`);
           log(`[Index] Successfully loaded project: ${project.name}`);
           // Mark as loaded ONLY after successful completion
@@ -621,7 +629,13 @@ const Index = ({ initialTab }: IndexProps) => {
     setClientName(project.client_name || "");
     setProjectDate(project.project_date || undefined);
     setCurrentProjectId(project.id);
-    testData.updateProjectMetadata({ projectName: project.name, clientName: project.client_name || "", projectDate: project.project_date || "" });
+    testData.updateProjectMetadata({
+      projectName: project.name,
+      clientName: project.client_name || "",
+      projectDate: project.project_date || "",
+      contractor: (project as any).contractor || "",
+      county: (project as any).county || "",
+    });
     toast.success(`Loaded project: ${project.name}`);
   };
 
