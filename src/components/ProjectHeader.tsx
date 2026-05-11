@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { History, ChevronDown } from "lucide-react";
+import { type ApiProjectRow } from "@/types/api";
 import {
   Select,
   SelectContent,
@@ -15,13 +16,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-
-interface ApiProjectRow {
-  id: number;
-  name: string;
-  client_name: string | null;
-  project_date: string | null;
-}
 
 interface ProjectHeaderProps {
   projectName: string;

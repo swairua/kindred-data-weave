@@ -16,15 +16,9 @@ import { Layers, Plus, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import { useProject } from "@/context/ProjectContext";
 import { useTestData } from "@/context/TestDataContext";
+import { type ApiProjectRow } from "@/types/api";
 import { listRecords, fetchFullProject } from "@/lib/api";
 import { toast } from "sonner";
-
-interface ApiProjectRow {
-  id: number;
-  name: string;
-  client_name: string | null;
-  project_date: string | null;
-}
 
 const Projects = () => {
   const navigate = useNavigate();

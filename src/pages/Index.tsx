@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import { type ApiProjectRow } from "@/types/api";
 import { toast } from "sonner";
 import {
   ChevronDown,
@@ -45,12 +46,6 @@ import { fetchCurrentUser, loginUser, logoutUser, type ApiUser, listRecords, fet
 import { registerAllTests } from "@/lib/testRegistration";
 import { registry } from "@/lib/testRegistry";
 
-interface ApiProjectRow {
-  id: number;
-  name: string;
-  client_name: string | null;
-  project_date: string | null;
-}
 
 // Initialize test registry once on module load
 registerAllTests();

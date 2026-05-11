@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ChevronDown, ChevronRight, Plus, Trash2, AlertTriangle, Printer } from "lucide-react";
 import { toast } from "sonner";
+import { type ApiProjectRow } from "@/types/api";
 
 import TestSection from "@/components/TestSection";
 
@@ -269,12 +270,6 @@ const buildPersistedState = (records: ComputedRecord[]): AtterbergProjectState =
   records: records.map(({ dataPoints, completedTests, ...record }) => record),
 });
 
-type ApiProjectRow = {
-  id: number;
-  name: string;
-  client_name: string | null;
-  project_date: string | null;
-};
 
 type ApiAtterbergResultRow = {
   id: number;
@@ -414,6 +409,7 @@ const persistAtterbergProjectToApi = async ({
           name: projectName,
           client_name: clientName || null,
           project_date: projectDate || null,
+          test_type: "atterberg",
         })
       );
       projectRow = createdProject.data;

@@ -12,6 +12,7 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/s
 import WizardStepper, { type WizardStep } from "@/components/WizardStepper";
 import FormCard from "@/components/wizard/FormCard";
 import { listRecords, fetchCurrentUser, setSessionToken, logoutUser, fetchFullProject, createRecord, listCompressiveTests } from "@/lib/api";
+import { type ApiProjectRow } from "@/types/api";
 import { cn } from "@/lib/utils";
 import { useTestData } from "@/context/TestDataContext";
 import Navigation from "@/components/Navigation";
@@ -136,12 +137,6 @@ const emptyState: WizardState = {
   dateTested: new Date().toISOString().split("T")[0],
 };
 
-interface ApiProjectRow {
-  id: number;
-  name: string;
-  client_name: string | null;
-  project_date: string | null;
-}
 
 interface CompressiveTestRow {
   id: number;
@@ -160,6 +155,17 @@ interface CompressiveTestRow {
   created_at: string;
   updated_at: string;
 }
+
+const getExpectedTestType = (material: Material | null, testKey: string | null): string | null => {
+  if (material === "soil" && testKey === "atterberg") return "atterberg";
+  if (material === "concrete" && testKey === "compressive") return "compressive";
+  return null;
+};
+
+const filterProjectsByTestType = (projects: ApiProjectRow[], expectedTestType: string | null): ApiProjectRow[] => {
+  if (!expectedTestType) return projects;
+  return projects.filter(p => !p.test_type || p.test_type === expectedTestType);
+};
 
 const RecordTestWizard = () => {
   const navigate = useNavigate();
@@ -365,10 +371,12 @@ const RecordTestWizard = () => {
     let active = true;
     setLoadingProjects(true);
     setProjectsLoadError(null);
+    const expectedTestType = getExpectedTestType(state.material, state.testKey);
     listRecords<ApiProjectRow>("projects", { limit: 100 })
       .then((res) => {
         if (!active) return;
-        const filteredProjects = res.data || [];
+        const allProjects = res.data || [];
+        const filteredProjects = filterProjectsByTestType(allProjects, expectedTestType);
         if (active) setProjects(filteredProjects);
       })
       .catch((err) => {
@@ -386,7 +394,7 @@ const RecordTestWizard = () => {
       })
       .finally(() => active && setLoadingProjects(false));
     return () => { active = false; };
-  }, [step, projectsReloadKey, authChecking, navigate, state.material, steps]);
+  }, [step, projectsReloadKey, authChecking, navigate, state.material, state.testKey, steps]);
 
   const handleNext = () => {
     if (step < steps.length - 1) setStep(step + 1);
@@ -413,6 +421,7 @@ const RecordTestWizard = () => {
           project_date: state.projectDate,
           contractor: state.contractor,
           county: state.county,
+          test_type: getExpectedTestType(state.material, state.testKey),
         };
         const createResponse = await createRecord<{ id: number }>("projects", projectPayload);
         finalProjectId = createResponse.data?.id ?? null;
