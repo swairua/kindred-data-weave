@@ -61,8 +61,16 @@ const TESTS_BY_MATERIAL: Record<Material, TestOption[]> = {
   ],
 };
 
-const getSteps = (material: Material | null, testKey: string | null, hasExistingTests: boolean): WizardStep[] => {
+const getSteps = (
+  material: Material | null,
+  testKey: string | null,
+  hasExistingTests: boolean,
+  selectedExistingTestId: number | null,
+): WizardStep[] => {
   const isCompressiveStrengthTest = material === "concrete" && testKey === "compressive";
+  // Only skip project step if a specific existing test instance has been selected
+  const existingTestSelected = selectedExistingTestId !== null;
+
   const steps: WizardStep[] = [
     { id: "material", label: "Material" },
     { id: "test", label: "Test type" },
@@ -72,8 +80,12 @@ const getSteps = (material: Material | null, testKey: string | null, hasExisting
     steps.push({ id: "existing", label: "Select test" });
   }
 
+  // Skip project step only if an existing test instance has been selected
+  if (!existingTestSelected) {
+    steps.push({ id: "project", label: "Project" });
+  }
+
   steps.push(
-    { id: "project", label: "Project" },
     { id: "sample", label: isCompressiveStrengthTest ? "Concrete cube details" : "Sample" },
     { id: "entry", label: "Record" },
   );
@@ -326,7 +338,7 @@ const RecordTestWizard = () => {
 
   const isCompressiveStrengthTest = state.material === "concrete" && state.testKey === "compressive";
   const hasExistingCompressiveTests = isCompressiveStrengthTest && compressiveTests.length > 0;
-  const steps = getSteps(state.material, state.testKey, hasExistingCompressiveTests);
+  const steps = getSteps(state.material, state.testKey, hasExistingCompressiveTests, selectedExistingTestId);
 
   const canAdvance = useMemo(() => {
     const currentStepId = steps[step]?.id;
@@ -501,6 +513,8 @@ const RecordTestWizard = () => {
 
     setSelectedExistingTestId(testId);
     setShowTestDetails(true);
+    // Auto-expand test details accordion so user can fill in contractor/county
+    setTimeout(() => setShowTestDetails(true), 0);
 
     // Populate state with test data
     setState((prev) => ({
@@ -544,7 +558,7 @@ const RecordTestWizard = () => {
     })();
   };
 
-  // Create new compressive test (deselect existing)
+  // Create new compressive test (deselect existing) and advance to next step
   const createNewCompressiveTest = () => {
     setSelectedExistingTestId(null);
     setShowTestDetails(false);
@@ -562,6 +576,8 @@ const RecordTestWizard = () => {
       clientRef: "",
       dateTested: new Date().toISOString().split("T")[0],
     }));
+    // Auto-advance to next step (project or sample depending on flow)
+    setTimeout(() => setStep(step + 1), 0);
   };
 
   // Pick existing project: prepopulate the editable details card on this same step
@@ -822,7 +838,7 @@ const RecordTestWizard = () => {
                   </div>
                   <p className="text-lg font-medium text-foreground mb-1">No tests found</p>
                   <p className="text-sm text-muted-foreground mb-4">No existing compressive strength tests. Create a new one.</p>
-                  <Button onClick={createNewCompressiveTest}>Create new test</Button>
+                  <Button type="button" onClick={createNewCompressiveTest}>Create new test</Button>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -875,7 +891,7 @@ const RecordTestWizard = () => {
                     <div className="flex-1 h-px bg-border" />
                   </div>
 
-                  <Button variant="outline" className="w-full justify-start gap-2 h-11" onClick={createNewCompressiveTest}>
+                  <Button type="button" variant="outline" className="w-full justify-start gap-2 h-11" onClick={createNewCompressiveTest}>
                     <Plus className="h-4 w-4" /> Create new test
                   </Button>
                 </div>
@@ -897,6 +913,7 @@ const RecordTestWizard = () => {
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold text-sm">{state.projectId ? "Project details" : "New project details"}</h3>
                     <Button
+                      type="button"
                       variant="ghost"
                       size="sm"
                       onClick={() => {
@@ -1092,6 +1109,7 @@ const RecordTestWizard = () => {
                   </div>
 
                   <Button
+                    type="button"
                     variant="outline"
                     className="w-full justify-start gap-2 h-11"
                     onClick={() => {
@@ -1246,15 +1264,15 @@ const RecordTestWizard = () => {
         {/* Footer */}
         <footer className="border-t border-border bg-card">
           <div className="px-4 md:px-8 py-3 max-w-5xl mx-auto w-full flex items-center justify-between gap-3">
-            <Button variant="outline" onClick={handleBack} className="gap-1.5">
+            <Button type="button" variant="outline" onClick={handleBack} className="gap-1.5">
               <ArrowLeft className="h-4 w-4" /> {step === 0 ? "Cancel" : "Back"}
             </Button>
             {step < steps.length - 1 ? (
-              <Button onClick={handleNext} disabled={!canAdvance} className="gap-1.5">
+              <Button type="button" onClick={handleNext} disabled={!canAdvance} className="gap-1.5">
                 Next <ArrowRight className="h-4 w-4" />
               </Button>
             ) : (
-              <Button onClick={handleFinish} className="gap-1.5">
+              <Button type="button" onClick={handleFinish} className="gap-1.5">
                 Start recording <ArrowRight className="h-4 w-4" />
               </Button>
             )}
