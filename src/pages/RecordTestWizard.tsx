@@ -1061,7 +1061,6 @@ const RecordTestWizard = () => {
                           Missing project details
                         </AccordionTrigger>
                         <AccordionContent className="pt-4 space-y-3">
-                          <p className="text-xs text-amber-900">This project is missing details required for compressive strength tests. Add them below to continue.</p>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div className="space-y-2">
                               <Label htmlFor="proj-contractor-missing">Contractor *</Label>
