@@ -821,37 +821,23 @@ const RecordTestWizard = () => {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>Existing tests</Label>
-                    <div className="grid grid-cols-1 gap-2">
-                      {compressiveTests.map((test) => {
-                        const selected = selectedExistingTestId === test.id;
-                        return (
-                          <button
-                            key={test.id}
-                            type="button"
-                            onClick={() => selectCompressiveTest(test.id)}
-                            className={cn(
-                              "text-left rounded-lg border-2 p-3 bg-card transition-all hover:border-primary/50",
-                              selected ? "border-primary ring-2 ring-primary/20" : "border-border",
-                            )}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-medium text-sm">{test.client_ref || `Test #${test.id}`}</h4>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  {test.contractor} • {test.date_tested}
-                                </p>
-                              </div>
-                              <div className={cn(
-                                "h-5 w-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center",
-                                selected ? "border-primary bg-primary" : "border-muted-foreground",
-                              )}>
-                                {selected && <div className="h-2 w-2 bg-primary-foreground rounded-full" />}
-                              </div>
+                    <Select value={selectedExistingTestId ? String(selectedExistingTestId) : ""} onValueChange={(value) => selectCompressiveTest(Number(value))}>
+                      <SelectTrigger className="h-11">
+                        <SelectValue placeholder="Select a test to edit" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {compressiveTests.map((test) => (
+                          <SelectItem key={test.id} value={String(test.id)}>
+                            <div className="flex flex-col">
+                              <span>{test.client_ref || `Test #${test.id}`}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {test.contractor} • {test.date_tested}
+                              </span>
                             </div>
-                          </button>
-                        );
-                      })}
-                    </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="flex items-center gap-3">
