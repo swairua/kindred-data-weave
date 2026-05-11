@@ -228,6 +228,7 @@ const RecordTestWizard = () => {
   const [loadingCompressiveTests, setLoadingCompressiveTests] = useState(false);
   const [compressiveTestsError, setCompressiveTestsError] = useState<string | null>(null);
   const [selectedExistingTestId, setSelectedExistingTestId] = useState<number | null>(null);
+  const [showTestDetails, setShowTestDetails] = useState(false);
 
   // Persist
   useEffect(() => {
@@ -334,7 +335,11 @@ const RecordTestWizard = () => {
       case "material": return !!state.material;
       case "test": return !!state.testKey;
       case "existing":
-        // Can advance if either an existing test is selected OR we're creating new
+        // If an existing test is selected, contractor and county must be filled in accordion
+        if (selectedExistingTestId !== null) {
+          return state.contractor.trim().length > 0 && state.county.trim().length > 0;
+        }
+        // If creating new test, can advance without contractor/county (they're in Project step)
         return true;
       case "project":
         if (creatingNewProject) {
@@ -495,6 +500,7 @@ const RecordTestWizard = () => {
     if (!test) return;
 
     setSelectedExistingTestId(testId);
+    setShowTestDetails(true);
 
     // Populate state with test data
     setState((prev) => ({
@@ -541,6 +547,7 @@ const RecordTestWizard = () => {
   // Create new compressive test (deselect existing)
   const createNewCompressiveTest = () => {
     setSelectedExistingTestId(null);
+    setShowTestDetails(false);
     setState((prev) => ({
       ...prev,
       projectId: null,
@@ -821,38 +828,46 @@ const RecordTestWizard = () => {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>Existing tests</Label>
-                    <div className="grid grid-cols-1 gap-2">
-                      {compressiveTests.map((test) => {
-                        const selected = selectedExistingTestId === test.id;
-                        return (
-                          <button
-                            key={test.id}
-                            type="button"
-                            onClick={() => selectCompressiveTest(test.id)}
-                            className={cn(
-                              "text-left rounded-lg border-2 p-3 bg-card transition-all hover:border-primary/50",
-                              selected ? "border-primary ring-2 ring-primary/20" : "border-border",
-                            )}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-medium text-sm">{test.client_ref || `Test #${test.id}`}</h4>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  {test.contractor} • {test.date_tested}
-                                </p>
+                    <Select value={selectedExistingTestId ? String(selectedExistingTestId) : ""} onValueChange={(value) => selectCompressiveTest(Number(value))}>
+                      <SelectTrigger className="h-11">
+                        <SelectValue placeholder="Select a test to edit" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {compressiveTests.map((test) => (
+                          <SelectItem key={test.id} value={String(test.id)}>
+                            <div className="flex flex-col">
+                              <span>{test.client_ref || `Test #${test.id}`}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {test.contractor} • {test.date_tested}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {selectedExistingTestId !== null && (
+                    <Accordion value={showTestDetails ? "test-details" : ""} onValueChange={(v) => setShowTestDetails(v === "test-details")}>
+                      <AccordionItem value="test-details">
+                        <AccordionTrigger className="text-sm font-medium">Test details</AccordionTrigger>
+                        <AccordionContent className="pt-4">
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div className="space-y-2">
+                                <Label htmlFor="test-contractor">Contractor *</Label>
+                                <Input id="test-contractor" value={state.contractor} onChange={(e) => update("contractor", e.target.value)} placeholder="e.g. BuildWell Contractors Ltd" />
                               </div>
-                              <div className={cn(
-                                "h-5 w-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center",
-                                selected ? "border-primary bg-primary" : "border-muted-foreground",
-                              )}>
-                                {selected && <div className="h-2 w-2 bg-primary-foreground rounded-full" />}
+                              <div className="space-y-2">
+                                <Label htmlFor="test-county">County *</Label>
+                                <Input id="test-county" value={state.county} onChange={(e) => update("county", e.target.value)} placeholder="e.g. Nairobi" />
                               </div>
                             </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  )}
 
                   <div className="flex items-center gap-3">
                     <div className="flex-1 h-px bg-border" />
@@ -907,7 +922,7 @@ const RecordTestWizard = () => {
                     </div>
                   </div>
 
-                  {isCompressiveStrengthTest && (
+                  {isCompressiveStrengthTest && !selectedExistingTestId && (
                     <>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-2">
