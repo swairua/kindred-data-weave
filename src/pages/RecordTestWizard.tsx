@@ -558,7 +558,7 @@ const RecordTestWizard = () => {
     })();
   };
 
-  // Create new compressive test (deselect existing) and advance to next step
+  // Create new compressive test (deselect existing) and advance directly to sample step
   const createNewCompressiveTest = () => {
     setSelectedExistingTestId(null);
     setShowTestDetails(false);
@@ -576,8 +576,11 @@ const RecordTestWizard = () => {
       clientRef: "",
       dateTested: new Date().toISOString().split("T")[0],
     }));
-    // Auto-advance to next step (project or sample depending on flow)
-    setTimeout(() => setStep(step + 1), 0);
+    // Skip Project step and go directly to Sample step
+    setTimeout(() => {
+      const sampleStepIndex = steps.findIndex((s) => s.id === "sample");
+      setStep(sampleStepIndex !== -1 ? sampleStepIndex : step + 1);
+    }, 0);
   };
 
   // Pick existing project: prepopulate the editable details card on this same step
