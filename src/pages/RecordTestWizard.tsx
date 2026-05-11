@@ -11,7 +11,7 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import WizardStepper, { type WizardStep } from "@/components/WizardStepper";
 import FormCard from "@/components/wizard/FormCard";
-import { listRecords, fetchCurrentUser, setSessionToken, logoutUser, fetchFullProject } from "@/lib/api";
+import { listRecords, fetchCurrentUser, setSessionToken, logoutUser, fetchFullProject, createRecord } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useTestData } from "@/context/TestDataContext";
 import Navigation from "@/components/Navigation";
