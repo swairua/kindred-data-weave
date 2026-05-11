@@ -834,7 +834,7 @@ const RecordTestWizard = () => {
                   </div>
                   <p className="text-lg font-medium text-foreground mb-1">No tests found</p>
                   <p className="text-sm text-muted-foreground mb-4">No existing compressive strength tests. Create a new one.</p>
-                  <Button onClick={createNewCompressiveTest}>Create new test</Button>
+                  <Button type="button" onClick={createNewCompressiveTest}>Create new test</Button>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -887,7 +887,7 @@ const RecordTestWizard = () => {
                     <div className="flex-1 h-px bg-border" />
                   </div>
 
-                  <Button variant="outline" className="w-full justify-start gap-2 h-11" onClick={createNewCompressiveTest}>
+                  <Button type="button" variant="outline" className="w-full justify-start gap-2 h-11" onClick={createNewCompressiveTest}>
                     <Plus className="h-4 w-4" /> Create new test
                   </Button>
                 </div>
@@ -909,6 +909,7 @@ const RecordTestWizard = () => {
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold text-sm">{state.projectId ? "Project details" : "New project details"}</h3>
                     <Button
+                      type="button"
                       variant="ghost"
                       size="sm"
                       onClick={() => {
@@ -1104,6 +1105,7 @@ const RecordTestWizard = () => {
                   </div>
 
                   <Button
+                    type="button"
                     variant="outline"
                     className="w-full justify-start gap-2 h-11"
                     onClick={() => {
@@ -1258,15 +1260,15 @@ const RecordTestWizard = () => {
         {/* Footer */}
         <footer className="border-t border-border bg-card">
           <div className="px-4 md:px-8 py-3 max-w-5xl mx-auto w-full flex items-center justify-between gap-3">
-            <Button variant="outline" onClick={handleBack} className="gap-1.5">
+            <Button type="button" variant="outline" onClick={handleBack} className="gap-1.5">
               <ArrowLeft className="h-4 w-4" /> {step === 0 ? "Cancel" : "Back"}
             </Button>
             {step < steps.length - 1 ? (
-              <Button onClick={handleNext} disabled={!canAdvance} className="gap-1.5">
+              <Button type="button" onClick={handleNext} disabled={!canAdvance} className="gap-1.5">
                 Next <ArrowRight className="h-4 w-4" />
               </Button>
             ) : (
-              <Button onClick={handleFinish} className="gap-1.5">
+              <Button type="button" onClick={handleFinish} className="gap-1.5">
                 Start recording <ArrowRight className="h-4 w-4" />
               </Button>
             )}
