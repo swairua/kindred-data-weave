@@ -576,8 +576,11 @@ const RecordTestWizard = () => {
       clientRef: "",
       dateTested: new Date().toISOString().split("T")[0],
     }));
-    // Auto-advance to next step (project or sample depending on flow)
-    setTimeout(() => setStep(step + 1), 0);
+    // Skip past the "existing" step by finding the next non-existing step
+    setTimeout(() => {
+      const nextStepIndex = steps.findIndex((s, i) => i > step && s.id !== "existing");
+      setStep(nextStepIndex !== -1 ? nextStepIndex : step + 1);
+    }, 0);
   };
 
   // Pick existing project: prepopulate the editable details card on this same step
