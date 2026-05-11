@@ -1058,7 +1058,7 @@ const RecordTestWizard = () => {
                     <Accordion type="single" collapsible defaultValue="missing-details">
                       <AccordionItem value="missing-details">
                         <AccordionTrigger className="bg-amber-50 px-3 rounded-lg hover:bg-amber-100 py-2 text-sm font-medium text-amber-900">
-                          Missing project details
+                          Add details
                         </AccordionTrigger>
                         <AccordionContent className="pt-4 space-y-3">
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
