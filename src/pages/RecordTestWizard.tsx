@@ -228,6 +228,7 @@ const RecordTestWizard = () => {
   const [loadingCompressiveTests, setLoadingCompressiveTests] = useState(false);
   const [compressiveTestsError, setCompressiveTestsError] = useState<string | null>(null);
   const [selectedExistingTestId, setSelectedExistingTestId] = useState<number | null>(null);
+  const [showTestDetails, setShowTestDetails] = useState(false);
 
   // Persist
   useEffect(() => {
@@ -334,7 +335,11 @@ const RecordTestWizard = () => {
       case "material": return !!state.material;
       case "test": return !!state.testKey;
       case "existing":
-        // Can advance if either an existing test is selected OR we're creating new
+        // If an existing test is selected, contractor and county must be filled in accordion
+        if (selectedExistingTestId !== null) {
+          return state.contractor.trim().length > 0 && state.county.trim().length > 0;
+        }
+        // If creating new test, can advance without contractor/county (they're in Project step)
         return true;
       case "project":
         if (creatingNewProject) {
@@ -495,6 +500,7 @@ const RecordTestWizard = () => {
     if (!test) return;
 
     setSelectedExistingTestId(testId);
+    setShowTestDetails(true);
 
     // Populate state with test data
     setState((prev) => ({
@@ -541,6 +547,7 @@ const RecordTestWizard = () => {
   // Create new compressive test (deselect existing)
   const createNewCompressiveTest = () => {
     setSelectedExistingTestId(null);
+    setShowTestDetails(false);
     setState((prev) => ({
       ...prev,
       projectId: null,
@@ -840,6 +847,28 @@ const RecordTestWizard = () => {
                     </Select>
                   </div>
 
+                  {selectedExistingTestId !== null && (
+                    <Accordion value={showTestDetails ? "test-details" : ""} onValueChange={(v) => setShowTestDetails(v === "test-details")}>
+                      <AccordionItem value="test-details">
+                        <AccordionTrigger className="text-sm font-medium">Test details</AccordionTrigger>
+                        <AccordionContent className="pt-4">
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div className="space-y-2">
+                                <Label htmlFor="test-contractor">Contractor *</Label>
+                                <Input id="test-contractor" value={state.contractor} onChange={(e) => update("contractor", e.target.value)} placeholder="e.g. BuildWell Contractors Ltd" />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="test-county">County *</Label>
+                                <Input id="test-county" value={state.county} onChange={(e) => update("county", e.target.value)} placeholder="e.g. Nairobi" />
+                              </div>
+                            </div>
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  )}
+
                   <div className="flex items-center gap-3">
                     <div className="flex-1 h-px bg-border" />
                     <span className="text-xs uppercase tracking-wider text-muted-foreground">or</span>
@@ -893,7 +922,7 @@ const RecordTestWizard = () => {
                     </div>
                   </div>
 
-                  {isCompressiveStrengthTest && (
+                  {isCompressiveStrengthTest && !selectedExistingTestId && (
                     <>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-2">
