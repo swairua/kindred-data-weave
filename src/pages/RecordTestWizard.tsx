@@ -513,6 +513,8 @@ const RecordTestWizard = () => {
 
     setSelectedExistingTestId(testId);
     setShowTestDetails(true);
+    // Auto-expand test details accordion so user can fill in contractor/county
+    setTimeout(() => setShowTestDetails(true), 0);
 
     // Populate state with test data
     setState((prev) => ({
@@ -556,7 +558,7 @@ const RecordTestWizard = () => {
     })();
   };
 
-  // Create new compressive test (deselect existing)
+  // Create new compressive test (deselect existing) and advance to next step
   const createNewCompressiveTest = () => {
     setSelectedExistingTestId(null);
     setShowTestDetails(false);
@@ -574,6 +576,8 @@ const RecordTestWizard = () => {
       clientRef: "",
       dateTested: new Date().toISOString().split("T")[0],
     }));
+    // Auto-advance to next step (project or sample depending on flow)
+    setTimeout(() => setStep(step + 1), 0);
   };
 
   // Pick existing project: prepopulate the editable details card on this same step
