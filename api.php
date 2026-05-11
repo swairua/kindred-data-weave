@@ -220,6 +220,8 @@ const ALLOWED_TABLES = [
     'users' => true,
     'user_allowed_tables' => true,
     'company_info' => true,
+    'compressive_tests' => true,
+    'compressive_cubes' => true,
 ];
 
 function respond(array $payload, int $status = 200): never
