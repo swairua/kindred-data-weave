@@ -1212,7 +1212,7 @@ const RecordTestWizard = () => {
           </section>
               )}
 
-              {step === 4 && (
+              {steps[step]?.id === "entry" && (
                 <section className="space-y-6 animate-fade-in max-w-2xl">
             <div>
               <h2 className="text-2xl font-semibold tracking-tight">Ready to record</h2>
