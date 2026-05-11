@@ -558,7 +558,7 @@ const RecordTestWizard = () => {
     })();
   };
 
-  // Create new compressive test (deselect existing) and advance to next step
+  // Create new compressive test (deselect existing) and advance directly to sample step
   const createNewCompressiveTest = () => {
     setSelectedExistingTestId(null);
     setShowTestDetails(false);
@@ -576,10 +576,10 @@ const RecordTestWizard = () => {
       clientRef: "",
       dateTested: new Date().toISOString().split("T")[0],
     }));
-    // Skip past the "existing" step by finding the next non-existing step
+    // Skip Project step and go directly to Sample step
     setTimeout(() => {
-      const nextStepIndex = steps.findIndex((s, i) => i > step && s.id !== "existing");
-      setStep(nextStepIndex !== -1 ? nextStepIndex : step + 1);
+      const sampleStepIndex = steps.findIndex((s) => s.id === "sample");
+      setStep(sampleStepIndex !== -1 ? sampleStepIndex : step + 1);
     }, 0);
   };
 
