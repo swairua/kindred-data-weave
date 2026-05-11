@@ -576,37 +576,18 @@ const RecordTestWizard = () => {
     const p = projects.find((x) => x.id === id);
     if (!p) return;
 
-    setState((prev) => ({
-      ...prev,
-      projectId: p.id,
-      projectName: p.name,
-      clientName: p.client_name || "",
-      projectDate: p.project_date || prev.projectDate,
-      contractor: (p as any).contractor || "",
-      county: (p as any).county || "",
-    }));
-
-    // Show the same details card the "Create new project" path uses
-    setCreatingNewProject(true);
-
-    testData.updateProjectMetadata({
-      projectName: p.name,
-      clientName: p.client_name || "",
-      projectDate: p.project_date || "",
-      currentProjectId: id,
-    });
-
-    // Background: load full project record and sync into both state and context
+    // Load full project data immediately to populate all fields
     (async () => {
       try {
         const fullProject = await fetchFullProject(id);
         setState((prev) => ({
           ...prev,
+          projectId: fullProject.id,
           projectName: fullProject.name,
           clientName: fullProject.client_name || "",
           projectDate: fullProject.project_date || prev.projectDate,
-          contractor: (fullProject as any).contractor || prev.contractor,
-          county: (fullProject as any).county || prev.county,
+          contractor: (fullProject as any).contractor || "",
+          county: (fullProject as any).county || "",
         }));
         testData.updateProjectMetadata({
           projectName: fullProject.name,
@@ -619,8 +600,10 @@ const RecordTestWizard = () => {
           county: (fullProject as any).county || "",
           currentProjectId: id,
         });
+        setCreatingNewProject(true);
       } catch (error) {
-        console.warn("[RecordTestWizard] Background project preload failed:", error);
+        console.warn("[RecordTestWizard] Failed to load full project:", error);
+        toast.error("Couldn't load project details");
       }
     })();
   };
@@ -1116,7 +1099,7 @@ const RecordTestWizard = () => {
           </section>
               )}
 
-              {step === 3 && (
+              {steps[step]?.id === "sample" && (
                 <section className="space-y-6 animate-fade-in max-w-2xl">
             {state.material === "concrete" ? (
               <>
