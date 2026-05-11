@@ -35,6 +35,7 @@ interface TestDetails {
   fineAggregate: string;
   coarseAggregate: string;
   contractor: string;
+  county: string;
   concreteClass: string;
   section: string;
   madeBy: string;
@@ -70,6 +71,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     fineAggregate: "",
     coarseAggregate: "",
     contractor: "",
+    county: "",
     concreteClass: "",
     section: "",
     madeBy: "",
@@ -79,6 +81,15 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     ...(testData.concreteTestMetadata ?? {})
   }));
   const hasProjectSelected = !!project.currentProjectId;
+
+  useEffect(() => {
+    if (testData.projectMetadata?.contractor) {
+      setTestDetails(prev => ({ ...prev, contractor: testData.projectMetadata.contractor || "" }));
+    }
+    if (testData.projectMetadata?.county) {
+      setTestDetails(prev => ({ ...prev, county: testData.projectMetadata.county || "" }));
+    }
+  }, [testData.projectMetadata?.contractor, testData.projectMetadata?.county]);
 
   const getAge = (dateOfCast: string, dateOfTest: string) => {
     if (!dateOfCast || !dateOfTest) return "";
@@ -412,6 +423,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
             { label: "Fine Aggregate", value: testDetails.fineAggregate },
             { label: "Coarse Aggregate", value: testDetails.coarseAggregate },
             { label: "Contractor", value: testDetails.contractor },
+            { label: "County", value: testDetails.county },
             { label: "Concrete Class", value: testDetails.concreteClass },
             { label: "Section", value: testDetails.section },
             { label: "Made By", value: testDetails.madeBy },

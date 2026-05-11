@@ -44,6 +44,7 @@ export interface ConcreteTestMetadata {
   fineAggregate?: string;
   coarseAggregate?: string;
   contractor?: string;
+  county?: string;
   concreteClass?: string;
   section?: string;
   madeBy?: string;

@@ -249,6 +249,8 @@ const RecordTestWizard = () => {
           projectName: fullProject.name,
           clientName: fullProject.client_name || "",
           projectDate: fullProject.project_date || prev.projectDate,
+          contractor: (fullProject as any).contractor || prev.contractor,
+          county: (fullProject as any).county || prev.county,
         }));
 
         // Update context with complete metadata
@@ -259,6 +261,8 @@ const RecordTestWizard = () => {
           labOrganization: fullProject.lab_organization || "",
           dateReported: fullProject.date_reported || "",
           checkedBy: fullProject.checked_by || "",
+          contractor: (fullProject as any).contractor || "",
+          county: (fullProject as any).county || "",
         });
 
         console.log(`[RecordTestWizard] ✓ Project preloaded from URL param`);
@@ -538,7 +542,7 @@ const RecordTestWizard = () => {
           projectDate: fullProject.project_date || "",
           currentProjectId: fullProject.id,
           contractor: test.contractor,
-          county: "", // Will be populated from test if available
+          county: (fullProject as any).county || "",
         });
       } catch (error) {
         console.warn("[RecordTestWizard] Failed to load project for selected test:", error);
@@ -599,6 +603,8 @@ const RecordTestWizard = () => {
           projectName: fullProject.name,
           clientName: fullProject.client_name || "",
           projectDate: fullProject.project_date || prev.projectDate,
+          contractor: (fullProject as any).contractor || prev.contractor,
+          county: (fullProject as any).county || prev.county,
         }));
         testData.updateProjectMetadata({
           projectName: fullProject.name,
@@ -607,6 +613,8 @@ const RecordTestWizard = () => {
           labOrganization: fullProject.lab_organization || "",
           dateReported: fullProject.date_reported || "",
           checkedBy: fullProject.checked_by || "",
+          contractor: (fullProject as any).contractor || "",
+          county: (fullProject as any).county || "",
         });
       } catch (error) {
         console.warn("[RecordTestWizard] Background project preload failed:", error);
