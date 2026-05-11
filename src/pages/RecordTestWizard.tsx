@@ -315,12 +315,18 @@ const RecordTestWizard = () => {
 
   const isCompressiveStrengthTest = state.material === "concrete" && state.testKey === "compressive";
   const hasExistingCompressiveTests = isCompressiveStrengthTest && compressiveTests.length > 0;
+  const steps = getSteps(state.material, state.testKey, hasExistingCompressiveTests);
 
   const canAdvance = useMemo(() => {
-    switch (step) {
-      case 0: return !!state.material;
-      case 1: return !!state.testKey;
-      case 2:
+    const currentStepId = steps[step]?.id;
+
+    switch (currentStepId) {
+      case "material": return !!state.material;
+      case "test": return !!state.testKey;
+      case "existing":
+        // Can advance if either an existing test is selected OR we're creating new
+        return true;
+      case "project":
         if (creatingNewProject) {
           const hasProjectName = state.projectName.trim().length > 0;
           if (isCompressiveStrengthTest) {
@@ -333,18 +339,16 @@ const RecordTestWizard = () => {
           }
           return state.projectId !== null;
         }
-      case 3:
+      case "sample":
         if (state.material === "concrete") {
           return state.cement.trim().length > 0;
         } else {
           return state.sampleId.trim().length > 0 && state.sampleDepthFrom.trim().length > 0 && state.sampleDepthTo.trim().length > 0;
         }
-      case 4: return true;
+      case "entry": return true;
       default: return false;
     }
-  }, [step, state, creatingNewProject, isCompressiveStrengthTest]);
-
-  const steps = getSteps(state.material, state.testKey, hasExistingCompressiveTests);
+  }, [step, steps, state, creatingNewProject, isCompressiveStrengthTest, selectedExistingTestId]);
 
   // Load projects when reaching project step (and after retry)
   useEffect(() => {
