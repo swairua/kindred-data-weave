@@ -68,6 +68,10 @@ const getSteps = (material: Material | null, testKey: string | null, hasExisting
     { id: "test", label: "Test type" },
   ];
 
+  if (isCompressiveStrengthTest && hasExistingTests) {
+    steps.push({ id: "existing", label: "Select test" });
+  }
+
   steps.push(
     { id: "project", label: "Project" },
     { id: "sample", label: isCompressiveStrengthTest ? "Concrete cube details" : "Sample" },
