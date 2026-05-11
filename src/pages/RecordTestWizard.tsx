@@ -304,6 +304,48 @@ const RecordTestWizard = () => {
     return () => { active = false; };
   }, [authChecking, state.material, state.testKey]);
 
+  const update = <K extends keyof WizardState>(key: K, value: WizardState[K]) => {
+    setState((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const tests = useMemo<TestOption[]>(
+    () => (state.material ? TESTS_BY_MATERIAL[state.material] : []),
+    [state.material],
+  );
+
+  const isCompressiveStrengthTest = state.material === "concrete" && state.testKey === "compressive";
+  const hasExistingCompressiveTests = isCompressiveStrengthTest && compressiveTests.length > 0;
+
+  const canAdvance = useMemo(() => {
+    switch (step) {
+      case 0: return !!state.material;
+      case 1: return !!state.testKey;
+      case 2:
+        if (creatingNewProject) {
+          const hasProjectName = state.projectName.trim().length > 0;
+          if (isCompressiveStrengthTest) {
+            return hasProjectName && state.contractor.trim().length > 0 && state.county.trim().length > 0;
+          }
+          return hasProjectName;
+        } else {
+          if (isCompressiveStrengthTest) {
+            return state.projectId !== null && state.contractor.trim().length > 0 && state.county.trim().length > 0;
+          }
+          return state.projectId !== null;
+        }
+      case 3:
+        if (state.material === "concrete") {
+          return state.cement.trim().length > 0;
+        } else {
+          return state.sampleId.trim().length > 0 && state.sampleDepthFrom.trim().length > 0 && state.sampleDepthTo.trim().length > 0;
+        }
+      case 4: return true;
+      default: return false;
+    }
+  }, [step, state, creatingNewProject, isCompressiveStrengthTest]);
+
+  const steps = getSteps(state.material, state.testKey, hasExistingCompressiveTests);
+
   // Load projects when reaching project step (and after retry)
   useEffect(() => {
     if (authChecking) return;
@@ -359,48 +401,6 @@ const RecordTestWizard = () => {
       .finally(() => active && setLoadingProjects(false));
     return () => { active = false; };
   }, [step, projectsReloadKey, authChecking, navigate, state.material, steps]);
-
-  const update = <K extends keyof WizardState>(key: K, value: WizardState[K]) => {
-    setState((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const tests = useMemo<TestOption[]>(
-    () => (state.material ? TESTS_BY_MATERIAL[state.material] : []),
-    [state.material],
-  );
-
-  const isCompressiveStrengthTest = state.material === "concrete" && state.testKey === "compressive";
-  const hasExistingCompressiveTests = isCompressiveStrengthTest && compressiveTests.length > 0;
-
-  const canAdvance = useMemo(() => {
-    switch (step) {
-      case 0: return !!state.material;
-      case 1: return !!state.testKey;
-      case 2:
-        if (creatingNewProject) {
-          const hasProjectName = state.projectName.trim().length > 0;
-          if (isCompressiveStrengthTest) {
-            return hasProjectName && state.contractor.trim().length > 0 && state.county.trim().length > 0;
-          }
-          return hasProjectName;
-        } else {
-          if (isCompressiveStrengthTest) {
-            return state.projectId !== null && state.contractor.trim().length > 0 && state.county.trim().length > 0;
-          }
-          return state.projectId !== null;
-        }
-      case 3:
-        if (state.material === "concrete") {
-          return state.cement.trim().length > 0;
-        } else {
-          return state.sampleId.trim().length > 0 && state.sampleDepthFrom.trim().length > 0 && state.sampleDepthTo.trim().length > 0;
-        }
-      case 4: return true;
-      default: return false;
-    }
-  }, [step, state, creatingNewProject, isCompressiveStrengthTest]);
-
-  const steps = getSteps(state.material, state.testKey, hasExistingCompressiveTests);
 
   const handleNext = () => {
     if (step < steps.length - 1) setStep(step + 1);
