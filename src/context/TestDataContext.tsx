@@ -51,6 +51,7 @@ export interface ConcreteTestMetadata {
   slump?: string;
   clientRef?: string;
   dateTested?: string;
+  sampleId?: string;
 }
 
 export type AtterbergTestType = "liquidLimit" | "plasticLimit" | "shrinkageLimit";

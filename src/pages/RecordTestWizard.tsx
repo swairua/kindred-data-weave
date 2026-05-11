@@ -582,6 +582,8 @@ const RecordTestWizard = () => {
       projectName: p.name,
       clientName: p.client_name || "",
       projectDate: p.project_date || prev.projectDate,
+      contractor: (p as any).contractor || "",
+      county: (p as any).county || "",
     }));
 
     // Show the same details card the "Create new project" path uses
@@ -615,6 +617,7 @@ const RecordTestWizard = () => {
           checkedBy: fullProject.checked_by || "",
           contractor: (fullProject as any).contractor || "",
           county: (fullProject as any).county || "",
+          currentProjectId: id,
         });
       } catch (error) {
         console.warn("[RecordTestWizard] Background project preload failed:", error);
