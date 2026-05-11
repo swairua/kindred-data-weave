@@ -1012,17 +1012,30 @@ const RecordTestWizard = () => {
                       disabled={loadingProjects || !!projectsLoadError || projects.length === 0}
                     >
                       <SelectTrigger className="h-11">
-                        <SelectValue
-                          placeholder={
-                            loadingProjects
-                              ? "Loading projects…"
-                              : projectsLoadError
+                        {loadingProjects ? (
+                          <div className="flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                            <span className="text-muted-foreground">Loading projects…</span>
+                          </div>
+                        ) : state.projectId ? (
+                          <div className="flex items-center gap-2">
+                            <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium">{state.projectName}</span>
+                            <span className="text-xs text-muted-foreground">
+                              · {state.clientName || "No client"}{state.projectDate ? ` · ${state.projectDate}` : ""}
+                            </span>
+                          </div>
+                        ) : (
+                          <SelectValue
+                            placeholder={
+                              projectsLoadError
                                 ? "Couldn't load projects"
                                 : projects.length === 0
                                   ? "No saved projects yet"
                                   : "Select an existing project"
-                          }
-                        />
+                            }
+                          />
+                        )}
                       </SelectTrigger>
                       <SelectContent>
                         {projects.map((p) => (
