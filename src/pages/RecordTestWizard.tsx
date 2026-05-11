@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, X, Mountain, Hammer, TestTubeDiagonal, FlaskConical, FolderOpen, Plus, Layers } from "lucide-react";
+import { ArrowLeft, ArrowRight, X, Mountain, Hammer, TestTubeDiagonal, FlaskConical, FolderOpen, Plus, Layers, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import WizardStepper, { type WizardStep } from "@/components/WizardStepper";
 import FormCard from "@/components/wizard/FormCard";
-import { listRecords, fetchCurrentUser, setSessionToken, logoutUser, fetchFullProject, createRecord } from "@/lib/api";
+import { listRecords, fetchCurrentUser, setSessionToken, logoutUser, fetchFullProject, createRecord, listCompressiveTests } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useTestData } from "@/context/TestDataContext";
 import Navigation from "@/components/Navigation";
@@ -60,15 +60,24 @@ const TESTS_BY_MATERIAL: Record<Material, TestOption[]> = {
   ],
 };
 
-const getSteps = (material: Material | null, testKey: string | null): WizardStep[] => {
+const getSteps = (material: Material | null, testKey: string | null, hasExistingTests: boolean): WizardStep[] => {
   const isCompressiveStrengthTest = material === "concrete" && testKey === "compressive";
-  return [
+  const steps: WizardStep[] = [
     { id: "material", label: "Material" },
     { id: "test", label: "Test type" },
+  ];
+
+  if (isCompressiveStrengthTest && hasExistingTests) {
+    steps.push({ id: "existing", label: "Select test" });
+  }
+
+  steps.push(
     { id: "project", label: "Project" },
     { id: "sample", label: isCompressiveStrengthTest ? "Concrete cube details" : "Sample" },
     { id: "entry", label: "Record" },
-  ];
+  );
+
+  return steps;
 };
 
 interface WizardState {
@@ -134,6 +143,24 @@ interface ApiProjectRow {
   project_date: string | null;
 }
 
+interface CompressiveTestRow {
+  id: number;
+  project_id: number;
+  test_key: string;
+  date_tested: string;
+  cement: string;
+  fine_aggregate: string;
+  coarse_aggregate: string;
+  contractor: string;
+  concrete_class: string;
+  section: string;
+  made_by: string;
+  slump: string;
+  client_ref: string;
+  created_at: string;
+  updated_at: string;
+}
+
 const RecordTestWizard = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -191,6 +218,10 @@ const RecordTestWizard = () => {
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [projectsLoadError, setProjectsLoadError] = useState<string | null>(null);
   const [projectsReloadKey, setProjectsReloadKey] = useState(0);
+  const [compressiveTests, setCompressiveTests] = useState<CompressiveTestRow[]>([]);
+  const [loadingCompressiveTests, setLoadingCompressiveTests] = useState(false);
+  const [compressiveTestsError, setCompressiveTestsError] = useState<string | null>(null);
+  const [selectedExistingTestId, setSelectedExistingTestId] = useState<number | null>(null);
 
   // Persist
   useEffect(() => {
@@ -242,10 +273,44 @@ const RecordTestWizard = () => {
     return () => { active = false; };
   }, [projectIdFromParam, authChecking, testData]);
 
+  // Load compressive tests when selecting compressive strength test
+  useEffect(() => {
+    if (authChecking) return;
+    const isCompressiveStrengthTest = state.material === "concrete" && state.testKey === "compressive";
+    if (!isCompressiveStrengthTest) {
+      setCompressiveTests([]);
+      setCompressiveTestsError(null);
+      return;
+    }
+
+    let active = true;
+    setLoadingCompressiveTests(true);
+    setCompressiveTestsError(null);
+
+    listCompressiveTests()
+      .then((res) => {
+        if (!active) return;
+        setCompressiveTests(res.data || []);
+      })
+      .catch((err) => {
+        if (!active) return;
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("[RecordTestWizard] Failed to load compressive tests:", msg);
+        setCompressiveTestsError(msg || "Couldn't load compressive tests");
+        toast.error("Couldn't load compressive tests");
+      })
+      .finally(() => active && setLoadingCompressiveTests(false));
+
+    return () => { active = false; };
+  }, [authChecking, state.material, state.testKey]);
+
   // Load projects when reaching project step (and after retry)
   useEffect(() => {
     if (authChecking) return;
-    if (step !== 2) return;
+    const stepMap: Record<string, number> = { material: 0, test: 1, existing: 2, project: 3, sample: 4, entry: 5 };
+    const currentStepId = steps[step]?.id;
+    const projectStepIndex = steps.findIndex((s) => s.id === "project");
+    if (step !== projectStepIndex) return;
     if (projects.length > 0 && projectsReloadKey === 0) return;
     let active = true;
     setLoadingProjects(true);
@@ -293,7 +358,7 @@ const RecordTestWizard = () => {
       })
       .finally(() => active && setLoadingProjects(false));
     return () => { active = false; };
-  }, [step, projectsReloadKey, authChecking, navigate, state.material]);
+  }, [step, projectsReloadKey, authChecking, navigate, state.material, steps]);
 
   const update = <K extends keyof WizardState>(key: K, value: WizardState[K]) => {
     setState((prev) => ({ ...prev, [key]: value }));
@@ -305,6 +370,7 @@ const RecordTestWizard = () => {
   );
 
   const isCompressiveStrengthTest = state.material === "concrete" && state.testKey === "compressive";
+  const hasExistingCompressiveTests = isCompressiveStrengthTest && compressiveTests.length > 0;
 
   const canAdvance = useMemo(() => {
     switch (step) {
@@ -334,7 +400,7 @@ const RecordTestWizard = () => {
     }
   }, [step, state, creatingNewProject, isCompressiveStrengthTest]);
 
-  const steps = getSteps(state.material, state.testKey);
+  const steps = getSteps(state.material, state.testKey, hasExistingCompressiveTests);
 
   const handleNext = () => {
     if (step < steps.length - 1) setStep(step + 1);
@@ -426,6 +492,74 @@ const RecordTestWizard = () => {
     const fromExisting = finalProjectId !== null;
     const suffix = fromExisting ? `?newRecord=1&fromProject=${finalProjectId}` : "";
     navigate(`/tests${suffix}#${state.testKey}`);
+  };
+
+  // Pick existing compressive test and populate wizard state
+  const selectCompressiveTest = (testId: number) => {
+    const test = compressiveTests.find((t) => t.id === testId);
+    if (!test) return;
+
+    setSelectedExistingTestId(testId);
+
+    // Populate state with test data
+    setState((prev) => ({
+      ...prev,
+      projectId: test.project_id,
+      cement: test.cement,
+      fineAggregate: test.fine_aggregate,
+      coarseAggregate: test.coarse_aggregate,
+      contractor: test.contractor,
+      concreteClass: test.concrete_class,
+      section: test.section,
+      madeBy: test.made_by,
+      slump: test.slump,
+      clientRef: test.client_ref,
+      dateTested: test.date_tested,
+    }));
+
+    // Load full project data in the background
+    (async () => {
+      try {
+        const fullProject = await fetchFullProject(test.project_id);
+        setState((prev) => ({
+          ...prev,
+          projectId: fullProject.id,
+          projectName: fullProject.name,
+          clientName: fullProject.client_name || "",
+          projectDate: fullProject.project_date || prev.projectDate,
+        }));
+        testData.updateProjectMetadata({
+          projectName: fullProject.name,
+          clientName: fullProject.client_name || "",
+          projectDate: fullProject.project_date || "",
+          currentProjectId: fullProject.id,
+          contractor: test.contractor,
+          county: "", // Will be populated from test if available
+        });
+      } catch (error) {
+        console.warn("[RecordTestWizard] Failed to load project for selected test:", error);
+        toast.error("Couldn't load project details");
+      }
+    })();
+  };
+
+  // Create new compressive test (deselect existing)
+  const createNewCompressiveTest = () => {
+    setSelectedExistingTestId(null);
+    setState((prev) => ({
+      ...prev,
+      projectId: null,
+      cement: "",
+      fineAggregate: "",
+      coarseAggregate: "",
+      contractor: "",
+      concreteClass: "",
+      section: "",
+      madeBy: "",
+      slump: "",
+      clientRef: "",
+      dateTested: new Date().toISOString().split("T")[0],
+    }));
   };
 
   // Pick existing project: prepopulate the editable details card on this same step
@@ -606,7 +740,7 @@ const RecordTestWizard = () => {
                         disabled={isDisabled}
                         onClick={() => {
                           update("testKey", t.key);
-                          setTimeout(() => setStep(2), 0);
+                          setTimeout(() => setStep(step + 1), 0);
                         }}
                         className={cn(
                           "text-left rounded-xl border-2 p-4 bg-card transition-all hover:border-primary/50",
@@ -635,7 +769,106 @@ const RecordTestWizard = () => {
           </section>
               )}
 
-              {step === 2 && (
+              {steps[step]?.id === "existing" && (
+                <section className="space-y-6 animate-fade-in max-w-2xl">
+            <div>
+              <h2 className="text-2xl font-semibold tracking-tight">Select test to edit</h2>
+              <p className="text-sm text-muted-foreground mt-1">Choose an existing compressive strength test to edit, or create a new one.</p>
+            </div>
+
+            <FormCard>
+              {loadingCompressiveTests ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="text-center">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">Loading tests…</p>
+                  </div>
+                </div>
+              ) : compressiveTestsError ? (
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <span className="text-destructive">{compressiveTestsError}</span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setLoadingCompressiveTests(true);
+                      setCompressiveTestsError(null);
+                      listCompressiveTests()
+                        .then((res) => {
+                          setCompressiveTests(res.data || []);
+                        })
+                        .catch((err) => {
+                          setCompressiveTestsError(err instanceof Error ? err.message : String(err));
+                        })
+                        .finally(() => setLoadingCompressiveTests(false));
+                    }}
+                  >
+                    Retry
+                  </Button>
+                </div>
+              ) : compressiveTests.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
+                    <Layers className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <p className="text-lg font-medium text-foreground mb-1">No tests found</p>
+                  <p className="text-sm text-muted-foreground mb-4">No existing compressive strength tests. Create a new one.</p>
+                  <Button onClick={createNewCompressiveTest}>Create new test</Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Existing tests</Label>
+                    <div className="grid grid-cols-1 gap-2">
+                      {compressiveTests.map((test) => {
+                        const selected = selectedExistingTestId === test.id;
+                        return (
+                          <button
+                            key={test.id}
+                            type="button"
+                            onClick={() => selectCompressiveTest(test.id)}
+                            className={cn(
+                              "text-left rounded-lg border-2 p-3 bg-card transition-all hover:border-primary/50",
+                              selected ? "border-primary ring-2 ring-primary/20" : "border-border",
+                            )}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-medium text-sm">{test.client_ref || `Test #${test.id}`}</h4>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {test.contractor} • {test.date_tested}
+                                </p>
+                              </div>
+                              <div className={cn(
+                                "h-5 w-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center",
+                                selected ? "border-primary bg-primary" : "border-muted-foreground",
+                              )}>
+                                {selected && <div className="h-2 w-2 bg-primary-foreground rounded-full" />}
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 h-px bg-border" />
+                    <span className="text-xs uppercase tracking-wider text-muted-foreground">or</span>
+                    <div className="flex-1 h-px bg-border" />
+                  </div>
+
+                  <Button variant="outline" className="w-full justify-start gap-2 h-11" onClick={createNewCompressiveTest}>
+                    <Plus className="h-4 w-4" /> Create new test
+                  </Button>
+                </div>
+              )}
+            </FormCard>
+          </section>
+              )}
+
+              {steps[step]?.id === "project" && (
                 <section className="space-y-6 animate-fade-in max-w-2xl">
             <div>
               <h2 className="text-2xl font-semibold tracking-tight">Project</h2>
