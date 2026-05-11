@@ -366,31 +366,9 @@ const RecordTestWizard = () => {
     setLoadingProjects(true);
     setProjectsLoadError(null);
     listRecords<ApiProjectRow>("projects", { limit: 100 })
-      .then(async (res) => {
+      .then((res) => {
         if (!active) return;
-
-        let filteredProjects = res.data || [];
-
-        // If a material is selected, filter projects to only those with test results for that material
-        if (state.material) {
-          const projectsWithMaterial: ApiProjectRow[] = [];
-
-          for (const project of filteredProjects) {
-            try {
-              const testResults = await listRecords<any>("test_results", { project_id: project.id, limit: 1 });
-              const hasResultForMaterial = testResults.data?.some((r: any) => r.category === state.material);
-              if (hasResultForMaterial) {
-                projectsWithMaterial.push(project);
-              }
-            } catch {
-              // If we can't check test results for this project, include it anyway
-              projectsWithMaterial.push(project);
-            }
-          }
-
-          filteredProjects = projectsWithMaterial;
-        }
-
+        const filteredProjects = res.data || [];
         if (active) setProjects(filteredProjects);
       })
       .catch((err) => {
