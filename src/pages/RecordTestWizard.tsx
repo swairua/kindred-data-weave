@@ -11,7 +11,7 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import WizardStepper, { type WizardStep } from "@/components/WizardStepper";
 import FormCard from "@/components/wizard/FormCard";
-import { listRecords, fetchCurrentUser, setSessionToken, logoutUser, fetchFullProject } from "@/lib/api";
+import { listRecords, fetchCurrentUser, setSessionToken, logoutUser, fetchFullProject, createRecord } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useTestData } from "@/context/TestDataContext";
 import Navigation from "@/components/Navigation";
@@ -355,10 +355,12 @@ const RecordTestWizard = () => {
     let finalProjectId = state.projectId;
     if (isCompressiveStrengthTest && finalProjectId === null) {
       try {
-        const projectPayload = {
+        const projectPayload: Record<string, unknown> = {
           name: state.projectName,
           client_name: state.clientName,
           project_date: state.projectDate,
+          contractor: state.contractor,
+          county: state.county,
         };
         const createResponse = await createRecord<{ id: number }>("projects", projectPayload);
         finalProjectId = createResponse.data?.id ?? null;
