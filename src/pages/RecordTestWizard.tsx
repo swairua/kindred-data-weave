@@ -582,6 +582,8 @@ const RecordTestWizard = () => {
       projectName: p.name,
       clientName: p.client_name || "",
       projectDate: p.project_date || prev.projectDate,
+      contractor: (p as any).contractor || "",
+      county: (p as any).county || "",
     }));
 
     // Show the same details card the "Create new project" path uses
