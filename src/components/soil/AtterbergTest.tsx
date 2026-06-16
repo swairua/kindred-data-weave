@@ -1439,8 +1439,19 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
           const svgWidth = svg.getAttribute('width');
           const svgHeight = svg.getAttribute('height');
           if (svgWidth && svgHeight) {
+            // Temporarily disable overflow hidden on children so html2canvas doesn't clip the chart
+            const overflowEls: HTMLElement[] = [];
+            const restoreOverflows: string[] = [];
             try {
               await new Promise((resolve) => setTimeout(resolve, 150));
+
+              chartElement.querySelectorAll<HTMLElement>('*').forEach((el) => {
+                if (getComputedStyle(el).overflow === 'hidden') {
+                  overflowEls.push(el);
+                  restoreOverflows.push(el.style.overflow);
+                  el.style.overflow = 'visible';
+                }
+              });
 
               console.log(`[Chart Capture] Starting html2canvas for plasticity chart of record ${recordId}`, {
                 element: chartElement,
@@ -1474,6 +1485,11 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
               console.error(`[Chart Capture] Failed to capture plasticity chart for record ${recordId}:`, {
                 error: error instanceof Error ? error.message : String(error),
                 stack: error instanceof Error ? error.stack : undefined,
+              });
+            } finally {
+              // Restore original overflow values
+              overflowEls.forEach((el, i) => {
+                el.style.overflow = restoreOverflows[i];
               });
             }
           } else {
