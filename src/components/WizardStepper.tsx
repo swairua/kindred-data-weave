@@ -34,7 +34,7 @@ const WizardStepper = ({ steps, currentIndex, onStepClick, disabledSteps = [] }:
             >
               <span
                 className={cn(
-                  "flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold flex-shrink-0 transition-colors",
+                  "flex h-10 w-10 items-center justify-center rounded-full border text-xs font-semibold flex-shrink-0 transition-colors",
                   isComplete && !isDisabled && "bg-primary border-primary text-primary-foreground",
                   isActive && !isDisabled && "bg-primary/10 border-primary text-primary",
                   (!isComplete && !isActive && !isDisabled) && "bg-card border-border text-muted-foreground",

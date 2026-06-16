@@ -300,7 +300,7 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId, plasticL
               <div className="lg:col-span-2 rounded-lg border bg-card p-3">
                 <h4 className="mb-3 text-sm font-medium text-foreground">Moisture Content vs Penetration (Semi-Log, ASTM D4318)</h4>
                 <div className="overflow-x-auto">
-                  <div className="h-[280px] min-w-[300px]">
+                  <div className="h-[280px] min-w-0">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={mergedChartData} margin={{ top: 16, right: 20, left: 0, bottom: 8 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />

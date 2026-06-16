@@ -152,7 +152,7 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
                 <h3 className="text-sm font-semibold">Test Configuration</h3>
               </CardHeader>
               <CardContent className="pt-0 space-y-4">
-                <div className="max-w-xs">
+                <div className="max-w-full sm:max-w-xs">
                   <Label className="text-xs text-muted-foreground mb-1.5 block">Test Type</Label>
                   <Select value={type} onValueChange={setType}>
                     <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>

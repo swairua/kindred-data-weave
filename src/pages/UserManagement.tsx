@@ -470,8 +470,8 @@ const UserManagement = () => {
                             <TableRow className="bg-muted/40 hover:bg-muted/40">
                               <TableHead className="font-semibold">NAME</TableHead>
                               <TableHead className="font-semibold">EMAIL</TableHead>
-                              <TableHead className="font-semibold">ALLOWED TABLES</TableHead>
-                              <TableHead className="font-semibold">CREATED</TableHead>
+                              <TableHead className="font-semibold hidden md:table-cell">ALLOWED TABLES</TableHead>
+                              <TableHead className="font-semibold hidden md:table-cell">CREATED</TableHead>
                               <TableHead className="font-semibold text-right">ACTIONS</TableHead>
                             </TableRow>
                           </TableHeader>
@@ -485,29 +485,39 @@ const UserManagement = () => {
                                   {user.name || "-"}
                                 </TableCell>
                                 <TableCell>{user.email || "-"}</TableCell>
-                                <TableCell className="text-sm">
+                                <TableCell className="text-sm hidden md:table-cell">
                                   <div className="flex items-center gap-2">
                                     <Lock className="h-4 w-4 text-muted-foreground" />
                                     {getUserTableCount(user.id)}/{AVAILABLE_TABLES.length}
                                   </div>
                                 </TableCell>
-                                <TableCell className="text-sm">
+                                <TableCell className="text-sm hidden md:table-cell">
                                   {formatDate(user.created_at)}
                                 </TableCell>
                                 <TableCell className="text-right">
-                                  <div className="flex items-center gap-2 justify-end">
+                                  <div className="flex items-center gap-1 justify-end">
                                     <Button
                                       variant="outline"
                                       size="sm"
                                       onClick={() => openPermissionDialog(user)}
+                                      className="hidden sm:inline-flex"
                                     >
                                       Manage Access
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="icon"
+                                      onClick={() => openPermissionDialog(user)}
+                                      className="sm:hidden h-9 w-9"
+                                      title="Manage Access"
+                                    >
+                                      <Lock className="h-4 w-4" />
                                     </Button>
                                     <Button
                                       variant="ghost"
                                       size="sm"
                                       onClick={() => openEditDialog(user)}
-                                      className="gap-1"
+                                      className="gap-1 h-9 w-9 p-0"
                                     >
                                       <Edit2 className="h-4 w-4" />
                                     </Button>
@@ -516,7 +526,7 @@ const UserManagement = () => {
                                       size="sm"
                                       onClick={() => openDeleteDialog(user)}
                                       disabled={isAdminUser(user.id)}
-                                      className={`gap-1 ${
+                                      className={`gap-1 h-9 w-9 p-0 ${
                                         isAdminUser(user.id)
                                           ? "text-muted-foreground opacity-50 cursor-not-allowed"
                                           : "text-destructive hover:text-destructive"
@@ -557,7 +567,7 @@ const UserManagement = () => {
                                   variant={page === currentPage ? "default" : "outline"}
                                   size="sm"
                                   onClick={() => setCurrentPage(page)}
-                                  className="w-8 h-8 p-0"
+                                  className="w-9 h-9 p-0"
                                 >
                                   {page}
                                 </Button>

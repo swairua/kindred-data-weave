@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ChevronDown, ChevronRight, Plus, Trash2, AlertTriangle, Printer } from "lucide-react";
+import { ChevronRight, Plus, Trash2, AlertTriangle, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { type ApiProjectRow } from "@/types/api";
 
@@ -8,7 +8,6 @@ import TestSection from "@/components/TestSection";
 
 import AtterbergRecordView from "./AtterbergRecordView";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,7 +22,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useProject } from "@/context/ProjectContext";
@@ -1916,66 +1914,6 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
         onRecordClick={computedRecords.length === 0 && !project.projectName ? handleStartRecording : undefined}
       >
       <div className="space-y-3 print:space-y-2">
-        <Card className="hidden border bg-muted/20 shadow-none print:border-border print:bg-transparent">
-          <CardContent className="grid gap-1 sm:gap-2 p-2 sm:p-4 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-8">
-            <OverviewMetric label="Project" value={project.projectName || "Current project"} />
-            <OverviewMetric label="Client" value={project.clientName || "-"} />
-            <OverviewMetric label="Date" value={project.date || "-"} />
-            <OverviewMetric label="Records" value={String(computedRecords.length)} />
-            <OverviewMetric label="Completed Tests" value={String(totalCompletedTests)} />
-            <OverviewMetric label="Valid Data Points" value={String(totalDataPoints)} />
-            <OverviewMetric label="Avg PI" value={aggregateProjectResults.plasticityIndex !== undefined ? `${aggregateProjectResults.plasticityIndex}%` : "-"} />
-            <OverviewMetric label="Status" value={status} className="capitalize" />
-          </CardContent>
-        </Card>
-
-        <div className="hidden">
-          <Collapsible defaultOpen={false}>
-            <Card className="border shadow-sm print:shadow-none">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold">Project Metadata</h3>
-                <Button type="button" variant="ghost" size="sm">
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CollapsibleContent>
-              <CardContent className="space-y-3 sm:space-y-4 pt-0">
-                <div className="grid gap-2 sm:gap-3 md:gap-4 md:grid-cols-2">
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Lab Organization</label>
-                    <Input
-                      value={projectState.labOrganization || ""}
-                      onChange={(e) => updateProjectMetadata(() => ({ labOrganization: e.target.value }))}
-                      placeholder="Laboratory name or organization"
-                      className="h-9"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Date Reported</label>
-                    <Input
-                      type="date"
-                      value={projectState.dateReported || ""}
-                      onChange={(e) => updateProjectMetadata(() => ({ dateReported: e.target.value }))}
-                      className="h-9"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Checked By</label>
-                    <Input
-                      value={projectState.checkedBy || ""}
-                      onChange={(e) => updateProjectMetadata(() => ({ checkedBy: e.target.value }))}
-                      placeholder="Technician or engineer name"
-                      className="h-9"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </CollapsibleContent>
-            </Card>
-          </Collapsible>
-        </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 print:hidden">
           <Button type="button" onClick={addRecord} className="gap-2 w-full sm:w-auto">
@@ -2217,19 +2155,6 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
     </>
   );
 };
-
-interface OverviewMetricProps {
-  label: string;
-  value: string;
-  className?: string;
-}
-
-const OverviewMetric = ({ label, value, className }: OverviewMetricProps) => (
-  <div className="rounded-lg border bg-card px-2 sm:px-3 py-1.5 sm:py-2 print:border-none print:bg-transparent print:px-0 print:py-0">
-    <div className="text-xs font-medium text-muted-foreground truncate">{label}</div>
-    <div className={cn("mt-0.5 sm:mt-1 text-xs sm:text-sm font-semibold text-foreground truncate", className)}>{value || "-"}</div>
-  </div>
-);
 
 interface RecordCardProps {
   record: ComputedRecord;

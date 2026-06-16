@@ -984,7 +984,7 @@ const RecordTestWizard = () => {
                         {state.customFields.length > 0 && (
                           <div className="space-y-2 pt-2">
                             {state.customFields.map((field, idx) => (
-                              <div key={idx} className="flex items-end gap-2">
+                              <div key={idx} className="flex flex-col sm:flex-row items-stretch sm:items-end gap-2">
                                 <div className="flex-1 space-y-1">
                                   <Input
                                     placeholder="Field name"
@@ -996,7 +996,7 @@ const RecordTestWizard = () => {
                                         return { ...prev, customFields: updated };
                                       });
                                     }}
-                                    className="text-xs h-8"
+                                    className="text-xs h-9"
                                   />
                                 </div>
                                 <div className="flex-1 space-y-1">
@@ -1010,14 +1010,14 @@ const RecordTestWizard = () => {
                                         return { ...prev, customFields: updated };
                                       });
                                     }}
-                                    className="text-xs h-8"
+                                    className="text-xs h-9"
                                   />
                                 </div>
                                 <Button
                                   type="button"
                                   variant="ghost"
                                   size="sm"
-                                  className="h-8 w-8 p-0"
+                                  className="h-9 w-9 p-0 self-end sm:self-auto"
                                   onClick={() => {
                                     setState((prev) => ({
                                       ...prev,
@@ -1025,7 +1025,7 @@ const RecordTestWizard = () => {
                                     }));
                                   }}
                                 >
-                                  <X className="h-3 w-3" />
+                                  <X className="h-4 w-4" />
                                 </Button>
                               </div>
                             ))}
@@ -1135,52 +1135,52 @@ const RecordTestWizard = () => {
                   <p className="text-sm text-muted-foreground mt-1">Enter the concrete sample details.</p>
                 </div>
                 <FormCard>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label className="text-xs font-medium mb-1 block">Sample ID</Label>
-                      <Input value={state.sampleId} onChange={(e) => update("sampleId", e.target.value)} className="h-8 text-sm" placeholder="e.g. BH-01 / S-3" />
+                      <Input value={state.sampleId} onChange={(e) => update("sampleId", e.target.value)} className="h-10 text-sm" placeholder="e.g. BH-01 / S-3" />
                     </div>
                     <div>
                       <Label className="text-xs font-medium mb-1 block">Cement</Label>
-                      <Input value={state.cement} onChange={(e) => update("cement", e.target.value)} className="h-8 text-sm" />
+                      <Input value={state.cement} onChange={(e) => update("cement", e.target.value)} className="h-10 text-sm" />
                     </div>
                     <div>
                       <Label className="text-xs font-medium mb-1 block">Fine Aggregate</Label>
-                      <Input value={state.fineAggregate} onChange={(e) => update("fineAggregate", e.target.value)} className="h-8 text-sm" />
+                      <Input value={state.fineAggregate} onChange={(e) => update("fineAggregate", e.target.value)} className="h-10 text-sm" />
                     </div>
                     <div>
                       <Label className="text-xs font-medium mb-1 block">Coarse Aggregate</Label>
-                      <Input value={state.coarseAggregate} onChange={(e) => update("coarseAggregate", e.target.value)} className="h-8 text-sm" />
+                      <Input value={state.coarseAggregate} onChange={(e) => update("coarseAggregate", e.target.value)} className="h-10 text-sm" />
                     </div>
                     {!isCompressiveStrengthTest && (
                       <div>
                         <Label className="text-xs font-medium mb-1 block">Contractor</Label>
-                        <Input value={state.contractor} onChange={(e) => update("contractor", e.target.value)} className="h-8 text-sm" />
+                        <Input value={state.contractor} onChange={(e) => update("contractor", e.target.value)} className="h-10 text-sm" />
                       </div>
                     )}
                     <div>
                       <Label className="text-xs font-medium mb-1 block">Concrete Class</Label>
-                      <Input value={state.concreteClass} onChange={(e) => update("concreteClass", e.target.value)} className="h-8 text-sm" />
+                      <Input value={state.concreteClass} onChange={(e) => update("concreteClass", e.target.value)} className="h-10 text-sm" />
                     </div>
                     <div>
                       <Label className="text-xs font-medium mb-1 block">Section</Label>
-                      <Input value={state.section} onChange={(e) => update("section", e.target.value)} className="h-8 text-sm" />
+                      <Input value={state.section} onChange={(e) => update("section", e.target.value)} className="h-10 text-sm" />
                     </div>
                     <div>
                       <Label className="text-xs font-medium mb-1 block">Made By</Label>
-                      <Input value={state.madeBy} onChange={(e) => update("madeBy", e.target.value)} className="h-8 text-sm" />
+                      <Input value={state.madeBy} onChange={(e) => update("madeBy", e.target.value)} className="h-10 text-sm" />
                     </div>
                     <div>
                       <Label className="text-xs font-medium mb-1 block">Slump</Label>
-                      <Input value={state.slump} onChange={(e) => update("slump", e.target.value)} className="h-8 text-sm" />
+                      <Input value={state.slump} onChange={(e) => update("slump", e.target.value)} className="h-10 text-sm" />
                     </div>
                     <div>
                       <Label className="text-xs font-medium mb-1 block">Client Ref</Label>
-                      <Input value={state.clientRef} onChange={(e) => update("clientRef", e.target.value)} className="h-8 text-sm" />
+                      <Input value={state.clientRef} onChange={(e) => update("clientRef", e.target.value)} className="h-10 text-sm" />
                     </div>
                     <div>
                       <Label className="text-xs font-medium mb-1 block">Date Tested</Label>
-                      <Input type="date" value={state.dateTested} onChange={(e) => update("dateTested", e.target.value)} className="h-8 text-sm" />
+                      <Input type="date" value={state.dateTested} onChange={(e) => update("dateTested", e.target.value)} className="h-10 text-sm" />
                     </div>
                   </div>
                 </FormCard>

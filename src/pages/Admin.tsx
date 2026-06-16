@@ -252,7 +252,7 @@ const Admin = () => {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="images" className="w-full">
-      <TabsList className="grid w-full grid-cols-4">
+      <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
         <TabsTrigger value="images">Media Library</TabsTrigger>
         <TabsTrigger value="tests">Test Definitions</TabsTrigger>
         <TabsTrigger value="cache">Cache</TabsTrigger>

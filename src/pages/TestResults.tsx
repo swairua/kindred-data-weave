@@ -380,7 +380,7 @@ const TestResults = () => {
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    className="h-8"
+                                    className="h-9"
                                     onClick={() => handleOpenTest(test)}
                                   >
                                     Open →
@@ -416,7 +416,7 @@ const TestResults = () => {
                                   variant={page === currentPage ? "default" : "outline"}
                                   size="sm"
                                   onClick={() => setCurrentPage(page)}
-                                  className="w-8 h-8 p-0"
+                                  className="w-9 h-9 p-0"
                                 >
                                   {page}
                                 </Button>

@@ -28,7 +28,7 @@ const WizardStepIndicator: React.FC<WizardStepIndicatorProps> = ({ steps, curren
             <div className="flex flex-col items-center gap-2">
               <div
                 className={cn(
-                  "w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-semibold text-sm transition-all",
+                  "w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-semibold text-sm transition-all",
                   isCompleted && "bg-primary text-white",
                   isCurrent && "bg-primary/10 border-2 border-primary text-primary",
                   !isCompleted && !isCurrent && "bg-secondary text-muted-foreground",

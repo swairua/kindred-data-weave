@@ -445,12 +445,12 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
             <tr>
               <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">#</th>
               <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Cube Mark</th>
-              <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Date of Cast</th>
-              <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Date of Test</th>
+              <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs hidden md:table-cell">Date of Cast</th>
+              <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs hidden md:table-cell">Date of Test</th>
               <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Age (days)</th>
-              <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Cube Dim (mm)<br/>L × W × H</th>
-              <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Mass (g)</th>
-              <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Density (kg/m³)</th>
+              <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs hidden md:table-cell">Cube Dim (mm)<br/>L × W × H</th>
+              <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs hidden md:table-cell">Mass (g)</th>
+              <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs hidden md:table-cell">Density (kg/m³)</th>
               <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Max Load (kN)</th>
               <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Strength (N/mm²)</th>
               <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Remarks</th>
@@ -469,10 +469,10 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
                 >
                   <td className="py-1.5 px-2 text-muted-foreground">{i + 1}</td>
                   <td className="py-1.5 px-2"><Input value={row.mark} onChange={(e) => update(i, "mark", e.target.value)} className="h-8 text-sm" placeholder="—" /></td>
-                  <td className="py-1.5 px-2"><Input type="date" value={row.dateOfCast} onChange={(e) => update(i, "dateOfCast", e.target.value)} className="h-8 text-sm" /></td>
-                  <td className="py-1.5 px-2"><Input type="date" value={row.dateOfTest} onChange={(e) => update(i, "dateOfTest", e.target.value)} className="h-8 text-sm" /></td>
+                  <td className="py-1.5 px-2 hidden md:table-cell"><Input type="date" value={row.dateOfCast} onChange={(e) => update(i, "dateOfCast", e.target.value)} className="h-8 text-sm" /></td>
+                  <td className="py-1.5 px-2 hidden md:table-cell"><Input type="date" value={row.dateOfTest} onChange={(e) => update(i, "dateOfTest", e.target.value)} className="h-8 text-sm" /></td>
                   <td className="py-1.5 px-2"><CalculatedInput value={getAge(row.dateOfCast, row.dateOfTest)} /></td>
-                  <td className="py-1.5 px-2">
+                  <td className="py-1.5 px-2 hidden md:table-cell">
                     <div className="flex gap-1 text-xs">
                       <Input type="number" value={row.width} onChange={(e) => update(i, "width", e.target.value)} className="h-8 w-14" placeholder="L" />
                       <span className="text-muted-foreground">×</span>
@@ -481,8 +481,8 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
                       <Input type="number" value={row.depth} onChange={(e) => update(i, "depth", e.target.value)} className="h-8 w-14" placeholder="H" />
                     </div>
                   </td>
-                  <td className="py-1.5 px-2"><Input type="number" value={row.mass} onChange={(e) => update(i, "mass", e.target.value)} className="h-8 text-sm" placeholder="—" /></td>
-                  <td className={`py-1.5 px-2 ${isDensityAbnormal ? "text-red-600 font-semibold" : ""}`}><CalculatedInput value={getDensity(row)} /></td>
+                  <td className="py-1.5 px-2 hidden md:table-cell"><Input type="number" value={row.mass} onChange={(e) => update(i, "mass", e.target.value)} className="h-8 text-sm" placeholder="—" /></td>
+                  <td className={`py-1.5 px-2 hidden md:table-cell ${isDensityAbnormal ? "text-red-600 font-semibold" : ""}`}><CalculatedInput value={getDensity(row)} /></td>
                   <td className="py-1.5 px-2"><Input type="number" value={row.load} onChange={(e) => update(i, "load", e.target.value)} className="h-8 text-sm" placeholder="0" /></td>
                   <td className="py-1.5 px-2"><CalculatedInput value={getStrength(row)} /></td>
                   <td className="py-1.5 px-2">

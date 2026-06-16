@@ -74,7 +74,7 @@ const TestSection = ({ title, testKey, tooltip, children, onSave, onFinalSave, o
             </span>
             <span className="min-w-0">{title}</span>
           </CardTitle>
-          <div className="flex flex-wrap gap-1.5 justify-start sm:justify-end w-full sm:w-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="flex flex-wrap gap-1 sm:gap-1.5 justify-start sm:justify-end w-full sm:w-auto" onClick={(e) => e.stopPropagation()}>
             {recordButtonLabel && onRecordClick && (
               <Tooltip>
                 <TooltipTrigger asChild>

@@ -202,7 +202,7 @@ const Dashboard = () => {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 text-xs gap-1 text-primary group-hover:text-white group-hover:bg-primary/80 transition-all duration-300 transform group-hover:scale-110"
+                          className="h-9 text-xs gap-1 text-primary group-hover:text-white group-hover:bg-primary/80 transition-all duration-300 transform group-hover:scale-110"
                           onClick={(e) => {
                             e.stopPropagation();
                             navigate(`/tests#${test.id}`);
@@ -232,7 +232,7 @@ const Dashboard = () => {
                 {/* Status Section */}
                 <div className="space-y-3">
                   <h3 className="font-semibold text-foreground">Test Status</h3>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className={`p-3 rounded-lg ${statusConfig[selectedTest.status].bgColor}`}>
                       <p className="text-xs text-muted-foreground mb-1">Current Status</p>
                       <div className="flex items-center gap-2">
@@ -286,7 +286,7 @@ const Dashboard = () => {
                 {/* Category Info */}
                 <div className="space-y-3">
                   <h3 className="font-semibold text-foreground">Test Details</h3>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="p-3 rounded-lg bg-muted">
                       <p className="text-xs text-muted-foreground mb-1">Category</p>
                       <p className="font-semibold text-foreground capitalize">{selectedTest.category}</p>

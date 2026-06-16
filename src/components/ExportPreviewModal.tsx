@@ -121,7 +121,7 @@ export const ExportPreviewModal: React.FC<ExportPreviewModalProps> = ({
 
         <div className="flex-1 overflow-hidden">
           {data?.type === "pdf" && pdfUrl ? (
-            <div className="h-full bg-muted rounded-lg overflow-hidden">
+            <div className="h-full bg-muted rounded-lg overflow-auto">
               <iframe
                 src={pdfUrl}
                 className="w-full h-full"

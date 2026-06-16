@@ -135,7 +135,7 @@ const Reports = () => {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-7 text-xs gap-1"
+                      className="h-9 text-xs gap-1"
                       onClick={() => {
                         generateTestPDF({
                           title: test.name,
@@ -150,7 +150,7 @@ const Reports = () => {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-7 text-xs gap-1"
+                      className="h-9 text-xs gap-1"
                       onClick={() => {
                         generateTestCSV({
                           title: test.name,

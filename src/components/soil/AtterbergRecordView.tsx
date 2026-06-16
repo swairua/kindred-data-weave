@@ -301,10 +301,10 @@ const AtterbergRecordView = ({
             </p>
           </div>
           <div className="rounded-lg border overflow-x-auto bg-background">
-            <table className="w-full min-w-[820px] text-xs border-collapse">
+            <table className="w-full min-w-[600px] text-xs border-collapse">
               <thead>
                 <tr className="bg-muted/30">
-                  <th className="border-b border-r px-3 py-2 text-left w-[210px]" />
+                  <th className="border-b border-r px-2 sm:px-3 py-2 text-left w-[130px] sm:w-[210px]" />
                   <th
                     colSpan={LL_COLS}
                     className="border-b border-r px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-primary"
@@ -423,20 +423,20 @@ const AtterbergRecordView = ({
                 {/* Wt of Moisture (auto) */}
                 <DataRow label="Wt of Moisture (g)">
                   {llRows.map((t, i) => (
-                    <CellAuto key={`ll-mw-${i}`} value={t ? getWaterMass(t) : null} />
+                    <CellAuto key={`ll-mw-${i}`} value={t ? getWaterMass(t) : null} className="hidden md:table-cell" />
                   ))}
                   {plRows.map((t, i) => (
-                    <CellAuto key={`pl-mw-${i}`} value={t ? getWaterMass(t) : null} />
+                    <CellAuto key={`pl-mw-${i}`} value={t ? getWaterMass(t) : null} className="hidden md:table-cell" />
                   ))}
                 </DataRow>
 
                 {/* Wt of Dry Soil (auto) */}
                 <DataRow label="Wt of Dry Soil (g)">
                   {llRows.map((t, i) => (
-                    <CellAuto key={`ll-ds-${i}`} value={t ? getDrySoilMass(t) : null} />
+                    <CellAuto key={`ll-ds-${i}`} value={t ? getDrySoilMass(t) : null} className="hidden md:table-cell" />
                   ))}
                   {plRows.map((t, i) => (
-                    <CellAuto key={`pl-ds-${i}`} value={t ? getDrySoilMass(t) : null} />
+                    <CellAuto key={`pl-ds-${i}`} value={t ? getDrySoilMass(t) : null} className="hidden md:table-cell" />
                   ))}
                 </DataRow>
 
@@ -444,11 +444,11 @@ const AtterbergRecordView = ({
                 <DataRow label="Moisture Content (%)">
                   {llRows.map((t, i) => {
                     const m = t ? getTrialMoisture(t) : null;
-                    return <CellAuto key={`ll-mc-${i}`} value={m === null || m === "" ? null : m} bold />;
+                    return <CellAuto key={`ll-mc-${i}`} value={m === null || m === "" ? null : m} bold className="hidden md:table-cell" />;
                   })}
                   {plRows.map((t, i) => {
                     const m = t ? getTrialMoisture(t) : null;
-                    return <CellAuto key={`pl-mc-${i}`} value={m === null || m === "" ? null : m} bold />;
+                    return <CellAuto key={`pl-mc-${i}`} value={m === null || m === "" ? null : m} bold className="hidden md:table-cell" />;
                   })}
                 </DataRow>
 
@@ -692,8 +692,8 @@ const CellMuted = ({ children }: { children: React.ReactNode }) => (
   </td>
 );
 
-const CellAuto = ({ value, bold }: { value: number | string | null; bold?: boolean }) => (
-  <td className="border-b border-r last:border-r-0 px-2 py-1 text-center bg-muted/10">
+const CellAuto = ({ value, bold, className }: { value: number | string | null; bold?: boolean; className?: string }) => (
+  <td className={cn("border-b border-r last:border-r-0 px-2 py-1 text-center bg-muted/10", className)}>
     {value === null || value === "" ? (
       <span className="text-xs italic text-emerald-600/80">auto</span>
     ) : (
