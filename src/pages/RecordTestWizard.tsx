@@ -26,7 +26,20 @@ interface TestOption {
   key: string;
   name: string;
   isRegistered: boolean;
+  isAllowed: boolean;
 }
+
+const ALLOWED_TEST_KEYS: Partial<Record<Material, ReadonlySet<string>>> = {
+  soil: new Set(["atterberg", "grading"]),
+  concrete: new Set(["compressive"]),
+  rock: new Set(),
+};
+
+const isTestAllowed = (material: Material | null, testKey: string): boolean => {
+  if (!material) return false;
+  const allowedKeys = ALLOWED_TEST_KEYS[material];
+  return allowedKeys === undefined || allowedKeys.has(testKey);
+};
 
 const MATERIAL_PRESENTATION: Record<Material, { label: string; emoji: string }> = {
   soil: { label: "Soil", emoji: "🪨" },
@@ -341,12 +354,13 @@ const RecordTestWizard = () => {
       (definition) => definition.test_key === state.testKey && definition.category === state.material,
     );
     const selectedDefinitionEnabled = selectedDefinition && selectedDefinition.enabled !== false && selectedDefinition.enabled !== 0;
-    if (state.testKey && (!selectedDefinitionEnabled || !registry.hasTest(state.testKey))) {
+    const selectedDefinitionAllowed = isTestAllowed(state.material, state.testKey ?? "");
+    if (state.testKey && (!selectedDefinitionEnabled || !selectedDefinitionAllowed || !registry.hasTest(state.testKey))) {
       setState((prev) => ({ ...prev, material: null, testKey: null }));
       setStep(0);
       return;
     }
-    if (!testData.testDefinitionsError && initialMaterial && initialTest && selectedDefinitionEnabled && registry.hasTest(initialTest)) {
+    if (!testData.testDefinitionsError && initialMaterial && initialTest && selectedDefinitionEnabled && isTestAllowed(initialMaterial, initialTest) && registry.hasTest(initialTest)) {
       setStep(2);
     }
   }, [testData.testDefinitionsLoading, testData.testDefinitions, testData.testDefinitionsError, state.material, state.testKey, initialMaterial, initialTest]);
@@ -360,6 +374,7 @@ const RecordTestWizard = () => {
         key: definition.test_key,
         name: definition.name,
         isRegistered: registry.hasTest(definition.test_key),
+        isAllowed: isTestAllowed(state.material, definition.test_key),
       }));
   }, [state.material, testData.testDefinitions]);
 
@@ -935,7 +950,7 @@ const RecordTestWizard = () => {
                     <div className="space-y-3">
                       {tests.map((t) => {
                         const selected = state.testKey === t.key;
-                        const isDisabled = !t.isRegistered;
+                        const isDisabled = !t.isRegistered || !t.isAllowed;
                         return (
                           <button
                             key={t.key}
@@ -961,7 +976,11 @@ const RecordTestWizard = () => {
                             </div>
                             <div className="min-w-0 flex-1">
                               <h3 className="text-sm font-semibold text-foreground">{t.name}</h3>
-                              {!t.isRegistered && <p className="mt-0.5 text-xs leading-snug text-muted-foreground">Recording form not available yet</p>}
+                              {!t.isRegistered ? (
+                                <p className="mt-0.5 text-xs leading-snug text-muted-foreground">Recording form not available yet</p>
+                              ) : !t.isAllowed ? (
+                                <p className="mt-0.5 text-xs leading-snug text-muted-foreground">Not enabled for this material</p>
+                              ) : null}
                             </div>
                             <ArrowRight className={cn(
                               "h-4 w-4 shrink-0 text-muted-foreground transition-colors",
