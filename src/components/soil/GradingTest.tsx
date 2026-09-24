@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Check, ChevronDown, HelpCircle, Loader2, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -219,8 +219,16 @@ const normalizeRecord = (value: unknown, metadata: Record<string, string | undef
 };
 
 const getPayloadRecord = (payload: unknown, metadata: Record<string, string | undefined>) => {
-  if (!isObject(payload)) return emptyRecord(metadata);
-  const project = isObject(payload.project) ? payload.project : payload;
+  let parsedPayload = payload;
+  if (typeof payload === "string") {
+    try {
+      parsedPayload = JSON.parse(payload) as unknown;
+    } catch {
+      return emptyRecord(metadata);
+    }
+  }
+  if (!isObject(parsedPayload)) return emptyRecord(metadata);
+  const project = isObject(parsedPayload.project) ? parsedPayload.project : parsedPayload;
   const records = Array.isArray(project.records) ? project.records : [];
   return normalizeRecord(records[0], metadata);
 };
@@ -235,8 +243,8 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
   const project = useProject();
   const testData = useTestData();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const isNewRecord = searchParams.get("newRecord") === "1";
+  const location = useLocation();
+  const isNewRecord = new URLSearchParams(location.search).get("newRecord") === "1";
   const projectId = project.currentProjectId ?? null;
   const metadata = useMemo(() => testData.recordMetadata.grading || {}, [testData.recordMetadata.grading]);
   const metadataKey = JSON.stringify(metadata);
@@ -375,13 +383,22 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
         : await createRecord<{ id: number }>("test_results", data);
       setRecordId(recordId || response.data?.id || response.id || null);
       setSaveStatus("saved");
+      if (isNewRecord) {
+        const params = new URLSearchParams(location.search);
+        params.delete("newRecord");
+        navigate({
+          pathname: location.pathname,
+          search: params.toString() ? `?${params.toString()}` : "",
+          hash: location.hash,
+        }, { replace: true });
+      }
       toast.success("Particle Size Distribution saved");
     } catch (saveError) {
       setSaveStatus("error");
       setError(saveError instanceof Error ? saveError.message : "Unable to save this record");
       throw saveError;
     }
-  }, [projectId, status, record, calculations, payload, recordId]);
+  }, [projectId, status, record, calculations, payload, recordId, isNewRecord, location, navigate]);
 
   const clear = async () => {
     if (projectId) {
