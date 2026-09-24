@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, X, Mountain, Hammer, TestTubeDiagonal, FlaskConical, FolderOpen, Plus, Layers, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, X, FlaskConical, FolderOpen, Plus, Layers, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import { listRecords, fetchCurrentUser, setSessionToken, logoutUser, fetchFullPr
 import { type ApiProjectRow } from "@/types/api";
 import { cn } from "@/lib/utils";
 import { useTestData } from "@/context/TestDataContext";
+import { registry } from "@/lib/testRegistry";
 import Navigation from "@/components/Navigation";
 import { toast } from "sonner";
 
@@ -24,51 +25,22 @@ type Material = "soil" | "concrete" | "rock" | "special";
 interface TestOption {
   key: string;
   name: string;
-  description: string;
+  isRegistered: boolean;
 }
 
-const MATERIAL_OPTIONS: { id: Material; label: string; emoji: string; description: string; icon: typeof Mountain }[] = [
-  { id: "soil", label: "Soil", emoji: "🪨", description: "Atterberg, CBR, Compaction, Grading…", icon: Mountain },
-  { id: "concrete", label: "Concrete", emoji: "🏗️", description: "Slump, Cubes, UPVT, Schmidt…", icon: Hammer },
-  { id: "rock", label: "Rock", emoji: "⛰️", description: "UCS, Point Load, Porosity", icon: Mountain },
-  { id: "special", label: "Special", emoji: "🧪", description: "SPT, DCP and field tests", icon: TestTubeDiagonal },
-];
-
-const TESTS_BY_MATERIAL: Record<Material, TestOption[]> = {
-  soil: [
-    { key: "atterberg", name: "Atterberg Limits", description: "Liquid limit, plastic limit, plasticity index, linear shrinkage" },
-    { key: "grading", name: "Particle Size Distribution", description: "Sieve analysis and grading curve" },
-    { key: "proctor", name: "Compaction (Proctor)", description: "Maximum dry density and optimum moisture" },
-    { key: "cbr", name: "California Bearing Ratio", description: "Soaked / unsoaked CBR" },
-    { key: "shear", name: "Direct Shear", description: "Cohesion and friction angle" },
-    { key: "consolidation", name: "Consolidation", description: "One-dimensional settlement" },
-  ],
-  concrete: [
-    { key: "slump", name: "Slump Test", description: "Workability of fresh concrete" },
-    { key: "cubes", name: "Concrete Cubes", description: "Fresh & cured cube specimen records" },
-    { key: "compressive", name: "Compressive Strength", description: "28-day cube/cylinder strength" },
-    { key: "upvt", name: "Ultrasonic Pulse Velocity", description: "Non-destructive quality assessment" },
-    { key: "schmidt", name: "Schmidt Hammer", description: "Surface hardness rebound" },
-    { key: "coring", name: "Coring", description: "Core specimen records" },
-  ],
-  rock: [
-    { key: "ucs", name: "Unconfined Compressive Strength", description: "Intact rock strength" },
-    { key: "pointload", name: "Point Load Index", description: "Strength index Is(50)" },
-    { key: "porosity", name: "Porosity & Density", description: "Bulk density and absorption" },
-  ],
-  special: [
-    { key: "spt", name: "SPT", description: "Standard penetration test" },
-    { key: "dcp", name: "DCP", description: "Dynamic cone penetrometer" },
-  ],
+const MATERIAL_PRESENTATION: Record<Material, { label: string; emoji: string }> = {
+  soil: { label: "Soil", emoji: "🪨" },
+  concrete: { label: "Concrete", emoji: "🏗️" },
+  rock: { label: "Rock", emoji: "⛰️" },
+  special: { label: "Special", emoji: "🧪" },
 };
 
 const getSteps = (
-  material: Material | null,
   testKey: string | null,
   hasExistingTests: boolean,
   selectedExistingTestId: number | null,
 ): WizardStep[] => {
-  const isCompressiveStrengthTest = material === "concrete" && testKey === "compressive";
+  const isCompressiveStrengthTest = testKey === "compressive";
   // Only skip project step if a specific existing test instance has been selected
   const existingTestSelected = selectedExistingTestId !== null;
 
@@ -179,10 +151,10 @@ interface CompressiveTestRow {
   updated_at: string;
 }
 
-const getExpectedTestType = (material: Material | null, testKey: string | null): string | null => {
-  if (material === "soil" && testKey === "atterberg") return "atterberg";
-  if (material === "soil" && testKey === "grading") return "grading";
-  if (material === "concrete" && testKey === "compressive") return "compressive";
+const getExpectedTestType = (testKey: string | null): string | null => {
+  if (testKey === "atterberg") return "atterberg";
+  if (testKey === "grading") return "grading";
+  if (testKey === "compressive") return "compressive";
   return null;
 };
 
@@ -241,8 +213,7 @@ const RecordTestWizard = () => {
   });
 
   // If both material and test are pre-selected via query params, skip to project step
-  const initialStep = initialMaterial && initialTest ? 2 : 0;
-  const [step, setStep] = useState(initialStep);
+  const [step, setStep] = useState(0);
   const [projects, setProjects] = useState<ApiProjectRow[]>([]);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
@@ -319,7 +290,7 @@ const RecordTestWizard = () => {
   // Load compressive tests when selecting compressive strength test
   useEffect(() => {
     if (authChecking) return;
-    const isCompressiveStrengthTest = state.material === "concrete" && state.testKey === "compressive";
+    const isCompressiveStrengthTest = state.testKey === "compressive";
     if (!isCompressiveStrengthTest) {
       setCompressiveTests([]);
       setCompressiveTestsError(null);
@@ -351,15 +322,47 @@ const RecordTestWizard = () => {
     setState((prev) => ({ ...prev, [key]: value }));
   };
 
-  const tests = useMemo<TestOption[]>(
-    () => (state.material ? TESTS_BY_MATERIAL[state.material] : []),
-    [state.material],
-  );
+  const materialOptions = useMemo(() => {
+    const categories = new Set(testData.testDefinitions
+      .filter((definition) => definition.enabled !== false && definition.enabled !== 0)
+      .map((definition) => definition.category));
+    return (Object.keys(MATERIAL_PRESENTATION) as Material[])
+      .filter((category) => categories.has(category))
+      .map((category) => ({ id: category, ...MATERIAL_PRESENTATION[category] }));
+  }, [testData.testDefinitions]);
 
-  const isCompressiveStrengthTest = state.material === "concrete" && state.testKey === "compressive";
-  const isGradingTest = state.material === "soil" && state.testKey === "grading";
+  useEffect(() => {
+    if (testData.testDefinitionsLoading) return;
+    const selectedDefinition = testData.testDefinitions.find(
+      (definition) => definition.test_key === state.testKey && definition.category === state.material,
+    );
+    const selectedDefinitionEnabled = selectedDefinition && selectedDefinition.enabled !== false && selectedDefinition.enabled !== 0;
+    if (state.testKey && (!selectedDefinitionEnabled || !registry.hasTest(state.testKey))) {
+      setState((prev) => ({ ...prev, material: null, testKey: null }));
+      setStep(0);
+      return;
+    }
+    if (!testData.testDefinitionsError && initialMaterial && initialTest && selectedDefinitionEnabled && registry.hasTest(initialTest)) {
+      setStep(2);
+    }
+  }, [testData.testDefinitionsLoading, testData.testDefinitions, testData.testDefinitionsError, state.material, state.testKey, initialMaterial, initialTest]);
+
+  const tests = useMemo<TestOption[]>(() => {
+    if (!state.material) return [];
+    return testData.testDefinitions
+      .filter((definition) => definition.category === state.material && definition.enabled !== false && definition.enabled !== 0)
+      .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name))
+      .map((definition) => ({
+        key: definition.test_key,
+        name: definition.name,
+        isRegistered: registry.hasTest(definition.test_key),
+      }));
+  }, [state.material, testData.testDefinitions]);
+
+  const isCompressiveStrengthTest = state.testKey === "compressive";
+  const isGradingTest = state.testKey === "grading";
   const hasExistingCompressiveTests = isCompressiveStrengthTest && compressiveTests.length > 0;
-  const steps = getSteps(state.material, state.testKey, hasExistingCompressiveTests, selectedExistingTestId);
+  const steps = getSteps(state.testKey, hasExistingCompressiveTests, selectedExistingTestId);
 
   const canAdvance = useMemo(() => {
     const currentStepId = steps[step]?.id;
@@ -389,7 +392,7 @@ const RecordTestWizard = () => {
         }
         return state.projectId !== null;
       case "sample":
-        if (state.material === "concrete") {
+        if (isCompressiveStrengthTest) {
           return state.cement.trim().length > 0;
         }
         if (isGradingTest) {
@@ -418,7 +421,7 @@ const RecordTestWizard = () => {
     let active = true;
     setLoadingProjects(true);
     setProjectsLoadError(null);
-    const expectedTestType = getExpectedTestType(state.material, state.testKey);
+    const expectedTestType = getExpectedTestType(state.testKey);
     listRecords<ApiProjectRow>("projects", { limit: 100 })
       .then((res) => {
         if (!active) return;
@@ -495,7 +498,7 @@ const RecordTestWizard = () => {
         name: state.projectName.trim(),
         client_name: state.clientName.trim(),
         project_date: state.projectDate || null,
-        test_type: getExpectedTestType(state.material, state.testKey),
+        test_type: getExpectedTestType(state.testKey),
       };
 
       if (isCompressiveStrengthTest || isGradingTest) {
@@ -523,7 +526,7 @@ const RecordTestWizard = () => {
         name: state.projectName.trim(),
         client_name: state.clientName.trim(),
         project_date: state.projectDate || null,
-        test_type: getExpectedTestType(state.material, state.testKey),
+        test_type: getExpectedTestType(state.testKey),
       }, ...prev.filter((project) => project.id !== projectId)]);
       testData.updateProjectMetadata({
         projectName: state.projectName.trim(),
@@ -592,7 +595,7 @@ const RecordTestWizard = () => {
           project_date: state.projectDate,
           contractor: state.contractor,
           county: state.county,
-          test_type: getExpectedTestType(state.material, state.testKey),
+          test_type: getExpectedTestType(state.testKey),
         });
         finalProjectId = createResponse.data?.id ?? null;
         if (!finalProjectId) {
@@ -636,7 +639,7 @@ const RecordTestWizard = () => {
     }
 
     // If concrete material, also push concrete test details to context
-    if (state.material === "concrete") {
+    if (isCompressiveStrengthTest) {
       const concreteMetadata: any = {
         cement: state.cement,
         fineAggregate: state.fineAggregate,
@@ -863,7 +866,13 @@ const RecordTestWizard = () => {
             </div>
             <FormCard>
               <div className="grid grid-cols-1 gap-4 mx-auto">
-                {MATERIAL_OPTIONS.map((mat) => {
+                {testData.testDefinitionsLoading ? (
+                  <p className="py-8 text-center text-sm text-muted-foreground">Loading test options…</p>
+                ) : testData.testDefinitionsError ? (
+                  <p className="py-8 text-center text-sm text-destructive">Could not load test options: {testData.testDefinitionsError}</p>
+                ) : materialOptions.length === 0 ? (
+                  <p className="py-8 text-center text-sm text-muted-foreground">No enabled tests are currently available.</p>
+                ) : materialOptions.map((mat) => {
                   const selected = state.material === mat.id;
                   return (
                     <button
@@ -882,7 +891,7 @@ const RecordTestWizard = () => {
                         <span className="text-4xl">{mat.emoji}</span>
                         <div className="flex-1 min-w-0">
                           <h3 className="text-lg font-semibold text-foreground">{mat.label}</h3>
-                          <p className="text-sm text-muted-foreground mt-0.5">{mat.description}</p>
+                          <p className="text-sm text-muted-foreground mt-0.5">{testData.testDefinitions.filter((definition) => definition.category === mat.id && definition.enabled !== false && definition.enabled !== 0).length} available tests</p>
                         </div>
                         <ArrowRight className={cn("h-5 w-5 transition-colors", selected ? "text-primary" : "text-muted-foreground")} />
                       </div>
@@ -899,32 +908,37 @@ const RecordTestWizard = () => {
                   <div>
                     <h2 className="text-2xl font-semibold tracking-tight">Choose the test</h2>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Available tests for {MATERIAL_OPTIONS.find((m) => m.id === state.material)?.label}.
+                      Available tests for {state.material ? MATERIAL_PRESENTATION[state.material].label : "this material"}.
                     </p>
                   </div>
-                  {tests.length === 0 ? (
+                  {testData.testDefinitionsLoading ? (
+                    <div className="rounded-xl border border-border bg-card py-12 text-center text-sm text-muted-foreground">Loading test options…</div>
+                  ) : testData.testDefinitionsError ? (
+                    <div className="rounded-xl border border-border bg-card py-12 text-center text-sm text-destructive">Could not load test options: {testData.testDefinitionsError}</div>
+                  ) : tests.length === 0 ? (
                     <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-card py-12 text-center">
                       <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
                         <Layers className="h-6 w-6 text-muted-foreground" />
                       </div>
                       <p className="text-lg font-medium text-foreground mb-1">
-                        Coming soon
+                        No enabled tests
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {MATERIAL_OPTIONS.find((m) => m.id === state.material)?.label} testing is not yet available.
+                        There are no enabled test definitions for this category.
                       </p>
                     </div>
                   ) : (
                     <div className="space-y-3">
                       {tests.map((t) => {
                         const selected = state.testKey === t.key;
-                        const isDisabled = state.material === "rock" || state.material === "special" || (state.material === "concrete" && t.key !== "compressive") || (state.material === "soil" && t.key !== "atterberg" && t.key !== "grading");
+                        const isDisabled = !t.isRegistered;
                         return (
                           <button
                             key={t.key}
                             type="button"
                             disabled={isDisabled}
                             onClick={() => {
+                              if (isDisabled) return;
                               update("testKey", t.key);
                               setTimeout(() => setStep(step + 1), 0);
                             }}
@@ -943,7 +957,7 @@ const RecordTestWizard = () => {
                             </div>
                             <div className="min-w-0 flex-1">
                               <h3 className="text-sm font-semibold text-foreground">{t.name}</h3>
-                              <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{t.description}</p>
+                              {!t.isRegistered && <p className="mt-0.5 text-xs leading-snug text-muted-foreground">Test component unavailable</p>}
                             </div>
                             <ArrowRight className={cn(
                               "h-4 w-4 shrink-0 text-muted-foreground transition-colors",
@@ -1167,7 +1181,7 @@ const RecordTestWizard = () => {
 
               {steps[step]?.id === "sample" && (
                 <section className="space-y-6 animate-fade-in max-w-2xl">
-            {state.material === "concrete" ? (
+            {isCompressiveStrengthTest ? (
               <>
                 <div>
                   <h2 className="text-2xl font-semibold tracking-tight">{isCompressiveStrengthTest ? "Concrete cube details" : "Test details"}</h2>
