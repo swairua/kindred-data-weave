@@ -461,6 +461,57 @@
     @apply h-7 sm:h-8 text-xs sm:text-sm border border-border rounded-md text-center;
     font-family: var(--font-mono);
   }
+
+  .grading-record {
+    color: hsl(var(--foreground));
+  }
+
+  .record-card {
+    @apply rounded-xl border border-border bg-card shadow-sm;
+  }
+
+  .record-table {
+    @apply w-full border-collapse text-[10px];
+  }
+
+  .record-table th {
+    @apply whitespace-nowrap border-b border-r border-border bg-secondary px-2 py-2 text-left font-medium uppercase tracking-wide text-muted-foreground;
+  }
+
+  .record-table td {
+    @apply border-b border-r border-border/70 px-2 py-1.5 align-middle;
+  }
+
+  .record-table th:last-child,
+  .record-table td:last-child {
+    @apply border-r-0;
+  }
+
+  .record-table tbody tr:last-child td {
+    @apply border-b-0;
+  }
+
+  .record-input {
+    @apply h-7 min-w-[72px] rounded border-border bg-card px-2 py-1 text-[10px] font-mono;
+  }
+
+  .calculated-cell {
+    @apply bg-calculated text-calculated-foreground;
+  }
+
+  .record-identity strong {
+    @apply font-medium;
+  }
+}
+
+@media print {
+  .grading-record .record-card {
+    box-shadow: none;
+  }
+
+  .grading-record .record-table {
+    font-size: 8px;
+  }
 }
 
 /* Atterberg selective print: when body is in atterberg-selected mode,

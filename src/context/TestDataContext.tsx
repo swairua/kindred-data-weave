@@ -32,7 +32,12 @@ export interface ProjectMetadata {
 
 // Generic record-level metadata (used across test types)
 export interface RecordMetadata {
+  sampleId?: string;
   sampleNumber?: string;
+  sampleDepthFrom?: string;
+  sampleDepthTo?: string;
+  sampledSubmittedBy?: string;
+  sampleNotes?: string;
   dateSubmitted?: string;
   dateTested?: string;
   testedBy?: string;
@@ -159,7 +164,7 @@ interface TestDataContextType {
 }
 
 const defaultTests: Record<string, TestSummary> = {
-  grading: { id: "grading", name: "Grading (Sieve Analysis)", category: "soil", status: "not-started", dataPoints: 0, keyResults: [] },
+  grading: { id: "grading", name: "Particle Size Distribution", category: "soil", status: "not-started", dataPoints: 0, keyResults: [] },
   atterberg: { id: "atterberg", name: "Atterberg Limits", category: "soil", status: "not-started", dataPoints: 0, keyResults: [] },
   proctor: { id: "proctor", name: "Proctor Test", category: "soil", status: "not-started", dataPoints: 0, keyResults: [] },
   cbr: { id: "cbr", name: "CBR", category: "soil", status: "not-started", dataPoints: 0, keyResults: [] },

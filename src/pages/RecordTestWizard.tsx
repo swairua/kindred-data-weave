@@ -580,6 +580,20 @@ const RecordTestWizard = () => {
 
     testData.updateProjectMetadata(projectMetadata);
 
+    if (isGradingTest) {
+      testData.updateRecordMetadata("grading", {
+        sampleId: state.sampleId,
+        sampleNumber: state.sampleNo,
+        sampleDepthFrom: state.sampleDepthFrom,
+        sampleDepthTo: state.sampleDepthTo,
+        sampledSubmittedBy: state.sampledSubmittedBy,
+        sampleNotes: state.sampleNotes,
+        dateSubmitted: state.sampleDateSubmitted,
+        dateTested: state.sampleDateTested,
+        testedBy: state.sampledSubmittedBy,
+      });
+    }
+
     // If concrete material, also push concrete test details to context
     if (state.material === "concrete") {
       const concreteMetadata: any = {

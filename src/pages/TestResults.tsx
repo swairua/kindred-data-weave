@@ -39,6 +39,9 @@ interface ApiTestResult {
       records?: Array<{
         label?: string;
         sampleNumber?: string;
+        sampleDepthFrom?: string;
+        sampleDepthTo?: string;
+        sampledSubmittedBy?: string;
         testedBy?: string;
       }>;
     };
@@ -82,7 +85,7 @@ const TestResults = () => {
   const formatTestType = (testKey: string): string => {
     const testTypeMap: Record<string, string> = {
       atterberg: "Atterberg Limits Testing",
-      grading: "Grading Test",
+      grading: "Particle Size Distribution",
       cbr: "CBR Test",
       proctor: "Proctor Test",
       consolidation: "Consolidation Test",
@@ -106,8 +109,10 @@ const TestResults = () => {
     return apiTestResults.map((result) => {
       const record = getFirstRecord(result);
       const sampleId = record?.label || "-";
-      const depth = record?.sampleNumber || "-";
-      const testedBy = record?.testedBy || "-";
+      const depth = record?.sampleDepthFrom || record?.sampleDepthTo
+        ? `${record.sampleDepthFrom || "—"} to ${record.sampleDepthTo || "—"}`
+        : record?.sampleNumber || "-";
+      const testedBy = record?.sampledSubmittedBy || record?.testedBy || "-";
       const projectName = result.project_name || `Project #${result.project_id}`;
       const testType = formatTestType(result.test_key);
       const dateCreated = result.created_at || result.updated_at || new Date().toISOString();

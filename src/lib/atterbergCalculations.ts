@@ -85,7 +85,7 @@ export const isLiquidLimitTrialValid = (trial: LiquidLimitTrial): boolean => {
   const directMoisture = trial.moisture;
   const calculatedMoisture = calculateMoistureFromMass(trial.containerWetMass, trial.containerDryMass, trial.containerMass);
 
-  const hasValidMoisture = isFiniteNumber(directMoisture) || calculatedMoisture !== null;
+  const hasValidMoisture = (isFiniteNumber(directMoisture) && Number(directMoisture) >= 0) || calculatedMoisture !== null;
   return hasValidMoisture;
 };
 
