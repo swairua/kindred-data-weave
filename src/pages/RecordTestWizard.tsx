@@ -372,7 +372,8 @@ const RecordTestWizard = () => {
         // If creating new test, can advance without contractor/county (they're in Project step)
         return true;
       case "project":
-        if (isCompressiveStrengthTest || isGradingTest) {
+        if (isGradingTest) return state.projectId !== null;
+        if (isCompressiveStrengthTest) {
           return state.projectId !== null && state.contractor.trim().length > 0 && state.county.trim().length > 0;
         }
         return state.projectId !== null;
