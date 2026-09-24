@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Building2, FlaskConical, FolderOpen, Layers, Loader2, Mountain, Plus, Square, X, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -928,19 +927,19 @@ const RecordTestWizard = () => {
               )}
 
               {step === 1 && (
-                <section className="space-y-6 animate-fade-in max-w-2xl">
-                  <div>
-                    <h2 className="text-2xl font-semibold tracking-tight">Choose the test</h2>
-                    <p className="text-sm text-muted-foreground mt-1">
+                <section className="mx-auto max-w-md space-y-4 animate-fade-in">
+                  <div className="text-center">
+                    <h2 className="text-lg font-semibold tracking-tight">Choose the test</h2>
+                    <p className="mt-1 text-xs text-muted-foreground">
                       Available tests for {state.material ? MATERIAL_PRESENTATION[state.material].label : "this material"}.
                     </p>
                   </div>
                   {testData.testDefinitionsLoading ? (
-                    <div className="rounded-xl border border-border bg-card py-12 text-center text-sm text-muted-foreground">Loading test options…</div>
+                    <div className="rounded-lg border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">Loading test options…</div>
                   ) : testData.testDefinitionsError ? (
-                    <div className="rounded-xl border border-border bg-card py-12 text-center text-sm text-destructive">Could not load test options: {testData.testDefinitionsError}</div>
+                    <div className="rounded-lg border border-border bg-card px-4 py-6 text-center text-sm text-destructive">Could not load test options: {testData.testDefinitionsError}</div>
                   ) : tests.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-card py-12 text-center">
+                    <div className="flex flex-col items-center justify-center rounded-lg border border-border bg-card px-4 py-6 text-center">
                       <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
                         <Layers className="h-6 w-6 text-muted-foreground" />
                       </div>
@@ -952,7 +951,7 @@ const RecordTestWizard = () => {
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {tests.map((t) => {
                         const selected = state.testKey === t.key;
                         const isDisabled = !t.isRegistered || !t.isAllowed;
@@ -967,7 +966,7 @@ const RecordTestWizard = () => {
                               setTimeout(() => setStep(step + 1), 0);
                             }}
                             className={cn(
-                              "group flex w-full items-center gap-3 rounded-xl border bg-card px-4 py-3 text-left transition-colors",
+                              "group flex min-h-14 w-full items-center gap-3 rounded-lg border bg-card px-4 py-2.5 text-left transition-colors",
                               "border-border hover:border-primary/50 hover:bg-accent/30",
                               selected && "border-primary bg-primary/5",
                               isDisabled && "cursor-not-allowed opacity-50 hover:border-border hover:bg-card",
@@ -1001,10 +1000,10 @@ const RecordTestWizard = () => {
               )}
 
               {steps[step]?.id === "existing" && (
-                <section className="space-y-6 animate-fade-in max-w-2xl">
-            <div>
-              <h2 className="text-2xl font-semibold tracking-tight">Select test to edit</h2>
-              <p className="text-sm text-muted-foreground mt-1">Choose an existing compressive strength test to edit, or create a new one.</p>
+                <section className="mx-auto max-w-md space-y-4 animate-fade-in">
+            <div className="text-center">
+              <h2 className="text-lg font-semibold tracking-tight">Select test to edit</h2>
+              <p className="mt-1 text-xs text-muted-foreground">Choose an existing compressive strength test to edit, or create a new one.</p>
             </div>
 
             <FormCard>
@@ -1108,10 +1107,10 @@ const RecordTestWizard = () => {
               )}
 
               {steps[step]?.id === "project" && (
-                <section className="space-y-6 animate-fade-in max-w-2xl">
-            <div>
-              <h2 className="text-2xl font-semibold tracking-tight">Project</h2>
-              <p className="text-sm text-muted-foreground mt-1">{isGradingTest ? "Use an existing project as a template or create a new one." : "Pick an existing project or create a new one."}</p>
+                <section className="mx-auto max-w-md space-y-4 animate-fade-in">
+            <div className="text-center">
+              <h2 className="text-lg font-semibold tracking-tight">Project</h2>
+              <p className="mt-1 text-xs text-muted-foreground">{isGradingTest ? "Use an existing project as a template or create a new one." : "Pick an existing project or create a new one."}</p>
             </div>
 
             <FormCard>
@@ -1208,12 +1207,12 @@ const RecordTestWizard = () => {
               )}
 
               {steps[step]?.id === "sample" && (
-                <section className="space-y-6 animate-fade-in max-w-2xl">
+                <section className="mx-auto max-w-md space-y-4 animate-fade-in">
             {isCompressiveStrengthTest ? (
               <>
-                <div>
-                  <h2 className="text-2xl font-semibold tracking-tight">{isCompressiveStrengthTest ? "Concrete cube details" : "Test details"}</h2>
-                  <p className="text-sm text-muted-foreground mt-1">Enter the concrete sample details.</p>
+                <div className="text-center">
+                  <h2 className="text-lg font-semibold tracking-tight">{isCompressiveStrengthTest ? "Concrete cube details" : "Test details"}</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">Enter the concrete sample details.</p>
                 </div>
                 <FormCard>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1268,8 +1267,8 @@ const RecordTestWizard = () => {
               </>
             ) : isGradingTest ? (
               <>
-                <div>
-                  <h2 className="text-2xl font-semibold tracking-tight">Particle size distribution — sample details</h2>
+                <div className="text-center">
+                  <h2 className="text-lg font-semibold tracking-tight">Particle size distribution — sample details</h2>
                 </div>
                 <FormCard>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1340,9 +1339,9 @@ const RecordTestWizard = () => {
               </>
             ) : (
               <>
-                <div>
-                  <h2 className="text-2xl font-semibold tracking-tight">Sample setup</h2>
-                  <p className="text-sm text-muted-foreground mt-1">Identify the sample you're testing.</p>
+                <div className="text-center">
+                  <h2 className="text-lg font-semibold tracking-tight">Sample setup</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">Identify the sample you're testing.</p>
                 </div>
                 <FormCard>
                   <div className="space-y-4">
@@ -1393,13 +1392,13 @@ const RecordTestWizard = () => {
               )}
 
               {steps[step]?.id === "entry" && (
-                <section className="space-y-6 animate-fade-in max-w-2xl">
-            <div>
-              <h2 className="text-2xl font-semibold tracking-tight">Ready to record</h2>
-              <p className="text-sm text-muted-foreground mt-1">Review and start data entry.</p>
+                <section className="mx-auto max-w-md space-y-4 animate-fade-in">
+            <div className="text-center">
+              <h2 className="text-lg font-semibold tracking-tight">Ready to record</h2>
+              <p className="mt-1 text-xs text-muted-foreground">Review and start data entry.</p>
             </div>
-            <Card>
-              <CardContent className="p-5 space-y-3 text-sm">
+            <FormCard>
+              <div className="space-y-3 text-sm">
                 <Row label="Material" value={MATERIAL_OPTIONS.find((m) => m.id === state.material)?.label ?? "—"} />
                 <Row label="Test" value={tests.find((t) => t.key === state.testKey)?.name ?? "—"} />
                 <Row label="Project" value={state.projectName || "—"} />
@@ -1407,8 +1406,8 @@ const RecordTestWizard = () => {
                 <Row label="Sample ID" value={state.sampleId || "—"} />
                 {(state.sampleDepthFrom || state.sampleDepthTo) && <Row label="Depth" value={`${state.sampleDepthFrom || "—"} to ${state.sampleDepthTo || "—"}`} />}
                 {state.sampleNotes && <Row label="Notes" value={state.sampleNotes} />}
-              </CardContent>
-            </Card>
+              </div>
+            </FormCard>
           </section>
               )}
 
