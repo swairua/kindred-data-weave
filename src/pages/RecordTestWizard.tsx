@@ -1412,7 +1412,7 @@ const RecordTestWizard = () => {
           </section>
               )}
 
-              <div className="mt-6 flex w-full max-w-2xl items-center justify-center gap-2">
+              <div className="mt-6 flex w-full max-w-2xl items-center justify-between gap-3">
                 <Button type="button" variant="outline" onClick={handleBack} className="gap-1.5">
                   <ArrowLeft className="h-4 w-4" /> {step === 0 ? "Cancel" : "Back"}
                 </Button>
