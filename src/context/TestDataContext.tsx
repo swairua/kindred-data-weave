@@ -2,11 +2,20 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { listRecords } from "@/lib/api";
 
 export type TestStatus = "not-started" | "in-progress" | "completed";
+export type TestCategory = "soil" | "concrete" | "rock" | "special";
+
+export interface TestDefinition {
+  test_key: string;
+  name: string;
+  category: TestCategory;
+  sort_order: number;
+  enabled: boolean | number;
+}
 
 export interface TestSummary {
   id: string;
   name: string;
-  category: "soil" | "concrete" | "rock" | "special";
+  category: TestCategory;
   status: TestStatus;
   dataPoints: number;
   keyResults: { label: string; value: string }[];
@@ -152,6 +161,10 @@ export interface AtterbergProjectState extends AtterbergProjectMetadata {
 
 interface TestDataContextType {
   tests: Record<string, TestSummary>;
+  testDefinitions: TestDefinition[];
+  testDefinitionsLoading: boolean;
+  testDefinitionsError: string | null;
+  refreshTestDefinitions: () => Promise<void>;
   updateTest: (id: string, data: Partial<Omit<TestSummary, "id">>) => void;
   projectMetadata: ProjectMetadata;
   updateProjectMetadata: (data: Partial<ProjectMetadata>) => void;
@@ -166,25 +179,31 @@ interface TestDataContextType {
 const defaultTests: Record<string, TestSummary> = {
   grading: { id: "grading", name: "Particle Size Distribution", category: "soil", status: "not-started", dataPoints: 0, keyResults: [] },
   atterberg: { id: "atterberg", name: "Atterberg Limits", category: "soil", status: "not-started", dataPoints: 0, keyResults: [] },
-  proctor: { id: "proctor", name: "Proctor Test", category: "soil", status: "not-started", dataPoints: 0, keyResults: [] },
+  proctor: { id: "proctor", name: "Density/Moisture Content Relationship", category: "soil", status: "not-started", dataPoints: 0, keyResults: [] },
+  cpt: { id: "cpt", name: "Cone Penetration Test (CPT)", category: "soil", status: "not-started", dataPoints: 0, keyResults: [], enabled: false },
   cbr: { id: "cbr", name: "CBR", category: "soil", status: "not-started", dataPoints: 0, keyResults: [] },
   shear: { id: "shear", name: "Shear Test", category: "soil", status: "not-started", dataPoints: 0, keyResults: [] },
   consolidation: { id: "consolidation", name: "Consolidation", category: "soil", status: "not-started", dataPoints: 0, keyResults: [] },
   slump: { id: "slump", name: "Slump Test", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [] },
-  compressive: { id: "compressive", name: "Compressive Strength", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [] },
+  compressive: { id: "compressive", name: "Compressive Strength Test", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [] },
   upvt: { id: "upvt", name: "UPVT", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [] },
-  schmidt: { id: "schmidt", name: "Schmidt Hammer", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [] },
+  schmidt: { id: "schmidt", name: "NDT (Rebound Hammer)", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [] },
+  schmidt_rock: { id: "schmidt_rock", name: "Schmidt Hammer", category: "rock", status: "not-started", dataPoints: 0, keyResults: [] },
   coring: { id: "coring", name: "Coring", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [] },
   cubes: { id: "cubes", name: "Concrete Cubes", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [] },
-  ucs: { id: "ucs", name: "UCS", category: "rock", status: "not-started", dataPoints: 0, keyResults: [] },
-  pointload: { id: "pointload", name: "Point Load", category: "rock", status: "not-started", dataPoints: 0, keyResults: [] },
+  ucs: { id: "ucs", name: "Unconfined Compressive Strength", category: "rock", status: "not-started", dataPoints: 0, keyResults: [] },
+  pointload: { id: "pointload", name: "Point Load Index", category: "rock", status: "not-started", dataPoints: 0, keyResults: [] },
   porosity: { id: "porosity", name: "Porosity", category: "rock", status: "not-started", dataPoints: 0, keyResults: [] },
-  spt: { id: "spt", name: "SPT", category: "special", status: "not-started", dataPoints: 0, keyResults: [] },
+  spt: { id: "spt", name: "Standard Penetration Test (SPT)", category: "soil", status: "not-started", dataPoints: 0, keyResults: [] },
   dcp: { id: "dcp", name: "DCP", category: "special", status: "not-started", dataPoints: 0, keyResults: [] },
 };
 
 const TestDataContext = createContext<TestDataContextType>({
   tests: defaultTests,
+  testDefinitions: [],
+  testDefinitionsLoading: true,
+  testDefinitionsError: null,
+  refreshTestDefinitions: async () => {},
   updateTest: () => {},
   projectMetadata: {},
   updateProjectMetadata: () => {},
@@ -200,69 +219,56 @@ export const useTestData = () => useContext(TestDataContext);
 
 export const TestDataProvider = ({ children }: { children: ReactNode }) => {
   const [tests, setTests] = useState<Record<string, TestSummary>>(defaultTests);
+  const [testDefinitions, setTestDefinitions] = useState<TestDefinition[]>([]);
+  const [testDefinitionsLoading, setTestDefinitionsLoading] = useState(true);
+  const [testDefinitionsError, setTestDefinitionsError] = useState<string | null>(null);
   const [projectMetadata, setProjectMetadata] = useState<ProjectMetadata>({});
   const [recordMetadata, setRecordMetadata] = useState<Record<string, RecordMetadata>>({});
   const [concreteTestMetadata, setConcreteTestMetadata] = useState<ConcreteTestMetadata | null>(null);
   const [currentProjectId, setCurrentProjectId] = useState<number | null>(null);
 
-  useEffect(() => {
-    const loadTestDefinitions = async () => {
-      try {
-        console.log("[TestData] Starting to load test definitions");
-        interface TestDefinitionRecord {
-          test_key: string;
-          name: string;
-          category: "soil" | "concrete" | "rock" | "special";
-          enabled: boolean | number;
-          sort_order: number;
+  const refreshTestDefinitions = useCallback(async () => {
+    setTestDefinitionsLoading(true);
+    setTestDefinitionsError(null);
+    try {
+      console.log("[TestData] Starting to load test definitions");
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("API request took too long")), 8000);
+      });
+      const response = await Promise.race([
+        listRecords<TestDefinition>("test_definitions", { limit: 1000 }),
+        timeoutPromise,
+      ]);
+      const definitions = Array.isArray(response?.data) ? response.data : [];
+      setTestDefinitions(definitions);
+
+      const loadedTests: Record<string, TestSummary> = { ...defaultTests };
+      for (const record of definitions) {
+        const testKey = record.test_key;
+        if (testKey && loadedTests[testKey]) {
+          loadedTests[testKey] = {
+            ...loadedTests[testKey],
+            name: record.name || loadedTests[testKey].name,
+            category: record.category || loadedTests[testKey].category,
+            enabled: record.enabled !== false && record.enabled !== 0,
+            sortOrder: record.sort_order || 0,
+          };
         }
-
-        // Set a short timeout to fail fast if API is not available
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => {
-            reject(new Error("API request took too long - using default tests"));
-          }, 8000); // 8 second timeout
-        });
-
-        const responsePromise = listRecords<TestDefinitionRecord>("test_definitions", { limit: 1000 });
-
-        try {
-          const response = await Promise.race([responsePromise, timeoutPromise]);
-
-          console.log("[TestData] Got response:", response);
-
-          if (response?.data && Array.isArray(response.data)) {
-            const loadedTests: Record<string, TestSummary> = { ...defaultTests };
-
-            for (const record of response.data) {
-              const testKey = record.test_key;
-              if (testKey && loadedTests[testKey]) {
-                loadedTests[testKey] = {
-                  ...loadedTests[testKey],
-                  name: record.name || loadedTests[testKey].name,
-                  category: record.category || loadedTests[testKey].category,
-                  enabled: record.enabled !== false && record.enabled !== 0,
-                  sortOrder: record.sort_order || 0,
-                };
-              }
-            }
-
-            setTests(loadedTests);
-            console.log("[TestData] Successfully loaded test definitions from API");
-          }
-        } catch (timeoutError) {
-          // Timeout or other error - just log and continue with defaults
-          console.warn("[TestData] API call timeout or error:", timeoutError instanceof Error ? timeoutError.message : "unknown error");
-        }
-      } catch (error) {
-        console.warn("[TestData] Failed to load test definitions from API:", error instanceof Error ? error.message : error);
-        // Continue with default tests - this is not critical
       }
-    };
-
-    // Load test definitions in background - don't block rendering
-    loadTestDefinitions();
+      setTests(loadedTests);
+      console.log("[TestData] Successfully loaded test definitions from API");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setTestDefinitionsError(message);
+      console.warn("[TestData] Failed to load test definitions from API:", message);
+    } finally {
+      setTestDefinitionsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void refreshTestDefinitions();
+  }, [refreshTestDefinitions]);
 
   const updateTest = useCallback((id: string, data: Partial<Omit<TestSummary, "id">>) => {
     setTests((prev) => ({
@@ -300,7 +306,7 @@ export const TestDataProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <TestDataContext.Provider
-      value={{ tests, updateTest, projectMetadata, updateProjectMetadata, recordMetadata, updateRecordMetadata, concreteTestMetadata, updateConcreteTestMetadata, resetProjectData, currentProjectId }}
+      value={{ tests, testDefinitions, testDefinitionsLoading, testDefinitionsError, refreshTestDefinitions, updateTest, projectMetadata, updateProjectMetadata, recordMetadata, updateRecordMetadata, concreteTestMetadata, updateConcreteTestMetadata, resetProjectData, currentProjectId }}
     >
       {children}
     </TestDataContext.Provider>
