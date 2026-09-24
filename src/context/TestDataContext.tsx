@@ -164,6 +164,7 @@ interface TestDataContextType {
   testDefinitions: TestDefinition[];
   testDefinitionsLoading: boolean;
   testDefinitionsError: string | null;
+  refreshTestDefinitions: () => Promise<void>;
   updateTest: (id: string, data: Partial<Omit<TestSummary, "id">>) => void;
   projectMetadata: ProjectMetadata;
   updateProjectMetadata: (data: Partial<ProjectMetadata>) => void;
@@ -185,7 +186,7 @@ const defaultTests: Record<string, TestSummary> = {
   slump: { id: "slump", name: "Slump Test", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [] },
   compressive: { id: "compressive", name: "Compressive Strength", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [] },
   upvt: { id: "upvt", name: "UPVT", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [] },
-  schmidt: { id: "schmidt", name: "Schmidt Hammer", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [] },
+  schmidt: { id: "schmidt", name: "NDT (Rebound Hammer)", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [] },
   coring: { id: "coring", name: "Coring", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [] },
   cubes: { id: "cubes", name: "Concrete Cubes", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [] },
   ucs: { id: "ucs", name: "UCS", category: "rock", status: "not-started", dataPoints: 0, keyResults: [] },
@@ -200,6 +201,7 @@ const TestDataContext = createContext<TestDataContextType>({
   testDefinitions: [],
   testDefinitionsLoading: true,
   testDefinitionsError: null,
+  refreshTestDefinitions: async () => {},
   updateTest: () => {},
   projectMetadata: {},
   updateProjectMetadata: () => {},
@@ -223,46 +225,48 @@ export const TestDataProvider = ({ children }: { children: ReactNode }) => {
   const [concreteTestMetadata, setConcreteTestMetadata] = useState<ConcreteTestMetadata | null>(null);
   const [currentProjectId, setCurrentProjectId] = useState<number | null>(null);
 
-  useEffect(() => {
-    const loadTestDefinitions = async () => {
-      try {
-        console.log("[TestData] Starting to load test definitions");
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error("API request took too long")), 8000);
-        });
-        const response = await Promise.race([
-          listRecords<TestDefinition>("test_definitions", { limit: 1000 }),
-          timeoutPromise,
-        ]);
-        const definitions = Array.isArray(response?.data) ? response.data : [];
-        setTestDefinitions(definitions);
+  const refreshTestDefinitions = useCallback(async () => {
+    setTestDefinitionsLoading(true);
+    setTestDefinitionsError(null);
+    try {
+      console.log("[TestData] Starting to load test definitions");
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("API request took too long")), 8000);
+      });
+      const response = await Promise.race([
+        listRecords<TestDefinition>("test_definitions", { limit: 1000 }),
+        timeoutPromise,
+      ]);
+      const definitions = Array.isArray(response?.data) ? response.data : [];
+      setTestDefinitions(definitions);
 
-        const loadedTests: Record<string, TestSummary> = { ...defaultTests };
-        for (const record of definitions) {
-          const testKey = record.test_key;
-          if (testKey && loadedTests[testKey]) {
-            loadedTests[testKey] = {
-              ...loadedTests[testKey],
-              name: record.name || loadedTests[testKey].name,
-              category: record.category || loadedTests[testKey].category,
-              enabled: record.enabled !== false && record.enabled !== 0,
-              sortOrder: record.sort_order || 0,
-            };
-          }
+      const loadedTests: Record<string, TestSummary> = { ...defaultTests };
+      for (const record of definitions) {
+        const testKey = record.test_key;
+        if (testKey && loadedTests[testKey]) {
+          loadedTests[testKey] = {
+            ...loadedTests[testKey],
+            name: record.name || loadedTests[testKey].name,
+            category: record.category || loadedTests[testKey].category,
+            enabled: record.enabled !== false && record.enabled !== 0,
+            sortOrder: record.sort_order || 0,
+          };
         }
-        setTests(loadedTests);
-        console.log("[TestData] Successfully loaded test definitions from API");
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        setTestDefinitionsError(message);
-        console.warn("[TestData] Failed to load test definitions from API:", message);
-      } finally {
-        setTestDefinitionsLoading(false);
       }
-    };
-
-    loadTestDefinitions();
+      setTests(loadedTests);
+      console.log("[TestData] Successfully loaded test definitions from API");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setTestDefinitionsError(message);
+      console.warn("[TestData] Failed to load test definitions from API:", message);
+    } finally {
+      setTestDefinitionsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void refreshTestDefinitions();
+  }, [refreshTestDefinitions]);
 
   const updateTest = useCallback((id: string, data: Partial<Omit<TestSummary, "id">>) => {
     setTests((prev) => ({
@@ -300,7 +304,7 @@ export const TestDataProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <TestDataContext.Provider
-      value={{ tests, testDefinitions, testDefinitionsLoading, testDefinitionsError, updateTest, projectMetadata, updateProjectMetadata, recordMetadata, updateRecordMetadata, concreteTestMetadata, updateConcreteTestMetadata, resetProjectData, currentProjectId }}
+      value={{ tests, testDefinitions, testDefinitionsLoading, testDefinitionsError, refreshTestDefinitions, updateTest, projectMetadata, updateProjectMetadata, recordMetadata, updateRecordMetadata, concreteTestMetadata, updateConcreteTestMetadata, resetProjectData, currentProjectId }}
     >
       {children}
     </TestDataContext.Provider>

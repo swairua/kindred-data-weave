@@ -172,6 +172,10 @@ const RecordTestWizard = () => {
   const projectIdFromParam = projectIdParam ? parseInt(projectIdParam, 10) : null;
   const testData = useTestData();
 
+  useEffect(() => {
+    void testData.refreshTestDefinitions();
+  }, [testData.refreshTestDefinitions]);
+
   const [authChecking, setAuthChecking] = useState(true);
 
   // Validate session against backend on mount. A local token is not enough —

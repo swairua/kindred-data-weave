@@ -14,7 +14,7 @@ INSERT INTO test_definitions (test_key, name, category, sort_order, enabled) VAL
 ('slump', 'Slump Test', 'concrete', 1, 1),
 ('compressive', 'Compressive Strength', 'concrete', 2, 1),
 ('upvt', 'UPVT', 'concrete', 3, 1),
-('schmidt', 'Schmidt Hammer', 'concrete', 4, 1),
+('schmidt', 'NDT (Rebound Hammer)', 'concrete', 4, 1),
 ('coring', 'Coring', 'concrete', 5, 1),
 ('cubes', 'Concrete Cubes', 'concrete', 6, 1),
 

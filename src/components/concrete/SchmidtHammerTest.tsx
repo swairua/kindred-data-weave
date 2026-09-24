@@ -66,7 +66,7 @@ const SchmidtHammerTest = () => {
       }
     }
 
-    generateTestPDF({ title: "Schmidt Hammer Test", ...project, tables: [tableData], chartImages });
+    generateTestPDF({ title: "NDT (Rebound Hammer)", ...project, tables: [tableData], chartImages });
   };
 
   const exportXLSX = async () => {
@@ -80,7 +80,7 @@ const SchmidtHammerTest = () => {
 
     generateTestExcel({
       data: {
-        title: "Schmidt Hammer Test",
+        title: "NDT (Rebound Hammer)",
         fields: [
           { label: "Avg Rebound", value: avgRebound || "—" },
           { label: "Est. Strength", value: avgRebound ? `${getEstStrength(avgRebound)} MPa` : "—" },
@@ -98,7 +98,7 @@ const SchmidtHammerTest = () => {
   };
 
   return (
-    <TestSection title="Schmidt Hammer (Rebound) Test" onSave={() => {}} onClear={() => setRows([{ location: "L1", r1: "", r2: "", r3: "", r4: "", r5: "" }])} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
+    <TestSection title="NDT (Rebound Hammer)" onSave={() => {}} onClear={() => setRows([{ location: "L1", r1: "", r2: "", r3: "", r4: "", r5: "" }])} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Location</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R1</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R2</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R3</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R4</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R5</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Avg R</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Est. MPa</th><th className="w-10"></th></tr></thead>
