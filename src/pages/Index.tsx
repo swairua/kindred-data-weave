@@ -128,8 +128,8 @@ const TestsViewContent = ({
 
     // Iterate through test data and build categories
     for (const [testKey, testSummary] of Object.entries(testData.tests)) {
-      // Skip disabled tests
-      if (testSummary.enabled === false) {
+      // Particle size distribution is available in the Soil section.
+      if (testSummary.enabled === false && testKey !== "grading") {
         continue;
       }
 

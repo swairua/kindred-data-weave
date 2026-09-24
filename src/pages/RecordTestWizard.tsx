@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import WizardStepper, { type WizardStep } from "@/components/WizardStepper";
 import FormCard from "@/components/wizard/FormCard";
@@ -106,8 +107,12 @@ interface WizardState {
   dateSubmitted: string;
   customFields: Array<{ name: string; value: string }>;
   sampleId: string;
+  sampleNo: string;
   sampleDepthFrom: string;
   sampleDepthTo: string;
+  sampledSubmittedBy: string;
+  sampleDateSubmitted: string;
+  sampleDateTested: string;
   sampleNotes: string;
   cement: string;
   fineAggregate: string;
@@ -135,8 +140,12 @@ const emptyState: WizardState = {
   dateSubmitted: new Date().toISOString().split("T")[0],
   customFields: [],
   sampleId: "",
+  sampleNo: "",
   sampleDepthFrom: "",
   sampleDepthTo: "",
+  sampledSubmittedBy: "Cransfield",
+  sampleDateSubmitted: "",
+  sampleDateTested: "",
   sampleNotes: "",
   cement: "",
   fineAggregate: "",
@@ -170,6 +179,7 @@ interface CompressiveTestRow {
 
 const getExpectedTestType = (material: Material | null, testKey: string | null): string | null => {
   if (material === "soil" && testKey === "atterberg") return "atterberg";
+  if (material === "soil" && testKey === "grading") return "grading";
   if (material === "concrete" && testKey === "compressive") return "compressive";
   return null;
 };
@@ -232,7 +242,8 @@ const RecordTestWizard = () => {
   const initialStep = initialMaterial && initialTest ? 2 : 0;
   const [step, setStep] = useState(initialStep);
   const [projects, setProjects] = useState<ApiProjectRow[]>([]);
-  const [creatingNewProject, setCreatingNewProject] = useState(false);
+  const [newProjectOpen, setNewProjectOpen] = useState(false);
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [projectsLoadError, setProjectsLoadError] = useState<string | null>(null);
   const [projectsReloadKey, setProjectsReloadKey] = useState(0);
@@ -270,6 +281,9 @@ const RecordTestWizard = () => {
           projectDate: fullProject.project_date || prev.projectDate,
           contractor: (fullProject as any).contractor || prev.contractor,
           county: (fullProject as any).county || prev.county,
+          submittedBy: fullProject.submitted_by || prev.submittedBy,
+          dateSubmitted: fullProject.date_submitted || prev.dateSubmitted,
+          customFields: Array.isArray(fullProject.custom_fields) ? fullProject.custom_fields : prev.customFields,
         }));
 
         // Update context with complete metadata
@@ -282,6 +296,9 @@ const RecordTestWizard = () => {
           checkedBy: fullProject.checked_by || "",
           contractor: (fullProject as any).contractor || "",
           county: (fullProject as any).county || "",
+          submittedBy: fullProject.submitted_by || "",
+          dateSubmitted: fullProject.date_submitted || "",
+          customFields: Array.isArray(fullProject.custom_fields) ? fullProject.custom_fields : [],
         });
 
         console.log(`[RecordTestWizard] ✓ Project preloaded from URL param`);
@@ -337,6 +354,7 @@ const RecordTestWizard = () => {
   );
 
   const isCompressiveStrengthTest = state.material === "concrete" && state.testKey === "compressive";
+  const isGradingTest = state.material === "soil" && state.testKey === "grading";
   const hasExistingCompressiveTests = isCompressiveStrengthTest && compressiveTests.length > 0;
   const steps = getSteps(state.material, state.testKey, hasExistingCompressiveTests, selectedExistingTestId);
 
@@ -354,28 +372,28 @@ const RecordTestWizard = () => {
         // If creating new test, can advance without contractor/county (they're in Project step)
         return true;
       case "project":
-        if (creatingNewProject) {
-          const hasProjectName = state.projectName.trim().length > 0;
-          if (isCompressiveStrengthTest) {
-            return hasProjectName && state.contractor.trim().length > 0 && state.county.trim().length > 0;
-          }
-          return hasProjectName;
-        } else {
-          if (isCompressiveStrengthTest) {
-            return state.projectId !== null && state.contractor.trim().length > 0 && state.county.trim().length > 0;
-          }
-          return state.projectId !== null;
+        if (isCompressiveStrengthTest || isGradingTest) {
+          return state.projectId !== null && state.contractor.trim().length > 0 && state.county.trim().length > 0;
         }
+        return state.projectId !== null;
       case "sample":
         if (state.material === "concrete") {
           return state.cement.trim().length > 0;
-        } else {
-          return state.sampleId.trim().length > 0 && state.sampleDepthFrom.trim().length > 0 && state.sampleDepthTo.trim().length > 0;
         }
+        if (isGradingTest) {
+          return state.sampleId.trim().length > 0
+            && state.sampleNo.trim().length > 0
+            && state.sampleDepthFrom.trim().length > 0
+            && state.sampleDepthTo.trim().length > 0
+            && state.sampledSubmittedBy.trim().length > 0
+            && state.sampleDateSubmitted.trim().length > 0
+            && state.sampleDateTested.trim().length > 0;
+        }
+        return state.sampleId.trim().length > 0 && state.sampleDepthFrom.trim().length > 0 && state.sampleDepthTo.trim().length > 0;
       case "entry": return true;
       default: return false;
     }
-  }, [step, steps, state, creatingNewProject, isCompressiveStrengthTest, selectedExistingTestId]);
+  }, [step, steps, state, isCompressiveStrengthTest, isGradingTest, selectedExistingTestId]);
 
   // Load projects when reaching project step (and after retry)
   useEffect(() => {
@@ -427,29 +445,121 @@ const RecordTestWizard = () => {
     navigate(-1);
   };
 
+  const resetNewProjectForm = () => {
+    setState((prev) => ({
+      ...prev,
+      projectId: null,
+      projectName: "",
+      clientName: "",
+      projectDate: "",
+      contractor: "",
+      county: "",
+      submittedBy: "",
+      dateSubmitted: "",
+      customFields: [],
+    }));
+  };
+
+  const openNewProjectDialog = () => {
+    resetNewProjectForm();
+    setNewProjectOpen(true);
+  };
+
+  const cancelNewProject = () => {
+    setNewProjectOpen(false);
+    resetNewProjectForm();
+  };
+
+  const handleCreateProject = async () => {
+    const hasRequiredFields = state.projectName.trim().length > 0
+      && state.clientName.trim().length > 0
+      && (!(isCompressiveStrengthTest || isGradingTest) || (state.contractor.trim().length > 0 && state.county.trim().length > 0));
+    if (!hasRequiredFields) return;
+
+    setIsCreatingProject(true);
+    try {
+      const projectPayload: Record<string, unknown> = {
+        name: state.projectName.trim(),
+        client_name: state.clientName.trim(),
+        project_date: state.projectDate || null,
+        test_type: getExpectedTestType(state.material, state.testKey),
+      };
+
+      if (isCompressiveStrengthTest || isGradingTest) {
+        projectPayload.contractor = state.contractor.trim();
+        projectPayload.county = state.county.trim();
+        projectPayload.submitted_by = state.submittedBy.trim();
+        projectPayload.date_submitted = state.dateSubmitted || null;
+        projectPayload.custom_fields = state.customFields
+          .filter((field) => field.name.trim() || field.value.trim())
+          .map((field) => ({ name: field.name.trim(), value: field.value.trim() }));
+      }
+
+      const response = await createRecord<{ id: number }>("projects", projectPayload);
+      const projectId = response.data?.id;
+      if (!projectId) throw new Error("Project creation returned no ID");
+
+      setState((prev) => ({
+        ...prev,
+        projectId,
+        projectName: state.projectName.trim(),
+        clientName: state.clientName.trim(),
+      }));
+      setProjects((prev) => [{
+        id: projectId,
+        name: state.projectName.trim(),
+        client_name: state.clientName.trim(),
+        project_date: state.projectDate || null,
+        test_type: getExpectedTestType(state.material, state.testKey),
+      }, ...prev.filter((project) => project.id !== projectId)]);
+      testData.updateProjectMetadata({
+        projectName: state.projectName.trim(),
+        clientName: state.clientName.trim(),
+        projectDate: state.projectDate,
+        currentProjectId: projectId,
+        contractor: state.contractor,
+        county: state.county,
+        submittedBy: state.submittedBy,
+        dateSubmitted: state.dateSubmitted,
+        customFields: state.customFields,
+      });
+      setNewProjectOpen(false);
+      if (isGradingTest) {
+        const sampleStepIndex = steps.findIndex((wizardStep) => wizardStep.id === "sample");
+        setStep(sampleStepIndex);
+      }
+      toast.success("Project created");
+    } catch (error) {
+      console.error("[RecordTestWizard] Failed to create project:", error);
+      toast.error("Failed to create project");
+    } finally {
+      setIsCreatingProject(false);
+    }
+  };
+
+  const canCreateProject = state.projectName.trim().length > 0
+    && state.clientName.trim().length > 0
+    && (!(isCompressiveStrengthTest || isGradingTest) || (state.contractor.trim().length > 0 && state.county.trim().length > 0));
+
   const handleFinish = async () => {
-    // If creating a new project (projectId is null), save it first for compressive strength tests
     let finalProjectId = state.projectId;
     if (isCompressiveStrengthTest && finalProjectId === null) {
       try {
-        const projectPayload: Record<string, unknown> = {
+        const createResponse = await createRecord<{ id: number }>("projects", {
           name: state.projectName,
           client_name: state.clientName,
           project_date: state.projectDate,
           contractor: state.contractor,
           county: state.county,
           test_type: getExpectedTestType(state.material, state.testKey),
-        };
-        const createResponse = await createRecord<{ id: number }>("projects", projectPayload);
+        });
         finalProjectId = createResponse.data?.id ?? null;
         if (!finalProjectId) {
           toast.error("Failed to create project");
           return;
         }
-        console.log(`[RecordTestWizard] Created new project with ID: ${finalProjectId}`);
       } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        console.error("[RecordTestWizard] Failed to create project:", errorMsg);
+        console.error("[RecordTestWizard] Failed to create project:", error);
         toast.error("Failed to create project");
         return;
       }
@@ -459,16 +569,14 @@ const RecordTestWizard = () => {
     const projectMetadata: any = {
       projectName: state.projectName,
       clientName: state.clientName,
+      projectDate: state.projectDate,
       currentProjectId: finalProjectId,
+      contractor: state.contractor,
+      county: state.county,
+      submittedBy: state.submittedBy,
+      dateSubmitted: state.dateSubmitted,
+      customFields: state.customFields,
     };
-
-    if (isCompressiveStrengthTest) {
-      projectMetadata.contractor = state.contractor;
-      projectMetadata.county = state.county;
-      projectMetadata.submittedBy = state.submittedBy;
-      projectMetadata.dateSubmitted = state.dateSubmitted;
-      projectMetadata.customFields = state.customFields;
-    }
 
     testData.updateProjectMetadata(projectMetadata);
 
@@ -496,11 +604,6 @@ const RecordTestWizard = () => {
 
     sessionStorage.removeItem(STORAGE_KEY);
     toast.success(`Started ${tests.find((t) => t.key === state.testKey)?.name ?? "test"} record`);
-    // If wizard was launched against an existing project (not creating a new one),
-    // signal the test screen to start a fresh record under that project.
-    // Always force a fresh record when an existing project is selected.
-    // (Creating a new project leaves projectId null until first save, so this
-    // condition cleanly distinguishes the two flows.)
     const fromExisting = finalProjectId !== null;
     const suffix = fromExisting ? `?newRecord=1&fromProject=${finalProjectId}` : "";
     navigate(`/tests${suffix}#${state.testKey}`);
@@ -583,23 +686,19 @@ const RecordTestWizard = () => {
     }, 0);
   };
 
-  // Pick existing project: use it as template to create a new project
-  // Set projectId to null to force new project creation with preloaded metadata
   const pickProject = (id: number) => {
     const p = projects.find((x) => x.id === id);
     if (!p) return;
 
     setState((prev) => ({
       ...prev,
-      projectId: null,
+      projectId: p.id,
       projectName: p.name,
       clientName: p.client_name || "",
       projectDate: p.project_date || prev.projectDate,
       contractor: "",
       county: "",
     }));
-
-    setCreatingNewProject(true);
 
     testData.updateProjectMetadata({
       projectName: p.name,
@@ -618,6 +717,9 @@ const RecordTestWizard = () => {
           projectDate: fullProject.project_date || prev.projectDate,
           contractor: (fullProject as any).contractor || prev.contractor,
           county: (fullProject as any).county || prev.county,
+          submittedBy: fullProject.submitted_by || prev.submittedBy,
+          dateSubmitted: fullProject.date_submitted || prev.dateSubmitted,
+          customFields: Array.isArray(fullProject.custom_fields) ? fullProject.custom_fields : prev.customFields,
         }));
         testData.updateProjectMetadata({
           projectName: fullProject.name,
@@ -628,6 +730,9 @@ const RecordTestWizard = () => {
           checkedBy: fullProject.checked_by || "",
           contractor: (fullProject as any).contractor || "",
           county: (fullProject as any).county || "",
+          submittedBy: fullProject.submitted_by || "",
+          dateSubmitted: fullProject.date_submitted || "",
+          customFields: Array.isArray(fullProject.custom_fields) ? fullProject.custom_fields : [],
         });
       } catch (error) {
         console.warn("[RecordTestWizard] Background project preload failed:", error);
@@ -734,64 +839,66 @@ const RecordTestWizard = () => {
 
               {step === 1 && (
                 <section className="space-y-6 animate-fade-in max-w-2xl">
-            <div>
-              <h2 className="text-2xl font-semibold tracking-tight">Choose the test</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Available tests for {MATERIAL_OPTIONS.find((m) => m.id === state.material)?.label}.
-              </p>
-            </div>
-            <FormCard>
-              {tests.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
-                    <Layers className="h-6 w-6 text-muted-foreground" />
+                  <div>
+                    <h2 className="text-2xl font-semibold tracking-tight">Choose the test</h2>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Available tests for {MATERIAL_OPTIONS.find((m) => m.id === state.material)?.label}.
+                    </p>
                   </div>
-                  <p className="text-lg font-medium text-foreground mb-1">
-                    Coming soon
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {MATERIAL_OPTIONS.find((m) => m.id === state.material)?.label} testing is not yet available.
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-3">
-                  {tests.map((t) => {
-                    const selected = state.testKey === t.key;
-                    const isDisabled = state.material === "rock" || state.material === "special" || (state.material === "concrete" && t.key !== "compressive") || (state.material === "soil" && t.key !== "atterberg");
-                    return (
-                      <button
-                        key={t.key}
-                        type="button"
-                        disabled={isDisabled}
-                        onClick={() => {
-                          update("testKey", t.key);
-                          setTimeout(() => setStep(step + 1), 0);
-                        }}
-                        className={cn(
-                          "text-left rounded-xl border-2 p-4 bg-card transition-all hover:border-primary/50",
-                          selected ? "border-primary ring-2 ring-primary/20" : "border-border",
-                          isDisabled && "opacity-50 cursor-not-allowed",
-                        )}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className={cn(
-                            "h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0",
-                            selected ? "bg-primary text-primary-foreground" : "bg-accent text-accent-foreground",
-                          )}>
-                            <FlaskConical className="h-4 w-4" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="text-sm font-semibold text-foreground">{t.name}</h3>
-                            <p className="text-xs text-muted-foreground mt-1 leading-snug">{t.description}</p>
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </FormCard>
-          </section>
+                  {tests.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-card py-12 text-center">
+                      <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
+                        <Layers className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                      <p className="text-lg font-medium text-foreground mb-1">
+                        Coming soon
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {MATERIAL_OPTIONS.find((m) => m.id === state.material)?.label} testing is not yet available.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {tests.map((t) => {
+                        const selected = state.testKey === t.key;
+                        const isDisabled = state.material === "rock" || state.material === "special" || (state.material === "concrete" && t.key !== "compressive") || (state.material === "soil" && t.key !== "atterberg" && t.key !== "grading");
+                        return (
+                          <button
+                            key={t.key}
+                            type="button"
+                            disabled={isDisabled}
+                            onClick={() => {
+                              update("testKey", t.key);
+                              setTimeout(() => setStep(step + 1), 0);
+                            }}
+                            className={cn(
+                              "group flex w-full items-center gap-3 rounded-xl border bg-card px-4 py-3 text-left transition-colors",
+                              "border-border hover:border-primary/50 hover:bg-accent/30",
+                              selected && "border-primary bg-primary/5",
+                              isDisabled && "cursor-not-allowed opacity-50 hover:border-border hover:bg-card",
+                            )}
+                          >
+                            <div className={cn(
+                              "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+                              selected ? "bg-primary text-primary-foreground" : "bg-accent text-accent-foreground",
+                            )}>
+                              <FlaskConical className="h-4 w-4" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h3 className="text-sm font-semibold text-foreground">{t.name}</h3>
+                              <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{t.description}</p>
+                            </div>
+                            <ArrowRight className={cn(
+                              "h-4 w-4 shrink-0 text-muted-foreground transition-colors",
+                              selected && "text-primary",
+                              !isDisabled && "group-hover:text-primary",
+                            )} />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
               )}
 
               {steps[step]?.id === "existing" && (
@@ -909,219 +1016,66 @@ const RecordTestWizard = () => {
             </div>
 
             <FormCard>
-              {creatingNewProject ? (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-sm">{state.projectId ? "Project details" : "New project details"}</h3>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setCreatingNewProject(false);
-                        setState((prev) => ({ ...prev, projectId: null, projectName: "", clientName: "", contractor: "", county: "", submittedBy: "", dateSubmitted: prev.dateSubmitted, customFields: [] }));
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="proj-name">Project name *</Label>
-                    <Input id="proj-name" value={state.projectName} onChange={(e) => update("projectName", e.target.value)} placeholder="e.g. Thika Road Bridge Foundation" />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="proj-client">Client name *</Label>
-                      <Input id="proj-client" value={state.clientName} onChange={(e) => update("clientName", e.target.value)} placeholder="e.g. Kenya National Highways Authority" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="proj-date">Project date</Label>
-                      <Input id="proj-date" type="date" value={state.projectDate} onChange={(e) => update("projectDate", e.target.value)} />
-                    </div>
-                  </div>
-
-                  {isCompressiveStrengthTest && !selectedExistingTestId && (
-                    <>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="space-y-2">
-                          <Label htmlFor="proj-contractor">Contractor *</Label>
-                          <Input id="proj-contractor" value={state.contractor} onChange={(e) => update("contractor", e.target.value)} placeholder="e.g. BuildWell Contractors Ltd" />
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Existing project</Label>
+                  <Select
+                    value={state.projectId ? String(state.projectId) : ""}
+                    onValueChange={(v) => pickProject(Number(v))}
+                    disabled={loadingProjects || !!projectsLoadError || projects.length === 0}
+                  >
+                    <SelectTrigger className="h-11">
+                      {loadingProjects ? (
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                          <span className="text-muted-foreground">Loading projects…</span>
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="proj-county">County *</Label>
-                          <Input id="proj-county" value={state.county} onChange={(e) => update("county", e.target.value)} placeholder="e.g. Nairobi" />
+                      ) : state.projectId ? (
+                        <div className="flex items-center gap-2">
+                          <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">{state.projectName}</span>
+                          <span className="text-xs text-muted-foreground">
+                            · {state.clientName || "No client"}{state.projectDate ? ` · ${state.projectDate}` : ""}
+                          </span>
                         </div>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="space-y-2">
-                          <Label htmlFor="proj-submitted-by">Submitted by</Label>
-                          <Input id="proj-submitted-by" value={state.submittedBy} onChange={(e) => update("submittedBy", e.target.value)} placeholder="Name of submitting engineer" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="proj-date-submitted">Date submitted</Label>
-                          <Input id="proj-date-submitted" type="date" value={state.dateSubmitted} onChange={(e) => update("dateSubmitted", e.target.value)} />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-sm font-medium">Custom fields (optional)</h4>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-auto px-2 py-1 text-xs"
-                            onClick={() => {
-                              setState((prev) => ({
-                                ...prev,
-                                customFields: [...prev.customFields, { name: "", value: "" }]
-                              }));
-                            }}
-                          >
-                            <Plus className="h-3 w-3 mr-1" /> Add custom field
-                          </Button>
-                        </div>
-                        {state.customFields.length > 0 && (
-                          <div className="space-y-2 pt-2">
-                            {state.customFields.map((field, idx) => (
-                              <div key={idx} className="flex flex-col sm:flex-row items-stretch sm:items-end gap-2">
-                                <div className="flex-1 space-y-1">
-                                  <Input
-                                    placeholder="Field name"
-                                    value={field.name}
-                                    onChange={(e) => {
-                                      setState((prev) => {
-                                        const updated = [...prev.customFields];
-                                        updated[idx].name = e.target.value;
-                                        return { ...prev, customFields: updated };
-                                      });
-                                    }}
-                                    className="text-xs h-9"
-                                  />
-                                </div>
-                                <div className="flex-1 space-y-1">
-                                  <Input
-                                    placeholder="Field value"
-                                    value={field.value}
-                                    onChange={(e) => {
-                                      setState((prev) => {
-                                        const updated = [...prev.customFields];
-                                        updated[idx].value = e.target.value;
-                                        return { ...prev, customFields: updated };
-                                      });
-                                    }}
-                                    className="text-xs h-9"
-                                  />
-                                </div>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-9 w-9 p-0 self-end sm:self-auto"
-                                  onClick={() => {
-                                    setState((prev) => ({
-                                      ...prev,
-                                      customFields: prev.customFields.filter((_, i) => i !== idx)
-                                    }));
-                                  }}
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Existing project</Label>
-                    <Select
-                      value={state.projectId ? String(state.projectId) : ""}
-                      onValueChange={(v) => pickProject(Number(v))}
-                      disabled={loadingProjects || !!projectsLoadError || projects.length === 0}
-                    >
-                      <SelectTrigger className="h-11">
-                        {loadingProjects ? (
-                          <div className="flex items-center gap-2">
-                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                            <span className="text-muted-foreground">Loading projects…</span>
-                          </div>
-                        ) : state.projectId ? (
+                      ) : (
+                        <SelectValue placeholder={projectsLoadError ? "Couldn't load projects" : projects.length === 0 ? "No saved projects yet" : "Select an existing project"} />
+                      )}
+                    </SelectTrigger>
+                    <SelectContent>
+                      {projects.map((p) => (
+                        <SelectItem key={p.id} value={String(p.id)}>
                           <div className="flex items-center gap-2">
                             <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium">{state.projectName}</span>
+                            <span className="font-medium">{p.name}</span>
                             <span className="text-xs text-muted-foreground">
-                              · {state.clientName || "No client"}{state.projectDate ? ` · ${state.projectDate}` : ""}
+                              · {p.client_name || "No client"}{p.project_date ? ` · ${p.project_date}` : ""}
                             </span>
                           </div>
-                        ) : (
-                          <SelectValue
-                            placeholder={
-                              projectsLoadError
-                                ? "Couldn't load projects"
-                                : projects.length === 0
-                                  ? "No saved projects yet"
-                                  : "Select an existing project"
-                            }
-                          />
-                        )}
-                      </SelectTrigger>
-                      <SelectContent>
-                        {projects.map((p) => (
-                          <SelectItem key={p.id} value={String(p.id)}>
-                            <div className="flex items-center gap-2">
-                              <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                              <span className="font-medium">{p.name}</span>
-                              <span className="text-xs text-muted-foreground">
-                                · {p.client_name || "No client"}{p.project_date ? ` · ${p.project_date}` : ""}
-                              </span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {projectsLoadError ? (
-                      <div className="flex items-center justify-between gap-3 text-xs">
-                        <span className="text-destructive">{projectsLoadError}</span>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setProjectsReloadKey((k) => k + 1)}
-                        >
-                          Retry
-                        </Button>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">
-                        Selecting an existing project opens it directly for editing.
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 h-px bg-border" />
-                    <span className="text-xs uppercase tracking-wider text-muted-foreground">or</span>
-                    <div className="flex-1 h-px bg-border" />
-                  </div>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full justify-start gap-2 h-11"
-                    onClick={() => {
-                      setCreatingNewProject(true);
-                      setState((p) => ({ ...p, projectId: null, projectName: "", clientName: "", contractor: "", county: "", submittedBy: "", dateSubmitted: p.dateSubmitted, customFields: [] }));
-                    }}
-                  >
-                    <Plus className="h-4 w-4" /> Create new project
-                  </Button>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {projectsLoadError ? (
+                    <div className="flex items-center justify-between gap-3 text-xs">
+                      <span className="text-destructive">{projectsLoadError}</span>
+                      <Button type="button" variant="outline" size="sm" onClick={() => setProjectsReloadKey((k) => k + 1)}>Retry</Button>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Selecting an existing project opens it directly for editing.</p>
+                  )}
                 </div>
-              )}
+
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-px bg-border" />
+                  <span className="text-xs uppercase tracking-wider text-muted-foreground">or</span>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
+
+                <Button type="button" variant="outline" className="w-full justify-start gap-2 h-11" onClick={openNewProjectDialog}>
+                  <Plus className="h-4 w-4" /> Create new project
+                </Button>
+              </div>
             </FormCard>
           </section>
               )}
@@ -1181,6 +1135,78 @@ const RecordTestWizard = () => {
                     <div>
                       <Label className="text-xs font-medium mb-1 block">Date Tested</Label>
                       <Input type="date" value={state.dateTested} onChange={(e) => update("dateTested", e.target.value)} className="h-10 text-sm" />
+                    </div>
+                  </div>
+                </FormCard>
+              </>
+            ) : isGradingTest ? (
+              <>
+                <div>
+                  <h2 className="text-2xl font-semibold tracking-tight">Particle size distribution — sample details</h2>
+                </div>
+                <FormCard>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="grading-sample-id">Sample ID *</Label>
+                      <Input
+                        id="grading-sample-id"
+                        value={state.sampleId}
+                        onChange={(e) => update("sampleId", e.target.value)}
+                        placeholder="e.g. BH04"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="grading-sample-no">Sample No. *</Label>
+                      <Input
+                        id="grading-sample-no"
+                        value={state.sampleNo}
+                        onChange={(e) => update("sampleNo", e.target.value)}
+                        placeholder="e.g. 1"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="grading-depth-from">Sample Depth From (m) *</Label>
+                      <Input
+                        id="grading-depth-from"
+                        value={state.sampleDepthFrom}
+                        onChange={(e) => update("sampleDepthFrom", e.target.value)}
+                        placeholder="e.g. 18.2"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="grading-depth-to">Sample Depth To (m) *</Label>
+                      <Input
+                        id="grading-depth-to"
+                        value={state.sampleDepthTo}
+                        onChange={(e) => update("sampleDepthTo", e.target.value)}
+                        placeholder="e.g. 20.0"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="grading-sampled-submitted-by">Sampled &amp; Submitted by *</Label>
+                      <Input
+                        id="grading-sampled-submitted-by"
+                        value={state.sampledSubmittedBy}
+                        onChange={(e) => update("sampledSubmittedBy", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="grading-date-submitted">Date Submitted *</Label>
+                      <Input
+                        id="grading-date-submitted"
+                        type="date"
+                        value={state.sampleDateSubmitted}
+                        onChange={(e) => update("sampleDateSubmitted", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label htmlFor="grading-date-tested">Date Tested *</Label>
+                      <Input
+                        id="grading-date-tested"
+                        type="date"
+                        value={state.sampleDateTested}
+                        onChange={(e) => update("sampleDateTested", e.target.value)}
+                      />
                     </div>
                   </div>
                 </FormCard>
@@ -1261,6 +1287,162 @@ const RecordTestWizard = () => {
             </div>
           </div>
         </main>
+
+        <Dialog
+          open={newProjectOpen}
+          onOpenChange={(open) => {
+            if (open) {
+              setNewProjectOpen(true);
+            } else if (!isCreatingProject) {
+              cancelNewProject();
+            }
+          }}
+        >
+          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[520px]">
+            <DialogHeader>
+              <DialogTitle>New project</DialogTitle>
+              <DialogDescription>Fill in the project details below.</DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label htmlFor="new-project-name">Project name *</Label>
+                <Input
+                  id="new-project-name"
+                  value={state.projectName}
+                  onChange={(e) => update("projectName", e.target.value)}
+                  placeholder="e.g. Thika Road Bridge Foundation"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="new-project-client">Client name *</Label>
+                <Input
+                  id="new-project-client"
+                  value={state.clientName}
+                  onChange={(e) => update("clientName", e.target.value)}
+                  placeholder="e.g. Kenya National Highways Authority"
+                />
+              </div>
+
+              {!isGradingTest && (
+                <div className="space-y-2">
+                  <Label htmlFor="new-project-date">Project date</Label>
+                  <Input
+                    id="new-project-date"
+                    type="date"
+                    value={state.projectDate}
+                    onChange={(e) => update("projectDate", e.target.value)}
+                  />
+                </div>
+              )}
+
+              {(isCompressiveStrengthTest || isGradingTest) && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="new-project-contractor">Contractor *</Label>
+                    <Input
+                      id="new-project-contractor"
+                      value={state.contractor}
+                      onChange={(e) => update("contractor", e.target.value)}
+                      placeholder="e.g. BuildWell Contractors Ltd"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="new-project-county">County *</Label>
+                    <Input
+                      id="new-project-county"
+                      value={state.county}
+                      onChange={(e) => update("county", e.target.value)}
+                      placeholder="e.g. Nairobi"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="new-project-submitted-by">Submitted by</Label>
+                    <Input
+                      id="new-project-submitted-by"
+                      value={state.submittedBy}
+                      onChange={(e) => update("submittedBy", e.target.value)}
+                      placeholder="Name of submitting engineer"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="new-project-date-submitted">Date submitted</Label>
+                    <Input
+                      id="new-project-date-submitted"
+                      type="date"
+                      value={state.dateSubmitted}
+                      onChange={(e) => update("dateSubmitted", e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label>Custom fields (optional)</Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setState((prev) => ({
+                          ...prev,
+                          customFields: [...prev.customFields, { name: "", value: "" }],
+                        }))}
+                      >
+                        <Plus className="mr-1 h-3 w-3" /> Add custom field
+                      </Button>
+                    </div>
+                    {state.customFields.map((field, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <Input
+                          aria-label={`Custom field ${index + 1} name`}
+                          placeholder="Field name"
+                          value={field.name}
+                          onChange={(e) => setState((prev) => ({
+                            ...prev,
+                            customFields: prev.customFields.map((item, itemIndex) => itemIndex === index ? { ...item, name: e.target.value } : item),
+                          }))}
+                        />
+                        <Input
+                          aria-label={`Custom field ${index + 1} value`}
+                          placeholder="Field value"
+                          value={field.value}
+                          onChange={(e) => setState((prev) => ({
+                            ...prev,
+                            customFields: prev.customFields.map((item, itemIndex) => itemIndex === index ? { ...item, value: e.target.value } : item),
+                          }))}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Remove custom field ${index + 1}`}
+                          onClick={() => setState((prev) => ({
+                            ...prev,
+                            customFields: prev.customFields.filter((_, itemIndex) => itemIndex !== index),
+                          }))}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={cancelNewProject} disabled={isCreatingProject}>
+                Cancel
+              </Button>
+              <Button type="button" onClick={handleCreateProject} disabled={!canCreateProject || isCreatingProject}>
+                {isCreatingProject ? "Creating…" : "Create project"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Footer */}
         <footer className="border-t border-border bg-card">
