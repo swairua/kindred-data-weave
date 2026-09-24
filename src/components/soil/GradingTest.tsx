@@ -244,13 +244,16 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
   const testData = useTestData();
   const navigate = useNavigate();
   const location = useLocation();
-  const isNewRecord = new URLSearchParams(location.search).get("newRecord") === "1";
+  const searchParams = new URLSearchParams(location.search);
+  const isNewRecord = searchParams.get("newRecord") === "1";
+  const sourceProjectIdValue = Number.parseInt(searchParams.get("sourceProjectId") || "", 10);
+  const sourceProjectId = Number.isInteger(sourceProjectIdValue) && sourceProjectIdValue > 0 ? sourceProjectIdValue : null;
   const projectId = project.currentProjectId ?? null;
   const metadata = useMemo(() => testData.recordMetadata.grading || {}, [testData.recordMetadata.grading]);
   const metadataKey = JSON.stringify(metadata);
   const [record, setRecord] = useState<GradingRecord>(() => emptyRecord(metadata));
   const [recordId, setRecordId] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState(Boolean(projectId) && !isNewRecord);
+  const [isLoading, setIsLoading] = useState(Boolean(projectId) && (!isNewRecord || sourceProjectId !== null));
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -293,12 +296,15 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       setIsLoading(false);
       return;
     }
-    if (isNewRecord) {
+    if (isNewRecord && sourceProjectId === null) {
       setRecord(emptyRecord(metadata));
       setRecordId(null);
       setIsLoading(false);
       return;
     }
+
+    const loadProjectId = isNewRecord ? sourceProjectId : projectId;
+    if (loadProjectId === null) return;
 
     let active = true;
     setIsLoading(true);
@@ -306,9 +312,20 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
     listRecords<ApiTestResultRow>("test_results", { limit: 5000, orderBy: "updated_at", direction: "DESC" })
       .then((response) => {
         if (!active) return;
-        const result = (response.data || []).find((row) => Number(row.project_id) === projectId && row.test_key === "grading" && row.payload_json);
-        setRecordId(result?.id ?? null);
-        setRecord(getPayloadRecord(result?.payload_json, metadata));
+        const result = (response.data || []).find((row) => Number(row.project_id) === loadProjectId && row.test_key === "grading" && row.payload_json);
+        const loadedRecord = getPayloadRecord(result?.payload_json, metadata);
+        setRecordId(isNewRecord ? null : result?.id ?? null);
+        setRecord(isNewRecord ? {
+          ...loadedRecord,
+          label: metadata.sampleId || loadedRecord.label,
+          sampleNumber: metadata.sampleNumber || loadedRecord.sampleNumber,
+          sampleDepthFrom: metadata.sampleDepthFrom || loadedRecord.sampleDepthFrom,
+          sampleDepthTo: metadata.sampleDepthTo || loadedRecord.sampleDepthTo,
+          sampledSubmittedBy: metadata.sampledSubmittedBy || loadedRecord.sampledSubmittedBy,
+          dateSubmitted: metadata.dateSubmitted || loadedRecord.dateSubmitted,
+          dateTested: metadata.dateTested || loadedRecord.dateTested,
+          sampleNotes: metadata.sampleNotes || loadedRecord.sampleNotes,
+        } : loadedRecord);
       })
       .catch((loadError) => {
         if (!active) return;
@@ -316,7 +333,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       })
       .finally(() => active && setIsLoading(false));
     return () => { active = false; };
-  }, [projectId, isNewRecord, metadataKey, metadata]);
+  }, [projectId, isNewRecord, sourceProjectId, metadataKey, metadata]);
 
   const updateRecordField = <K extends keyof GradingRecord>(field: K, value: GradingRecord[K]) => {
     setRecord((current) => ({ ...current, [field]: value }));
@@ -386,6 +403,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       if (isNewRecord) {
         const params = new URLSearchParams(location.search);
         params.delete("newRecord");
+        params.delete("sourceProjectId");
         navigate({
           pathname: location.pathname,
           search: params.toString() ? `?${params.toString()}` : "",
