@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import WizardStepper, { type WizardStep } from "@/components/WizardStepper";
 import FormCard from "@/components/wizard/FormCard";
@@ -232,7 +233,8 @@ const RecordTestWizard = () => {
   const initialStep = initialMaterial && initialTest ? 2 : 0;
   const [step, setStep] = useState(initialStep);
   const [projects, setProjects] = useState<ApiProjectRow[]>([]);
-  const [creatingNewProject, setCreatingNewProject] = useState(false);
+  const [newProjectOpen, setNewProjectOpen] = useState(false);
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [projectsLoadError, setProjectsLoadError] = useState<string | null>(null);
   const [projectsReloadKey, setProjectsReloadKey] = useState(0);
@@ -354,18 +356,10 @@ const RecordTestWizard = () => {
         // If creating new test, can advance without contractor/county (they're in Project step)
         return true;
       case "project":
-        if (creatingNewProject) {
-          const hasProjectName = state.projectName.trim().length > 0;
-          if (isCompressiveStrengthTest) {
-            return hasProjectName && state.contractor.trim().length > 0 && state.county.trim().length > 0;
-          }
-          return hasProjectName;
-        } else {
-          if (isCompressiveStrengthTest) {
-            return state.projectId !== null && state.contractor.trim().length > 0 && state.county.trim().length > 0;
-          }
-          return state.projectId !== null;
+        if (isCompressiveStrengthTest) {
+          return state.projectId !== null && state.contractor.trim().length > 0 && state.county.trim().length > 0;
         }
+        return state.projectId !== null;
       case "sample":
         if (state.material === "concrete") {
           return state.cement.trim().length > 0;
@@ -375,7 +369,7 @@ const RecordTestWizard = () => {
       case "entry": return true;
       default: return false;
     }
-  }, [step, steps, state, creatingNewProject, isCompressiveStrengthTest, selectedExistingTestId]);
+  }, [step, steps, state, isCompressiveStrengthTest, selectedExistingTestId]);
 
   // Load projects when reaching project step (and after retry)
   useEffect(() => {
@@ -427,29 +421,115 @@ const RecordTestWizard = () => {
     navigate(-1);
   };
 
+  const resetNewProjectForm = () => {
+    setState((prev) => ({
+      ...prev,
+      projectId: null,
+      projectName: "",
+      clientName: "",
+      projectDate: "",
+      contractor: "",
+      county: "",
+      submittedBy: "",
+      dateSubmitted: "",
+      customFields: [],
+    }));
+  };
+
+  const openNewProjectDialog = () => {
+    resetNewProjectForm();
+    setNewProjectOpen(true);
+  };
+
+  const cancelNewProject = () => {
+    setNewProjectOpen(false);
+    resetNewProjectForm();
+  };
+
+  const handleCreateProject = async () => {
+    const hasRequiredFields = state.projectName.trim().length > 0
+      && state.clientName.trim().length > 0
+      && (!isCompressiveStrengthTest || (state.contractor.trim().length > 0 && state.county.trim().length > 0));
+    if (!hasRequiredFields) return;
+
+    setIsCreatingProject(true);
+    try {
+      const projectPayload: Record<string, unknown> = {
+        name: state.projectName.trim(),
+        client_name: state.clientName.trim(),
+        project_date: state.projectDate || null,
+        test_type: getExpectedTestType(state.material, state.testKey),
+      };
+
+      if (isCompressiveStrengthTest) {
+        projectPayload.contractor = state.contractor.trim();
+        projectPayload.county = state.county.trim();
+        projectPayload.submitted_by = state.submittedBy.trim();
+        projectPayload.date_submitted = state.dateSubmitted || null;
+        projectPayload.custom_fields = state.customFields.filter((field) => field.name.trim() || field.value.trim());
+      }
+
+      const response = await createRecord<{ id: number }>("projects", projectPayload);
+      const projectId = response.data?.id;
+      if (!projectId) throw new Error("Project creation returned no ID");
+
+      setState((prev) => ({
+        ...prev,
+        projectId,
+        projectName: state.projectName.trim(),
+        clientName: state.clientName.trim(),
+      }));
+      setProjects((prev) => [{
+        id: projectId,
+        name: state.projectName.trim(),
+        client_name: state.clientName.trim(),
+        project_date: state.projectDate || null,
+        test_type: getExpectedTestType(state.material, state.testKey),
+      }, ...prev.filter((project) => project.id !== projectId)]);
+      testData.updateProjectMetadata({
+        projectName: state.projectName.trim(),
+        clientName: state.clientName.trim(),
+        projectDate: state.projectDate,
+        currentProjectId: projectId,
+        contractor: state.contractor,
+        county: state.county,
+        submittedBy: state.submittedBy,
+        dateSubmitted: state.dateSubmitted,
+        customFields: state.customFields,
+      });
+      setNewProjectOpen(false);
+      toast.success("Project created");
+    } catch (error) {
+      console.error("[RecordTestWizard] Failed to create project:", error);
+      toast.error("Failed to create project");
+    } finally {
+      setIsCreatingProject(false);
+    }
+  };
+
+  const canCreateProject = state.projectName.trim().length > 0
+    && state.clientName.trim().length > 0
+    && (!isCompressiveStrengthTest || (state.contractor.trim().length > 0 && state.county.trim().length > 0));
+
   const handleFinish = async () => {
-    // If creating a new project (projectId is null), save it first for compressive strength tests
     let finalProjectId = state.projectId;
     if (isCompressiveStrengthTest && finalProjectId === null) {
       try {
-        const projectPayload: Record<string, unknown> = {
+        const createResponse = await createRecord<{ id: number }>("projects", {
           name: state.projectName,
           client_name: state.clientName,
           project_date: state.projectDate,
           contractor: state.contractor,
           county: state.county,
           test_type: getExpectedTestType(state.material, state.testKey),
-        };
-        const createResponse = await createRecord<{ id: number }>("projects", projectPayload);
+        });
         finalProjectId = createResponse.data?.id ?? null;
         if (!finalProjectId) {
           toast.error("Failed to create project");
           return;
         }
-        console.log(`[RecordTestWizard] Created new project with ID: ${finalProjectId}`);
       } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        console.error("[RecordTestWizard] Failed to create project:", errorMsg);
+        console.error("[RecordTestWizard] Failed to create project:", error);
         toast.error("Failed to create project");
         return;
       }
@@ -459,16 +539,14 @@ const RecordTestWizard = () => {
     const projectMetadata: any = {
       projectName: state.projectName,
       clientName: state.clientName,
+      projectDate: state.projectDate,
       currentProjectId: finalProjectId,
+      contractor: state.contractor,
+      county: state.county,
+      submittedBy: state.submittedBy,
+      dateSubmitted: state.dateSubmitted,
+      customFields: state.customFields,
     };
-
-    if (isCompressiveStrengthTest) {
-      projectMetadata.contractor = state.contractor;
-      projectMetadata.county = state.county;
-      projectMetadata.submittedBy = state.submittedBy;
-      projectMetadata.dateSubmitted = state.dateSubmitted;
-      projectMetadata.customFields = state.customFields;
-    }
 
     testData.updateProjectMetadata(projectMetadata);
 
@@ -496,11 +574,6 @@ const RecordTestWizard = () => {
 
     sessionStorage.removeItem(STORAGE_KEY);
     toast.success(`Started ${tests.find((t) => t.key === state.testKey)?.name ?? "test"} record`);
-    // If wizard was launched against an existing project (not creating a new one),
-    // signal the test screen to start a fresh record under that project.
-    // Always force a fresh record when an existing project is selected.
-    // (Creating a new project leaves projectId null until first save, so this
-    // condition cleanly distinguishes the two flows.)
     const fromExisting = finalProjectId !== null;
     const suffix = fromExisting ? `?newRecord=1&fromProject=${finalProjectId}` : "";
     navigate(`/tests${suffix}#${state.testKey}`);
@@ -583,23 +656,19 @@ const RecordTestWizard = () => {
     }, 0);
   };
 
-  // Pick existing project: use it as template to create a new project
-  // Set projectId to null to force new project creation with preloaded metadata
   const pickProject = (id: number) => {
     const p = projects.find((x) => x.id === id);
     if (!p) return;
 
     setState((prev) => ({
       ...prev,
-      projectId: null,
+      projectId: p.id,
       projectName: p.name,
       clientName: p.client_name || "",
       projectDate: p.project_date || prev.projectDate,
       contractor: "",
       county: "",
     }));
-
-    setCreatingNewProject(true);
 
     testData.updateProjectMetadata({
       projectName: p.name,
@@ -911,219 +980,66 @@ const RecordTestWizard = () => {
             </div>
 
             <FormCard>
-              {creatingNewProject ? (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-sm">{state.projectId ? "Project details" : "New project details"}</h3>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setCreatingNewProject(false);
-                        setState((prev) => ({ ...prev, projectId: null, projectName: "", clientName: "", contractor: "", county: "", submittedBy: "", dateSubmitted: prev.dateSubmitted, customFields: [] }));
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="proj-name">Project name *</Label>
-                    <Input id="proj-name" value={state.projectName} onChange={(e) => update("projectName", e.target.value)} placeholder="e.g. Thika Road Bridge Foundation" />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="proj-client">Client name *</Label>
-                      <Input id="proj-client" value={state.clientName} onChange={(e) => update("clientName", e.target.value)} placeholder="e.g. Kenya National Highways Authority" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="proj-date">Project date</Label>
-                      <Input id="proj-date" type="date" value={state.projectDate} onChange={(e) => update("projectDate", e.target.value)} />
-                    </div>
-                  </div>
-
-                  {isCompressiveStrengthTest && !selectedExistingTestId && (
-                    <>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="space-y-2">
-                          <Label htmlFor="proj-contractor">Contractor *</Label>
-                          <Input id="proj-contractor" value={state.contractor} onChange={(e) => update("contractor", e.target.value)} placeholder="e.g. BuildWell Contractors Ltd" />
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Existing project</Label>
+                  <Select
+                    value={state.projectId ? String(state.projectId) : ""}
+                    onValueChange={(v) => pickProject(Number(v))}
+                    disabled={loadingProjects || !!projectsLoadError || projects.length === 0}
+                  >
+                    <SelectTrigger className="h-11">
+                      {loadingProjects ? (
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                          <span className="text-muted-foreground">Loading projects…</span>
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="proj-county">County *</Label>
-                          <Input id="proj-county" value={state.county} onChange={(e) => update("county", e.target.value)} placeholder="e.g. Nairobi" />
+                      ) : state.projectId ? (
+                        <div className="flex items-center gap-2">
+                          <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">{state.projectName}</span>
+                          <span className="text-xs text-muted-foreground">
+                            · {state.clientName || "No client"}{state.projectDate ? ` · ${state.projectDate}` : ""}
+                          </span>
                         </div>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="space-y-2">
-                          <Label htmlFor="proj-submitted-by">Submitted by</Label>
-                          <Input id="proj-submitted-by" value={state.submittedBy} onChange={(e) => update("submittedBy", e.target.value)} placeholder="Name of submitting engineer" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="proj-date-submitted">Date submitted</Label>
-                          <Input id="proj-date-submitted" type="date" value={state.dateSubmitted} onChange={(e) => update("dateSubmitted", e.target.value)} />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-sm font-medium">Custom fields (optional)</h4>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-auto px-2 py-1 text-xs"
-                            onClick={() => {
-                              setState((prev) => ({
-                                ...prev,
-                                customFields: [...prev.customFields, { name: "", value: "" }]
-                              }));
-                            }}
-                          >
-                            <Plus className="h-3 w-3 mr-1" /> Add custom field
-                          </Button>
-                        </div>
-                        {state.customFields.length > 0 && (
-                          <div className="space-y-2 pt-2">
-                            {state.customFields.map((field, idx) => (
-                              <div key={idx} className="flex flex-col sm:flex-row items-stretch sm:items-end gap-2">
-                                <div className="flex-1 space-y-1">
-                                  <Input
-                                    placeholder="Field name"
-                                    value={field.name}
-                                    onChange={(e) => {
-                                      setState((prev) => {
-                                        const updated = [...prev.customFields];
-                                        updated[idx].name = e.target.value;
-                                        return { ...prev, customFields: updated };
-                                      });
-                                    }}
-                                    className="text-xs h-9"
-                                  />
-                                </div>
-                                <div className="flex-1 space-y-1">
-                                  <Input
-                                    placeholder="Field value"
-                                    value={field.value}
-                                    onChange={(e) => {
-                                      setState((prev) => {
-                                        const updated = [...prev.customFields];
-                                        updated[idx].value = e.target.value;
-                                        return { ...prev, customFields: updated };
-                                      });
-                                    }}
-                                    className="text-xs h-9"
-                                  />
-                                </div>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-9 w-9 p-0 self-end sm:self-auto"
-                                  onClick={() => {
-                                    setState((prev) => ({
-                                      ...prev,
-                                      customFields: prev.customFields.filter((_, i) => i !== idx)
-                                    }));
-                                  }}
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Existing project</Label>
-                    <Select
-                      value={state.projectId ? String(state.projectId) : ""}
-                      onValueChange={(v) => pickProject(Number(v))}
-                      disabled={loadingProjects || !!projectsLoadError || projects.length === 0}
-                    >
-                      <SelectTrigger className="h-11">
-                        {loadingProjects ? (
-                          <div className="flex items-center gap-2">
-                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                            <span className="text-muted-foreground">Loading projects…</span>
-                          </div>
-                        ) : state.projectId ? (
+                      ) : (
+                        <SelectValue placeholder={projectsLoadError ? "Couldn't load projects" : projects.length === 0 ? "No saved projects yet" : "Select an existing project"} />
+                      )}
+                    </SelectTrigger>
+                    <SelectContent>
+                      {projects.map((p) => (
+                        <SelectItem key={p.id} value={String(p.id)}>
                           <div className="flex items-center gap-2">
                             <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium">{state.projectName}</span>
+                            <span className="font-medium">{p.name}</span>
                             <span className="text-xs text-muted-foreground">
-                              · {state.clientName || "No client"}{state.projectDate ? ` · ${state.projectDate}` : ""}
+                              · {p.client_name || "No client"}{p.project_date ? ` · ${p.project_date}` : ""}
                             </span>
                           </div>
-                        ) : (
-                          <SelectValue
-                            placeholder={
-                              projectsLoadError
-                                ? "Couldn't load projects"
-                                : projects.length === 0
-                                  ? "No saved projects yet"
-                                  : "Select an existing project"
-                            }
-                          />
-                        )}
-                      </SelectTrigger>
-                      <SelectContent>
-                        {projects.map((p) => (
-                          <SelectItem key={p.id} value={String(p.id)}>
-                            <div className="flex items-center gap-2">
-                              <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                              <span className="font-medium">{p.name}</span>
-                              <span className="text-xs text-muted-foreground">
-                                · {p.client_name || "No client"}{p.project_date ? ` · ${p.project_date}` : ""}
-                              </span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {projectsLoadError ? (
-                      <div className="flex items-center justify-between gap-3 text-xs">
-                        <span className="text-destructive">{projectsLoadError}</span>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setProjectsReloadKey((k) => k + 1)}
-                        >
-                          Retry
-                        </Button>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">
-                        Selecting an existing project opens it directly for editing.
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 h-px bg-border" />
-                    <span className="text-xs uppercase tracking-wider text-muted-foreground">or</span>
-                    <div className="flex-1 h-px bg-border" />
-                  </div>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full justify-start gap-2 h-11"
-                    onClick={() => {
-                      setCreatingNewProject(true);
-                      setState((p) => ({ ...p, projectId: null, projectName: "", clientName: "", contractor: "", county: "", submittedBy: "", dateSubmitted: p.dateSubmitted, customFields: [] }));
-                    }}
-                  >
-                    <Plus className="h-4 w-4" /> Create new project
-                  </Button>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {projectsLoadError ? (
+                    <div className="flex items-center justify-between gap-3 text-xs">
+                      <span className="text-destructive">{projectsLoadError}</span>
+                      <Button type="button" variant="outline" size="sm" onClick={() => setProjectsReloadKey((k) => k + 1)}>Retry</Button>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Selecting an existing project opens it directly for editing.</p>
+                  )}
                 </div>
-              )}
+
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-px bg-border" />
+                  <span className="text-xs uppercase tracking-wider text-muted-foreground">or</span>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
+
+                <Button type="button" variant="outline" className="w-full justify-start gap-2 h-11" onClick={openNewProjectDialog}>
+                  <Plus className="h-4 w-4" /> Create new project
+                </Button>
+              </div>
             </FormCard>
           </section>
               )}
@@ -1263,6 +1179,160 @@ const RecordTestWizard = () => {
             </div>
           </div>
         </main>
+
+        <Dialog
+          open={newProjectOpen}
+          onOpenChange={(open) => {
+            if (open) {
+              setNewProjectOpen(true);
+            } else if (!isCreatingProject) {
+              cancelNewProject();
+            }
+          }}
+        >
+          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[520px]">
+            <DialogHeader>
+              <DialogTitle>New project</DialogTitle>
+              <DialogDescription>Fill in the project details below.</DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label htmlFor="new-project-name">Project name *</Label>
+                <Input
+                  id="new-project-name"
+                  value={state.projectName}
+                  onChange={(e) => update("projectName", e.target.value)}
+                  placeholder="e.g. Thika Road Bridge Foundation"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="new-project-client">Client name *</Label>
+                <Input
+                  id="new-project-client"
+                  value={state.clientName}
+                  onChange={(e) => update("clientName", e.target.value)}
+                  placeholder="e.g. Kenya National Highways Authority"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="new-project-date">Project date</Label>
+                <Input
+                  id="new-project-date"
+                  type="date"
+                  value={state.projectDate}
+                  onChange={(e) => update("projectDate", e.target.value)}
+                />
+              </div>
+
+              {isCompressiveStrengthTest && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="new-project-contractor">Contractor *</Label>
+                    <Input
+                      id="new-project-contractor"
+                      value={state.contractor}
+                      onChange={(e) => update("contractor", e.target.value)}
+                      placeholder="e.g. BuildWell Contractors Ltd"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="new-project-county">County *</Label>
+                    <Input
+                      id="new-project-county"
+                      value={state.county}
+                      onChange={(e) => update("county", e.target.value)}
+                      placeholder="e.g. Nairobi"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="new-project-submitted-by">Submitted by</Label>
+                    <Input
+                      id="new-project-submitted-by"
+                      value={state.submittedBy}
+                      onChange={(e) => update("submittedBy", e.target.value)}
+                      placeholder="Name of submitting engineer"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="new-project-date-submitted">Date submitted</Label>
+                    <Input
+                      id="new-project-date-submitted"
+                      type="date"
+                      value={state.dateSubmitted}
+                      onChange={(e) => update("dateSubmitted", e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label>Custom fields (optional)</Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setState((prev) => ({
+                          ...prev,
+                          customFields: [...prev.customFields, { name: "", value: "" }],
+                        }))}
+                      >
+                        <Plus className="mr-1 h-3 w-3" /> Add custom field
+                      </Button>
+                    </div>
+                    {state.customFields.map((field, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <Input
+                          aria-label={`Custom field ${index + 1} name`}
+                          placeholder="Field name"
+                          value={field.name}
+                          onChange={(e) => setState((prev) => ({
+                            ...prev,
+                            customFields: prev.customFields.map((item, itemIndex) => itemIndex === index ? { ...item, name: e.target.value } : item),
+                          }))}
+                        />
+                        <Input
+                          aria-label={`Custom field ${index + 1} value`}
+                          placeholder="Field value"
+                          value={field.value}
+                          onChange={(e) => setState((prev) => ({
+                            ...prev,
+                            customFields: prev.customFields.map((item, itemIndex) => itemIndex === index ? { ...item, value: e.target.value } : item),
+                          }))}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Remove custom field ${index + 1}`}
+                          onClick={() => setState((prev) => ({
+                            ...prev,
+                            customFields: prev.customFields.filter((_, itemIndex) => itemIndex !== index),
+                          }))}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={cancelNewProject} disabled={isCreatingProject}>
+                Cancel
+              </Button>
+              <Button type="button" onClick={handleCreateProject} disabled={!canCreateProject || isCreatingProject}>
+                {isCreatingProject ? "Creating…" : "Create project"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Footer */}
         <footer className="border-t border-border bg-card">
