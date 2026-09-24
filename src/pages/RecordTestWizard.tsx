@@ -961,7 +961,7 @@ const RecordTestWizard = () => {
                             </div>
                             <div className="min-w-0 flex-1">
                               <h3 className="text-sm font-semibold text-foreground">{t.name}</h3>
-                              {!t.isRegistered && <p className="mt-0.5 text-xs leading-snug text-muted-foreground">Test component unavailable</p>}
+                              {!t.isRegistered && <p className="mt-0.5 text-xs leading-snug text-muted-foreground">Recording form not available yet</p>}
                             </div>
                             <ArrowRight className={cn(
                               "h-4 w-4 shrink-0 text-muted-foreground transition-colors",

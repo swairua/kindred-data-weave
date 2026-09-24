@@ -16,8 +16,10 @@ import { captureChartAsBase64 } from "@/lib/chartCapture";
 
 interface Row { location: string; r1: string; r2: string; r3: string; r4: string; r5: string }
 
-const SchmidtHammerTest = () => {
+const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
   const project = useProject();
+  const testName = testKey === "schmidt_rock" ? "Schmidt Hammer" : "NDT (Rebound Hammer)";
+  const chartId = testKey === "schmidt_rock" ? "schmidt-rock-chart" : "schmidt-chart";
   const [rows, setRows] = useState<Row[]>([
     { location: "L1", r1: "", r2: "", r3: "", r4: "", r5: "" },
     { location: "L2", r1: "", r2: "", r3: "", r4: "", r5: "" },
@@ -53,26 +55,26 @@ const SchmidtHammerTest = () => {
     { label: "Avg Rebound", value: avgRebound || "" },
     { label: "Est. Strength", value: avgRebound ? `${getEstStrength(avgRebound)} MPa` : "" },
   ], [avgRebound]);
-  useTestReport("schmidt", rebounds.length, results);
+  useTestReport(testKey, rebounds.length, results);
 
   const tableData = { headers: ["Location", "R1", "R2", "R3", "R4", "R5", "Avg Rebound", "Est. Strength (MPa)"], rows: rows.map(r => { const avg = getAvgRebound(r); return [r.location, r.r1 || "—", r.r2 || "—", r.r3 || "—", r.r4 || "—", r.r5 || "—", avg || "—", avg ? getEstStrength(avg) : "—"]; }) };
 
   const exportPDF = async () => {
     let chartImages = {};
     if (chartData.length >= 1) {
-      const chartBase64 = await captureChartAsBase64("schmidt-chart");
+      const chartBase64 = await captureChartAsBase64(chartId);
       if (chartBase64) {
         chartImages = { "Rebound & Estimated Strength": chartBase64 };
       }
     }
 
-    generateTestPDF({ title: "NDT (Rebound Hammer)", ...project, tables: [tableData], chartImages });
+    generateTestPDF({ title: testName, ...project, tables: [tableData], chartImages });
   };
 
   const exportXLSX = async () => {
     let chartImages = {};
     if (chartData.length >= 1) {
-      const chartBase64 = await captureChartAsBase64("schmidt-chart");
+      const chartBase64 = await captureChartAsBase64(chartId);
       if (chartBase64) {
         chartImages = { "Rebound & Estimated Strength": chartBase64 };
       }
@@ -80,7 +82,7 @@ const SchmidtHammerTest = () => {
 
     generateTestExcel({
       data: {
-        title: "NDT (Rebound Hammer)",
+        title: testName,
         fields: [
           { label: "Avg Rebound", value: avgRebound || "—" },
           { label: "Est. Strength", value: avgRebound ? `${getEstStrength(avgRebound)} MPa` : "—" },
@@ -98,7 +100,7 @@ const SchmidtHammerTest = () => {
   };
 
   return (
-    <TestSection title="NDT (Rebound Hammer)" onSave={() => {}} onClear={() => setRows([{ location: "L1", r1: "", r2: "", r3: "", r4: "", r5: "" }])} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
+    <TestSection title={testName} onSave={() => {}} onClear={() => setRows([{ location: "L1", r1: "", r2: "", r3: "", r4: "", r5: "" }])} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Location</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R1</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R2</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R3</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R4</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R5</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Avg R</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Est. MPa</th><th className="w-10"></th></tr></thead>
@@ -125,7 +127,7 @@ const SchmidtHammerTest = () => {
       {chartData.length >= 1 && (
         <div className="mt-6">
           <Label className="text-xs text-muted-foreground mb-2 block">Rebound & Estimated Strength</Label>
-          <ChartContainer id="schmidt-chart" config={chartConfig} className="h-[300px] w-full">
+          <ChartContainer id={chartId} config={chartConfig} className="h-[300px] w-full">
             <BarChart data={chartData} margin={{ top: 10, right: 20, bottom: 20, left: 10 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" label={{ value: "Location", position: "insideBottom", offset: -10, className: "fill-muted-foreground text-xs" }} />

@@ -32,6 +32,7 @@ export function registerAllTests(): void {
   registry.registerTest("atterberg", AtterbergTest);
   registry.registerTest("proctor", ProctorTest);
   registry.registerTest("cbr", CBRTest);
+  registry.registerTest("spt", SPTTest);
   registry.registerTest("shear", ShearTest);
   registry.registerTest("consolidation", ConsolidationTest);
 
@@ -46,9 +47,9 @@ export function registerAllTests(): void {
   // Rock tests
   registry.registerTest("ucs", UCSTest);
   registry.registerTest("pointload", PointLoadTest);
+  registry.registerTest("schmidt_rock", SchmidtHammerTest);
   registry.registerTest("porosity", PorosityTest);
 
   // Special tests
-  registry.registerTest("spt", SPTTest);
   registry.registerTest("dcp", DCPTest);
 }
