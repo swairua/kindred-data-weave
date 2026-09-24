@@ -1298,6 +1298,21 @@ const RecordTestWizard = () => {
             </Card>
           </section>
               )}
+
+              <div className="mt-6 flex w-full max-w-2xl items-center justify-between gap-3">
+                <Button type="button" variant="outline" onClick={handleBack} className="gap-1.5">
+                  <ArrowLeft className="h-4 w-4" /> {step === 0 ? "Cancel" : "Back"}
+                </Button>
+                {step < steps.length - 1 ? (
+                  <Button type="button" onClick={handleNext} disabled={!canAdvance} className="gap-1.5">
+                    Next <ArrowRight className="h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button type="button" onClick={handleFinish} className="gap-1.5">
+                    Start recording <ArrowRight className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </main>
@@ -1458,23 +1473,6 @@ const RecordTestWizard = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Footer */}
-        <footer className="border-t border-border bg-card">
-          <div className="px-4 md:px-8 py-3 max-w-5xl mx-auto w-full flex items-center justify-between gap-3">
-            <Button type="button" variant="outline" onClick={handleBack} className="gap-1.5">
-              <ArrowLeft className="h-4 w-4" /> {step === 0 ? "Cancel" : "Back"}
-            </Button>
-            {step < steps.length - 1 ? (
-              <Button type="button" onClick={handleNext} disabled={!canAdvance} className="gap-1.5">
-                Next <ArrowRight className="h-4 w-4" />
-              </Button>
-            ) : (
-              <Button type="button" onClick={handleFinish} className="gap-1.5">
-                Start recording <ArrowRight className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        </footer>
       </SidebarInset>
     </SidebarProvider>
   );
