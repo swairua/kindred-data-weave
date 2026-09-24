@@ -13,13 +13,12 @@ import WizardStepper, { type WizardStep } from "@/components/WizardStepper";
 import FormCard from "@/components/wizard/FormCard";
 import { listRecords, fetchCurrentUser, setSessionToken, logoutUser, fetchFullProject, createRecord, listCompressiveTests } from "@/lib/api";
 import { type ApiProjectRow } from "@/types/api";
+import { getExpectedTestType, hasRequiredSoilSampleMetadata, isInitialTestValid, isTestAllowed, toRecordMetadata, type Material } from "@/lib/recordTestWizard";
 import { cn } from "@/lib/utils";
 import { useTestData } from "@/context/TestDataContext";
 import { registry } from "@/lib/testRegistry";
 import Navigation from "@/components/Navigation";
 import { toast } from "sonner";
-
-type Material = "soil" | "concrete" | "rock" | "special";
 
 interface TestOption {
   key: string;
@@ -27,18 +26,6 @@ interface TestOption {
   isRegistered: boolean;
   isAllowed: boolean;
 }
-
-const ALLOWED_TEST_KEYS: Partial<Record<Material, ReadonlySet<string>>> = {
-  soil: new Set(["atterberg", "grading"]),
-  concrete: new Set(["compressive"]),
-  rock: new Set(),
-};
-
-const isTestAllowed = (material: Material | null, testKey: string): boolean => {
-  if (!material) return false;
-  const allowedKeys = ALLOWED_TEST_KEYS[material];
-  return allowedKeys === undefined || allowedKeys.has(testKey);
-};
 
 const MATERIAL_PRESENTATION: Record<Material, { label: string; Icon: LucideIcon }> = {
   soil: { label: "Soil", Icon: Square },
@@ -162,13 +149,6 @@ interface CompressiveTestRow {
   created_at: string;
   updated_at: string;
 }
-
-const getExpectedTestType = (testKey: string | null): string | null => {
-  if (testKey === "atterberg") return "atterberg";
-  if (testKey === "grading") return "grading";
-  if (testKey === "compressive") return "compressive";
-  return null;
-};
 
 const filterProjectsByTestType = (projects: ApiProjectRow[], expectedTestType: string | null): ApiProjectRow[] => {
   if (!expectedTestType) return projects;
@@ -360,14 +340,13 @@ const RecordTestWizard = () => {
     const selectedDefinition = testData.testDefinitions.find(
       (definition) => definition.test_key === state.testKey && definition.category === state.material,
     );
-    const selectedDefinitionEnabled = selectedDefinition && selectedDefinition.enabled !== false && selectedDefinition.enabled !== 0;
-    const selectedDefinitionAllowed = isTestAllowed(state.material, state.testKey ?? "");
-    if (state.testKey && (!selectedDefinitionEnabled || !selectedDefinitionAllowed || !registry.hasTest(state.testKey))) {
+    const selectedDefinitionEnabled = !!selectedDefinition && selectedDefinition.enabled !== false && selectedDefinition.enabled !== 0;
+    if (state.testKey && !isInitialTestValid(state.material, state.testKey, selectedDefinitionEnabled, registry.hasTest(state.testKey))) {
       setState((prev) => ({ ...prev, material: null, testKey: null }));
       setStep(0);
       return;
     }
-    if (!testData.testDefinitionsError && initialMaterial && initialTest && selectedDefinitionEnabled && isTestAllowed(initialMaterial, initialTest) && registry.hasTest(initialTest)) {
+    if (!testData.testDefinitionsError && isInitialTestValid(initialMaterial, initialTest, selectedDefinitionEnabled, initialTest ? registry.hasTest(initialTest) : false)) {
       setStep(2);
     }
   }, [testData.testDefinitionsLoading, testData.testDefinitions, testData.testDefinitionsError, state.material, state.testKey, initialMaterial, initialTest]);
@@ -387,6 +366,7 @@ const RecordTestWizard = () => {
 
   const isCompressiveStrengthTest = state.testKey === "compressive";
   const isGradingTest = state.testKey === "grading";
+  const isProctorTest = state.testKey === "proctor";
   const hasExistingCompressiveTests = isCompressiveStrengthTest && compressiveTests.length > 0;
   const steps = getSteps(state.testKey, hasExistingCompressiveTests, selectedExistingTestId);
 
@@ -421,20 +401,14 @@ const RecordTestWizard = () => {
         if (isCompressiveStrengthTest) {
           return state.cement.trim().length > 0;
         }
-        if (isGradingTest) {
-          return state.sampleId.trim().length > 0
-            && state.sampleNo.trim().length > 0
-            && state.sampleDepthFrom.trim().length > 0
-            && state.sampleDepthTo.trim().length > 0
-            && state.sampledSubmittedBy.trim().length > 0
-            && state.sampleDateSubmitted.trim().length > 0
-            && state.sampleDateTested.trim().length > 0;
+        if (isGradingTest || isProctorTest) {
+          return hasRequiredSoilSampleMetadata(state);
         }
         return state.sampleId.trim().length > 0 && state.sampleDepthFrom.trim().length > 0 && state.sampleDepthTo.trim().length > 0;
       case "entry": return true;
       default: return false;
     }
-  }, [step, steps, state, isCompressiveStrengthTest, isGradingTest, selectedExistingTestId]);
+  }, [step, steps, state, isCompressiveStrengthTest, isGradingTest, isProctorTest, selectedExistingTestId]);
 
   // Load projects when reaching project step (and after retry)
   useEffect(() => {
@@ -515,7 +489,7 @@ const RecordTestWizard = () => {
   const handleCreateProject = async () => {
     const hasRequiredFields = state.projectName.trim().length > 0
       && state.clientName.trim().length > 0
-      && (!(isCompressiveStrengthTest || isGradingTest) || (state.contractor.trim().length > 0 && state.county.trim().length > 0));
+      && (!(isCompressiveStrengthTest || isGradingTest || isProctorTest) || (state.contractor.trim().length > 0 && state.county.trim().length > 0));
     if (!hasRequiredFields) return;
 
     setIsCreatingProject(true);
@@ -527,7 +501,7 @@ const RecordTestWizard = () => {
         test_type: getExpectedTestType(state.testKey),
       };
 
-      if (isCompressiveStrengthTest || isGradingTest) {
+      if (isCompressiveStrengthTest || isGradingTest || isProctorTest) {
         projectPayload.contractor = state.contractor.trim();
         projectPayload.county = state.county.trim();
         projectPayload.submitted_by = state.submittedBy.trim();
@@ -566,7 +540,7 @@ const RecordTestWizard = () => {
         customFields: state.customFields,
       });
       setNewProjectOpen(false);
-      if (isGradingTest) {
+      if (isGradingTest || isProctorTest) {
         const sampleStepIndex = steps.findIndex((wizardStep) => wizardStep.id === "sample");
         setStep(sampleStepIndex);
       }
@@ -581,7 +555,7 @@ const RecordTestWizard = () => {
 
   const canCreateProject = state.projectName.trim().length > 0
     && state.clientName.trim().length > 0
-    && (!(isCompressiveStrengthTest || isGradingTest) || (state.contractor.trim().length > 0 && state.county.trim().length > 0));
+    && (!(isCompressiveStrengthTest || isGradingTest || isProctorTest) || (state.contractor.trim().length > 0 && state.county.trim().length > 0));
 
   const handleFinish = async () => {
     let finalProjectId = state.projectId;
@@ -650,18 +624,8 @@ const RecordTestWizard = () => {
 
     testData.updateProjectMetadata(projectMetadata);
 
-    if (isGradingTest) {
-      testData.updateRecordMetadata("grading", {
-        sampleId: state.sampleId,
-        sampleNumber: state.sampleNo,
-        sampleDepthFrom: state.sampleDepthFrom,
-        sampleDepthTo: state.sampleDepthTo,
-        sampledSubmittedBy: state.sampledSubmittedBy,
-        sampleNotes: state.sampleNotes,
-        dateSubmitted: state.sampleDateSubmitted,
-        dateTested: state.sampleDateTested,
-        testedBy: state.sampledSubmittedBy,
-      });
+    if (isGradingTest || isProctorTest) {
+      testData.updateRecordMetadata(state.testKey!, toRecordMetadata(state));
     }
 
     // If concrete material, also push concrete test details to context
@@ -1263,70 +1227,70 @@ const RecordTestWizard = () => {
                   </div>
                 </FormCard>
               </>
-            ) : isGradingTest ? (
+            ) : isGradingTest || isProctorTest ? (
               <>
                 <div className="text-center">
-                  <h2 className="text-lg font-semibold tracking-tight">Particle size distribution — sample details</h2>
+                  <h2 className="text-lg font-semibold tracking-tight">{isGradingTest ? "Particle size distribution" : "Proctor"} — sample details</h2>
                 </div>
                 <FormCard>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="grading-sample-id">Sample ID *</Label>
+                      <Label htmlFor={`${state.testKey}-sample-id`}>Sample ID *</Label>
                       <Input
-                        id="grading-sample-id"
+                        id={`${state.testKey}-sample-id`}
                         value={state.sampleId}
                         onChange={(e) => update("sampleId", e.target.value)}
                         placeholder="e.g. BH04"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="grading-sample-no">Sample No. *</Label>
+                      <Label htmlFor={`${state.testKey}-sample-no`}>Sample No. *</Label>
                       <Input
-                        id="grading-sample-no"
+                        id={`${state.testKey}-sample-no`}
                         value={state.sampleNo}
                         onChange={(e) => update("sampleNo", e.target.value)}
                         placeholder="e.g. 1"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="grading-depth-from">Sample Depth From (m) *</Label>
+                      <Label htmlFor={`${state.testKey}-depth-from`}>Sample Depth From (m) *</Label>
                       <Input
-                        id="grading-depth-from"
+                        id={`${state.testKey}-depth-from`}
                         value={state.sampleDepthFrom}
                         onChange={(e) => update("sampleDepthFrom", e.target.value)}
                         placeholder="e.g. 18.2"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="grading-depth-to">Sample Depth To (m) *</Label>
+                      <Label htmlFor={`${state.testKey}-depth-to`}>Sample Depth To (m) *</Label>
                       <Input
-                        id="grading-depth-to"
+                        id={`${state.testKey}-depth-to`}
                         value={state.sampleDepthTo}
                         onChange={(e) => update("sampleDepthTo", e.target.value)}
                         placeholder="e.g. 20.0"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="grading-sampled-submitted-by">Sampled &amp; Submitted by *</Label>
+                      <Label htmlFor={`${state.testKey}-sampled-submitted-by`}>Sampled &amp; Submitted by *</Label>
                       <Input
-                        id="grading-sampled-submitted-by"
+                        id={`${state.testKey}-sampled-submitted-by`}
                         value={state.sampledSubmittedBy}
                         onChange={(e) => update("sampledSubmittedBy", e.target.value)}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="grading-date-submitted">Date Submitted *</Label>
+                      <Label htmlFor={`${state.testKey}-date-submitted`}>Date Submitted *</Label>
                       <Input
-                        id="grading-date-submitted"
+                        id={`${state.testKey}-date-submitted`}
                         type="date"
                         value={state.sampleDateSubmitted}
                         onChange={(e) => update("sampleDateSubmitted", e.target.value)}
                       />
                     </div>
                     <div className="space-y-2 sm:col-span-2">
-                      <Label htmlFor="grading-date-tested">Date Tested *</Label>
+                      <Label htmlFor={`${state.testKey}-date-tested`}>Date Tested *</Label>
                       <Input
-                        id="grading-date-tested"
+                        id={`${state.testKey}-date-tested`}
                         type="date"
                         value={state.sampleDateTested}
                         onChange={(e) => update("sampleDateTested", e.target.value)}
@@ -1466,7 +1430,7 @@ const RecordTestWizard = () => {
                 />
               </div>
 
-              {!isGradingTest && (
+              {!isGradingTest && !isProctorTest && (
                 <div className="space-y-2">
                   <Label htmlFor="new-project-date">Project date</Label>
                   <Input
@@ -1478,7 +1442,7 @@ const RecordTestWizard = () => {
                 </div>
               )}
 
-              {(isCompressiveStrengthTest || isGradingTest) && (
+              {(isCompressiveStrengthTest || isGradingTest || isProctorTest) && (
                 <>
                   <div className="space-y-2">
                     <Label htmlFor="new-project-contractor">Contractor *</Label>
