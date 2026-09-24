@@ -15,47 +15,47 @@ interface WizardStepperProps {
 
 const WizardStepper = ({ steps, currentIndex, onStepClick, disabledSteps = [] }: WizardStepperProps) => {
   return (
-    <ol className="flex items-center w-full overflow-x-auto py-2">
+    <ol className="mx-auto flex w-fit max-w-full items-center justify-center overflow-x-auto py-1">
       {steps.map((step, idx) => {
         const isComplete = idx < currentIndex;
         const isActive = idx === currentIndex;
         const isDisabled = disabledSteps.includes(idx);
         const clickable = onStepClick && idx <= currentIndex && !isDisabled;
         return (
-          <li key={step.id} className="flex items-center flex-1 min-w-fit">
+          <li key={step.id} className="flex min-w-fit items-center">
             <button
               type="button"
+              aria-label={`Step ${idx + 1}: ${step.label}`}
+              aria-current={isActive ? "step" : undefined}
               disabled={!clickable}
               onClick={() => clickable && onStepClick?.(idx)}
               className={cn(
-                "flex items-center gap-2 group",
+                "group flex h-6 shrink-0 items-center justify-center rounded-full transition-colors",
+                isActive && !isDisabled && "gap-1.5 bg-primary px-2 text-primary-foreground",
+                isActive && isDisabled && "gap-1.5 bg-muted px-2 text-muted-foreground opacity-50",
+                !isActive && "w-6",
                 clickable ? "cursor-pointer" : "cursor-default",
               )}
             >
               <span
                 className={cn(
-                  "flex h-10 w-10 items-center justify-center rounded-full border text-xs font-semibold flex-shrink-0 transition-colors",
-                  isComplete && !isDisabled && "bg-primary border-primary text-primary-foreground",
-                  isActive && !isDisabled && "bg-primary/10 border-primary text-primary",
-                  (!isComplete && !isActive && !isDisabled) && "bg-card border-border text-muted-foreground",
-                  isDisabled && "bg-muted border-border text-muted-foreground opacity-50",
+                  "flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-semibold transition-colors",
+                  isComplete && !isDisabled && "bg-primary-foreground/20 text-primary-foreground",
+                  isActive && !isDisabled && "bg-primary-foreground/20 text-primary-foreground",
+                  (!isComplete && !isActive && !isDisabled) && "bg-muted text-muted-foreground",
+                  isDisabled && "bg-muted text-muted-foreground opacity-50",
                 )}
               >
-                {isComplete && !isDisabled ? <Check className="h-4 w-4" /> : idx + 1}
+                {isComplete && !isDisabled ? <Check className="h-3 w-3" /> : idx + 1}
               </span>
-              <span
-                className={cn(
-                  "text-sm font-medium whitespace-nowrap hidden sm:inline",
-                  isActive ? "text-foreground" : isComplete ? "text-foreground" : "text-muted-foreground",
-                )}
-              >
-                {step.label}
-              </span>
+              {isActive && (
+                <span className="max-w-36 truncate text-[10px] font-medium leading-none">{step.label}</span>
+              )}
             </button>
             {idx < steps.length - 1 && (
               <div
                 className={cn(
-                  "flex-1 h-px mx-3 min-w-[24px] transition-colors",
+                  "mx-1.5 h-px w-3 shrink-0 transition-colors sm:w-4",
                   isComplete ? "bg-primary" : "bg-border",
                 )}
               />

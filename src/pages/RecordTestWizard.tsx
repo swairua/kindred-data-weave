@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, X, FlaskConical, FolderOpen, Plus, Layers, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, FlaskConical, FolderOpen, Layers, Loader2, Mountain, Plus, Square, X, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -41,11 +41,11 @@ const isTestAllowed = (material: Material | null, testKey: string): boolean => {
   return allowedKeys === undefined || allowedKeys.has(testKey);
 };
 
-const MATERIAL_PRESENTATION: Record<Material, { label: string; emoji: string }> = {
-  soil: { label: "Soil", emoji: "🪨" },
-  concrete: { label: "Concrete", emoji: "🏗️" },
-  rock: { label: "Rock", emoji: "⛰️" },
-  special: { label: "Special", emoji: "🧪" },
+const MATERIAL_PRESENTATION: Record<Material, { label: string; Icon: LucideIcon }> = {
+  soil: { label: "Soil", Icon: Square },
+  concrete: { label: "Concrete", Icon: Building2 },
+  rock: { label: "Rock", Icon: Mountain },
+  special: { label: "Special", Icon: FlaskConical },
 };
 
 const getSteps = (
@@ -340,12 +340,20 @@ const RecordTestWizard = () => {
   };
 
   const materialOptions = useMemo(() => {
-    const categories = new Set(testData.testDefinitions
-      .filter((definition) => definition.enabled !== false && definition.enabled !== 0)
-      .map((definition) => definition.category));
+    const enabledDefinitions = testData.testDefinitions.filter(
+      (definition) => definition.enabled !== false && definition.enabled !== 0,
+    );
+    const categories = new Set(enabledDefinitions.map((definition) => definition.category));
     return (Object.keys(MATERIAL_PRESENTATION) as Material[])
       .filter((category) => categories.has(category))
-      .map((category) => ({ id: category, ...MATERIAL_PRESENTATION[category] }));
+      .map((category) => {
+        const definitions = enabledDefinitions.filter((definition) => definition.category === category);
+        return {
+          id: category,
+          ...MATERIAL_PRESENTATION[category],
+          summary: definitions.map((definition) => definition.name).join(", "),
+        };
+      });
   }, [testData.testDefinitions]);
 
   useEffect(() => {
@@ -878,48 +886,45 @@ const RecordTestWizard = () => {
           <div className="w-full md:max-w-6xl md:mx-auto md:px-4">
             <div className="px-4 md:px-0">
               {step === 0 && (
-          <section className="space-y-6 animate-fade-in">
-            <div className="text-center">
-              <h2 className="text-2xl font-semibold tracking-tight">What are you testing?</h2>
-              <p className="text-sm text-muted-foreground mt-1">Pick the material you'll be working with.</p>
-            </div>
-            <FormCard>
-              <div className="grid grid-cols-1 gap-4 mx-auto">
-                {testData.testDefinitionsLoading ? (
-                  <p className="py-8 text-center text-sm text-muted-foreground">Loading test options…</p>
-                ) : testData.testDefinitionsError ? (
-                  <p className="py-8 text-center text-sm text-destructive">Could not load test options: {testData.testDefinitionsError}</p>
-                ) : materialOptions.length === 0 ? (
-                  <p className="py-8 text-center text-sm text-muted-foreground">No enabled tests are currently available.</p>
-                ) : materialOptions.map((mat) => {
-                  const selected = state.material === mat.id;
-                  return (
-                    <button
-                      key={mat.id}
-                      type="button"
-                      onClick={() => {
-                        update("material", mat.id);
-                        setTimeout(() => setStep(1), 0);
-                      }}
-                      className={cn(
-                        "text-left rounded-2xl border-2 p-6 bg-card transition-all hover:border-primary/50 hover:shadow-sm",
-                        selected ? "border-primary ring-2 ring-primary/20" : "border-border",
-                      )}
-                    >
-                      <div className="flex items-center gap-4">
-                        <span className="text-4xl">{mat.emoji}</span>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-lg font-semibold text-foreground">{mat.label}</h3>
-                          <p className="text-sm text-muted-foreground mt-0.5">{testData.testDefinitions.filter((definition) => definition.category === mat.id && definition.enabled !== false && definition.enabled !== 0).length} available tests</p>
-                        </div>
-                        <ArrowRight className={cn("h-5 w-5 transition-colors", selected ? "text-primary" : "text-muted-foreground")} />
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </FormCard>
-          </section>
+                <section className="mx-auto max-w-md space-y-4 animate-fade-in">
+                  <div className="text-center">
+                    <h2 className="text-lg font-semibold tracking-tight">What are you testing today?</h2>
+                    <p className="mt-1 text-xs text-muted-foreground">Choose a material to see its available tests.</p>
+                  </div>
+                  <div className="space-y-2">
+                    {testData.testDefinitionsLoading ? (
+                      <div className="rounded-lg border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">Loading test options…</div>
+                    ) : testData.testDefinitionsError ? (
+                      <div className="rounded-lg border border-border bg-card px-4 py-6 text-center text-sm text-destructive">Could not load test options: {testData.testDefinitionsError}</div>
+                    ) : materialOptions.length === 0 ? (
+                      <div className="rounded-lg border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">No enabled tests are currently available.</div>
+                    ) : materialOptions.map((mat) => {
+                      const selected = state.material === mat.id;
+                      const MaterialIcon = mat.Icon;
+                      return (
+                        <button
+                          key={mat.id}
+                          type="button"
+                          onClick={() => {
+                            update("material", mat.id);
+                            setTimeout(() => setStep(1), 0);
+                          }}
+                          className={cn(
+                            "flex min-h-14 w-full items-center gap-3 rounded-lg border bg-card px-4 py-2.5 text-left transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                            selected ? "border-primary ring-1 ring-primary/20" : "border-border",
+                          )}
+                        >
+                          <MaterialIcon className="h-5 w-5 shrink-0 text-foreground" strokeWidth={1.8} />
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-sm font-medium leading-5 text-foreground">{mat.label}</span>
+                            <span className="line-clamp-2 block text-xs leading-4 text-muted-foreground" title={mat.summary}>{mat.summary}</span>
+                          </span>
+                          <ArrowRight className={cn("h-4 w-4 shrink-0 transition-colors", selected ? "text-primary" : "text-muted-foreground")} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
               )}
 
               {step === 1 && (
