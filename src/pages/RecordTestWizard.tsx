@@ -734,64 +734,66 @@ const RecordTestWizard = () => {
 
               {step === 1 && (
                 <section className="space-y-6 animate-fade-in max-w-2xl">
-            <div>
-              <h2 className="text-2xl font-semibold tracking-tight">Choose the test</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Available tests for {MATERIAL_OPTIONS.find((m) => m.id === state.material)?.label}.
-              </p>
-            </div>
-            <FormCard>
-              {tests.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
-                    <Layers className="h-6 w-6 text-muted-foreground" />
+                  <div>
+                    <h2 className="text-2xl font-semibold tracking-tight">Choose the test</h2>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Available tests for {MATERIAL_OPTIONS.find((m) => m.id === state.material)?.label}.
+                    </p>
                   </div>
-                  <p className="text-lg font-medium text-foreground mb-1">
-                    Coming soon
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {MATERIAL_OPTIONS.find((m) => m.id === state.material)?.label} testing is not yet available.
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-3">
-                  {tests.map((t) => {
-                    const selected = state.testKey === t.key;
-                    const isDisabled = state.material === "rock" || state.material === "special" || (state.material === "concrete" && t.key !== "compressive") || (state.material === "soil" && t.key !== "atterberg" && t.key !== "grading");
-                    return (
-                      <button
-                        key={t.key}
-                        type="button"
-                        disabled={isDisabled}
-                        onClick={() => {
-                          update("testKey", t.key);
-                          setTimeout(() => setStep(step + 1), 0);
-                        }}
-                        className={cn(
-                          "text-left rounded-xl border-2 p-4 bg-card transition-all hover:border-primary/50",
-                          selected ? "border-primary ring-2 ring-primary/20" : "border-border",
-                          isDisabled && "opacity-50 cursor-not-allowed",
-                        )}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className={cn(
-                            "h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0",
-                            selected ? "bg-primary text-primary-foreground" : "bg-accent text-accent-foreground",
-                          )}>
-                            <FlaskConical className="h-4 w-4" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="text-sm font-semibold text-foreground">{t.name}</h3>
-                            <p className="text-xs text-muted-foreground mt-1 leading-snug">{t.description}</p>
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </FormCard>
-          </section>
+                  {tests.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-card py-12 text-center">
+                      <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
+                        <Layers className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                      <p className="text-lg font-medium text-foreground mb-1">
+                        Coming soon
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {MATERIAL_OPTIONS.find((m) => m.id === state.material)?.label} testing is not yet available.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {tests.map((t) => {
+                        const selected = state.testKey === t.key;
+                        const isDisabled = state.material === "rock" || state.material === "special" || (state.material === "concrete" && t.key !== "compressive") || (state.material === "soil" && t.key !== "atterberg" && t.key !== "grading");
+                        return (
+                          <button
+                            key={t.key}
+                            type="button"
+                            disabled={isDisabled}
+                            onClick={() => {
+                              update("testKey", t.key);
+                              setTimeout(() => setStep(step + 1), 0);
+                            }}
+                            className={cn(
+                              "group flex w-full items-center gap-3 rounded-xl border bg-card px-4 py-3 text-left transition-colors",
+                              "border-border hover:border-primary/50 hover:bg-accent/30",
+                              selected && "border-primary bg-primary/5",
+                              isDisabled && "cursor-not-allowed opacity-50 hover:border-border hover:bg-card",
+                            )}
+                          >
+                            <div className={cn(
+                              "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+                              selected ? "bg-primary text-primary-foreground" : "bg-accent text-accent-foreground",
+                            )}>
+                              <FlaskConical className="h-4 w-4" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h3 className="text-sm font-semibold text-foreground">{t.name}</h3>
+                              <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{t.description}</p>
+                            </div>
+                            <ArrowRight className={cn(
+                              "h-4 w-4 shrink-0 text-muted-foreground transition-colors",
+                              selected && "text-primary",
+                              !isDisabled && "group-hover:text-primary",
+                            )} />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
               )}
 
               {steps[step]?.id === "existing" && (
