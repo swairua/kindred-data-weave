@@ -1107,103 +1107,101 @@ const RecordTestWizard = () => {
               )}
 
               {steps[step]?.id === "project" && (
-                <section className="mx-auto max-w-md space-y-4 animate-fade-in">
-            <div className="text-center">
-              <h2 className="text-lg font-semibold tracking-tight">Project</h2>
-              <p className="mt-1 text-xs text-muted-foreground">{isGradingTest ? "Use an existing project as a template or create a new one." : "Pick an existing project or create a new one."}</p>
-            </div>
+                <section className="mx-auto w-full max-w-xl space-y-6 animate-fade-in">
+                  <Button type="button" variant="ghost" onClick={handleBack} className="-ml-2 h-auto gap-2 px-2 py-1 text-muted-foreground hover:text-foreground">
+                    <ArrowLeft className="h-4 w-4" /> Back
+                  </Button>
 
-            <FormCard>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Existing project</Label>
-                  <Select
-                    value={state.projectId ? String(state.projectId) : ""}
-                    onValueChange={(v) => pickProject(Number(v))}
-                    disabled={loadingProjects || !!projectsLoadError || projects.length === 0}
-                  >
-                    <SelectTrigger className="h-11">
-                      {loadingProjects ? (
-                        <div className="flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                          <span className="text-muted-foreground">Loading projects…</span>
-                        </div>
-                      ) : state.projectId ? (
-                        <div className="flex items-center gap-2">
-                          <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">{state.projectName}</span>
-                          <span className="text-xs text-muted-foreground">
-                            · {state.clientName || "No client"}{state.projectDate ? ` · ${state.projectDate}` : ""}
-                          </span>
-                        </div>
-                      ) : (
-                        <SelectValue placeholder={projectsLoadError ? "Couldn't load projects" : projects.length === 0 ? "No saved projects yet" : "Select an existing project"} />
-                      )}
-                    </SelectTrigger>
-                    <SelectContent>
-                      {projects.map((p) => (
-                        <SelectItem key={p.id} value={String(p.id)}>
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Step {step + 1} of {steps.length}</p>
+                    <h2 className="text-2xl font-semibold tracking-tight">Which project is this for?</h2>
+                    <p className="text-sm text-muted-foreground">{isGradingTest ? "Use an existing project as a template or create a new one." : "Pick an existing project or create a new one."}</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="project-select">Project</Label>
+                    <Select
+                      value={state.projectId ? String(state.projectId) : ""}
+                      onValueChange={(v) => pickProject(Number(v))}
+                      disabled={loadingProjects || !!projectsLoadError || projects.length === 0}
+                    >
+                      <SelectTrigger id="project-select" className="h-11">
+                        {loadingProjects ? (
+                          <div className="flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                            <span className="text-muted-foreground">Loading projects…</span>
+                          </div>
+                        ) : state.projectId ? (
                           <div className="flex items-center gap-2">
                             <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium">{p.name}</span>
+                            <span className="font-medium">{state.projectName}</span>
                             <span className="text-xs text-muted-foreground">
-                              · {p.client_name || "No client"}{p.project_date ? ` · ${p.project_date}` : ""}
+                              · {state.clientName || "No client"}{state.projectDate ? ` · ${state.projectDate}` : ""}
                             </span>
                           </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {projectsLoadError ? (
-                    <div className="flex items-center justify-between gap-3 text-xs">
-                      <span className="text-destructive">{projectsLoadError}</span>
-                      <Button type="button" variant="outline" size="sm" onClick={() => setProjectsReloadKey((k) => k + 1)}>Retry</Button>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">{isGradingTest ? "A separate project will be created for this record using the selected project as a template." : "Selecting an existing project opens it directly for editing."}</p>
-                  )}
-                </div>
-
-                {isGradingTest && state.templateProjectId !== null && (
-                  <div className="space-y-3 rounded-lg border bg-muted/20 p-3">
-                    <p className="text-sm font-medium">New project details</p>
-                    <div className="space-y-2">
-                      <Label htmlFor="template-project-name">Project name *</Label>
-                      <Input id="template-project-name" value={state.projectName} onChange={(e) => update("projectName", e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="template-project-client">Client name *</Label>
-                      <Input id="template-project-client" value={state.clientName} onChange={(e) => update("clientName", e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="template-project-date">Project date</Label>
-                      <Input id="template-project-date" type="date" value={state.projectDate} onChange={(e) => update("projectDate", e.target.value)} />
-                    </div>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="template-project-contractor">Contractor *</Label>
-                        <Input id="template-project-contractor" value={state.contractor} onChange={(e) => update("contractor", e.target.value)} />
+                        ) : (
+                          <SelectValue placeholder={projectsLoadError ? "Couldn't load projects" : projects.length === 0 ? "No saved projects yet" : "Select a project…"} />
+                        )}
+                      </SelectTrigger>
+                      <SelectContent>
+                        {projects.map((p) => (
+                          <SelectItem key={p.id} value={String(p.id)}>
+                            <div className="flex items-center gap-2">
+                              <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                              <span className="font-medium">{p.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                · {p.client_name || "No client"}{p.project_date ? ` · ${p.project_date}` : ""}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {projectsLoadError && (
+                      <div className="flex items-center justify-between gap-3 text-xs">
+                        <span className="text-destructive">{projectsLoadError}</span>
+                        <Button type="button" variant="outline" size="sm" onClick={() => setProjectsReloadKey((k) => k + 1)}>Retry</Button>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="template-project-county">County *</Label>
-                        <Input id="template-project-county" value={state.county} onChange={(e) => update("county", e.target.value)} />
-                      </div>
-                    </div>
+                    )}
                   </div>
-                )}
 
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 h-px bg-border" />
-                  <span className="text-xs uppercase tracking-wider text-muted-foreground">or</span>
-                  <div className="flex-1 h-px bg-border" />
-                </div>
+                  {isGradingTest && state.templateProjectId !== null && (
+                    <div className="space-y-3 rounded-lg border bg-muted/20 p-3">
+                      <p className="text-sm font-medium">New project details</p>
+                      <div className="space-y-2">
+                        <Label htmlFor="template-project-name">Project name *</Label>
+                        <Input id="template-project-name" value={state.projectName} onChange={(e) => update("projectName", e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="template-project-client">Client name *</Label>
+                        <Input id="template-project-client" value={state.clientName} onChange={(e) => update("clientName", e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="template-project-date">Project date</Label>
+                        <Input id="template-project-date" type="date" value={state.projectDate} onChange={(e) => update("projectDate", e.target.value)} />
+                      </div>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="template-project-contractor">Contractor *</Label>
+                          <Input id="template-project-contractor" value={state.contractor} onChange={(e) => update("contractor", e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="template-project-county">County *</Label>
+                          <Input id="template-project-county" value={state.county} onChange={(e) => update("county", e.target.value)} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
-                <Button type="button" variant="outline" className="w-full justify-start gap-2 h-11" onClick={openNewProjectDialog}>
-                  <Plus className="h-4 w-4" /> Create new project
-                </Button>
-              </div>
-            </FormCard>
-          </section>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Button type="button" variant="outline" className="gap-2" onClick={openNewProjectDialog}>
+                      <Plus className="h-4 w-4" /> New project
+                    </Button>
+                    <Button type="button" onClick={handleNext} disabled={!canAdvance} className="gap-2">
+                      Continue <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </section>
               )}
 
               {steps[step]?.id === "sample" && (
@@ -1411,20 +1409,22 @@ const RecordTestWizard = () => {
           </section>
               )}
 
-              <div className="mt-6 mx-auto flex w-full max-w-md items-center justify-between gap-3">
-                <Button type="button" variant="outline" onClick={handleBack} className="gap-1.5">
-                  <ArrowLeft className="h-4 w-4" /> {step === 0 ? "Cancel" : "Back"}
-                </Button>
-                {step < steps.length - 1 ? (
-                  <Button type="button" onClick={handleNext} disabled={!canAdvance} className="gap-1.5">
-                    Next <ArrowRight className="h-4 w-4" />
+              {steps[step]?.id !== "project" && (
+                <div className="mt-6 mx-auto flex w-full max-w-md items-center justify-between gap-3">
+                  <Button type="button" variant="outline" onClick={handleBack} className="gap-1.5">
+                    <ArrowLeft className="h-4 w-4" /> {step === 0 ? "Cancel" : "Back"}
                   </Button>
-                ) : (
-                  <Button type="button" onClick={handleFinish} className="gap-1.5">
-                    Start recording <ArrowRight className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
+                  {step < steps.length - 1 ? (
+                    <Button type="button" onClick={handleNext} disabled={!canAdvance} className="gap-1.5">
+                      Next <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <Button type="button" onClick={handleFinish} className="gap-1.5">
+                      Start recording <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </main>
