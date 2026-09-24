@@ -98,6 +98,7 @@ interface WizardState {
   material: Material | null;
   testKey: string | null;
   projectId: number | null;
+  templateProjectId: number | null;
   projectName: string;
   clientName: string;
   projectDate: string;
@@ -131,6 +132,7 @@ const emptyState: WizardState = {
   material: null,
   testKey: null,
   projectId: null,
+  templateProjectId: null,
   projectName: "",
   clientName: "",
   projectDate: new Date().toISOString().split("T")[0],
@@ -276,6 +278,7 @@ const RecordTestWizard = () => {
         setState((prev) => ({
           ...prev,
           projectId: fullProject.id,
+          templateProjectId: prev.testKey === "grading" ? fullProject.id : null,
           projectName: fullProject.name,
           clientName: fullProject.client_name || "",
           projectDate: fullProject.project_date || prev.projectDate,
@@ -372,7 +375,16 @@ const RecordTestWizard = () => {
         // If creating new test, can advance without contractor/county (they're in Project step)
         return true;
       case "project":
-        if (isCompressiveStrengthTest || isGradingTest) {
+        if (isGradingTest) {
+          return state.projectId !== null
+            && (state.templateProjectId === null || (
+              state.projectName.trim().length > 0
+              && state.clientName.trim().length > 0
+              && state.contractor.trim().length > 0
+              && state.county.trim().length > 0
+            ));
+        }
+        if (isCompressiveStrengthTest) {
           return state.projectId !== null && state.contractor.trim().length > 0 && state.county.trim().length > 0;
         }
         return state.projectId !== null;
@@ -449,6 +461,7 @@ const RecordTestWizard = () => {
     setState((prev) => ({
       ...prev,
       projectId: null,
+      templateProjectId: null,
       projectName: "",
       clientName: "",
       projectDate: "",
@@ -543,6 +556,34 @@ const RecordTestWizard = () => {
 
   const handleFinish = async () => {
     let finalProjectId = state.projectId;
+    let sourceProjectId: number | null = null;
+
+    if (isGradingTest && state.templateProjectId !== null) {
+      try {
+        const createResponse = await createRecord<{ id: number }>("projects", {
+          name: state.projectName.trim(),
+          client_name: state.clientName.trim(),
+          project_date: state.projectDate || null,
+          test_type: "grading",
+          contractor: state.contractor.trim(),
+          county: state.county.trim(),
+          submitted_by: state.submittedBy.trim(),
+          date_submitted: state.dateSubmitted || null,
+          custom_fields: state.customFields,
+        });
+        finalProjectId = createResponse.data?.id ?? null;
+        if (!finalProjectId) {
+          toast.error("Failed to create project");
+          return;
+        }
+        sourceProjectId = state.templateProjectId;
+      } catch (error) {
+        console.error("[RecordTestWizard] Failed to create project from template:", error);
+        toast.error("Failed to create project");
+        return;
+      }
+    }
+
     if (isCompressiveStrengthTest && finalProjectId === null) {
       try {
         const createResponse = await createRecord<{ id: number }>("projects", {
@@ -580,6 +621,20 @@ const RecordTestWizard = () => {
 
     testData.updateProjectMetadata(projectMetadata);
 
+    if (isGradingTest) {
+      testData.updateRecordMetadata("grading", {
+        sampleId: state.sampleId,
+        sampleNumber: state.sampleNo,
+        sampleDepthFrom: state.sampleDepthFrom,
+        sampleDepthTo: state.sampleDepthTo,
+        sampledSubmittedBy: state.sampledSubmittedBy,
+        sampleNotes: state.sampleNotes,
+        dateSubmitted: state.sampleDateSubmitted,
+        dateTested: state.sampleDateTested,
+        testedBy: state.sampledSubmittedBy,
+      });
+    }
+
     // If concrete material, also push concrete test details to context
     if (state.material === "concrete") {
       const concreteMetadata: any = {
@@ -605,7 +660,8 @@ const RecordTestWizard = () => {
     sessionStorage.removeItem(STORAGE_KEY);
     toast.success(`Started ${tests.find((t) => t.key === state.testKey)?.name ?? "test"} record`);
     const fromExisting = finalProjectId !== null;
-    const suffix = fromExisting ? `?newRecord=1&fromProject=${finalProjectId}` : "";
+    const sourceParam = sourceProjectId !== null ? `&sourceProjectId=${sourceProjectId}` : "";
+    const suffix = fromExisting ? `?newRecord=1&fromProject=${finalProjectId}${sourceParam}` : "";
     navigate(`/tests${suffix}#${state.testKey}`);
   };
 
@@ -693,6 +749,7 @@ const RecordTestWizard = () => {
     setState((prev) => ({
       ...prev,
       projectId: p.id,
+      templateProjectId: isGradingTest ? p.id : null,
       projectName: p.name,
       clientName: p.client_name || "",
       projectDate: p.project_date || prev.projectDate,
@@ -1012,7 +1069,7 @@ const RecordTestWizard = () => {
                 <section className="space-y-6 animate-fade-in max-w-2xl">
             <div>
               <h2 className="text-2xl font-semibold tracking-tight">Project</h2>
-              <p className="text-sm text-muted-foreground mt-1">Pick an existing project or create a new one.</p>
+              <p className="text-sm text-muted-foreground mt-1">{isGradingTest ? "Use an existing project as a template or create a new one." : "Pick an existing project or create a new one."}</p>
             </div>
 
             <FormCard>
@@ -1062,9 +1119,37 @@ const RecordTestWizard = () => {
                       <Button type="button" variant="outline" size="sm" onClick={() => setProjectsReloadKey((k) => k + 1)}>Retry</Button>
                     </div>
                   ) : (
-                    <p className="text-xs text-muted-foreground">Selecting an existing project opens it directly for editing.</p>
+                    <p className="text-xs text-muted-foreground">{isGradingTest ? "A separate project will be created for this record using the selected project as a template." : "Selecting an existing project opens it directly for editing."}</p>
                   )}
                 </div>
+
+                {isGradingTest && state.templateProjectId !== null && (
+                  <div className="space-y-3 rounded-lg border bg-muted/20 p-3">
+                    <p className="text-sm font-medium">New project details</p>
+                    <div className="space-y-2">
+                      <Label htmlFor="template-project-name">Project name *</Label>
+                      <Input id="template-project-name" value={state.projectName} onChange={(e) => update("projectName", e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="template-project-client">Client name *</Label>
+                      <Input id="template-project-client" value={state.clientName} onChange={(e) => update("clientName", e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="template-project-date">Project date</Label>
+                      <Input id="template-project-date" type="date" value={state.projectDate} onChange={(e) => update("projectDate", e.target.value)} />
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="template-project-contractor">Contractor *</Label>
+                        <Input id="template-project-contractor" value={state.contractor} onChange={(e) => update("contractor", e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="template-project-county">County *</Label>
+                        <Input id="template-project-county" value={state.county} onChange={(e) => update("county", e.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex items-center gap-3">
                   <div className="flex-1 h-px bg-border" />
@@ -1284,6 +1369,21 @@ const RecordTestWizard = () => {
             </Card>
           </section>
               )}
+
+              <div className="mt-6 flex w-full max-w-2xl items-center justify-between gap-3">
+                <Button type="button" variant="outline" onClick={handleBack} className="gap-1.5">
+                  <ArrowLeft className="h-4 w-4" /> {step === 0 ? "Cancel" : "Back"}
+                </Button>
+                {step < steps.length - 1 ? (
+                  <Button type="button" onClick={handleNext} disabled={!canAdvance} className="gap-1.5">
+                    Next <ArrowRight className="h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button type="button" onClick={handleFinish} className="gap-1.5">
+                    Start recording <ArrowRight className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </main>
@@ -1444,23 +1544,6 @@ const RecordTestWizard = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Footer */}
-        <footer className="border-t border-border bg-card">
-          <div className="px-4 md:px-8 py-3 max-w-5xl mx-auto w-full flex items-center justify-between gap-3">
-            <Button type="button" variant="outline" onClick={handleBack} className="gap-1.5">
-              <ArrowLeft className="h-4 w-4" /> {step === 0 ? "Cancel" : "Back"}
-            </Button>
-            {step < steps.length - 1 ? (
-              <Button type="button" onClick={handleNext} disabled={!canAdvance} className="gap-1.5">
-                Next <ArrowRight className="h-4 w-4" />
-              </Button>
-            ) : (
-              <Button type="button" onClick={handleFinish} className="gap-1.5">
-                Start recording <ArrowRight className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        </footer>
       </SidebarInset>
     </SidebarProvider>
   );

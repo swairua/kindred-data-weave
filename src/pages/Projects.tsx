@@ -168,8 +168,8 @@ const Projects = () => {
 
     // Fire and forget - don't await, navigate immediately
     preloadFullData();
-    // Navigate to Atterberg test view with project already loaded for inline editing
-    navigate("/tests#atterberg");
+    // Open the selected project in its editable test view
+    navigate(`/tests?projectId=${projectId}#atterberg`);
   };
 
   const currentUser: { name?: string; email?: string } | null = null;
