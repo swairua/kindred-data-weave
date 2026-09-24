@@ -171,6 +171,7 @@ interface CompressiveTestRow {
 
 const getExpectedTestType = (material: Material | null, testKey: string | null): string | null => {
   if (material === "soil" && testKey === "atterberg") return "atterberg";
+  if (material === "soil" && testKey === "grading") return "grading";
   if (material === "concrete" && testKey === "compressive") return "compressive";
   return null;
 };
@@ -272,6 +273,9 @@ const RecordTestWizard = () => {
           projectDate: fullProject.project_date || prev.projectDate,
           contractor: (fullProject as any).contractor || prev.contractor,
           county: (fullProject as any).county || prev.county,
+          submittedBy: fullProject.submitted_by || prev.submittedBy,
+          dateSubmitted: fullProject.date_submitted || prev.dateSubmitted,
+          customFields: Array.isArray(fullProject.custom_fields) ? fullProject.custom_fields : prev.customFields,
         }));
 
         // Update context with complete metadata
@@ -284,6 +288,9 @@ const RecordTestWizard = () => {
           checkedBy: fullProject.checked_by || "",
           contractor: (fullProject as any).contractor || "",
           county: (fullProject as any).county || "",
+          submittedBy: fullProject.submitted_by || "",
+          dateSubmitted: fullProject.date_submitted || "",
+          customFields: Array.isArray(fullProject.custom_fields) ? fullProject.custom_fields : [],
         });
 
         console.log(`[RecordTestWizard] ✓ Project preloaded from URL param`);
@@ -339,6 +346,7 @@ const RecordTestWizard = () => {
   );
 
   const isCompressiveStrengthTest = state.material === "concrete" && state.testKey === "compressive";
+  const isGradingTest = state.material === "soil" && state.testKey === "grading";
   const hasExistingCompressiveTests = isCompressiveStrengthTest && compressiveTests.length > 0;
   const steps = getSteps(state.material, state.testKey, hasExistingCompressiveTests, selectedExistingTestId);
 
@@ -356,7 +364,7 @@ const RecordTestWizard = () => {
         // If creating new test, can advance without contractor/county (they're in Project step)
         return true;
       case "project":
-        if (isCompressiveStrengthTest) {
+        if (isCompressiveStrengthTest || isGradingTest) {
           return state.projectId !== null && state.contractor.trim().length > 0 && state.county.trim().length > 0;
         }
         return state.projectId !== null;
@@ -369,7 +377,7 @@ const RecordTestWizard = () => {
       case "entry": return true;
       default: return false;
     }
-  }, [step, steps, state, isCompressiveStrengthTest, selectedExistingTestId]);
+  }, [step, steps, state, isCompressiveStrengthTest, isGradingTest, selectedExistingTestId]);
 
   // Load projects when reaching project step (and after retry)
   useEffect(() => {
@@ -449,7 +457,7 @@ const RecordTestWizard = () => {
   const handleCreateProject = async () => {
     const hasRequiredFields = state.projectName.trim().length > 0
       && state.clientName.trim().length > 0
-      && (!isCompressiveStrengthTest || (state.contractor.trim().length > 0 && state.county.trim().length > 0));
+      && (!(isCompressiveStrengthTest || isGradingTest) || (state.contractor.trim().length > 0 && state.county.trim().length > 0));
     if (!hasRequiredFields) return;
 
     setIsCreatingProject(true);
@@ -461,12 +469,14 @@ const RecordTestWizard = () => {
         test_type: getExpectedTestType(state.material, state.testKey),
       };
 
-      if (isCompressiveStrengthTest) {
+      if (isCompressiveStrengthTest || isGradingTest) {
         projectPayload.contractor = state.contractor.trim();
         projectPayload.county = state.county.trim();
         projectPayload.submitted_by = state.submittedBy.trim();
         projectPayload.date_submitted = state.dateSubmitted || null;
-        projectPayload.custom_fields = state.customFields.filter((field) => field.name.trim() || field.value.trim());
+        projectPayload.custom_fields = state.customFields
+          .filter((field) => field.name.trim() || field.value.trim())
+          .map((field) => ({ name: field.name.trim(), value: field.value.trim() }));
       }
 
       const response = await createRecord<{ id: number }>("projects", projectPayload);
@@ -509,7 +519,7 @@ const RecordTestWizard = () => {
 
   const canCreateProject = state.projectName.trim().length > 0
     && state.clientName.trim().length > 0
-    && (!isCompressiveStrengthTest || (state.contractor.trim().length > 0 && state.county.trim().length > 0));
+    && (!(isCompressiveStrengthTest || isGradingTest) || (state.contractor.trim().length > 0 && state.county.trim().length > 0));
 
   const handleFinish = async () => {
     let finalProjectId = state.projectId;
@@ -687,6 +697,9 @@ const RecordTestWizard = () => {
           projectDate: fullProject.project_date || prev.projectDate,
           contractor: (fullProject as any).contractor || prev.contractor,
           county: (fullProject as any).county || prev.county,
+          submittedBy: fullProject.submitted_by || prev.submittedBy,
+          dateSubmitted: fullProject.date_submitted || prev.dateSubmitted,
+          customFields: Array.isArray(fullProject.custom_fields) ? fullProject.custom_fields : prev.customFields,
         }));
         testData.updateProjectMetadata({
           projectName: fullProject.name,
@@ -697,6 +710,9 @@ const RecordTestWizard = () => {
           checkedBy: fullProject.checked_by || "",
           contractor: (fullProject as any).contractor || "",
           county: (fullProject as any).county || "",
+          submittedBy: fullProject.submitted_by || "",
+          dateSubmitted: fullProject.date_submitted || "",
+          customFields: Array.isArray(fullProject.custom_fields) ? fullProject.custom_fields : [],
         });
       } catch (error) {
         console.warn("[RecordTestWizard] Background project preload failed:", error);
@@ -1217,17 +1233,19 @@ const RecordTestWizard = () => {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="new-project-date">Project date</Label>
-                <Input
-                  id="new-project-date"
-                  type="date"
-                  value={state.projectDate}
-                  onChange={(e) => update("projectDate", e.target.value)}
-                />
-              </div>
+              {!isGradingTest && (
+                <div className="space-y-2">
+                  <Label htmlFor="new-project-date">Project date</Label>
+                  <Input
+                    id="new-project-date"
+                    type="date"
+                    value={state.projectDate}
+                    onChange={(e) => update("projectDate", e.target.value)}
+                  />
+                </div>
+              )}
 
-              {isCompressiveStrengthTest && (
+              {(isCompressiveStrengthTest || isGradingTest) && (
                 <>
                   <div className="space-y-2">
                     <Label htmlFor="new-project-contractor">Contractor *</Label>

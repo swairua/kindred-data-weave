@@ -685,6 +685,9 @@ export const fetchFullProject = async (projectId: string | number) => {
       checked_by?: string;
       contractor?: string;
       county?: string;
+      submitted_by?: string;
+      date_submitted?: string;
+      custom_fields?: Array<{ name: string; value: string }>;
       [key: string]: unknown;
     }>("projects", projectId);
     console.log(`[API] ${timestamp} Successfully fetched full project data`);
