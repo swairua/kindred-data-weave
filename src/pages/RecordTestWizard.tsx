@@ -1193,17 +1193,13 @@ const RecordTestWizard = () => {
                     </div>
                   )}
 
-                  <div className="flex flex-col gap-3">
-                    <div className="flex justify-start">
-                      <Button type="button" variant="outline" className="gap-2" onClick={openNewProjectDialog}>
-                        <Plus className="h-4 w-4" /> New project
-                      </Button>
-                    </div>
-                    <div className="flex justify-end">
-                      <Button type="button" onClick={handleNext} disabled={!canAdvance} className="gap-2">
-                        Continue <ArrowRight className="h-4 w-4" />
-                      </Button>
-                    </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <Button type="button" variant="outline" className="gap-2" onClick={openNewProjectDialog}>
+                      <Plus className="h-4 w-4" /> New project
+                    </Button>
+                    <Button type="button" onClick={handleNext} disabled={!canAdvance} className="gap-2">
+                      Continue <ArrowRight className="h-4 w-4" />
+                    </Button>
                   </div>
                 </section>
               )}
