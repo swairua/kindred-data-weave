@@ -107,8 +107,12 @@ interface WizardState {
   dateSubmitted: string;
   customFields: Array<{ name: string; value: string }>;
   sampleId: string;
+  sampleNo: string;
   sampleDepthFrom: string;
   sampleDepthTo: string;
+  sampledSubmittedBy: string;
+  sampleDateSubmitted: string;
+  sampleDateTested: string;
   sampleNotes: string;
   cement: string;
   fineAggregate: string;
@@ -136,8 +140,12 @@ const emptyState: WizardState = {
   dateSubmitted: new Date().toISOString().split("T")[0],
   customFields: [],
   sampleId: "",
+  sampleNo: "",
   sampleDepthFrom: "",
   sampleDepthTo: "",
+  sampledSubmittedBy: "Cransfield",
+  sampleDateSubmitted: "",
+  sampleDateTested: "",
   sampleNotes: "",
   cement: "",
   fineAggregate: "",
@@ -371,9 +379,17 @@ const RecordTestWizard = () => {
       case "sample":
         if (state.material === "concrete") {
           return state.cement.trim().length > 0;
-        } else {
-          return state.sampleId.trim().length > 0 && state.sampleDepthFrom.trim().length > 0 && state.sampleDepthTo.trim().length > 0;
         }
+        if (isGradingTest) {
+          return state.sampleId.trim().length > 0
+            && state.sampleNo.trim().length > 0
+            && state.sampleDepthFrom.trim().length > 0
+            && state.sampleDepthTo.trim().length > 0
+            && state.sampledSubmittedBy.trim().length > 0
+            && state.sampleDateSubmitted.trim().length > 0
+            && state.sampleDateTested.trim().length > 0;
+        }
+        return state.sampleId.trim().length > 0 && state.sampleDepthFrom.trim().length > 0 && state.sampleDepthTo.trim().length > 0;
       case "entry": return true;
       default: return false;
     }
@@ -508,6 +524,10 @@ const RecordTestWizard = () => {
         customFields: state.customFields,
       });
       setNewProjectOpen(false);
+      if (isGradingTest) {
+        const sampleStepIndex = steps.findIndex((wizardStep) => wizardStep.id === "sample");
+        setStep(sampleStepIndex);
+      }
       toast.success("Project created");
     } catch (error) {
       console.error("[RecordTestWizard] Failed to create project:", error);
@@ -1115,6 +1135,78 @@ const RecordTestWizard = () => {
                     <div>
                       <Label className="text-xs font-medium mb-1 block">Date Tested</Label>
                       <Input type="date" value={state.dateTested} onChange={(e) => update("dateTested", e.target.value)} className="h-10 text-sm" />
+                    </div>
+                  </div>
+                </FormCard>
+              </>
+            ) : isGradingTest ? (
+              <>
+                <div>
+                  <h2 className="text-2xl font-semibold tracking-tight">Particle size distribution — sample details</h2>
+                </div>
+                <FormCard>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="grading-sample-id">Sample ID *</Label>
+                      <Input
+                        id="grading-sample-id"
+                        value={state.sampleId}
+                        onChange={(e) => update("sampleId", e.target.value)}
+                        placeholder="e.g. BH04"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="grading-sample-no">Sample No. *</Label>
+                      <Input
+                        id="grading-sample-no"
+                        value={state.sampleNo}
+                        onChange={(e) => update("sampleNo", e.target.value)}
+                        placeholder="e.g. 1"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="grading-depth-from">Sample Depth From (m) *</Label>
+                      <Input
+                        id="grading-depth-from"
+                        value={state.sampleDepthFrom}
+                        onChange={(e) => update("sampleDepthFrom", e.target.value)}
+                        placeholder="e.g. 18.2"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="grading-depth-to">Sample Depth To (m) *</Label>
+                      <Input
+                        id="grading-depth-to"
+                        value={state.sampleDepthTo}
+                        onChange={(e) => update("sampleDepthTo", e.target.value)}
+                        placeholder="e.g. 20.0"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="grading-sampled-submitted-by">Sampled &amp; Submitted by *</Label>
+                      <Input
+                        id="grading-sampled-submitted-by"
+                        value={state.sampledSubmittedBy}
+                        onChange={(e) => update("sampledSubmittedBy", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="grading-date-submitted">Date Submitted *</Label>
+                      <Input
+                        id="grading-date-submitted"
+                        type="date"
+                        value={state.sampleDateSubmitted}
+                        onChange={(e) => update("sampleDateSubmitted", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label htmlFor="grading-date-tested">Date Tested *</Label>
+                      <Input
+                        id="grading-date-tested"
+                        type="date"
+                        value={state.sampleDateTested}
+                        onChange={(e) => update("sampleDateTested", e.target.value)}
+                      />
                     </div>
                   </div>
                 </FormCard>
