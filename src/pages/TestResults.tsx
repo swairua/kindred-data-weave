@@ -223,12 +223,12 @@ const TestResults = () => {
         <div className="flex flex-col min-h-screen bg-background">
           {/* Header */}
           <header className="border-b bg-card sticky top-0 z-10">
-            <div className="flex items-center justify-between h-14 px-4 gap-2">
+            <div className="flex items-center justify-between h-11 px-3 sm:px-4 gap-2">
               <div className="flex items-center gap-2">
                 <SidebarTrigger />
                 <div>
-                  <h1 className="text-lg font-semibold">Test Results</h1>
-                  <p className="text-xs text-muted-foreground">
+                  <h1 className="text-sm font-semibold leading-4">Test Results</h1>
+                  <p className="text-[10px] leading-3 text-muted-foreground">
                     All recorded complex tests
                   </p>
                 </div>
@@ -238,13 +238,13 @@ const TestResults = () => {
 
           {/* Main Content */}
           <main className="flex-1 overflow-auto">
-            <div className="p-6">
-              <Card className="border-0 shadow-sm">
-                <CardHeader className="pb-4">
-                  <div className="flex flex-col items-start gap-2">
-                    <div>
-                      <CardTitle>Test Records</CardTitle>
-                      <CardDescription>
+            <div className="p-3 sm:p-4">
+              <Card className="rounded-md border border-border shadow-none">
+                <CardHeader className="px-3 py-2.5 sm:px-4">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <div className="shrink-0">
+                      <CardTitle className="text-sm font-semibold leading-5">Test Records</CardTitle>
+                      <CardDescription className="text-[11px] leading-4">
                         {filteredTests.length} test{filteredTests.length !== 1 ? "s" : ""} found
                         {totalPages > 1 && ` • Page ${currentPage} of ${totalPages}`}
                       </CardDescription>
@@ -252,11 +252,11 @@ const TestResults = () => {
                   </div>
 
                   {/* Filters */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Material Type</label>
+                  <div className="grid w-full grid-cols-1 gap-2 sm:flex-1 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium">Material Type</label>
                       <Select value={materialFilter} onValueChange={setMaterialFilter}>
-                        <SelectTrigger className="h-10">
+                        <SelectTrigger className="h-8 text-xs">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -270,10 +270,10 @@ const TestResults = () => {
                       </Select>
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Test Type</label>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium">Test Type</label>
                       <Select value={testTypeFilter} onValueChange={setTestTypeFilter}>
-                        <SelectTrigger className="h-10">
+                        <SelectTrigger className="h-8 text-xs">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -287,13 +287,13 @@ const TestResults = () => {
                       </Select>
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Search</label>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium">Search</label>
                       <Input
                         placeholder="Search project, ID or test type..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="h-10"
+                        className="h-8 text-xs"
                       />
                     </div>
 
@@ -309,7 +309,7 @@ const TestResults = () => {
                             setTestTypeFilter("all");
                             setSearchQuery("");
                           }}
-                          className="w-full h-10"
+                          className="h-8 w-full text-xs"
                         >
                           Clear filters
                         </Button>
@@ -318,7 +318,7 @@ const TestResults = () => {
                   </div>
                 </CardHeader>
 
-                <CardContent className="pt-0">
+                <CardContent className="px-3 pb-3 pt-0 sm:px-4 sm:pb-4">
                   {isLoading ? (
                     <div className="flex items-center justify-center py-12">
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -338,17 +338,17 @@ const TestResults = () => {
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-2">
                       <div className="overflow-x-auto">
                         <Table>
                           <TableHeader>
                             <TableRow className="bg-muted/40 hover:bg-muted/40">
-                              <TableHead className="font-semibold">PROJECT</TableHead>
-                              <TableHead className="font-semibold hidden sm:table-cell">TEST TYPE</TableHead>
-                              <TableHead className="font-semibold">SAMPLE ID & DEPTH</TableHead>
-                              <TableHead className="font-semibold hidden md:table-cell">DATE & TIME</TableHead>
-                              <TableHead className="font-semibold hidden lg:table-cell">RECORDED BY</TableHead>
-                              <TableHead className="font-semibold text-right">ACTION</TableHead>
+                              <TableHead className="h-8 px-2 text-[10px] font-semibold tracking-wide text-muted-foreground">PROJECT</TableHead>
+                              <TableHead className="hidden h-8 px-2 text-[10px] font-semibold tracking-wide text-muted-foreground sm:table-cell">TEST TYPE</TableHead>
+                              <TableHead className="h-8 px-2 text-[10px] font-semibold tracking-wide text-muted-foreground">SAMPLE ID & DEPTH</TableHead>
+                              <TableHead className="hidden h-8 px-2 text-[10px] font-semibold tracking-wide text-muted-foreground md:table-cell">DATE & TIME</TableHead>
+                              <TableHead className="hidden h-8 px-2 text-[10px] font-semibold tracking-wide text-muted-foreground lg:table-cell">RECORDED BY</TableHead>
+                              <TableHead className="h-8 px-2 text-right text-[10px] font-semibold tracking-wide text-muted-foreground">ACTION</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -357,35 +357,35 @@ const TestResults = () => {
                                 key={test.id}
                                 className="border-b last:border-0 hover:bg-muted/50"
                               >
-                                <TableCell className="font-medium">
-                                  <div className="space-y-1">
-                                    <p>{test.project_name || "-"}</p>
-                                    <p className="text-xs text-muted-foreground sm:hidden">
+                                <TableCell className="px-2 py-1.5 font-medium">
+                                  <div>
+                                    <p className="text-xs font-medium leading-4">{test.project_name || "-"}</p>
+                                    <p className="text-[10px] leading-3 text-muted-foreground sm:hidden">
                                       {test.test_type || "-"}
                                     </p>
                                   </div>
                                 </TableCell>
-                                <TableCell className="hidden sm:table-cell">{test.test_type || "-"}</TableCell>
-                                <TableCell>
-                                  <div className="space-y-1">
-                                    <p className="font-medium">{test.sample_id || "-"}</p>
-                                    <p className="text-xs text-muted-foreground">
+                                <TableCell className="hidden px-2 py-1.5 text-xs sm:table-cell">{test.test_type || "-"}</TableCell>
+                                <TableCell className="px-2 py-1.5">
+                                  <div>
+                                    <p className="text-xs font-medium leading-4">{test.sample_id || "-"}</p>
+                                    <p className="text-[10px] leading-3 text-muted-foreground">
                                       Depth: {test.depth || "-"}
                                     </p>
-                                    <p className="text-xs text-muted-foreground md:hidden">
+                                    <p className="text-[10px] leading-3 text-muted-foreground md:hidden">
                                       {formatDate(test.date_created)}
                                     </p>
                                   </div>
                                 </TableCell>
-                                <TableCell className="text-sm hidden md:table-cell">
+                                <TableCell className="hidden px-2 py-1.5 text-xs md:table-cell">
                                   {formatDate(test.date_created)}
                                 </TableCell>
-                                <TableCell className="hidden lg:table-cell">{test.created_by || "-"}</TableCell>
-                                <TableCell className="text-right">
+                                <TableCell className="hidden px-2 py-1.5 text-xs lg:table-cell">{test.created_by || "-"}</TableCell>
+                                <TableCell className="px-2 py-1.5 text-right">
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    className="h-9"
+                                    className="h-7 px-2.5 text-[11px]"
                                     onClick={() => handleOpenTest(test)}
                                   >
                                     Open →
@@ -399,19 +399,19 @@ const TestResults = () => {
 
                       {/* Pagination Controls */}
                       {totalPages > 1 && (
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-2">
-                          <p className="text-sm text-muted-foreground">
-                            Showing {startIndex + 1} to {Math.min(endIndex, filteredTests.length)} of {filteredTests.length}
+                        <div className="flex flex-col items-start justify-between gap-2 border-t pt-2 sm:flex-row sm:items-center">
+                          <p className="text-[10px] text-muted-foreground">
+                            {startIndex + 1}-{Math.min(endIndex, filteredTests.length)} of {filteredTests.length}
                           </p>
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex flex-wrap gap-1.5">
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                               disabled={currentPage === 1}
-                              className="gap-1"
+                              className="h-7 gap-1 px-2 text-[10px]"
                             >
-                              <ChevronLeft className="h-4 w-4" />
+                              <ChevronLeft className="h-3 w-3" />
                               Previous
                             </Button>
                             <div className="flex items-center gap-1">
@@ -421,7 +421,7 @@ const TestResults = () => {
                                   variant={page === currentPage ? "default" : "outline"}
                                   size="sm"
                                   onClick={() => setCurrentPage(page)}
-                                  className="w-9 h-9 p-0"
+                                  className="h-7 w-7 p-0 text-[10px]"
                                 >
                                   {page}
                                 </Button>
@@ -432,10 +432,10 @@ const TestResults = () => {
                               size="sm"
                               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                               disabled={currentPage === totalPages}
-                              className="gap-1"
+                              className="h-7 gap-1 px-2 text-[10px]"
                             >
                               Next
-                              <ChevronRight className="h-4 w-4" />
+                              <ChevronRight className="h-3 w-3" />
                             </Button>
                           </div>
                         </div>
