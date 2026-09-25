@@ -176,7 +176,6 @@ const RecordTestWizard = () => {
   const [pendingBackwardStep, setPendingBackwardStep] = useState<number | null>(null);
   const [projects, setProjects] = useState<ApiProjectRow[]>([]);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
-  const [projectSelectionOpen, setProjectSelectionOpen] = useState(false);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [projectsLoadError, setProjectsLoadError] = useState<string | null>(null);
@@ -375,10 +374,10 @@ const RecordTestWizard = () => {
     }
   }, [step, steps, state, tests, isCompressiveStrengthTest, isGradingTest, isProctorTest, selectedExistingTestId]);
 
-  // Load projects when reaching project step or opening Concrete project selection.
+  // Load projects when reaching the project step.
   useEffect(() => {
     const projectStepIndex = steps.findIndex((s) => s.id === "project");
-    if (step !== projectStepIndex && !projectSelectionOpen) return;
+    if (step !== projectStepIndex) return;
     if (projectsLoadedKey.current === projectLoadKey || projectsAttemptedKey.current === projectLoadKey) return;
     let active = true;
     projectsAttemptedKey.current = projectLoadKey;
@@ -410,7 +409,7 @@ const RecordTestWizard = () => {
       })
       .finally(() => active && setLoadingProjects(false));
     return () => { active = false; };
-  }, [step, projectSelectionOpen, projectLoadKey, projectsLoadedKey, navigate, steps]);
+  }, [step, projectLoadKey, projectsLoadedKey, navigate, steps]);
 
   const handleNext = () => {
     if (step < steps.length - 1) setStep(step + 1);
@@ -519,7 +518,6 @@ const RecordTestWizard = () => {
       });
       setNewProjectOpen(false);
       if (isCompressiveStrengthTest || isGradingTest || isProctorTest) {
-        setProjectSelectionOpen(false);
         const sampleStepIndex = steps.findIndex((wizardStep) => wizardStep.id === "sample");
         setStep(sampleStepIndex);
       }
@@ -693,16 +691,9 @@ const RecordTestWizard = () => {
   const createNewCompressiveTest = () => {
     setSelectedExistingTestId(null);
     setShowTestDetails(false);
+    resetNewProjectForm();
     setState((prev) => ({
       ...prev,
-      projectId: null,
-      projectName: "",
-      clientName: "",
-      contractor: "",
-      county: "",
-      submittedBy: "",
-      dateSubmitted: "",
-      customFields: [],
       cement: "",
       fineAggregate: "",
       coarseAggregate: "",
@@ -713,7 +704,7 @@ const RecordTestWizard = () => {
       clientRef: "",
       dateTested: new Date().toISOString().split("T")[0],
     }));
-    setProjectSelectionOpen(true);
+    setNewProjectOpen(true);
   };
 
   const pickProject = (id: number) => {
@@ -1375,83 +1366,6 @@ const RecordTestWizard = () => {
         </main>
 
         <Dialog
-          open={projectSelectionOpen}
-          onOpenChange={setProjectSelectionOpen}
-        >
-          <DialogContent className="sm:max-w-[520px]">
-            <DialogHeader>
-              <DialogTitle>Choose a project</DialogTitle>
-              <DialogDescription>Select an existing project or create a new one for this test.</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-2 py-2">
-              <Label htmlFor="compressive-project-select">Project</Label>
-              <Select
-                value={state.projectId ? String(state.projectId) : ""}
-                onValueChange={(value) => pickProject(Number(value))}
-                disabled={loadingProjects || !!projectsLoadError || projects.length === 0}
-              >
-                <SelectTrigger id="compressive-project-select" className="h-10">
-                  {loadingProjects ? (
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                      <span className="text-muted-foreground">Loading projects…</span>
-                    </div>
-                  ) : state.projectId ? (
-                    <div className="flex items-center gap-2">
-                      <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">{state.projectName}</span>
-                    </div>
-                  ) : (
-                    <SelectValue placeholder={projectsLoadError ? "Couldn't load projects" : "Select a project…"} />
-                  )}
-                </SelectTrigger>
-                <SelectContent>
-                  {projects.map((project) => (
-                    <SelectItem key={project.id} value={String(project.id)}>
-                      <div className="flex items-center gap-2">
-                        <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">{project.name}</span>
-                        <span className="text-xs text-muted-foreground">· {project.client_name || "No client"}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {!loadingProjects && !projectsLoadError && projects.length === 0 && (
-                <p className="text-xs text-muted-foreground">No existing projects for this test. Create a new project to continue.</p>
-              )}
-              {projectsLoadError && (
-                <div className="flex items-center justify-between gap-3 text-xs">
-                  <span className="text-destructive">{projectsLoadError}</span>
-                  <Button type="button" variant="outline" size="sm" onClick={() => setProjectsReloadKey((key) => key + 1)}>Retry</Button>
-                </div>
-              )}
-            </div>
-            <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-between">
-              <Button type="button" variant="outline" className="gap-2" onClick={() => {
-                setProjectSelectionOpen(false);
-                openNewProjectDialog();
-              }}>
-                <Plus className="h-4 w-4" /> New project
-              </Button>
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setProjectSelectionOpen(false)}>Cancel</Button>
-                <Button
-                  type="button"
-                  disabled={!state.projectId || !state.contractor.trim() || !state.county.trim()}
-                  onClick={() => {
-                    setProjectSelectionOpen(false);
-                    setStep(steps.findIndex((wizardStep) => wizardStep.id === "sample"));
-                  }}
-                >
-                  Continue <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog
           open={newProjectOpen}
           onOpenChange={(open) => {
             if (open) {
@@ -1488,7 +1402,7 @@ const RecordTestWizard = () => {
                 />
               </div>
 
-              {!isProctorTest && (
+              {!isProctorTest && !isCompressiveStrengthTest && (
                 <div className="space-y-2">
                   <Label htmlFor="new-project-date">Project date</Label>
                   <Input
@@ -1543,20 +1457,19 @@ const RecordTestWizard = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label>Custom fields (optional)</Label>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setState((prev) => ({
-                          ...prev,
-                          customFields: [...prev.customFields, { name: "", value: "" }],
-                        }))}
-                      >
-                        <Plus className="mr-1 h-3 w-3" /> Add custom field
-                      </Button>
-                    </div>
+                    <Label>Custom fields (optional)</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-fit"
+                      onClick={() => setState((prev) => ({
+                        ...prev,
+                        customFields: [...prev.customFields, { name: "", value: "" }],
+                      }))}
+                    >
+                      <Plus className="mr-1 h-3 w-3" /> Add custom field
+                    </Button>
                     {state.customFields.map((field, index) => (
                       <div key={index} className="flex items-center gap-2">
                         <Input
