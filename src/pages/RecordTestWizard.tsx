@@ -35,26 +35,19 @@ const MATERIAL_PRESENTATION: Record<Material, { label: string; Icon: LucideIcon 
   special: { label: "Special", Icon: FlaskConical },
 };
 
-const getSteps = (
-  testKey: string | null,
-  hasExistingTests: boolean,
-  selectedExistingTestId: number | null,
-): WizardStep[] => {
+const getSteps = (testKey: string | null): WizardStep[] => {
   const isCompressiveStrengthTest = testKey === "compressive";
-  // Only skip project step if a specific existing test instance has been selected
-  const existingTestSelected = selectedExistingTestId !== null;
 
   const steps: WizardStep[] = [
     { id: "material", label: "Material" },
     { id: "test", label: "Test type" },
   ];
 
-  if (isCompressiveStrengthTest && hasExistingTests) {
+  if (isCompressiveStrengthTest) {
     steps.push({ id: "existing", label: "Select test" });
   }
 
-  // Skip project step only if an existing test instance has been selected
-  if (!existingTestSelected) {
+  if (!isCompressiveStrengthTest) {
     steps.push({ id: "project", label: "Project" });
   }
 
@@ -183,6 +176,7 @@ const RecordTestWizard = () => {
   const [pendingBackwardStep, setPendingBackwardStep] = useState<number | null>(null);
   const [projects, setProjects] = useState<ApiProjectRow[]>([]);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
+  const [projectSelectionOpen, setProjectSelectionOpen] = useState(false);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [projectsLoadError, setProjectsLoadError] = useState<string | null>(null);
@@ -318,8 +312,8 @@ const RecordTestWizard = () => {
       return;
     }
     if (!testData.testDefinitionsError && isInitialTestValid(initialMaterial, initialTest, selectedDefinitionEnabled, initialTest ? registry.hasTest(initialTest) : false)) {
-      const targetStepId = initialTest === "compressive" && compressiveTests.length > 0 ? "existing" : "project";
-      const targetStep = getSteps(initialTest, initialTest === "compressive" && compressiveTests.length > 0, null)
+      const targetStepId = initialTest === "compressive" ? "existing" : "project";
+      const targetStep = getSteps(initialTest)
         .findIndex((wizardStep) => wizardStep.id === targetStepId);
       if (targetStep !== -1) setStep(targetStep);
     }
@@ -341,11 +335,7 @@ const RecordTestWizard = () => {
   const isCompressiveStrengthTest = state.testKey === "compressive";
   const isGradingTest = state.testKey === "grading";
   const isProctorTest = state.testKey === "proctor";
-  const hasExistingCompressiveTests = isCompressiveStrengthTest && compressiveTests.length > 0;
-  const steps = useMemo(
-    () => getSteps(state.testKey, hasExistingCompressiveTests, selectedExistingTestId),
-    [state.testKey, hasExistingCompressiveTests, selectedExistingTestId],
-  );
+  const steps = useMemo(() => getSteps(state.testKey), [state.testKey]);
   const projectLoadKey = `${state.material ?? ""}:${state.testKey ?? ""}:${projectsReloadKey}`;
 
   const canAdvance = useMemo(() => {
@@ -355,12 +345,9 @@ const RecordTestWizard = () => {
       case "material": return !!state.material;
       case "test": return tests.some((test) => test.key === state.testKey && test.isRegistered && test.isAllowed);
       case "existing":
-        // If an existing test is selected, contractor and county must be filled in accordion
-        if (selectedExistingTestId !== null) {
-          return state.contractor.trim().length > 0 && state.county.trim().length > 0;
-        }
-        // If creating new test, can advance without contractor/county (they're in Project step)
-        return true;
+        return selectedExistingTestId !== null
+          && state.contractor.trim().length > 0
+          && state.county.trim().length > 0;
       case "project":
         if (isGradingTest) {
           return state.projectId !== null
@@ -388,10 +375,10 @@ const RecordTestWizard = () => {
     }
   }, [step, steps, state, tests, isCompressiveStrengthTest, isGradingTest, isProctorTest, selectedExistingTestId]);
 
-  // Load projects when reaching project step (and after retry)
+  // Load projects when reaching project step or opening Concrete project selection.
   useEffect(() => {
     const projectStepIndex = steps.findIndex((s) => s.id === "project");
-    if (step !== projectStepIndex) return;
+    if (step !== projectStepIndex && !projectSelectionOpen) return;
     if (projectsLoadedKey.current === projectLoadKey || projectsAttemptedKey.current === projectLoadKey) return;
     let active = true;
     projectsAttemptedKey.current = projectLoadKey;
@@ -423,7 +410,7 @@ const RecordTestWizard = () => {
       })
       .finally(() => active && setLoadingProjects(false));
     return () => { active = false; };
-  }, [step, projectLoadKey, projectsLoadedKey, navigate, steps]);
+  }, [step, projectSelectionOpen, projectLoadKey, projectsLoadedKey, navigate, steps]);
 
   const handleNext = () => {
     if (step < steps.length - 1) setStep(step + 1);
@@ -531,7 +518,8 @@ const RecordTestWizard = () => {
         customFields: state.customFields,
       });
       setNewProjectOpen(false);
-      if (isGradingTest || isProctorTest) {
+      if (isCompressiveStrengthTest || isGradingTest || isProctorTest) {
+        setProjectSelectionOpen(false);
         const sampleStepIndex = steps.findIndex((wizardStep) => wizardStep.id === "sample");
         setStep(sampleStepIndex);
       }
@@ -701,17 +689,23 @@ const RecordTestWizard = () => {
     })();
   };
 
-  // Create new compressive test (deselect existing) and advance directly to sample step
+  // Start a new compressive test and request its project.
   const createNewCompressiveTest = () => {
     setSelectedExistingTestId(null);
     setShowTestDetails(false);
     setState((prev) => ({
       ...prev,
       projectId: null,
+      projectName: "",
+      clientName: "",
+      contractor: "",
+      county: "",
+      submittedBy: "",
+      dateSubmitted: "",
+      customFields: [],
       cement: "",
       fineAggregate: "",
       coarseAggregate: "",
-      contractor: "",
       concreteClass: "",
       section: "",
       madeBy: "",
@@ -719,11 +713,7 @@ const RecordTestWizard = () => {
       clientRef: "",
       dateTested: new Date().toISOString().split("T")[0],
     }));
-    // Skip Project step and go directly to Sample step
-    setTimeout(() => {
-      const sampleStepIndex = getSteps(state.testKey, hasExistingCompressiveTests, null).findIndex((s) => s.id === "sample");
-      setStep(sampleStepIndex !== -1 ? sampleStepIndex : step + 1);
-    }, 0);
+    setProjectSelectionOpen(true);
   };
 
   const pickProject = (id: number) => {
@@ -995,6 +985,9 @@ const RecordTestWizard = () => {
                         </div>
                         <p className="mb-1 text-lg font-medium text-foreground">No tests found</p>
                         <p className="text-sm text-muted-foreground">No existing compressive strength tests. Create a new one.</p>
+                        <Button type="button" variant="outline" className="mt-4 gap-2" onClick={createNewCompressiveTest}>
+                          <Plus className="h-4 w-4" /> Create new test
+                        </Button>
                       </div>
                     </FormCard>
                   ) : (
@@ -1042,14 +1035,16 @@ const RecordTestWizard = () => {
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between gap-3">
-                    <Button type="button" variant="outline" className="gap-2" onClick={createNewCompressiveTest}>
-                      <Plus className="h-4 w-4" /> Create new test
-                    </Button>
-                    <Button type="button" onClick={handleNext} disabled={!canAdvance} className="gap-2">
-                      Continue <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  {compressiveTests.length > 0 && (
+                    <div className="flex items-center justify-between gap-3">
+                      <Button type="button" variant="outline" className="gap-2" onClick={createNewCompressiveTest}>
+                        <Plus className="h-4 w-4" /> Create new test
+                      </Button>
+                      <Button type="button" onClick={handleNext} disabled={!canAdvance} className="gap-2">
+                        Continue <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
                 </section>
               )}
 
@@ -1378,6 +1373,83 @@ const RecordTestWizard = () => {
             </div>
           </div>
         </main>
+
+        <Dialog
+          open={projectSelectionOpen}
+          onOpenChange={setProjectSelectionOpen}
+        >
+          <DialogContent className="sm:max-w-[520px]">
+            <DialogHeader>
+              <DialogTitle>Choose a project</DialogTitle>
+              <DialogDescription>Select an existing project or create a new one for this test.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 py-2">
+              <Label htmlFor="compressive-project-select">Project</Label>
+              <Select
+                value={state.projectId ? String(state.projectId) : ""}
+                onValueChange={(value) => pickProject(Number(value))}
+                disabled={loadingProjects || !!projectsLoadError || projects.length === 0}
+              >
+                <SelectTrigger id="compressive-project-select" className="h-10">
+                  {loadingProjects ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      <span className="text-muted-foreground">Loading projects…</span>
+                    </div>
+                  ) : state.projectId ? (
+                    <div className="flex items-center gap-2">
+                      <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">{state.projectName}</span>
+                    </div>
+                  ) : (
+                    <SelectValue placeholder={projectsLoadError ? "Couldn't load projects" : "Select a project…"} />
+                  )}
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map((project) => (
+                    <SelectItem key={project.id} value={String(project.id)}>
+                      <div className="flex items-center gap-2">
+                        <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">{project.name}</span>
+                        <span className="text-xs text-muted-foreground">· {project.client_name || "No client"}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!loadingProjects && !projectsLoadError && projects.length === 0 && (
+                <p className="text-xs text-muted-foreground">No existing projects for this test. Create a new project to continue.</p>
+              )}
+              {projectsLoadError && (
+                <div className="flex items-center justify-between gap-3 text-xs">
+                  <span className="text-destructive">{projectsLoadError}</span>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setProjectsReloadKey((key) => key + 1)}>Retry</Button>
+                </div>
+              )}
+            </div>
+            <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+              <Button type="button" variant="outline" className="gap-2" onClick={() => {
+                setProjectSelectionOpen(false);
+                openNewProjectDialog();
+              }}>
+                <Plus className="h-4 w-4" /> New project
+              </Button>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setProjectSelectionOpen(false)}>Cancel</Button>
+                <Button
+                  type="button"
+                  disabled={!state.projectId || !state.contractor.trim() || !state.county.trim()}
+                  onClick={() => {
+                    setProjectSelectionOpen(false);
+                    setStep(steps.findIndex((wizardStep) => wizardStep.id === "sample"));
+                  }}
+                >
+                  Continue <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <Dialog
           open={newProjectOpen}
