@@ -179,7 +179,6 @@ const RecordTestWizard = () => {
     return defaults;
   });
 
-  // If both material and test are pre-selected via query params, skip to project step
   const [step, setStep] = useState(0);
   const [pendingBackwardStep, setPendingBackwardStep] = useState<number | null>(null);
   const [projects, setProjects] = useState<ApiProjectRow[]>([]);
@@ -319,9 +318,12 @@ const RecordTestWizard = () => {
       return;
     }
     if (!testData.testDefinitionsError && isInitialTestValid(initialMaterial, initialTest, selectedDefinitionEnabled, initialTest ? registry.hasTest(initialTest) : false)) {
-      setStep(2);
+      const targetStepId = initialTest === "compressive" && compressiveTests.length > 0 ? "existing" : "project";
+      const targetStep = getSteps(initialTest, initialTest === "compressive" && compressiveTests.length > 0, null)
+        .findIndex((wizardStep) => wizardStep.id === targetStepId);
+      if (targetStep !== -1) setStep(targetStep);
     }
-  }, [testData.testDefinitionsLoading, testData.testDefinitions, testData.testDefinitionsError, state.material, state.testKey, initialMaterial, initialTest]);
+  }, [testData.testDefinitionsLoading, testData.testDefinitions, testData.testDefinitionsError, state.material, state.testKey, initialMaterial, initialTest, compressiveTests]);
 
   const tests = useMemo<TestOption[]>(() => {
     if (!state.material) return [];
@@ -814,7 +816,6 @@ const RecordTestWizard = () => {
               steps={steps}
               currentIndex={step}
               onStepClick={handleStepClick}
-              disabledSteps={state.material !== "soil" ? [1, 2, 3, 4] : []}
             />
           </div>
         </header>
