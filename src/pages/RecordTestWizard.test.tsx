@@ -9,6 +9,11 @@ const wizardMocks = vi.hoisted(() => ({
   listCompressiveTests: vi.fn(),
   refreshTestDefinitions: vi.fn(),
   updateProjectMetadata: vi.fn(),
+  testDefinitions: [
+    { test_key: "proctor", name: "Density/Moisture Content Relationship", category: "soil", sort_order: 1, enabled: true },
+    { test_key: "grading", name: "Particle Size Distribution", category: "soil", sort_order: 2, enabled: true },
+    { test_key: "compressive", name: "Compressive Strength", category: "concrete", sort_order: 1, enabled: true },
+  ],
 }));
 
 vi.mock("@/lib/api", () => ({
@@ -26,11 +31,7 @@ vi.mock("@/context/SessionContext", () => ({
 
 vi.mock("@/context/TestDataContext", () => ({
   useTestData: () => ({
-    testDefinitions: [
-      { test_key: "proctor", name: "Density/Moisture Content Relationship", category: "soil", sort_order: 1, enabled: true },
-      { test_key: "grading", name: "Particle Size Distribution", category: "soil", sort_order: 2, enabled: true },
-      { test_key: "compressive", name: "Compressive Strength", category: "concrete", sort_order: 1, enabled: true },
-    ],
+    testDefinitions: wizardMocks.testDefinitions,
     testDefinitionsLoading: false,
     testDefinitionsError: null,
     refreshTestDefinitions: wizardMocks.refreshTestDefinitions,
@@ -174,7 +175,73 @@ describe("RecordTestWizard selection flow", () => {
     renderWizard("/record?material=concrete&test=compressive");
 
     expect(await screen.findByRole("heading", { name: "Select test to edit" })).toBeInTheDocument();
+    expect(screen.getByText("Step 3 of 6")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Step 3: Select test" })).toHaveAttribute("aria-current", "step");
+    expect(screen.getByRole("button", { name: /Back/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Create new test/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Continue/ })).toBeEnabled();
+  });
+
+  it("requires county details before continuing with a selected compressive test", async () => {
+    wizardMocks.listCompressiveTests.mockResolvedValue({
+      data: [{
+        id: 7,
+        project_id: 42,
+        test_key: "compressive",
+        date_tested: "2026-06-18",
+        cement: "Cement",
+        fine_aggregate: "Fine aggregate",
+        coarse_aggregate: "Coarse aggregate",
+        contractor: "Contractor",
+        concrete_class: "C25",
+        section: "Section A",
+        made_by: "Technician",
+        slump: "50",
+        client_ref: "REF-7",
+        created_at: "2026-06-18T00:00:00Z",
+        updated_at: "2026-06-18T00:00:00Z",
+      }],
+    });
+    renderWizard("/record?material=concrete&test=compressive");
+
+    await screen.findByRole("heading", { name: "Select test to edit" });
+    fireEvent.click(screen.getByRole("combobox", { name: "Existing tests" }));
+    fireEvent.click(await screen.findByRole("option", { name: /REF-7/ }));
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /Continue/ })).toBeDisabled());
+    fireEvent.change(screen.getByLabelText("County *"), { target: { value: "Nairobi" } });
+    await waitFor(() => expect(screen.getByRole("button", { name: /Continue/ })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+
+    expect(await screen.findByRole("heading", { name: "Concrete cube details" })).toBeInTheDocument();
+  });
+
+  it("starts a new compressive test from the Select test step", async () => {
+    wizardMocks.listCompressiveTests.mockResolvedValue({
+      data: [{
+        id: 7,
+        project_id: 42,
+        test_key: "compressive",
+        date_tested: "2026-06-18",
+        cement: "Cement",
+        fine_aggregate: "Fine aggregate",
+        coarse_aggregate: "Coarse aggregate",
+        contractor: "Contractor",
+        concrete_class: "C25",
+        section: "Section A",
+        made_by: "Technician",
+        slump: "50",
+        client_ref: "REF-7",
+        created_at: "2026-06-18T00:00:00Z",
+        updated_at: "2026-06-18T00:00:00Z",
+      }],
+    });
+    renderWizard("/record?material=concrete&test=compressive");
+
+    await screen.findByRole("heading", { name: "Select test to edit" });
+    fireEvent.click(screen.getByRole("button", { name: /Create new test/ }));
+
+    expect(await screen.findByRole("heading", { name: "Concrete cube details" })).toBeInTheDocument();
   });
 });
 

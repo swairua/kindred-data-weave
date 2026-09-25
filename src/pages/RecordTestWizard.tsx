@@ -721,7 +721,7 @@ const RecordTestWizard = () => {
     }));
     // Skip Project step and go directly to Sample step
     setTimeout(() => {
-      const sampleStepIndex = steps.findIndex((s) => s.id === "sample");
+      const sampleStepIndex = getSteps(state.testKey, hasExistingCompressiveTests, null).findIndex((s) => s.id === "sample");
       setStep(sampleStepIndex !== -1 ? sampleStepIndex : step + 1);
     }, 0);
   };
@@ -942,110 +942,115 @@ const RecordTestWizard = () => {
               )}
 
               {steps[step]?.id === "existing" && (
-                <section className="mx-auto max-w-md space-y-4 animate-fade-in">
-            <div className="text-center">
-              <h2 className="text-lg font-semibold tracking-tight">Select test to edit</h2>
-              <p className="mt-1 text-xs text-muted-foreground">Choose an existing compressive strength test to edit, or create a new one.</p>
-            </div>
-
-            <FormCard>
-              {loadingCompressiveTests ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="text-center">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">Loading tests…</p>
-                  </div>
-                </div>
-              ) : compressiveTestsError ? (
-                <div className="flex items-center justify-between gap-3 text-sm">
-                  <span className="text-destructive">{compressiveTestsError}</span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setLoadingCompressiveTests(true);
-                      setCompressiveTestsError(null);
-                      listCompressiveTests()
-                        .then((res) => {
-                          setCompressiveTests(res.data || []);
-                        })
-                        .catch((err) => {
-                          setCompressiveTestsError(err instanceof Error ? err.message : String(err));
-                        })
-                        .finally(() => setLoadingCompressiveTests(false));
-                    }}
-                  >
-                    Retry
+                <section className="mx-auto w-full max-w-lg space-y-5 animate-fade-in">
+                  <Button type="button" variant="ghost" onClick={handleBack} className="-ml-2 h-auto gap-2 px-2 py-1 text-muted-foreground hover:text-foreground">
+                    <ArrowLeft className="h-4 w-4" /> Back
                   </Button>
-                </div>
-              ) : compressiveTests.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
-                    <Layers className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                  <p className="text-lg font-medium text-foreground mb-1">No tests found</p>
-                  <p className="text-sm text-muted-foreground mb-4">No existing compressive strength tests. Create a new one.</p>
-                  <Button type="button" onClick={createNewCompressiveTest}>Create new test</Button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Existing tests</Label>
-                    <Select value={selectedExistingTestId ? String(selectedExistingTestId) : ""} onValueChange={(value) => selectCompressiveTest(Number(value))}>
-                      <SelectTrigger className="h-11">
-                        <SelectValue placeholder="Select a test to edit" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {compressiveTests.map((test) => (
-                          <SelectItem key={test.id} value={String(test.id)}>
-                            <div className="flex flex-col">
-                              <span>{test.client_ref || `Test #${test.id}`}</span>
-                              <span className="text-xs text-muted-foreground">
-                                {test.contractor} • {test.date_tested}
-                              </span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Step {step + 1} of {steps.length}</p>
+                    <h2 className="text-2xl font-semibold tracking-tight">Select test to edit</h2>
+                    <p className="text-sm text-muted-foreground">Choose an existing compressive strength test to edit, or create a new one.</p>
                   </div>
 
-                  {selectedExistingTestId !== null && (
-                    <Accordion value={showTestDetails ? "test-details" : ""} onValueChange={(v) => setShowTestDetails(v === "test-details")}>
-                      <AccordionItem value="test-details">
-                        <AccordionTrigger className="text-sm font-medium">Test details</AccordionTrigger>
-                        <AccordionContent className="pt-4">
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <div className="space-y-2">
-                                <Label htmlFor="test-contractor">Contractor *</Label>
-                                <Input id="test-contractor" value={state.contractor} onChange={(e) => update("contractor", e.target.value)} placeholder="e.g. BuildWell Contractors Ltd" />
+                  {loadingCompressiveTests ? (
+                    <FormCard>
+                      <div className="flex items-center justify-center py-8">
+                        <div className="text-center">
+                          <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin text-muted-foreground" />
+                          <p className="text-sm text-muted-foreground">Loading tests…</p>
+                        </div>
+                      </div>
+                    </FormCard>
+                  ) : compressiveTestsError ? (
+                    <FormCard>
+                      <div className="flex items-center justify-between gap-3 text-sm">
+                        <span className="text-destructive">{compressiveTestsError}</span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setLoadingCompressiveTests(true);
+                            setCompressiveTestsError(null);
+                            listCompressiveTests()
+                              .then((res) => {
+                                setCompressiveTests(res.data || []);
+                              })
+                              .catch((err) => {
+                                setCompressiveTestsError(err instanceof Error ? err.message : String(err));
+                              })
+                              .finally(() => setLoadingCompressiveTests(false));
+                          }}
+                        >
+                          Retry
+                        </Button>
+                      </div>
+                    </FormCard>
+                  ) : compressiveTests.length === 0 ? (
+                    <FormCard>
+                      <div className="flex flex-col items-center justify-center py-8 text-center">
+                        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                          <Layers className="h-6 w-6 text-muted-foreground" />
+                        </div>
+                        <p className="mb-1 text-lg font-medium text-foreground">No tests found</p>
+                        <p className="text-sm text-muted-foreground">No existing compressive strength tests. Create a new one.</p>
+                      </div>
+                    </FormCard>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="existing-test-select">Existing tests</Label>
+                        <Select value={selectedExistingTestId ? String(selectedExistingTestId) : ""} onValueChange={(value) => selectCompressiveTest(Number(value))}>
+                          <SelectTrigger id="existing-test-select" className="h-10">
+                            <SelectValue placeholder="Select a test to edit" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {compressiveTests.map((test) => (
+                              <SelectItem key={test.id} value={String(test.id)}>
+                                <div className="flex flex-col">
+                                  <span>{test.client_ref || `Test #${test.id}`}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {test.contractor} • {test.date_tested}
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {selectedExistingTestId !== null && (
+                        <Accordion value={showTestDetails ? "test-details" : ""} onValueChange={(v) => setShowTestDetails(v === "test-details")} className="rounded-lg border px-4">
+                          <AccordionItem value="test-details" className="border-0">
+                            <AccordionTrigger className="text-sm font-medium">Test details</AccordionTrigger>
+                            <AccordionContent className="pt-4">
+                              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                <div className="space-y-2">
+                                  <Label htmlFor="test-contractor">Contractor *</Label>
+                                  <Input id="test-contractor" value={state.contractor} onChange={(e) => update("contractor", e.target.value)} placeholder="e.g. BuildWell Contractors Ltd" />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="test-county">County *</Label>
+                                  <Input id="test-county" value={state.county} onChange={(e) => update("county", e.target.value)} placeholder="e.g. Nairobi" />
+                                </div>
                               </div>
-                              <div className="space-y-2">
-                                <Label htmlFor="test-county">County *</Label>
-                                <Input id="test-county" value={state.county} onChange={(e) => update("county", e.target.value)} placeholder="e.g. Nairobi" />
-                              </div>
-                            </div>
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
+                            </AccordionContent>
+                          </AccordionItem>
+                        </Accordion>
+                      )}
+                    </div>
                   )}
 
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 h-px bg-border" />
-                    <span className="text-xs uppercase tracking-wider text-muted-foreground">or</span>
-                    <div className="flex-1 h-px bg-border" />
+                  <div className="flex items-center justify-between gap-3">
+                    <Button type="button" variant="outline" className="gap-2" onClick={createNewCompressiveTest}>
+                      <Plus className="h-4 w-4" /> Create new test
+                    </Button>
+                    <Button type="button" onClick={handleNext} disabled={!canAdvance} className="gap-2">
+                      Continue <ArrowRight className="h-4 w-4" />
+                    </Button>
                   </div>
-
-                  <Button type="button" variant="outline" className="w-full justify-start gap-2 h-11" onClick={createNewCompressiveTest}>
-                    <Plus className="h-4 w-4" /> Create new test
-                  </Button>
-                </div>
-              )}
-            </FormCard>
-          </section>
+                </section>
               )}
 
               {steps[step]?.id === "project" && (
@@ -1354,7 +1359,7 @@ const RecordTestWizard = () => {
           </section>
               )}
 
-              {step > 1 && steps[step]?.id !== "project" && (
+              {step > 1 && steps[step]?.id !== "project" && steps[step]?.id !== "existing" && (
                 <div className="mt-6 mx-auto flex w-full max-w-md items-center justify-between gap-3">
                   <Button type="button" variant="outline" onClick={handleBack} className="gap-1.5">
                     <ArrowLeft className="h-4 w-4" /> Back
