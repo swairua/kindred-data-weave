@@ -350,7 +350,7 @@ const RecordTestWizard = () => {
 
     switch (currentStepId) {
       case "material": return !!state.material;
-      case "test": return !!state.testKey;
+      case "test": return tests.some((test) => test.key === state.testKey && test.isRegistered && test.isAllowed);
       case "existing":
         // If an existing test is selected, contractor and county must be filled in accordion
         if (selectedExistingTestId !== null) {
@@ -383,7 +383,7 @@ const RecordTestWizard = () => {
       case "entry": return true;
       default: return false;
     }
-  }, [step, steps, state, isCompressiveStrengthTest, isGradingTest, isProctorTest, selectedExistingTestId]);
+  }, [step, steps, state, tests, isCompressiveStrengthTest, isGradingTest, isProctorTest, selectedExistingTestId]);
 
   // Load projects when reaching project step (and after retry)
   useEffect(() => {
@@ -831,7 +831,15 @@ const RecordTestWizard = () => {
                           key={mat.id}
                           type="button"
                           onClick={() => {
-                            update("material", mat.id);
+                            setState((prev) => ({
+                              ...prev,
+                              material: mat.id,
+                              testKey: null,
+                              projectId: null,
+                              templateProjectId: null,
+                            }));
+                            setSelectedExistingTestId(null);
+                            setShowTestDetails(false);
                             setTimeout(() => setStep(1), 0);
                           }}
                           className={cn(
@@ -854,11 +862,14 @@ const RecordTestWizard = () => {
 
               {step === 1 && (
                 <section className="mx-auto max-w-md space-y-4 animate-fade-in">
-                  <div className="text-center">
-                    <h2 className="text-lg font-semibold tracking-tight">Choose the test</h2>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Available tests for {state.material ? MATERIAL_PRESENTATION[state.material].label : "this material"}.
+                  <Button type="button" variant="ghost" onClick={handleBack} className="-ml-2 h-auto gap-2 px-2 py-1 text-muted-foreground hover:text-foreground">
+                    <ArrowLeft className="h-4 w-4" /> Back
+                  </Button>
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">
+                      {state.material ? MATERIAL_PRESENTATION[state.material].label : "Material"}
                     </p>
+                    <h2 className="text-2xl font-semibold tracking-tight">Which test are you reporting?</h2>
                   </div>
                   {testData.testDefinitionsLoading ? (
                     <div className="rounded-lg border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">Loading test options…</div>
@@ -869,12 +880,8 @@ const RecordTestWizard = () => {
                       <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
                         <Layers className="h-6 w-6 text-muted-foreground" />
                       </div>
-                      <p className="text-lg font-medium text-foreground mb-1">
-                        No enabled tests
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        There are no enabled test definitions for this category.
-                      </p>
+                      <p className="text-lg font-medium text-foreground mb-1">No enabled tests</p>
+                      <p className="text-sm text-muted-foreground">There are no enabled test definitions for this category.</p>
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -885,43 +892,38 @@ const RecordTestWizard = () => {
                           <button
                             key={t.key}
                             type="button"
+                            aria-pressed={selected}
                             disabled={isDisabled}
-                            onClick={() => {
-                              if (isDisabled) return;
-                              update("testKey", t.key);
-                              setTimeout(() => setStep(step + 1), 0);
-                            }}
+                            onClick={() => update("testKey", t.key)}
                             className={cn(
-                              "group flex min-h-14 w-full items-center gap-3 rounded-lg border bg-card px-4 py-2.5 text-left transition-colors",
+                              "flex min-h-14 w-full items-center gap-3 rounded-lg border bg-card px-4 py-2.5 text-left transition-colors",
                               "border-border hover:border-primary/50 hover:bg-accent/30",
                               selected && "border-primary bg-primary/5",
                               isDisabled && "cursor-not-allowed opacity-50 hover:border-border hover:bg-card",
                             )}
                           >
-                            <div className={cn(
-                              "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-                              selected ? "bg-primary text-primary-foreground" : "bg-accent text-accent-foreground",
-                            )}>
-                              <FlaskConical className="h-4 w-4" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <h3 className="text-sm font-semibold text-foreground">{t.name}</h3>
+                            <span className={cn(
+                              "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
+                              selected ? "border-primary" : "border-muted-foreground/40",
+                            )} aria-hidden="true">
+                              {selected && <span className="h-2.5 w-2.5 rounded-full bg-primary" />}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-sm font-medium text-foreground">{t.name}</span>
                               {!t.isRegistered ? (
-                                <p className="mt-0.5 text-xs leading-snug text-muted-foreground">Recording form not available yet</p>
+                                <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">Recording form not available yet</span>
                               ) : !t.isAllowed ? (
-                                <p className="mt-0.5 text-xs leading-snug text-muted-foreground">Not enabled for this material</p>
+                                <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">Not enabled for this material</span>
                               ) : null}
-                            </div>
-                            <ArrowRight className={cn(
-                              "h-4 w-4 shrink-0 text-muted-foreground transition-colors",
-                              selected && "text-primary",
-                              !isDisabled && "group-hover:text-primary",
-                            )} />
+                            </span>
                           </button>
                         );
                       })}
                     </div>
                   )}
+                  <Button type="button" onClick={handleNext} disabled={!canAdvance} className="mt-6 w-full gap-2">
+                    Continue <ArrowRight className="h-4 w-4" />
+                  </Button>
                 </section>
               )}
 
@@ -1326,7 +1328,7 @@ const RecordTestWizard = () => {
             </div>
             <FormCard>
               <div className="space-y-3 text-sm">
-                <Row label="Material" value={MATERIAL_OPTIONS.find((m) => m.id === state.material)?.label ?? "—"} />
+                <Row label="Material" value={state.material ? MATERIAL_PRESENTATION[state.material].label : "—"} />
                 <Row label="Test" value={tests.find((t) => t.key === state.testKey)?.name ?? "—"} />
                 <Row label="Project" value={state.projectName || "—"} />
                 {state.clientName && <Row label="Client" value={state.clientName} />}
@@ -1338,7 +1340,7 @@ const RecordTestWizard = () => {
           </section>
               )}
 
-              {steps[step]?.id !== "project" && (
+              {step > 1 && steps[step]?.id !== "project" && (
                 <div className="mt-6 mx-auto flex w-full max-w-md items-center justify-between gap-3">
                   <Button type="button" variant="outline" onClick={handleBack} className="gap-1.5">
                     <ArrowLeft className="h-4 w-4" /> {step === 0 ? "Cancel" : "Back"}

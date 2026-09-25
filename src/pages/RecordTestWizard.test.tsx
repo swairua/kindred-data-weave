@@ -62,6 +62,38 @@ beforeEach(() => {
   wizardMocks.updateProjectMetadata.mockReset();
 });
 
+describe("RecordTestWizard selection flow", () => {
+  it("shows materials without bottom navigation and opens the selected material's tests", async () => {
+    renderWizard("/record");
+
+    expect(screen.getByRole("heading", { name: "What are you testing today?" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Next" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Soil/ }));
+
+    expect(await screen.findByRole("heading", { name: "Which test are you reporting?" })).toBeInTheDocument();
+    expect(screen.getByText("Soil", { selector: "p" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Back/ }));
+    expect(await screen.findByRole("heading", { name: "What are you testing today?" })).toBeInTheDocument();
+  });
+
+  it("requires selecting an available test before Continue advances", async () => {
+    renderWizard("/record");
+    fireEvent.click(screen.getByRole("button", { name: /Soil/ }));
+
+    const continueButton = await screen.findByRole("button", { name: /Continue/ });
+    expect(continueButton).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: /Density\/Moisture Content Relationship/ }));
+    expect(screen.getByRole("heading", { name: "Which test are you reporting?" })).toBeInTheDocument();
+    expect(continueButton).toBeEnabled();
+
+    fireEvent.click(continueButton);
+    expect(await screen.findByRole("combobox", { name: "Project" })).toBeInTheDocument();
+  });
+});
+
 describe("RecordTestWizard project loading", () => {
   it("does not reload a successful empty result and keeps project creation available", async () => {
     renderWizard();
