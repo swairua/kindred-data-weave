@@ -321,6 +321,46 @@ describe("RecordTestWizard selection flow", () => {
       customFields: [{ name: "Reference", value: "REF-7" }],
     }));
   });
+
+  it("renders the required cube details in reference order and advances only when complete", async () => {
+    renderWizard("/record?material=concrete&test=compressive");
+    await screen.findByRole("heading", { name: "Select test to edit" });
+    fireEvent.click(screen.getByRole("button", { name: "Create new test" }));
+
+    fireEvent.change(await screen.findByLabelText("Project name *"), { target: { value: "Concrete project" } });
+    fireEvent.change(screen.getByLabelText("Client name *"), { target: { value: "Client" } });
+    fireEvent.change(screen.getByLabelText("Contractor *"), { target: { value: "Contractor Ltd" } });
+    fireEvent.change(screen.getByLabelText("County *"), { target: { value: "Nairobi" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create project" }));
+
+    expect(await screen.findByText("Step 4 of 5")).toBeInTheDocument();
+    const labels = Array.from(document.querySelectorAll("label")).map((label) => label.textContent);
+    expect(labels.slice(-8)).toEqual([
+      "Cement *",
+      "Fine Aggregate *",
+      "Coarse Aggregate *",
+      "Concrete class *",
+      "Date casted *",
+      "Made by *",
+      "Section *",
+      "Slump *",
+    ]);
+    expect(screen.queryByLabelText("Sample ID")).not.toBeInTheDocument();
+    const continueButton = screen.getByRole("button", { name: /Continue/ });
+    expect(continueButton).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("Cement *"), { target: { value: "Cement" } });
+    fireEvent.change(screen.getByLabelText("Fine Aggregate *"), { target: { value: "Fine aggregate" } });
+    fireEvent.change(screen.getByLabelText("Coarse Aggregate *"), { target: { value: "Coarse aggregate" } });
+    fireEvent.change(screen.getByLabelText("Concrete class *"), { target: { value: "30" } });
+    fireEvent.change(screen.getByLabelText("Made by *"), { target: { value: "Contractor" } });
+    fireEvent.change(screen.getByLabelText("Section *"), { target: { value: "Tank slab" } });
+    fireEvent.change(screen.getByLabelText("Slump *"), { target: { value: "N/A" } });
+    expect(continueButton).toBeEnabled();
+
+    fireEvent.click(continueButton);
+    expect(await screen.findByRole("heading", { name: "Ready to record" })).toBeInTheDocument();
+  });
 });
 
 describe("RecordTestWizard project loading", () => {

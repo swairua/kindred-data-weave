@@ -363,7 +363,14 @@ const RecordTestWizard = () => {
         return state.projectId !== null;
       case "sample":
         if (isCompressiveStrengthTest) {
-          return state.cement.trim().length > 0;
+          return state.cement.trim().length > 0
+            && state.fineAggregate.trim().length > 0
+            && state.coarseAggregate.trim().length > 0
+            && state.concreteClass.trim().length > 0
+            && state.dateTested.trim().length > 0
+            && state.madeBy.trim().length > 0
+            && state.section.trim().length > 0
+            && state.slump.trim().length > 0;
         }
         if (isGradingTest || isProctorTest) {
           return hasRequiredSoilSampleMetadata(state);
@@ -1141,60 +1148,49 @@ const RecordTestWizard = () => {
               )}
 
               {steps[step]?.id === "sample" && (
-                <section className="mx-auto max-w-md space-y-4 animate-fade-in">
+                <section className={cn("mx-auto space-y-4 animate-fade-in", isCompressiveStrengthTest ? "w-full max-w-2xl" : "max-w-md")}>
             {isCompressiveStrengthTest ? (
               <>
-                <div className="text-center">
-                  <h2 className="text-lg font-semibold tracking-tight">{isCompressiveStrengthTest ? "Concrete cube details" : "Test details"}</h2>
-                  <p className="mt-1 text-xs text-muted-foreground">Enter the concrete sample details.</p>
+                <Button type="button" variant="ghost" onClick={handleBack} className="-ml-2 h-auto gap-2 px-2 py-1 text-muted-foreground hover:text-foreground">
+                  <ArrowLeft className="h-4 w-4" /> Back
+                </Button>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Step {step + 1} of {steps.length}</p>
+                  <h2 className="text-2xl font-semibold tracking-tight">Concrete cube details</h2>
                 </div>
-                <FormCard>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-xs font-medium mb-1 block">Sample ID</Label>
-                      <Input value={state.sampleId} onChange={(e) => update("sampleId", e.target.value)} className="h-10 text-sm" placeholder="e.g. BH-01 / S-3" />
+                <FormCard className="p-4 sm:p-4">
+                  <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="concrete-cement">Cement *</Label>
+                      <Input id="concrete-cement" required value={state.cement} onChange={(e) => update("cement", e.target.value)} />
                     </div>
-                    <div>
-                      <Label className="text-xs font-medium mb-1 block">Cement</Label>
-                      <Input value={state.cement} onChange={(e) => update("cement", e.target.value)} className="h-10 text-sm" />
+                    <div className="space-y-1.5">
+                      <Label htmlFor="concrete-fine-aggregate">Fine Aggregate *</Label>
+                      <Input id="concrete-fine-aggregate" required value={state.fineAggregate} onChange={(e) => update("fineAggregate", e.target.value)} />
                     </div>
-                    <div>
-                      <Label className="text-xs font-medium mb-1 block">Fine Aggregate</Label>
-                      <Input value={state.fineAggregate} onChange={(e) => update("fineAggregate", e.target.value)} className="h-10 text-sm" />
+                    <div className="space-y-1.5">
+                      <Label htmlFor="concrete-coarse-aggregate">Coarse Aggregate *</Label>
+                      <Input id="concrete-coarse-aggregate" required value={state.coarseAggregate} onChange={(e) => update("coarseAggregate", e.target.value)} />
                     </div>
-                    <div>
-                      <Label className="text-xs font-medium mb-1 block">Coarse Aggregate</Label>
-                      <Input value={state.coarseAggregate} onChange={(e) => update("coarseAggregate", e.target.value)} className="h-10 text-sm" />
+                    <div className="space-y-1.5">
+                      <Label htmlFor="concrete-class">Concrete class *</Label>
+                      <Input id="concrete-class" required value={state.concreteClass} onChange={(e) => update("concreteClass", e.target.value)} placeholder="e.g. 30" />
                     </div>
-                    {!isCompressiveStrengthTest && (
-                      <div>
-                        <Label className="text-xs font-medium mb-1 block">Contractor</Label>
-                        <Input value={state.contractor} onChange={(e) => update("contractor", e.target.value)} className="h-10 text-sm" />
-                      </div>
-                    )}
-                    <div>
-                      <Label className="text-xs font-medium mb-1 block">Concrete Class</Label>
-                      <Input value={state.concreteClass} onChange={(e) => update("concreteClass", e.target.value)} className="h-10 text-sm" />
+                    <div className="space-y-1.5">
+                      <Label htmlFor="concrete-date-casted">Date casted *</Label>
+                      <Input id="concrete-date-casted" required type="date" value={state.dateTested} onChange={(e) => update("dateTested", e.target.value)} />
                     </div>
-                    <div>
-                      <Label className="text-xs font-medium mb-1 block">Section</Label>
-                      <Input value={state.section} onChange={(e) => update("section", e.target.value)} className="h-10 text-sm" />
+                    <div className="space-y-1.5">
+                      <Label htmlFor="concrete-made-by">Made by *</Label>
+                      <Input id="concrete-made-by" required value={state.madeBy} onChange={(e) => update("madeBy", e.target.value)} placeholder="e.g. Contractor" />
                     </div>
-                    <div>
-                      <Label className="text-xs font-medium mb-1 block">Made By</Label>
-                      <Input value={state.madeBy} onChange={(e) => update("madeBy", e.target.value)} className="h-10 text-sm" />
+                    <div className="space-y-1.5">
+                      <Label htmlFor="concrete-section">Section *</Label>
+                      <Input id="concrete-section" required value={state.section} onChange={(e) => update("section", e.target.value)} placeholder="e.g. Tank slab" />
                     </div>
-                    <div>
-                      <Label className="text-xs font-medium mb-1 block">Slump</Label>
-                      <Input value={state.slump} onChange={(e) => update("slump", e.target.value)} className="h-10 text-sm" />
-                    </div>
-                    <div>
-                      <Label className="text-xs font-medium mb-1 block">Client Ref</Label>
-                      <Input value={state.clientRef} onChange={(e) => update("clientRef", e.target.value)} className="h-10 text-sm" />
-                    </div>
-                    <div>
-                      <Label className="text-xs font-medium mb-1 block">Date Tested</Label>
-                      <Input type="date" value={state.dateTested} onChange={(e) => update("dateTested", e.target.value)} className="h-10 text-sm" />
+                    <div className="space-y-1.5">
+                      <Label htmlFor="concrete-slump">Slump *</Label>
+                      <Input id="concrete-slump" required value={state.slump} onChange={(e) => update("slump", e.target.value)} placeholder="e.g. N/A" />
                     </div>
                   </div>
                 </FormCard>
@@ -1346,13 +1342,15 @@ const RecordTestWizard = () => {
               )}
 
               {step > 1 && steps[step]?.id !== "project" && steps[step]?.id !== "existing" && (
-                <div className="mt-6 mx-auto flex w-full max-w-md items-center justify-between gap-3">
-                  <Button type="button" variant="outline" onClick={handleBack} className="gap-1.5">
-                    <ArrowLeft className="h-4 w-4" /> Back
-                  </Button>
+                <div className={cn("mt-6 mx-auto flex w-full items-center gap-3", isCompressiveStrengthTest ? "max-w-2xl" : "max-w-md justify-between")}>
+                  {!isCompressiveStrengthTest && (
+                    <Button type="button" variant="outline" onClick={handleBack} className="gap-1.5">
+                      <ArrowLeft className="h-4 w-4" /> Back
+                    </Button>
+                  )}
                   {step < steps.length - 1 ? (
-                    <Button type="button" onClick={handleNext} disabled={!canAdvance} className="gap-1.5">
-                      Next <ArrowRight className="h-4 w-4" />
+                    <Button type="button" onClick={handleNext} disabled={!canAdvance} className={cn("gap-1.5", isCompressiveStrengthTest && "w-full")}>
+                      {isCompressiveStrengthTest ? "Continue" : "Next"} <ArrowRight className="h-4 w-4" />
                     </Button>
                   ) : (
                     <Button type="button" onClick={handleFinish} className="gap-1.5">
