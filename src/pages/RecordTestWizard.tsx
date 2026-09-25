@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Building2, FlaskConical, FolderOpen, Layers, Loader2, Mountain, Plus, Square, X, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -216,6 +216,8 @@ const RecordTestWizard = () => {
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [projectsLoadError, setProjectsLoadError] = useState<string | null>(null);
   const [projectsReloadKey, setProjectsReloadKey] = useState(0);
+  const projectsLoadedKey = useRef<string | null>(null);
+  const projectsAttemptedKey = useRef<string | null>(null);
   const [compressiveTests, setCompressiveTests] = useState<CompressiveTestRow[]>([]);
   const [loadingCompressiveTests, setLoadingCompressiveTests] = useState(false);
   const [compressiveTestsError, setCompressiveTestsError] = useState<string | null>(null);
@@ -368,7 +370,11 @@ const RecordTestWizard = () => {
   const isGradingTest = state.testKey === "grading";
   const isProctorTest = state.testKey === "proctor";
   const hasExistingCompressiveTests = isCompressiveStrengthTest && compressiveTests.length > 0;
-  const steps = getSteps(state.testKey, hasExistingCompressiveTests, selectedExistingTestId);
+  const steps = useMemo(
+    () => getSteps(state.testKey, hasExistingCompressiveTests, selectedExistingTestId),
+    [state.testKey, hasExistingCompressiveTests, selectedExistingTestId],
+  );
+  const projectLoadKey = `${state.material ?? ""}:${state.testKey ?? ""}:${projectsReloadKey}`;
 
   const canAdvance = useMemo(() => {
     const currentStepId = steps[step]?.id;
@@ -413,12 +419,11 @@ const RecordTestWizard = () => {
   // Load projects when reaching project step (and after retry)
   useEffect(() => {
     if (authChecking) return;
-    const stepMap: Record<string, number> = { material: 0, test: 1, existing: 2, project: 3, sample: 4, entry: 5 };
-    const currentStepId = steps[step]?.id;
     const projectStepIndex = steps.findIndex((s) => s.id === "project");
     if (step !== projectStepIndex) return;
-    if (projects.length > 0 && projectsReloadKey === 0) return;
+    if (projectsLoadedKey.current === projectLoadKey || projectsAttemptedKey.current === projectLoadKey) return;
     let active = true;
+    projectsAttemptedKey.current = projectLoadKey;
     setLoadingProjects(true);
     setProjectsLoadError(null);
     const expectedTestType = getExpectedTestType(state.testKey);
@@ -427,7 +432,10 @@ const RecordTestWizard = () => {
         if (!active) return;
         const allProjects = res.data || [];
         const filteredProjects = filterProjectsByTestType(allProjects, expectedTestType);
-        if (active) setProjects(filteredProjects);
+        if (active) {
+          setProjects(filteredProjects);
+          projectsLoadedKey.current = projectLoadKey;
+        }
       })
       .catch((err) => {
         if (!active) return;
@@ -444,7 +452,7 @@ const RecordTestWizard = () => {
       })
       .finally(() => active && setLoadingProjects(false));
     return () => { active = false; };
-  }, [step, projectsReloadKey, authChecking, navigate, state.material, state.testKey, steps]);
+  }, [step, projectLoadKey, projectsLoadedKey, authChecking, navigate, steps]);
 
   const handleNext = () => {
     if (step < steps.length - 1) setStep(step + 1);
@@ -1104,7 +1112,7 @@ const RecordTestWizard = () => {
                             </span>
                           </div>
                         ) : (
-                          <SelectValue placeholder={projectsLoadError ? "Couldn't load projects" : projects.length === 0 ? "No saved projects yet" : "Select a project…"} />
+                          <SelectValue placeholder={projectsLoadError ? "Couldn't load projects" : "Select a project…"} />
                         )}
                       </SelectTrigger>
                       <SelectContent>
@@ -1121,6 +1129,9 @@ const RecordTestWizard = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                    {!loadingProjects && !projectsLoadError && projects.length === 0 && (
+                      <p className="text-xs text-muted-foreground">No existing projects for this test. Create a new project to continue.</p>
+                    )}
                     {projectsLoadError && (
                       <div className="flex items-center justify-between gap-3 text-xs">
                         <span className="text-destructive">{projectsLoadError}</span>
