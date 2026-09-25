@@ -81,6 +81,35 @@ describe("ProjectOverview", () => {
     expect(await screen.findByTestId("current-location")).toHaveTextContent("/projects/42");
   });
 
+  it("opens the selected grading project at its latest resumable grading result", async () => {
+    const gradingProject = { ...project, test_type: "grading" };
+    overviewMocks.listRecords.mockImplementation((table: string) => Promise.resolve({
+      data: table === "projects" ? [gradingProject] : [
+        { id: 88, project_id: 42, test_key: "grading", updated_at: "2026-06-11", payload_json: { project: { records: [{}] } } },
+        { id: 90, project_id: 42, test_key: "grading", updated_at: "2026-06-12", payload_json: { project: { records: [{}] } } },
+        { id: 91, project_id: 42, test_key: "grading", updated_at: "2026-06-13", payload_json: { project: { records: [null, {}] } } },
+        { id: 99, project_id: 43, test_key: "grading", updated_at: "2026-06-14", payload_json: { project: { records: [{}] } } },
+      ],
+    }));
+    renderOverview("/projects");
+
+    fireEvent.click(await screen.findByRole("button", { name: /Open/ }));
+    expect(await screen.findByTestId("current-location")).toHaveTextContent("/tests?projectId=42&resultId=90#grading");
+  });
+
+  it("starts a new grading record for a project with no resumable grading result", async () => {
+    const gradingProject = { ...project, test_type: "grading" };
+    overviewMocks.listRecords.mockImplementation((table: string) => Promise.resolve({
+      data: table === "projects" ? [gradingProject] : [
+        { id: 88, project_id: 42, test_key: "grading", updated_at: "2026-06-12", payload_json: "{}" },
+      ],
+    }));
+    renderOverview("/projects");
+
+    fireEvent.click(await screen.findByRole("button", { name: /Open/ }));
+    expect(await screen.findByTestId("current-location")).toHaveTextContent("/tests?newRecord=1&fromProject=42#grading");
+  });
+
   it("shows saved test records and opens the selected test for the same project", async () => {
     renderOverview();
 
@@ -96,6 +125,16 @@ describe("ProjectOverview", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "Add Atterberg" }));
     expect(await screen.findByTestId("current-location")).toHaveTextContent("/tests?projectId=42#atterberg");
+  });
+
+  it("offers grading for grading projects in the overview and empty state", async () => {
+    overviewMocks.fetchFullProject.mockResolvedValue({ ...project, test_type: "grading" });
+    overviewMocks.listRecords.mockResolvedValue({ data: [] });
+    renderOverview();
+
+    expect(await screen.findByText("Add a grading test or choose a saved test from the project list.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Add Grading" }));
+    expect(await screen.findByTestId("current-location")).toHaveTextContent("/tests?projectId=42#grading");
   });
 
   it("updates project metadata by ID and syncs the saved values", async () => {

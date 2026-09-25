@@ -1395,7 +1395,7 @@ const RecordTestWizard = () => {
                 />
               </div>
 
-              {!isGradingTest && !isProctorTest && (
+              {!isProctorTest && (
                 <div className="space-y-2">
                   <Label htmlFor="new-project-date">Project date</Label>
                   <Input

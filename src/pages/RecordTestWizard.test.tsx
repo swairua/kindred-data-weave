@@ -26,7 +26,10 @@ vi.mock("@/context/SessionContext", () => ({
 
 vi.mock("@/context/TestDataContext", () => ({
   useTestData: () => ({
-    testDefinitions: [{ test_key: "proctor", name: "Density/Moisture Content Relationship", category: "soil", sort_order: 1, enabled: true }],
+    testDefinitions: [
+      { test_key: "proctor", name: "Density/Moisture Content Relationship", category: "soil", sort_order: 1, enabled: true },
+      { test_key: "grading", name: "Particle Size Distribution", category: "soil", sort_order: 2, enabled: true },
+    ],
     testDefinitionsLoading: false,
     testDefinitionsError: null,
     refreshTestDefinitions: wizardMocks.refreshTestDefinitions,
@@ -40,8 +43,8 @@ vi.mock("@/lib/testRegistry", () => ({ registry: { hasTest: () => true } }));
 vi.mock("@/components/Navigation", () => ({ default: () => null }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
-const renderWizard = () => render(
-  <MemoryRouter initialEntries={["/record?material=soil&test=proctor"]}>
+const renderWizard = (initialEntry = "/record?material=soil&test=proctor") => render(
+  <MemoryRouter initialEntries={[initialEntry]}>
     <RecordTestWizard />
   </MemoryRouter>,
 );
@@ -111,5 +114,26 @@ describe("RecordTestWizard project loading", () => {
     await waitFor(() => expect(wizardMocks.listRecords).toHaveBeenCalledTimes(2));
     expect(await screen.findByText("No existing projects for this test. Create a new project to continue.")).toBeInTheDocument();
     expect(wizardMocks.listRecords).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows and saves the project date when creating a grading project", async () => {
+    renderWizard("/record?material=soil&test=grading");
+
+    await screen.findByRole("combobox", { name: "Project" });
+    fireEvent.click(screen.getByRole("button", { name: "New project" }));
+
+    fireEvent.change(await screen.findByLabelText("Project date"), { target: { value: "2026-06-18" } });
+    fireEvent.change(screen.getByLabelText("Project name *"), { target: { value: "Grading project" } });
+    fireEvent.change(screen.getByLabelText("Client name *"), { target: { value: "Client" } });
+    fireEvent.change(screen.getByLabelText("Contractor *"), { target: { value: "Contractor Ltd" } });
+    fireEvent.change(screen.getByLabelText("County *"), { target: { value: "Nairobi" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create project" }));
+
+    await waitFor(() => expect(wizardMocks.createRecord).toHaveBeenCalledWith("projects", expect.objectContaining({
+      name: "Grading project",
+      client_name: "Client",
+      project_date: "2026-06-18",
+      test_type: "grading",
+    })));
   });
 });

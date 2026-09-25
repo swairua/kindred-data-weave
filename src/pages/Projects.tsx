@@ -27,16 +27,36 @@ interface ApiTestResult {
   category: string;
   project_name?: string;
   status?: string;
-  payload_json?: Record<string, unknown>;
+  payload_json?: unknown;
   created_at?: string;
   updated_at?: string;
 }
+
+const hasResumableGradingPayload = (payload: unknown) => {
+  let parsedPayload = payload;
+  if (typeof parsedPayload === "string") {
+    try {
+      parsedPayload = JSON.parse(parsedPayload) as unknown;
+    } catch {
+      return false;
+    }
+  }
+  if (typeof parsedPayload !== "object" || parsedPayload === null || Array.isArray(parsedPayload)) return false;
+
+  const root = parsedPayload as Record<string, unknown>;
+  const project = typeof root.project === "object" && root.project !== null && !Array.isArray(root.project)
+    ? root.project as Record<string, unknown>
+    : root;
+  const firstRecord = Array.isArray(project.records) ? project.records[0] : null;
+  return typeof firstRecord === "object" && firstRecord !== null && !Array.isArray(firstRecord);
+};
 
 const Projects = () => {
   const navigate = useNavigate();
   const { user, logout } = useSession();
   const [searchQuery, setSearchQuery] = useState("");
   const [apiProjects, setApiProjects] = useState<ApiProjectRow[]>([]);
+  const [apiTestResults, setApiTestResults] = useState<ApiTestResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -51,9 +71,12 @@ const Projects = () => {
           listRecords<ApiTestResult>("test_results", { limit: 1000 }),
         ]);
 
+        const testResults = testResultsResponse.data || [];
+        setApiTestResults(testResults);
+
         // Count test results by project_id
         const testCountByProject = new Map<number, number>();
-        (testResultsResponse.data || []).forEach((testResult) => {
+        testResults.forEach((testResult) => {
           const count = testCountByProject.get(testResult.project_id) || 0;
           testCountByProject.set(testResult.project_id, count + 1);
         });
@@ -84,6 +107,7 @@ const Projects = () => {
         name: p.name,
         client_name: p.client_name || undefined,
         created_at: p.project_date || new Date().toISOString(),
+        test_type: p.test_type,
         samples: p.sample_count || 0,
       }));
     }
@@ -122,6 +146,22 @@ const Projects = () => {
   };
 
   const handleOpenProject = (projectId: number) => {
+    const selectedProject = apiProjects.find((project) => project.id === projectId);
+    if (selectedProject?.test_type === "grading") {
+      const latestGradingResult = apiTestResults
+        .filter((result) => Number(result.project_id) === projectId
+          && result.test_key === "grading"
+          && hasResumableGradingPayload(result.payload_json))
+        .sort((a, b) => (b.updated_at || b.created_at || "").localeCompare(a.updated_at || a.created_at || ""))[0];
+
+      if (latestGradingResult) {
+        navigate(`/tests?projectId=${projectId}&resultId=${latestGradingResult.id}#grading`);
+      } else {
+        navigate(`/tests?newRecord=1&fromProject=${projectId}#grading`);
+      }
+      return;
+    }
+
     navigate(`/projects/${projectId}`);
   };
 
