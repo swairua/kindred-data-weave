@@ -181,6 +181,7 @@ const RecordTestWizard = () => {
 
   // If both material and test are pre-selected via query params, skip to project step
   const [step, setStep] = useState(0);
+  const [pendingBackwardStep, setPendingBackwardStep] = useState<number | null>(null);
   const [projects, setProjects] = useState<ApiProjectRow[]>([]);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
@@ -426,14 +427,26 @@ const RecordTestWizard = () => {
     if (step < steps.length - 1) setStep(step + 1);
   };
 
-  const handleBack = () => {
-    if (step > 0) setStep(step - 1);
-    else handleCancel();
+  const requestBackwardNavigation = (destination: number) => {
+    if (destination < step) setPendingBackwardStep(destination);
   };
 
-  const handleCancel = () => {
-    sessionStorage.removeItem(STORAGE_KEY);
-    navigate(-1);
+  const handleBack = () => {
+    requestBackwardNavigation(step - 1);
+  };
+
+  const handleStepClick = (destination: number) => {
+    if (destination < step) {
+      requestBackwardNavigation(destination);
+      return;
+    }
+    setStep(destination);
+  };
+
+  const confirmBackwardNavigation = () => {
+    if (pendingBackwardStep === null) return;
+    setStep(pendingBackwardStep);
+    setPendingBackwardStep(null);
   };
 
   const resetNewProjectForm = () => {
@@ -800,7 +813,7 @@ const RecordTestWizard = () => {
             <WizardStepper
               steps={steps}
               currentIndex={step}
-              onStepClick={setStep}
+              onStepClick={handleStepClick}
               disabledSteps={state.material !== "soil" ? [1, 2, 3, 4] : []}
             />
           </div>
@@ -1343,7 +1356,7 @@ const RecordTestWizard = () => {
               {step > 1 && steps[step]?.id !== "project" && (
                 <div className="mt-6 mx-auto flex w-full max-w-md items-center justify-between gap-3">
                   <Button type="button" variant="outline" onClick={handleBack} className="gap-1.5">
-                    <ArrowLeft className="h-4 w-4" /> {step === 0 ? "Cancel" : "Back"}
+                    <ArrowLeft className="h-4 w-4" /> Back
                   </Button>
                   {step < steps.length - 1 ? (
                     <Button type="button" onClick={handleNext} disabled={!canAdvance} className="gap-1.5">
@@ -1511,6 +1524,28 @@ const RecordTestWizard = () => {
               </Button>
               <Button type="button" onClick={handleCreateProject} disabled={!canCreateProject || isCreatingProject}>
                 {isCreatingProject ? "Creating…" : "Create project"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={pendingBackwardStep !== null}
+          onOpenChange={(open) => {
+            if (!open) setPendingBackwardStep(null);
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Want to leave without saving?</DialogTitle>
+              <DialogDescription>Your entries will remain available as a draft.</DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setPendingBackwardStep(null)}>
+                Stay here
+              </Button>
+              <Button type="button" onClick={confirmBackwardNavigation}>
+                Go back
               </Button>
             </DialogFooter>
           </DialogContent>

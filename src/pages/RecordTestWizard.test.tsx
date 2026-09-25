@@ -75,7 +75,43 @@ describe("RecordTestWizard selection flow", () => {
     expect(await screen.findByRole("heading", { name: "Which test are you reporting?" })).toBeInTheDocument();
     expect(screen.getByText("Soil", { selector: "p" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Back/ }));
+    expect(await screen.findByRole("dialog")).toHaveTextContent("Want to leave without saving?");
+    fireEvent.click(screen.getByRole("button", { name: "Go back" }));
     expect(await screen.findByRole("heading", { name: "What are you testing today?" })).toBeInTheDocument();
+  });
+
+  it("stays on the current step when backward navigation is dismissed and preserves the draft", async () => {
+    renderWizard("/record");
+    fireEvent.click(screen.getByRole("button", { name: /Soil/ }));
+    await screen.findByRole("heading", { name: "Which test are you reporting?" });
+    fireEvent.click(screen.getByRole("button", { name: /Density\/Moisture Content Relationship/ }));
+
+    fireEvent.click(screen.getByRole("button", { name: /Back/ }));
+    expect(await screen.findByRole("dialog")).toHaveTextContent("Want to leave without saving?");
+    fireEvent.click(screen.getByRole("button", { name: "Stay here" }));
+
+    expect(screen.getByRole("heading", { name: "Which test are you reporting?" })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(JSON.parse(sessionStorage.getItem("cransfield_record_wizard") ?? "{}")).toMatchObject({
+      material: "soil",
+      testKey: "proctor",
+    });
+  });
+
+  it("confirms backward navigation from an earlier stepper item", async () => {
+    renderWizard("/record");
+    fireEvent.click(screen.getByRole("button", { name: /Soil/ }));
+    await screen.findByRole("heading", { name: "Which test are you reporting?" });
+    fireEvent.click(screen.getByRole("button", { name: /Density\/Moisture Content Relationship/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+    await screen.findByRole("combobox", { name: "Project" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Step 2: Test type" }));
+    expect(await screen.findByRole("dialog")).toHaveTextContent("Want to leave without saving?");
+    fireEvent.click(screen.getByRole("button", { name: "Go back" }));
+
+    expect(await screen.findByRole("heading", { name: "Which test are you reporting?" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Density\/Moisture Content Relationship/ })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("requires selecting an available test before Continue advances", async () => {
