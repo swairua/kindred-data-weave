@@ -43,7 +43,7 @@ function createSessionDb(): mysqli
     $conn = new mysqli($host, $user, $pass, $name, $port);
 
     if ($conn->connect_error) {
-        error_log("[Session DB Connection ERROR] Connection failed: " . $conn->connect_error);
+        error_log('Session database connection failed');
         throw new Exception("Session database connection failed: " . $conn->connect_error);
     }
 
@@ -89,7 +89,7 @@ class DatabaseSessionHandler implements SessionHandlerInterface
 
             return $row['session_data'] ?? '';
         } catch (Exception $e) {
-            error_log('Session read error: ' . $e->getMessage());
+            error_log('Session read failed (' . get_class($e) . ')');
             return false;
         }
     }
@@ -126,7 +126,7 @@ class DatabaseSessionHandler implements SessionHandlerInterface
 
             return true;
         } catch (Exception $e) {
-            error_log('Session write error: ' . $e->getMessage());
+            error_log('Session write failed (' . get_class($e) . ')');
             return false;
         }
     }
@@ -146,7 +146,7 @@ class DatabaseSessionHandler implements SessionHandlerInterface
 
             return true;
         } catch (Exception $e) {
-            error_log('Session destroy error: ' . $e->getMessage());
+            error_log('Session destroy failed (' . get_class($e) . ')');
             return false;
         }
     }
@@ -158,7 +158,7 @@ class DatabaseSessionHandler implements SessionHandlerInterface
             $this->conn->query($sql);
             return $this->conn->affected_rows;
         } catch (Exception $e) {
-            error_log('Session gc error: ' . $e->getMessage());
+            error_log('Session cleanup failed (' . get_class($e) . ')');
             return false;
         }
     }
@@ -224,13 +224,19 @@ const ALLOWED_TABLES = [
     'compressive_cubes' => true,
 ];
 
+function apiLogAction(): string
+{
+    $action = strtolower((string) ($_GET['action'] ?? ($GLOBALS['action'] ?? '')));
+    return preg_match('/^[a-z0-9_-]{1,64}$/', $action) === 1 ? $action : 'unknown';
+}
+
 function respond(array $payload, int $status = 200): never
 {
-    error_log("RESPOND: status=$status, payload=" . json_encode($payload));
+    if ($status >= 400) {
+        error_log(sprintf('API error response: status=%d, action=%s', $status, apiLogAction()));
+    }
 
-    // Ensure any pending session data is written before sending response
     if (session_status() === PHP_SESSION_ACTIVE) {
-        error_log("RESPOND: Session is active, calling session_write_close()");
         session_write_close();
     }
 
@@ -300,19 +306,15 @@ function db(): mysqli
     $name = getenv('DB_NAME') ?: 'wayrusc1_labdatacraft';
     $port = (int) (getenv('DB_PORT') ?: 3306);
 
-    error_log("[DB Connection] Attempting to connect to: $host:$port/$name (user: $user)");
-
     $conn = new mysqli($host, $user, $pass, $name, $port);
 
     if ($conn->connect_error) {
-        error_log("[DB Connection ERROR] Connection failed: " . $conn->connect_error);
-        error_log("[DB Connection DEBUG] Host: $host, Port: $port, Database: $name");
+        error_log('Database connection failed');
         // Return a connection object that will fail when used - error handling in catch block
         throw new Exception("Database connection failed: " . $conn->connect_error);
     }
 
     $conn->set_charset('utf8mb4');
-    error_log("[DB Connection] Successfully connected to database");
 
     return $conn;
 }
@@ -439,7 +441,7 @@ function logAuditSave(
         // Check if table exists first
         $tableCheck = $conn->query("SELECT 1 FROM atterberg_save_audit LIMIT 1");
         if ($tableCheck === false) {
-            error_log("atterberg_save_audit table does not exist or cannot be accessed: " . $conn->error);
+            error_log('Audit table is unavailable');
             return false;
         }
 
@@ -449,23 +451,22 @@ function logAuditSave(
 
         $stmt = $conn->prepare($sql);
         if (!$stmt) {
-            error_log("Failed to prepare audit log statement: " . $conn->error);
+            error_log('Audit insert preparation failed');
             return false;
         }
 
         $stmt->bind_param('iisiss', $testResultId, $userId, $status, $dataPoints, $testKey, $errorMessage);
 
         if (!$stmt->execute()) {
-            error_log("Failed to execute audit log for test_result_id=$testResultId: " . $stmt->error);
+            error_log('Audit insert failed');
             $stmt->close();
             return false;
         }
 
-        error_log("Audit log created: test_result_id=$testResultId, status=$status, data_points=$dataPoints");
         $stmt->close();
         return true;
     } catch (Throwable $e) {
-        error_log("Exception in logAuditSave: " . $e->getMessage());
+        error_log('Audit insert failed (' . get_class($e) . ')');
         return false;
     }
 }
@@ -484,14 +485,14 @@ function updateAuditSaveCompletion(
 
     $stmt = $conn->prepare($sql);
     if (!$stmt) {
-        error_log("Failed to prepare audit update statement: " . $conn->error);
+        error_log('Audit update preparation failed');
         return false;
     }
 
     $stmt->bind_param('ssi', $newStatus, $errorMessage, $testResultId);
 
     if (!$stmt->execute()) {
-        error_log("Failed to execute audit update: " . $stmt->error);
+        error_log('Audit update failed');
         $stmt->close();
         return false;
     }
@@ -505,14 +506,6 @@ try {
     $body = requestBody();
     $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
     $action = strtolower((string) ($_GET['action'] ?? $body['action'] ?? ''));
-
-    error_log("==================== REQUEST ====================");
-    error_log("Method: $method");
-    error_log("Action: " . ($action ?: 'NOT SET'));
-    error_log("GET params: " . json_encode($_GET));
-    error_log("Request body: " . json_encode($body));
-    error_log("Session user_id: " . ($_SESSION['user_id'] ?? 'NOT SET'));
-    error_log("==============================================");
 
     // ============= AUTHENTICATION ENDPOINTS =============
 
@@ -554,9 +547,7 @@ try {
         $_SESSION['user_id'] = $userId;
 
         // CRITICAL: Force session to be written to database before responding
-        error_log("SESSION WRITE: Calling session_write_close() before register response");
         session_write_close();
-        error_log("SESSION WRITE: session_write_close() completed");
 
         respond([
             'message' => 'User registered and logged in',
@@ -594,9 +585,7 @@ try {
         $sessionToken = session_id();
 
         // CRITICAL: Force session to be written to database before responding
-        error_log("SESSION WRITE: Calling session_write_close() before login response");
         session_write_close();
-        error_log("SESSION WRITE: session_write_close() completed");
 
         respond([
             'message' => 'Logged in successfully',
@@ -613,9 +602,6 @@ try {
     if ($action === 'logout') {
         // session_destroy() will use our custom handler to delete from the database
         session_destroy();
-
-        // Ensure logout is committed
-        error_log("SESSION DESTROY: session_destroy() called, session is destroyed");
 
         respond(['message' => 'Logged out successfully']);
     }
@@ -634,63 +620,40 @@ try {
 
     // ============= IMAGE UPLOAD ENDPOINT =============
     if ($action === 'upload') {
-        // Enable error logging
         ini_set('log_errors', 1);
         ini_set('error_log', __DIR__ . '/uploads_error.log');
-        error_log("=== UPLOAD REQUEST START ===");
-
-        // Debug session info
-        error_log("Session user_id: " . (isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 'NOT SET'));
-        error_log("PHPSESSID cookie: " . ($_COOKIE['PHPSESSID'] ?? 'NOT SET'));
-        error_log("Origin: " . ($_SERVER['HTTP_ORIGIN'] ?? 'NOT SET'));
-        error_log("User-Agent: " . ($_SERVER['HTTP_USER_AGENT'] ?? 'NOT SET'));
 
         // Require authentication
         $user = requireAuth($conn);
         if (!$user) {
-            error_log("ERROR: Authentication failed");
             respond(['error' => 'Unauthorized', 'debug' => 'Session validation failed'], 401);
         }
         $userId = (int) $_SESSION['user_id'];
-
-        // Log request details
-        error_log("User ID: $userId");
-        error_log("Method: " . $_SERVER['REQUEST_METHOD']);
-        error_log("Files received: " . json_encode(array_keys($_FILES)));
-        error_log("Post data: " . json_encode($_POST));
 
         // Validate image_type
         $image_type = trim((string) ($_POST['image_type'] ?? $_GET['image_type'] ?? ''));
         $allowed_types = ['logo', 'contacts', 'stamp'];
 
         if (!$image_type || !in_array($image_type, $allowed_types, true)) {
-            error_log("ERROR: Invalid image_type: $image_type");
             respond(['error' => 'Invalid image type. Must be: logo, contacts, or stamp'], 400);
         }
 
-        error_log("Image type: $image_type");
-
         // Check if file was uploaded
         if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
-            $error = $_FILES['file']['error'] ?? 'Unknown error';
-            error_log("ERROR: File upload failed with code: $error");
             respond(['error' => 'No file uploaded or upload error'], 400);
         }
 
         $file = $_FILES['file'];
-        error_log("File info: name={$file['name']}, size={$file['size']}, type={$file['type']}, tmp={$file['tmp_name']}");
 
         // Validate file size (max 50MB)
         $maxSize = 50 * 1024 * 1024;
         if ($file['size'] > $maxSize) {
-            error_log("ERROR: File too large: {$file['size']} bytes");
             respond(['error' => 'File too large. Maximum size is 50MB'], 413);
         }
 
         // Validate MIME type
         $allowed_mimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
         if (!in_array($file['type'], $allowed_mimes, true)) {
-            error_log("ERROR: Invalid MIME type: {$file['type']}");
             respond(['error' => 'Invalid file type. Allowed: JPG, PNG, GIF, WebP'], 400);
         }
 
@@ -698,10 +661,9 @@ try {
         $upload_dir = __DIR__ . '/uploads/';
         if (!is_dir($upload_dir)) {
             if (!@mkdir($upload_dir, 0755, true)) {
-                error_log("ERROR: Failed to create directory: $upload_dir");
+                error_log('Upload directory creation failed');
                 respond(['error' => 'Failed to create upload directory'], 500);
             }
-            error_log("Created directory: $upload_dir");
         }
 
         // Generate unique filename
@@ -710,15 +672,11 @@ try {
         $file_path = $upload_dir . $filename;
         $relative_path = '/uploads/' . $filename;
 
-        error_log("Target file path: $file_path");
-
         // Move uploaded file
         if (!@move_uploaded_file($file['tmp_name'], $file_path)) {
-            error_log("ERROR: Failed to move uploaded file from {$file['tmp_name']} to $file_path");
+            error_log('Uploaded file move failed');
             respond(['error' => 'Failed to save uploaded file'], 500);
         }
-
-        error_log("File successfully moved to: $file_path");
 
         // Insert into database
         try {
@@ -746,7 +704,6 @@ try {
             }
 
             $image_id = $conn->insert_id;
-            error_log("Image record created with ID: $image_id");
 
             respond([
                 'success' => true,
@@ -757,11 +714,12 @@ try {
             ], 200);
 
         } catch (Exception $e) {
-            error_log("ERROR: Database insert failed: " . $e->getMessage());
+            error_log('Image database insert failed (' . get_class($e) . ')');
             // Clean up uploaded file if database insert fails
             if (file_exists($file_path)) {
-                @unlink($file_path);
-                error_log("Cleaned up uploaded file due to database error");
+                if (!@unlink($file_path)) {
+                    error_log('Uploaded file cleanup failed');
+                }
             }
             respond(['error' => 'Failed to save image to database', 'details' => $e->getMessage()], 500);
         }
@@ -795,7 +753,7 @@ try {
 
         $stmt = $conn->prepare($sql);
         if (!$stmt) {
-            error_log("Failed to prepare image query: " . $conn->error);
+            error_log('Image query preparation failed');
             respond(['error' => 'Database error'], 500);
         }
 
@@ -809,7 +767,6 @@ try {
         $stmt->close();
 
         if (!$row || !$row['file_path']) {
-            error_log("Image not found: imageId=$imageId, imageType=$imageType");
             respond(['error' => 'Image not found'], 404);
         }
 
@@ -820,12 +777,11 @@ try {
         $uploadsDir = realpath(__DIR__ . '/uploads/');
 
         if (!$realPath || !$uploadsDir || strpos($realPath, $uploadsDir) !== 0) {
-            error_log("Invalid file path: $filePath (real: $realPath, uploads: $uploadsDir)");
+            error_log('Image path validation failed');
             respond(['error' => 'Invalid image path'], 400);
         }
 
         if (!file_exists($realPath)) {
-            error_log("Image file not found on disk: $realPath");
             respond(['error' => 'Image file not found'], 404);
         }
 
@@ -852,7 +808,7 @@ try {
 
         // Stream the file
         if (readfile($realPath) === false) {
-            error_log("Failed to read image file: $realPath");
+            error_log('Image file read failed');
             http_response_code(500);
             echo 'Failed to read image';
             exit;
@@ -995,21 +951,13 @@ try {
     }
 
     if ($action === 'create') {
-        error_log("=== CREATE ACTION START ===");
-        error_log("Table: $table");
-        error_log("Request body: " . json_encode($body));
-
         $user = requireAuth($conn);
         $userId = (int) $_SESSION['user_id'];
-        error_log("User ID: $userId");
-
         $payload = filteredPayload($body);
-        error_log("Filtered payload: " . json_encode($payload));
 
         // Automatically add user_id if table has it
         if (isset($schema['columns']['user_id'])) {
             $payload['user_id'] = $userId;
-            error_log("Added user_id to payload");
         }
 
         $columns = [];
@@ -1018,7 +966,6 @@ try {
 
         foreach ($payload as $column => $value) {
             if (!isset($schema['columns'][$column]) || in_array($column, $schema['autoIncrement'], true)) {
-                error_log("Skipping column: $column (exists in schema: " . (isset($schema['columns'][$column]) ? 'YES' : 'NO') . ", is auto_increment: " . (in_array($column, $schema['autoIncrement'], true) ? 'YES' : 'NO') . ")");
                 continue;
             }
 
@@ -1027,11 +974,7 @@ try {
             $values[] = normalizeValue($value);
         }
 
-        error_log("Columns to insert: " . json_encode($columns));
-        error_log("Values to insert: " . json_encode($values));
-
         if ($columns === []) {
-            error_log("ERROR: No valid fields provided for insert");
             respond(['error' => 'No valid fields provided for insert'], 422);
         }
 
@@ -1042,49 +985,32 @@ try {
             implode(', ', $placeholders)
         );
 
-        error_log("SQL: $sql");
-
         $stmt = $conn->prepare($sql);
         if (!$stmt) {
-            error_log("ERROR: Failed to prepare statement: " . $conn->error);
+            error_log("Create query preparation failed for table=$table");
             respond(['error' => 'Database error: ' . $conn->error], 500);
         }
 
         bindParams($stmt, str_repeat('s', count($values)), $values);
 
         if (!$stmt->execute()) {
-            error_log("ERROR: Failed to execute statement: " . $stmt->error);
+            error_log("Create query failed for table=$table");
             respond(['error' => 'Database error: ' . $stmt->error], 500);
         }
 
         // Verify that the INSERT actually affected a row
         if ($stmt->affected_rows <= 0) {
-            error_log("ERROR: INSERT statement did not affect any rows. Affected rows: " . $stmt->affected_rows);
             respond(['error' => 'Failed to insert record - database did not accept the insert'], 500);
         }
 
         $insertId = $conn->insert_id;
-        error_log("Record inserted with ID: $insertId, affected_rows: " . $stmt->affected_rows);
-
         $created = $conn->query("SELECT * FROM `$table` WHERE `$primaryKey` = '" . $conn->real_escape_string((string) $insertId) . "' LIMIT 1")->fetch_assoc();
-        error_log("Retrieved created record: " . json_encode($created));
 
         // Log audit for Atterberg test saves (non-blocking)
-        error_log("Checking for audit logging: table=$table, test_key=" . ($payload['test_key'] ?? 'NOT_SET'));
         if ($table === 'test_results' && ($payload['test_key'] ?? '') === 'atterberg') {
             $dataPoints = (int) ($payload['data_points'] ?? 0);
-            error_log("Creating audit log for test_result_id=$insertId, data_points=$dataPoints");
-            $auditResult = logAuditSave($conn, $insertId, $userId, 'completed', $dataPoints, 'atterberg');
-            if (!$auditResult) {
-                error_log("WARNING: Audit log creation failed for test_result_id=$insertId, but main record was saved successfully");
-            } else {
-                error_log("Audit log created successfully for test_result_id=$insertId");
-            }
-        } else {
-            error_log("Audit logging skipped: table match=" . ($table === 'test_results' ? 'YES' : 'NO') . ", test_key match=" . (($payload['test_key'] ?? '') === 'atterberg' ? 'YES' : 'NO'));
+            logAuditSave($conn, $insertId, $userId, 'completed', $dataPoints, 'atterberg');
         }
-
-        error_log("=== CREATE ACTION END ===");
 
         respond([
             'message' => 'Record created',
@@ -1096,37 +1022,24 @@ try {
     }
 
     if ($action === 'update') {
-        error_log("=== UPDATE ACTION START ===");
-        error_log("Table: $table");
-        error_log("Request body: " . json_encode($body));
-
         $user = requireAuth($conn);
         $userId = (int) $_SESSION['user_id'];
-        error_log("User ID: $userId");
-
         $id = $_GET['id'] ?? $body['id'] ?? null;
         if ($id === null || $id === '') {
-            error_log("ERROR: Missing id parameter");
             respond(['error' => 'Missing id'], 400);
         }
-        error_log("Record ID: $id");
-
         // Check ownership if table has user_id
         if (isset($schema['columns']['user_id'])) {
-            error_log("Checking record ownership");
             $checkStmt = $conn->prepare("SELECT id FROM `$table` WHERE `$primaryKey` = ? AND `user_id` = ? LIMIT 1");
             $checkStmt->bind_param('si', $id, $userId);
             $checkStmt->execute();
             if (!$checkStmt->get_result()->fetch_assoc()) {
-                error_log("ERROR: Record not found or forbidden for user_id=$userId");
                 respond(['error' => 'Record not found or forbidden'], 404);
             }
-            error_log("Record ownership verified");
             $checkStmt->close();
         }
 
         $payload = filteredPayload($body);
-        error_log("Filtered payload: " . json_encode($payload));
 
         // Prevent user_id from being updated
         unset($payload['user_id']);
@@ -1136,7 +1049,6 @@ try {
 
         foreach ($payload as $column => $value) {
             if (!isset($schema['columns'][$column]) || $column === $primaryKey || in_array($column, $schema['autoIncrement'], true)) {
-                error_log("Skipping column: $column");
                 continue;
             }
 
@@ -1144,11 +1056,7 @@ try {
             $values[] = normalizeValue($value);
         }
 
-        error_log("Columns to update: " . json_encode(array_map(fn($s) => trim($s, '` = ?'), $sets)));
-        error_log("Values: " . json_encode($values));
-
         if ($sets === []) {
-            error_log("ERROR: No valid fields provided for update");
             respond(['error' => 'No valid fields provided for update'], 422);
         }
 
@@ -1159,25 +1067,22 @@ try {
             $primaryKey
         );
 
-        error_log("Update SQL: $sql");
-
         $values[] = $id;
         $stmt = $conn->prepare($sql);
         if (!$stmt) {
-            error_log("ERROR: Failed to prepare update statement: " . $conn->error);
+            error_log("Update query preparation failed for table=$table");
             respond(['error' => 'Database error: ' . $conn->error], 500);
         }
 
         bindParams($stmt, str_repeat('s', count($values)), $values);
 
         if (!$stmt->execute()) {
-            error_log("ERROR: Failed to execute update: " . $stmt->error);
+            error_log("Update query failed for table=$table");
             respond(['error' => 'Database error: ' . $stmt->error], 500);
         }
 
         // Verify that the record exists (affected_rows can be 0 if no values changed)
         if ($stmt->affected_rows < 0) {
-            error_log("ERROR: UPDATE statement failed. Affected rows: " . $stmt->affected_rows . ", ID: $id");
             respond(['error' => 'Failed to update record - database error'], 500);
         }
 
@@ -1186,10 +1091,9 @@ try {
         // 2. The new values are identical to existing values
         // We should verify the record exists if affected_rows = 0
         if ($stmt->affected_rows === 0) {
-            error_log("UPDATE affected_rows = 0, verifying record exists. ID: $id");
             $verifyStmt = $conn->prepare("SELECT 1 FROM `$table` WHERE `$primaryKey` = ? LIMIT 1");
             if (!$verifyStmt) {
-                error_log("ERROR: Failed to prepare verification statement: " . $conn->error);
+                error_log("Update verification query preparation failed for table=$table");
                 respond(['error' => 'Database error: ' . $conn->error], 500);
             }
             $verifyStmt->bind_param('s', $id);
@@ -1198,33 +1102,17 @@ try {
             $verifyStmt->close();
 
             if (!$verifyResult) {
-                error_log("ERROR: Record does not exist for update. ID: $id");
                 respond(['error' => 'Failed to update record - no rows matched the update criteria'], 500);
             }
-            error_log("Record exists, values were unchanged. Update successful, affected_rows: 0");
-        } else {
-            error_log("Update successful, affected_rows: " . $stmt->affected_rows);
         }
 
         $updated = $conn->query("SELECT * FROM `$table` WHERE `$primaryKey` = '" . $conn->real_escape_string((string) $id) . "' LIMIT 1")->fetch_assoc();
-        error_log("Retrieved updated record: " . json_encode($updated));
 
         // Log audit for Atterberg test saves (non-blocking)
-        error_log("Checking for audit logging: table=$table, test_key=" . ($payload['test_key'] ?? 'NOT_SET'));
         if ($table === 'test_results' && ($payload['test_key'] ?? '') === 'atterberg') {
             $dataPoints = (int) ($payload['data_points'] ?? 0);
-            error_log("Creating audit log for test_result_id=$id, data_points=$dataPoints");
-            $auditResult = logAuditSave($conn, (int) $id, $userId, 'completed', $dataPoints, 'atterberg');
-            if (!$auditResult) {
-                error_log("WARNING: Audit log creation failed for test_result_id=$id, but main record was updated successfully");
-            } else {
-                error_log("Audit log created successfully for test_result_id=$id");
-            }
-        } else {
-            error_log("Audit logging skipped: table match=" . ($table === 'test_results' ? 'YES' : 'NO') . ", test_key match=" . (($payload['test_key'] ?? '') === 'atterberg' ? 'YES' : 'NO'));
+            logAuditSave($conn, (int) $id, $userId, 'completed', $dataPoints, 'atterberg');
         }
-
-        error_log("=== UPDATE ACTION END ===");
 
         respond([
             'message' => 'Record updated',
@@ -1263,11 +1151,7 @@ try {
 
     respond(['error' => 'Unsupported action'], 405);
 } catch (Throwable $e) {
-    error_log("=== UNCAUGHT EXCEPTION ===");
-    error_log("Error: " . $e->getMessage());
-    error_log("File: " . $e->getFile());
-    error_log("Line: " . $e->getLine());
-    error_log("Trace: " . $e->getTraceAsString());
+    error_log('Unhandled API exception: action=' . apiLogAction() . ', type=' . get_class($e));
 
     respond([
         'error' => 'Server error',

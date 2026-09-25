@@ -196,6 +196,8 @@ const ProjectOverview = () => {
   const orderedTestResults = [...testResults].sort((a, b) =>
     (b.updated_at || b.created_at || "").localeCompare(a.updated_at || a.created_at || ""),
   );
+  const addTestKey = project?.test_type === "grading" ? "grading" : "atterberg";
+  const addTestLabel = project?.test_type === "grading" ? "Add Grading" : "Add Atterberg";
 
   return (
     <SidebarProvider>
@@ -253,8 +255,8 @@ const ProjectOverview = () => {
                           <Button variant="outline" onClick={() => setIsEditing(true)} className="gap-2" disabled={isSaving}>
                             <Edit2 className="h-4 w-4" /> Edit project
                           </Button>
-                          <Button onClick={() => openTest("atterberg")} className="gap-2">
-                            <Plus className="h-4 w-4" /> Add Atterberg
+                          <Button onClick={() => openTest(addTestKey)} className="gap-2">
+                            <Plus className="h-4 w-4" /> {addTestLabel}
                           </Button>
                         </div>
                       ) : (
@@ -338,7 +340,9 @@ const ProjectOverview = () => {
                         <div className="rounded-lg border border-dashed p-8 text-center">
                           <FlaskConical className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
                           <p className="font-medium">No tests recorded yet</p>
-                          <p className="mt-1 text-sm text-muted-foreground">Add an Atterberg test or choose a saved test from the project list.</p>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            Add a {project.test_type === "grading" ? "grading" : "Atterberg"} test or choose a saved test from the project list.
+                          </p>
                         </div>
                       ) : (
                         <div className="divide-y rounded-lg border">
