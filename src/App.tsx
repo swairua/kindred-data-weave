@@ -6,12 +6,14 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { TestDataProvider } from "@/context/TestDataContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { SessionGuard } from "@/components/SessionGuard";
 import Index from "./pages/Index.tsx";
 import Login from "./pages/Login.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import RecordTestWizard from "./pages/RecordTestWizard.tsx";
 import TestResults from "./pages/TestResults.tsx";
 import Projects from "./pages/Projects.tsx";
+import ProjectOverview from "./pages/ProjectOverview.tsx";
 import UserManagement from "./pages/UserManagement.tsx";
 import Settings from "./pages/Settings.tsx";
 
@@ -29,16 +31,19 @@ const App = () => {
                 <Sonner />
                 <Routes>
                   <Route path="/login" element={<Login />} />
-                  <Route path="/" element={<RecordTestWizard />} />
+                  <Route element={<SessionGuard />}>
+                    <Route path="/" element={<RecordTestWizard />} />
+                    <Route path="/projects" element={<Projects />} />
+                    <Route path="/projects/:projectId" element={<ProjectOverview />} />
+                    <Route path="/record" element={<RecordTestWizard />} />
+                  </Route>
                   <Route path="/tests" element={<Index initialTab="soil" />} />
                   <Route path="/tests/:projectId" element={<Index initialTab="soil" />} />
                   <Route path="/reports" element={<Index />} />
                   <Route path="/results" element={<TestResults />} />
-                  <Route path="/projects" element={<Projects />} />
                   <Route path="/admin" element={<Index />} />
                   <Route path="/users" element={<UserManagement />} />
                   <Route path="/settings" element={<Settings />} />
-                  <Route path="/record" element={<RecordTestWizard />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </TestDataProvider>

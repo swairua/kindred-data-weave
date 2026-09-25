@@ -14,10 +14,9 @@ import {
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { Layers, Plus, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import Navigation from "@/components/Navigation";
-import { useProject } from "@/context/ProjectContext";
-import { useTestData } from "@/context/TestDataContext";
 import { type ApiProjectRow } from "@/types/api";
-import { listRecords, fetchFullProject } from "@/lib/api";
+import { listRecords } from "@/lib/api";
+import { useSession } from "@/context/SessionContext";
 import { toast } from "sonner";
 
 interface ApiTestResult {
@@ -35,8 +34,7 @@ interface ApiTestResult {
 
 const Projects = () => {
   const navigate = useNavigate();
-  const project = useProject();
-  const testData = useTestData();
+  const { user, logout } = useSession();
   const [searchQuery, setSearchQuery] = useState("");
   const [apiProjects, setApiProjects] = useState<ApiProjectRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -114,9 +112,9 @@ const Projects = () => {
   const endIndex = startIndex + itemsPerPage;
   const paginatedProjects = filteredProjects.slice(startIndex, endIndex);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logout();
     toast.success("Logged out");
-    navigate("/login", { replace: true });
   };
 
   const handleNewProject = () => {
@@ -124,55 +122,8 @@ const Projects = () => {
   };
 
   const handleOpenProject = (projectId: number) => {
-    const projectData = apiProjects.find((p) => p.id === projectId);
-    if (!projectData) {
-      toast.error("Project not found");
-      return;
-    }
-
-    // Preload project metadata into TestDataContext
-    testData.updateProjectMetadata({
-      projectName: projectData.name,
-      clientName: projectData.client_name || "",
-      projectDate: projectData.project_date || "",
-      currentProjectId: projectId,
-    });
-
-    toast.success(`Opened ${projectData.name}`);
-
-    // Preload full project data in background for complete metadata
-    const preloadFullData = async () => {
-      try {
-        console.log(`[Projects] Preloading full project data for ID: ${projectId}`);
-        const fullProject = await fetchFullProject(projectId);
-
-        // Update context with complete data including advanced metadata
-        testData.updateProjectMetadata({
-          projectName: fullProject.name,
-          clientName: fullProject.client_name || "",
-          projectDate: fullProject.project_date || "",
-          labOrganization: fullProject.lab_organization || "",
-          dateReported: fullProject.date_reported || "",
-          checkedBy: fullProject.checked_by || "",
-          contractor: (fullProject as any).contractor || "",
-          county: (fullProject as any).county || "",
-        });
-
-        console.log(`[Projects] ✓ Full project data preloaded and context updated`);
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        console.warn(`[Projects] Failed to preload full project data (non-critical):`, errorMsg);
-        // Silently fail - basic data is already in context
-      }
-    };
-
-    // Fire and forget - don't await, navigate immediately
-    preloadFullData();
-    // Open the selected project in its editable test view
-    navigate(`/tests?projectId=${projectId}#atterberg`);
+    navigate(`/projects/${projectId}`);
   };
-
-  const currentUser: { name?: string; email?: string } | null = null;
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return "-";
@@ -194,8 +145,8 @@ const Projects = () => {
         currentView="projects"
         onViewChange={() => {}}
         onLogout={handleLogout}
-        userName={currentUser?.name}
-        userEmail={currentUser?.email}
+        userName={user.name}
+        userEmail={user.email}
       />
       <SidebarInset>
         <div className="flex flex-col min-h-screen bg-background">

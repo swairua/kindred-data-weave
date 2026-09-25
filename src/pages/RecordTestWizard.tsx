@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, X, FlaskConical, FolderOpen, Plus, Layers, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, FlaskConical, FolderOpen, Layers, Loader2, Mountain, Plus, Square, X, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,15 +11,15 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import WizardStepper, { type WizardStep } from "@/components/WizardStepper";
 import FormCard from "@/components/wizard/FormCard";
-import { listRecords, fetchCurrentUser, setSessionToken, logoutUser, fetchFullProject, createRecord, listCompressiveTests } from "@/lib/api";
+import { listRecords, fetchFullProject, createRecord, listCompressiveTests } from "@/lib/api";
+import { useSession } from "@/context/SessionContext";
 import { type ApiProjectRow } from "@/types/api";
+import { getExpectedTestType, hasRequiredSoilSampleMetadata, isInitialTestValid, isTestAllowed, toRecordMetadata, type Material } from "@/lib/recordTestWizard";
 import { cn } from "@/lib/utils";
 import { useTestData } from "@/context/TestDataContext";
 import { registry } from "@/lib/testRegistry";
 import Navigation from "@/components/Navigation";
 import { toast } from "sonner";
-
-type Material = "soil" | "concrete" | "rock" | "special";
 
 interface TestOption {
   key: string;
@@ -29,23 +28,11 @@ interface TestOption {
   isAllowed: boolean;
 }
 
-const ALLOWED_TEST_KEYS: Partial<Record<Material, ReadonlySet<string>>> = {
-  soil: new Set(["atterberg", "grading"]),
-  concrete: new Set(["compressive"]),
-  rock: new Set(),
-};
-
-const isTestAllowed = (material: Material | null, testKey: string): boolean => {
-  if (!material) return false;
-  const allowedKeys = ALLOWED_TEST_KEYS[material];
-  return allowedKeys === undefined || allowedKeys.has(testKey);
-};
-
-const MATERIAL_PRESENTATION: Record<Material, { label: string; emoji: string }> = {
-  soil: { label: "Soil", emoji: "🪨" },
-  concrete: { label: "Concrete", emoji: "🏗️" },
-  rock: { label: "Rock", emoji: "⛰️" },
-  special: { label: "Special", emoji: "🧪" },
+const MATERIAL_PRESENTATION: Record<Material, { label: string; Icon: LucideIcon }> = {
+  soil: { label: "Soil", Icon: Square },
+  concrete: { label: "Concrete", Icon: Building2 },
+  rock: { label: "Rock", Icon: Mountain },
+  special: { label: "Special", Icon: FlaskConical },
 };
 
 const getSteps = (
@@ -164,13 +151,6 @@ interface CompressiveTestRow {
   updated_at: string;
 }
 
-const getExpectedTestType = (testKey: string | null): string | null => {
-  if (testKey === "atterberg") return "atterberg";
-  if (testKey === "grading") return "grading";
-  if (testKey === "compressive") return "compressive";
-  return null;
-};
-
 const filterProjectsByTestType = (projects: ApiProjectRow[], expectedTestType: string | null): ApiProjectRow[] => {
   if (!expectedTestType) return projects;
   return projects.filter(p => !p.test_type || p.test_type === expectedTestType);
@@ -184,41 +164,11 @@ const RecordTestWizard = () => {
   const projectIdParam = searchParams.get("projectId");
   const projectIdFromParam = projectIdParam ? parseInt(projectIdParam, 10) : null;
   const testData = useTestData();
+  const { user, logout } = useSession();
 
   useEffect(() => {
     void testData.refreshTestDefinitions();
   }, [testData.refreshTestDefinitions]);
-
-  const [authChecking, setAuthChecking] = useState(true);
-
-  // Validate session against backend on mount. A local token is not enough —
-  // it may be stale (backend session expired), in which case downstream API
-  // calls fail and the user gets bounced mid-wizard.
-  useEffect(() => {
-    let active = true;
-    const checkAuth = async () => {
-      const redirectToLogin = () => {
-        setSessionToken(null);
-        const next = encodeURIComponent(location.pathname + location.search);
-        navigate(`/login?next=${next}`, { replace: true });
-      };
-      try {
-        const user = await fetchCurrentUser(15000); // Increased timeout to 15 seconds
-        if (!active) return;
-        if (user) {
-          setAuthChecking(false);
-          return;
-        }
-        redirectToLogin();
-      } catch (error) {
-        if (!active) return;
-        console.warn("[RecordTestWizard] Auth check failed:", error instanceof Error ? error.message : error);
-        redirectToLogin();
-      }
-    };
-    checkAuth();
-    return () => { active = false; };
-  }, [navigate]);
 
   const [state, setState] = useState<WizardState>(() => {
     const defaults = { ...emptyState, material: initialMaterial, testKey: initialTest };
@@ -237,6 +187,8 @@ const RecordTestWizard = () => {
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [projectsLoadError, setProjectsLoadError] = useState<string | null>(null);
   const [projectsReloadKey, setProjectsReloadKey] = useState(0);
+  const projectsLoadedKey = useRef<string | null>(null);
+  const projectsAttemptedKey = useRef<string | null>(null);
   const [compressiveTests, setCompressiveTests] = useState<CompressiveTestRow[]>([]);
   const [loadingCompressiveTests, setLoadingCompressiveTests] = useState(false);
   const [compressiveTestsError, setCompressiveTestsError] = useState<string | null>(null);
@@ -252,7 +204,6 @@ const RecordTestWizard = () => {
 
   // Preload project from URL parameter when component mounts
   useEffect(() => {
-    if (authChecking) return;
     if (!projectIdFromParam) return;
     let active = true;
     const preloadProjectFromParam = async () => {
@@ -302,11 +253,10 @@ const RecordTestWizard = () => {
     };
     preloadProjectFromParam();
     return () => { active = false; };
-  }, [projectIdFromParam, authChecking, testData]);
+  }, [projectIdFromParam, testData]);
 
   // Load compressive tests when selecting compressive strength test
   useEffect(() => {
-    if (authChecking) return;
     const isCompressiveStrengthTest = state.testKey === "compressive";
     if (!isCompressiveStrengthTest) {
       setCompressiveTests([]);
@@ -333,19 +283,27 @@ const RecordTestWizard = () => {
       .finally(() => active && setLoadingCompressiveTests(false));
 
     return () => { active = false; };
-  }, [authChecking, state.material, state.testKey]);
+  }, [state.material, state.testKey]);
 
   const update = <K extends keyof WizardState>(key: K, value: WizardState[K]) => {
     setState((prev) => ({ ...prev, [key]: value }));
   };
 
   const materialOptions = useMemo(() => {
-    const categories = new Set(testData.testDefinitions
-      .filter((definition) => definition.enabled !== false && definition.enabled !== 0)
-      .map((definition) => definition.category));
+    const enabledDefinitions = testData.testDefinitions.filter(
+      (definition) => definition.enabled !== false && definition.enabled !== 0,
+    );
+    const categories = new Set(enabledDefinitions.map((definition) => definition.category));
     return (Object.keys(MATERIAL_PRESENTATION) as Material[])
       .filter((category) => categories.has(category))
-      .map((category) => ({ id: category, ...MATERIAL_PRESENTATION[category] }));
+      .map((category) => {
+        const definitions = enabledDefinitions.filter((definition) => definition.category === category);
+        return {
+          id: category,
+          ...MATERIAL_PRESENTATION[category],
+          summary: definitions.map((definition) => definition.name).join(", "),
+        };
+      });
   }, [testData.testDefinitions]);
 
   useEffect(() => {
@@ -353,14 +311,13 @@ const RecordTestWizard = () => {
     const selectedDefinition = testData.testDefinitions.find(
       (definition) => definition.test_key === state.testKey && definition.category === state.material,
     );
-    const selectedDefinitionEnabled = selectedDefinition && selectedDefinition.enabled !== false && selectedDefinition.enabled !== 0;
-    const selectedDefinitionAllowed = isTestAllowed(state.material, state.testKey ?? "");
-    if (state.testKey && (!selectedDefinitionEnabled || !selectedDefinitionAllowed || !registry.hasTest(state.testKey))) {
+    const selectedDefinitionEnabled = !!selectedDefinition && selectedDefinition.enabled !== false && selectedDefinition.enabled !== 0;
+    if (state.testKey && !isInitialTestValid(state.material, state.testKey, selectedDefinitionEnabled, registry.hasTest(state.testKey))) {
       setState((prev) => ({ ...prev, material: null, testKey: null }));
       setStep(0);
       return;
     }
-    if (!testData.testDefinitionsError && initialMaterial && initialTest && selectedDefinitionEnabled && isTestAllowed(initialMaterial, initialTest) && registry.hasTest(initialTest)) {
+    if (!testData.testDefinitionsError && isInitialTestValid(initialMaterial, initialTest, selectedDefinitionEnabled, initialTest ? registry.hasTest(initialTest) : false)) {
       setStep(2);
     }
   }, [testData.testDefinitionsLoading, testData.testDefinitions, testData.testDefinitionsError, state.material, state.testKey, initialMaterial, initialTest]);
@@ -380,8 +337,13 @@ const RecordTestWizard = () => {
 
   const isCompressiveStrengthTest = state.testKey === "compressive";
   const isGradingTest = state.testKey === "grading";
+  const isProctorTest = state.testKey === "proctor";
   const hasExistingCompressiveTests = isCompressiveStrengthTest && compressiveTests.length > 0;
-  const steps = getSteps(state.testKey, hasExistingCompressiveTests, selectedExistingTestId);
+  const steps = useMemo(
+    () => getSteps(state.testKey, hasExistingCompressiveTests, selectedExistingTestId),
+    [state.testKey, hasExistingCompressiveTests, selectedExistingTestId],
+  );
+  const projectLoadKey = `${state.material ?? ""}:${state.testKey ?? ""}:${projectsReloadKey}`;
 
   const canAdvance = useMemo(() => {
     const currentStepId = steps[step]?.id;
@@ -414,30 +376,22 @@ const RecordTestWizard = () => {
         if (isCompressiveStrengthTest) {
           return state.cement.trim().length > 0;
         }
-        if (isGradingTest) {
-          return state.sampleId.trim().length > 0
-            && state.sampleNo.trim().length > 0
-            && state.sampleDepthFrom.trim().length > 0
-            && state.sampleDepthTo.trim().length > 0
-            && state.sampledSubmittedBy.trim().length > 0
-            && state.sampleDateSubmitted.trim().length > 0
-            && state.sampleDateTested.trim().length > 0;
+        if (isGradingTest || isProctorTest) {
+          return hasRequiredSoilSampleMetadata(state);
         }
         return state.sampleId.trim().length > 0 && state.sampleDepthFrom.trim().length > 0 && state.sampleDepthTo.trim().length > 0;
       case "entry": return true;
       default: return false;
     }
-  }, [step, steps, state, isCompressiveStrengthTest, isGradingTest, selectedExistingTestId]);
+  }, [step, steps, state, isCompressiveStrengthTest, isGradingTest, isProctorTest, selectedExistingTestId]);
 
   // Load projects when reaching project step (and after retry)
   useEffect(() => {
-    if (authChecking) return;
-    const stepMap: Record<string, number> = { material: 0, test: 1, existing: 2, project: 3, sample: 4, entry: 5 };
-    const currentStepId = steps[step]?.id;
     const projectStepIndex = steps.findIndex((s) => s.id === "project");
     if (step !== projectStepIndex) return;
-    if (projects.length > 0 && projectsReloadKey === 0) return;
+    if (projectsLoadedKey.current === projectLoadKey || projectsAttemptedKey.current === projectLoadKey) return;
     let active = true;
+    projectsAttemptedKey.current = projectLoadKey;
     setLoadingProjects(true);
     setProjectsLoadError(null);
     const expectedTestType = getExpectedTestType(state.testKey);
@@ -446,7 +400,10 @@ const RecordTestWizard = () => {
         if (!active) return;
         const allProjects = res.data || [];
         const filteredProjects = filterProjectsByTestType(allProjects, expectedTestType);
-        if (active) setProjects(filteredProjects);
+        if (active) {
+          setProjects(filteredProjects);
+          projectsLoadedKey.current = projectLoadKey;
+        }
       })
       .catch((err) => {
         if (!active) return;
@@ -463,7 +420,7 @@ const RecordTestWizard = () => {
       })
       .finally(() => active && setLoadingProjects(false));
     return () => { active = false; };
-  }, [step, projectsReloadKey, authChecking, navigate, state.material, state.testKey, steps]);
+  }, [step, projectLoadKey, projectsLoadedKey, navigate, steps]);
 
   const handleNext = () => {
     if (step < steps.length - 1) setStep(step + 1);
@@ -508,7 +465,7 @@ const RecordTestWizard = () => {
   const handleCreateProject = async () => {
     const hasRequiredFields = state.projectName.trim().length > 0
       && state.clientName.trim().length > 0
-      && (!(isCompressiveStrengthTest || isGradingTest) || (state.contractor.trim().length > 0 && state.county.trim().length > 0));
+      && (!(isCompressiveStrengthTest || isGradingTest || isProctorTest) || (state.contractor.trim().length > 0 && state.county.trim().length > 0));
     if (!hasRequiredFields) return;
 
     setIsCreatingProject(true);
@@ -520,7 +477,7 @@ const RecordTestWizard = () => {
         test_type: getExpectedTestType(state.testKey),
       };
 
-      if (isCompressiveStrengthTest || isGradingTest) {
+      if (isCompressiveStrengthTest || isGradingTest || isProctorTest) {
         projectPayload.contractor = state.contractor.trim();
         projectPayload.county = state.county.trim();
         projectPayload.submitted_by = state.submittedBy.trim();
@@ -559,7 +516,7 @@ const RecordTestWizard = () => {
         customFields: state.customFields,
       });
       setNewProjectOpen(false);
-      if (isGradingTest) {
+      if (isGradingTest || isProctorTest) {
         const sampleStepIndex = steps.findIndex((wizardStep) => wizardStep.id === "sample");
         setStep(sampleStepIndex);
       }
@@ -574,7 +531,7 @@ const RecordTestWizard = () => {
 
   const canCreateProject = state.projectName.trim().length > 0
     && state.clientName.trim().length > 0
-    && (!(isCompressiveStrengthTest || isGradingTest) || (state.contractor.trim().length > 0 && state.county.trim().length > 0));
+    && (!(isCompressiveStrengthTest || isGradingTest || isProctorTest) || (state.contractor.trim().length > 0 && state.county.trim().length > 0));
 
   const handleFinish = async () => {
     let finalProjectId = state.projectId;
@@ -643,18 +600,8 @@ const RecordTestWizard = () => {
 
     testData.updateProjectMetadata(projectMetadata);
 
-    if (isGradingTest) {
-      testData.updateRecordMetadata("grading", {
-        sampleId: state.sampleId,
-        sampleNumber: state.sampleNo,
-        sampleDepthFrom: state.sampleDepthFrom,
-        sampleDepthTo: state.sampleDepthTo,
-        sampledSubmittedBy: state.sampledSubmittedBy,
-        sampleNotes: state.sampleNotes,
-        dateSubmitted: state.sampleDateSubmitted,
-        dateTested: state.sampleDateTested,
-        testedBy: state.sampledSubmittedBy,
-      });
+    if (isGradingTest || isProctorTest) {
+      testData.updateRecordMetadata(state.testKey!, toRecordMetadata(state));
     }
 
     // If concrete material, also push concrete test details to context
@@ -819,23 +766,9 @@ const RecordTestWizard = () => {
     })();
   };
 
-  if (authChecking) {
-    return (
-      <div className="min-h-svh flex items-center justify-center bg-background">
-        <p className="text-sm text-muted-foreground">Checking your session…</p>
-      </div>
-    );
-  }
-
   const handleLogout = async () => {
-    try {
-      await logoutUser();
-    } catch (error) {
-      console.error("Logout error:", error);
-    } finally {
-      setSessionToken(null);
-      navigate("/login", { replace: true });
-    }
+    await logout();
+    toast.success("Logged out");
   };
 
   return (
@@ -844,8 +777,8 @@ const RecordTestWizard = () => {
         currentView="tests"
         onViewChange={() => {}}
         onLogout={handleLogout}
-        userName=""
-        userEmail=""
+        userName={user.name}
+        userEmail={user.email}
       />
       <SidebarInset className="flex flex-col min-h-svh">
         {/* Header */}
@@ -878,64 +811,61 @@ const RecordTestWizard = () => {
           <div className="w-full md:max-w-6xl md:mx-auto md:px-4">
             <div className="px-4 md:px-0">
               {step === 0 && (
-          <section className="space-y-6 animate-fade-in">
-            <div className="text-center">
-              <h2 className="text-2xl font-semibold tracking-tight">What are you testing?</h2>
-              <p className="text-sm text-muted-foreground mt-1">Pick the material you'll be working with.</p>
-            </div>
-            <FormCard>
-              <div className="grid grid-cols-1 gap-4 mx-auto">
-                {testData.testDefinitionsLoading ? (
-                  <p className="py-8 text-center text-sm text-muted-foreground">Loading test options…</p>
-                ) : testData.testDefinitionsError ? (
-                  <p className="py-8 text-center text-sm text-destructive">Could not load test options: {testData.testDefinitionsError}</p>
-                ) : materialOptions.length === 0 ? (
-                  <p className="py-8 text-center text-sm text-muted-foreground">No enabled tests are currently available.</p>
-                ) : materialOptions.map((mat) => {
-                  const selected = state.material === mat.id;
-                  return (
-                    <button
-                      key={mat.id}
-                      type="button"
-                      onClick={() => {
-                        update("material", mat.id);
-                        setTimeout(() => setStep(1), 0);
-                      }}
-                      className={cn(
-                        "text-left rounded-2xl border-2 p-6 bg-card transition-all hover:border-primary/50 hover:shadow-sm",
-                        selected ? "border-primary ring-2 ring-primary/20" : "border-border",
-                      )}
-                    >
-                      <div className="flex items-center gap-4">
-                        <span className="text-4xl">{mat.emoji}</span>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-lg font-semibold text-foreground">{mat.label}</h3>
-                          <p className="text-sm text-muted-foreground mt-0.5">{testData.testDefinitions.filter((definition) => definition.category === mat.id && definition.enabled !== false && definition.enabled !== 0).length} available tests</p>
-                        </div>
-                        <ArrowRight className={cn("h-5 w-5 transition-colors", selected ? "text-primary" : "text-muted-foreground")} />
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </FormCard>
-          </section>
+                <section className="mx-auto max-w-md space-y-4 animate-fade-in">
+                  <div className="text-center">
+                    <h2 className="text-lg font-semibold tracking-tight">What are you testing today?</h2>
+                    <p className="mt-1 text-xs text-muted-foreground">Choose a material to see its available tests.</p>
+                  </div>
+                  <div className="space-y-2">
+                    {testData.testDefinitionsLoading ? (
+                      <div className="rounded-lg border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">Loading test options…</div>
+                    ) : testData.testDefinitionsError ? (
+                      <div className="rounded-lg border border-border bg-card px-4 py-6 text-center text-sm text-destructive">Could not load test options: {testData.testDefinitionsError}</div>
+                    ) : materialOptions.length === 0 ? (
+                      <div className="rounded-lg border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">No enabled tests are currently available.</div>
+                    ) : materialOptions.map((mat) => {
+                      const selected = state.material === mat.id;
+                      const MaterialIcon = mat.Icon;
+                      return (
+                        <button
+                          key={mat.id}
+                          type="button"
+                          onClick={() => {
+                            update("material", mat.id);
+                            setTimeout(() => setStep(1), 0);
+                          }}
+                          className={cn(
+                            "flex min-h-14 w-full items-center gap-3 rounded-lg border bg-card px-4 py-2.5 text-left transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                            selected ? "border-primary ring-1 ring-primary/20" : "border-border",
+                          )}
+                        >
+                          <MaterialIcon className="h-5 w-5 shrink-0 text-foreground" strokeWidth={1.8} />
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-sm font-medium leading-5 text-foreground">{mat.label}</span>
+                            <span className="line-clamp-2 block text-xs leading-4 text-muted-foreground" title={mat.summary}>{mat.summary}</span>
+                          </span>
+                          <ArrowRight className={cn("h-4 w-4 shrink-0 transition-colors", selected ? "text-primary" : "text-muted-foreground")} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
               )}
 
               {step === 1 && (
-                <section className="space-y-6 animate-fade-in max-w-2xl">
-                  <div>
-                    <h2 className="text-2xl font-semibold tracking-tight">Choose the test</h2>
-                    <p className="text-sm text-muted-foreground mt-1">
+                <section className="mx-auto max-w-md space-y-4 animate-fade-in">
+                  <div className="text-center">
+                    <h2 className="text-lg font-semibold tracking-tight">Choose the test</h2>
+                    <p className="mt-1 text-xs text-muted-foreground">
                       Available tests for {state.material ? MATERIAL_PRESENTATION[state.material].label : "this material"}.
                     </p>
                   </div>
                   {testData.testDefinitionsLoading ? (
-                    <div className="rounded-xl border border-border bg-card py-12 text-center text-sm text-muted-foreground">Loading test options…</div>
+                    <div className="rounded-lg border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">Loading test options…</div>
                   ) : testData.testDefinitionsError ? (
-                    <div className="rounded-xl border border-border bg-card py-12 text-center text-sm text-destructive">Could not load test options: {testData.testDefinitionsError}</div>
+                    <div className="rounded-lg border border-border bg-card px-4 py-6 text-center text-sm text-destructive">Could not load test options: {testData.testDefinitionsError}</div>
                   ) : tests.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-card py-12 text-center">
+                    <div className="flex flex-col items-center justify-center rounded-lg border border-border bg-card px-4 py-6 text-center">
                       <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
                         <Layers className="h-6 w-6 text-muted-foreground" />
                       </div>
@@ -947,7 +877,7 @@ const RecordTestWizard = () => {
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {tests.map((t) => {
                         const selected = state.testKey === t.key;
                         const isDisabled = !t.isRegistered || !t.isAllowed;
@@ -962,7 +892,7 @@ const RecordTestWizard = () => {
                               setTimeout(() => setStep(step + 1), 0);
                             }}
                             className={cn(
-                              "group flex w-full items-center gap-3 rounded-xl border bg-card px-4 py-3 text-left transition-colors",
+                              "group flex min-h-14 w-full items-center gap-3 rounded-lg border bg-card px-4 py-2.5 text-left transition-colors",
                               "border-border hover:border-primary/50 hover:bg-accent/30",
                               selected && "border-primary bg-primary/5",
                               isDisabled && "cursor-not-allowed opacity-50 hover:border-border hover:bg-card",
@@ -996,10 +926,10 @@ const RecordTestWizard = () => {
               )}
 
               {steps[step]?.id === "existing" && (
-                <section className="space-y-6 animate-fade-in max-w-2xl">
-            <div>
-              <h2 className="text-2xl font-semibold tracking-tight">Select test to edit</h2>
-              <p className="text-sm text-muted-foreground mt-1">Choose an existing compressive strength test to edit, or create a new one.</p>
+                <section className="mx-auto max-w-md space-y-4 animate-fade-in">
+            <div className="text-center">
+              <h2 className="text-lg font-semibold tracking-tight">Select test to edit</h2>
+              <p className="mt-1 text-xs text-muted-foreground">Choose an existing compressive strength test to edit, or create a new one.</p>
             </div>
 
             <FormCard>
@@ -1103,112 +1033,113 @@ const RecordTestWizard = () => {
               )}
 
               {steps[step]?.id === "project" && (
-                <section className="space-y-6 animate-fade-in max-w-2xl">
-            <div>
-              <h2 className="text-2xl font-semibold tracking-tight">Project</h2>
-              <p className="text-sm text-muted-foreground mt-1">{isGradingTest ? "Use an existing project as a template or create a new one." : "Pick an existing project or create a new one."}</p>
-            </div>
+                <section className="mx-auto w-full max-w-xl space-y-6 animate-fade-in">
+                  <Button type="button" variant="ghost" onClick={handleBack} className="-ml-2 h-auto gap-2 px-2 py-1 text-muted-foreground hover:text-foreground">
+                    <ArrowLeft className="h-4 w-4" /> Back
+                  </Button>
 
-            <FormCard>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Existing project</Label>
-                  <Select
-                    value={state.projectId ? String(state.projectId) : ""}
-                    onValueChange={(v) => pickProject(Number(v))}
-                    disabled={loadingProjects || !!projectsLoadError || projects.length === 0}
-                  >
-                    <SelectTrigger className="h-11">
-                      {loadingProjects ? (
-                        <div className="flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                          <span className="text-muted-foreground">Loading projects…</span>
-                        </div>
-                      ) : state.projectId ? (
-                        <div className="flex items-center gap-2">
-                          <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">{state.projectName}</span>
-                          <span className="text-xs text-muted-foreground">
-                            · {state.clientName || "No client"}{state.projectDate ? ` · ${state.projectDate}` : ""}
-                          </span>
-                        </div>
-                      ) : (
-                        <SelectValue placeholder={projectsLoadError ? "Couldn't load projects" : projects.length === 0 ? "No saved projects yet" : "Select an existing project"} />
-                      )}
-                    </SelectTrigger>
-                    <SelectContent>
-                      {projects.map((p) => (
-                        <SelectItem key={p.id} value={String(p.id)}>
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Step {step + 1} of {steps.length}</p>
+                    <h2 className="text-2xl font-semibold tracking-tight">Which project is this for?</h2>
+                    <p className="text-sm text-muted-foreground">{isGradingTest ? "Use an existing project as a template or create a new one." : "Pick an existing project or create a new one."}</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="project-select">Project</Label>
+                    <Select
+                      value={state.projectId ? String(state.projectId) : ""}
+                      onValueChange={(v) => pickProject(Number(v))}
+                      disabled={loadingProjects || !!projectsLoadError || projects.length === 0}
+                    >
+                      <SelectTrigger id="project-select" className="h-11">
+                        {loadingProjects ? (
+                          <div className="flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                            <span className="text-muted-foreground">Loading projects…</span>
+                          </div>
+                        ) : state.projectId ? (
                           <div className="flex items-center gap-2">
                             <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium">{p.name}</span>
+                            <span className="font-medium">{state.projectName}</span>
                             <span className="text-xs text-muted-foreground">
-                              · {p.client_name || "No client"}{p.project_date ? ` · ${p.project_date}` : ""}
+                              · {state.clientName || "No client"}{state.projectDate ? ` · ${state.projectDate}` : ""}
                             </span>
                           </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {projectsLoadError ? (
-                    <div className="flex items-center justify-between gap-3 text-xs">
-                      <span className="text-destructive">{projectsLoadError}</span>
-                      <Button type="button" variant="outline" size="sm" onClick={() => setProjectsReloadKey((k) => k + 1)}>Retry</Button>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">{isGradingTest ? "A separate project will be created for this record using the selected project as a template." : "Selecting an existing project opens it directly for editing."}</p>
-                  )}
-                </div>
-
-                {isGradingTest && state.templateProjectId !== null && (
-                  <div className="space-y-3 rounded-lg border bg-muted/20 p-3">
-                    <p className="text-sm font-medium">New project details</p>
-                    <div className="space-y-2">
-                      <Label htmlFor="template-project-name">Project name *</Label>
-                      <Input id="template-project-name" value={state.projectName} onChange={(e) => update("projectName", e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="template-project-client">Client name *</Label>
-                      <Input id="template-project-client" value={state.clientName} onChange={(e) => update("clientName", e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="template-project-date">Project date</Label>
-                      <Input id="template-project-date" type="date" value={state.projectDate} onChange={(e) => update("projectDate", e.target.value)} />
-                    </div>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="template-project-contractor">Contractor *</Label>
-                        <Input id="template-project-contractor" value={state.contractor} onChange={(e) => update("contractor", e.target.value)} />
+                        ) : (
+                          <SelectValue placeholder={projectsLoadError ? "Couldn't load projects" : "Select a project…"} />
+                        )}
+                      </SelectTrigger>
+                      <SelectContent>
+                        {projects.map((p) => (
+                          <SelectItem key={p.id} value={String(p.id)}>
+                            <div className="flex items-center gap-2">
+                              <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                              <span className="font-medium">{p.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                · {p.client_name || "No client"}{p.project_date ? ` · ${p.project_date}` : ""}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {!loadingProjects && !projectsLoadError && projects.length === 0 && (
+                      <p className="text-xs text-muted-foreground">No existing projects for this test. Create a new project to continue.</p>
+                    )}
+                    {projectsLoadError && (
+                      <div className="flex items-center justify-between gap-3 text-xs">
+                        <span className="text-destructive">{projectsLoadError}</span>
+                        <Button type="button" variant="outline" size="sm" onClick={() => setProjectsReloadKey((k) => k + 1)}>Retry</Button>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="template-project-county">County *</Label>
-                        <Input id="template-project-county" value={state.county} onChange={(e) => update("county", e.target.value)} />
-                      </div>
-                    </div>
+                    )}
                   </div>
-                )}
 
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 h-px bg-border" />
-                  <span className="text-xs uppercase tracking-wider text-muted-foreground">or</span>
-                  <div className="flex-1 h-px bg-border" />
-                </div>
+                  {isGradingTest && state.templateProjectId !== null && (
+                    <div className="space-y-3 rounded-lg border bg-muted/20 p-3">
+                      <p className="text-sm font-medium">New project details</p>
+                      <div className="space-y-2">
+                        <Label htmlFor="template-project-name">Project name *</Label>
+                        <Input id="template-project-name" value={state.projectName} onChange={(e) => update("projectName", e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="template-project-client">Client name *</Label>
+                        <Input id="template-project-client" value={state.clientName} onChange={(e) => update("clientName", e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="template-project-date">Project date</Label>
+                        <Input id="template-project-date" type="date" value={state.projectDate} onChange={(e) => update("projectDate", e.target.value)} />
+                      </div>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="template-project-contractor">Contractor *</Label>
+                          <Input id="template-project-contractor" value={state.contractor} onChange={(e) => update("contractor", e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="template-project-county">County *</Label>
+                          <Input id="template-project-county" value={state.county} onChange={(e) => update("county", e.target.value)} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
-                <Button type="button" variant="outline" className="w-full justify-start gap-2 h-11" onClick={openNewProjectDialog}>
-                  <Plus className="h-4 w-4" /> Create new project
-                </Button>
-              </div>
-            </FormCard>
-          </section>
+                  <div className="flex items-center justify-between gap-3">
+                    <Button type="button" variant="outline" className="gap-2" onClick={openNewProjectDialog}>
+                      <Plus className="h-4 w-4" /> New project
+                    </Button>
+                    <Button type="button" onClick={handleNext} disabled={!canAdvance} className="gap-2">
+                      Continue <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </section>
               )}
 
               {steps[step]?.id === "sample" && (
-                <section className="space-y-6 animate-fade-in max-w-2xl">
+                <section className="mx-auto max-w-md space-y-4 animate-fade-in">
             {isCompressiveStrengthTest ? (
               <>
-                <div>
-                  <h2 className="text-2xl font-semibold tracking-tight">{isCompressiveStrengthTest ? "Concrete cube details" : "Test details"}</h2>
-                  <p className="text-sm text-muted-foreground mt-1">Enter the concrete sample details.</p>
+                <div className="text-center">
+                  <h2 className="text-lg font-semibold tracking-tight">{isCompressiveStrengthTest ? "Concrete cube details" : "Test details"}</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">Enter the concrete sample details.</p>
                 </div>
                 <FormCard>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1261,70 +1192,70 @@ const RecordTestWizard = () => {
                   </div>
                 </FormCard>
               </>
-            ) : isGradingTest ? (
+            ) : isGradingTest || isProctorTest ? (
               <>
-                <div>
-                  <h2 className="text-2xl font-semibold tracking-tight">Particle size distribution — sample details</h2>
+                <div className="text-center">
+                  <h2 className="text-lg font-semibold tracking-tight">{isGradingTest ? "Particle size distribution" : "Proctor"} — sample details</h2>
                 </div>
                 <FormCard>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="grading-sample-id">Sample ID *</Label>
+                      <Label htmlFor={`${state.testKey}-sample-id`}>Sample ID *</Label>
                       <Input
-                        id="grading-sample-id"
+                        id={`${state.testKey}-sample-id`}
                         value={state.sampleId}
                         onChange={(e) => update("sampleId", e.target.value)}
                         placeholder="e.g. BH04"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="grading-sample-no">Sample No. *</Label>
+                      <Label htmlFor={`${state.testKey}-sample-no`}>Sample No. *</Label>
                       <Input
-                        id="grading-sample-no"
+                        id={`${state.testKey}-sample-no`}
                         value={state.sampleNo}
                         onChange={(e) => update("sampleNo", e.target.value)}
                         placeholder="e.g. 1"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="grading-depth-from">Sample Depth From (m) *</Label>
+                      <Label htmlFor={`${state.testKey}-depth-from`}>Sample Depth From (m) *</Label>
                       <Input
-                        id="grading-depth-from"
+                        id={`${state.testKey}-depth-from`}
                         value={state.sampleDepthFrom}
                         onChange={(e) => update("sampleDepthFrom", e.target.value)}
                         placeholder="e.g. 18.2"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="grading-depth-to">Sample Depth To (m) *</Label>
+                      <Label htmlFor={`${state.testKey}-depth-to`}>Sample Depth To (m) *</Label>
                       <Input
-                        id="grading-depth-to"
+                        id={`${state.testKey}-depth-to`}
                         value={state.sampleDepthTo}
                         onChange={(e) => update("sampleDepthTo", e.target.value)}
                         placeholder="e.g. 20.0"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="grading-sampled-submitted-by">Sampled &amp; Submitted by *</Label>
+                      <Label htmlFor={`${state.testKey}-sampled-submitted-by`}>Sampled &amp; Submitted by *</Label>
                       <Input
-                        id="grading-sampled-submitted-by"
+                        id={`${state.testKey}-sampled-submitted-by`}
                         value={state.sampledSubmittedBy}
                         onChange={(e) => update("sampledSubmittedBy", e.target.value)}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="grading-date-submitted">Date Submitted *</Label>
+                      <Label htmlFor={`${state.testKey}-date-submitted`}>Date Submitted *</Label>
                       <Input
-                        id="grading-date-submitted"
+                        id={`${state.testKey}-date-submitted`}
                         type="date"
                         value={state.sampleDateSubmitted}
                         onChange={(e) => update("sampleDateSubmitted", e.target.value)}
                       />
                     </div>
                     <div className="space-y-2 sm:col-span-2">
-                      <Label htmlFor="grading-date-tested">Date Tested *</Label>
+                      <Label htmlFor={`${state.testKey}-date-tested`}>Date Tested *</Label>
                       <Input
-                        id="grading-date-tested"
+                        id={`${state.testKey}-date-tested`}
                         type="date"
                         value={state.sampleDateTested}
                         onChange={(e) => update("sampleDateTested", e.target.value)}
@@ -1335,9 +1266,9 @@ const RecordTestWizard = () => {
               </>
             ) : (
               <>
-                <div>
-                  <h2 className="text-2xl font-semibold tracking-tight">Sample setup</h2>
-                  <p className="text-sm text-muted-foreground mt-1">Identify the sample you're testing.</p>
+                <div className="text-center">
+                  <h2 className="text-lg font-semibold tracking-tight">Sample setup</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">Identify the sample you're testing.</p>
                 </div>
                 <FormCard>
                   <div className="space-y-4">
@@ -1388,13 +1319,13 @@ const RecordTestWizard = () => {
               )}
 
               {steps[step]?.id === "entry" && (
-                <section className="space-y-6 animate-fade-in max-w-2xl">
-            <div>
-              <h2 className="text-2xl font-semibold tracking-tight">Ready to record</h2>
-              <p className="text-sm text-muted-foreground mt-1">Review and start data entry.</p>
+                <section className="mx-auto max-w-md space-y-4 animate-fade-in">
+            <div className="text-center">
+              <h2 className="text-lg font-semibold tracking-tight">Ready to record</h2>
+              <p className="mt-1 text-xs text-muted-foreground">Review and start data entry.</p>
             </div>
-            <Card>
-              <CardContent className="p-5 space-y-3 text-sm">
+            <FormCard>
+              <div className="space-y-3 text-sm">
                 <Row label="Material" value={MATERIAL_OPTIONS.find((m) => m.id === state.material)?.label ?? "—"} />
                 <Row label="Test" value={tests.find((t) => t.key === state.testKey)?.name ?? "—"} />
                 <Row label="Project" value={state.projectName || "—"} />
@@ -1402,25 +1333,27 @@ const RecordTestWizard = () => {
                 <Row label="Sample ID" value={state.sampleId || "—"} />
                 {(state.sampleDepthFrom || state.sampleDepthTo) && <Row label="Depth" value={`${state.sampleDepthFrom || "—"} to ${state.sampleDepthTo || "—"}`} />}
                 {state.sampleNotes && <Row label="Notes" value={state.sampleNotes} />}
-              </CardContent>
-            </Card>
+              </div>
+            </FormCard>
           </section>
               )}
 
-              <div className="mt-6 flex w-full max-w-2xl items-center justify-between gap-3">
-                <Button type="button" variant="outline" onClick={handleBack} className="gap-1.5">
-                  <ArrowLeft className="h-4 w-4" /> {step === 0 ? "Cancel" : "Back"}
-                </Button>
-                {step < steps.length - 1 ? (
-                  <Button type="button" onClick={handleNext} disabled={!canAdvance} className="gap-1.5">
-                    Next <ArrowRight className="h-4 w-4" />
+              {steps[step]?.id !== "project" && (
+                <div className="mt-6 mx-auto flex w-full max-w-md items-center justify-between gap-3">
+                  <Button type="button" variant="outline" onClick={handleBack} className="gap-1.5">
+                    <ArrowLeft className="h-4 w-4" /> {step === 0 ? "Cancel" : "Back"}
                   </Button>
-                ) : (
-                  <Button type="button" onClick={handleFinish} className="gap-1.5">
-                    Start recording <ArrowRight className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
+                  {step < steps.length - 1 ? (
+                    <Button type="button" onClick={handleNext} disabled={!canAdvance} className="gap-1.5">
+                      Next <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <Button type="button" onClick={handleFinish} className="gap-1.5">
+                      Start recording <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </main>
@@ -1462,7 +1395,7 @@ const RecordTestWizard = () => {
                 />
               </div>
 
-              {!isGradingTest && (
+              {!isGradingTest && !isProctorTest && (
                 <div className="space-y-2">
                   <Label htmlFor="new-project-date">Project date</Label>
                   <Input
@@ -1474,7 +1407,7 @@ const RecordTestWizard = () => {
                 </div>
               )}
 
-              {(isCompressiveStrengthTest || isGradingTest) && (
+              {(isCompressiveStrengthTest || isGradingTest || isProctorTest) && (
                 <>
                   <div className="space-y-2">
                     <Label htmlFor="new-project-contractor">Contractor *</Label>
