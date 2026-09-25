@@ -169,6 +169,8 @@ const RecordTestWizard = () => {
   }, [testData.refreshTestDefinitions]);
 
   const [authChecking, setAuthChecking] = useState(true);
+  const [authCheckError, setAuthCheckError] = useState(false);
+  const [authCheckRetry, setAuthCheckRetry] = useState(0);
 
   // Validate session against backend on mount. A local token is not enough —
   // it may be stale (backend session expired), in which case downstream API
@@ -192,12 +194,13 @@ const RecordTestWizard = () => {
       } catch (error) {
         if (!active) return;
         console.warn("[RecordTestWizard] Auth check failed:", error instanceof Error ? error.message : error);
-        redirectToLogin();
+        setAuthCheckError(true);
+        setAuthChecking(false);
       }
     };
     checkAuth();
     return () => { active = false; };
-  }, [navigate]);
+  }, [navigate, authCheckRetry]);
 
   const [state, setState] = useState<WizardState>(() => {
     const defaults = { ...emptyState, material: initialMaterial, testKey: initialTest };
@@ -802,6 +805,27 @@ const RecordTestWizard = () => {
     return (
       <div className="min-h-svh flex items-center justify-center bg-background">
         <p className="text-sm text-muted-foreground">Checking your session…</p>
+      </div>
+    );
+  }
+
+  if (authCheckError) {
+    return (
+      <div className="min-h-svh flex items-center justify-center bg-background px-4">
+        <div className="w-full max-w-sm space-y-4 text-center">
+          <p className="text-sm text-muted-foreground">We couldn’t verify your session. Check your connection and try again.</p>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              setAuthCheckError(false);
+              setAuthChecking(true);
+              setAuthCheckRetry((retry) => retry + 1);
+            }}
+          >
+            Retry
+          </Button>
+        </div>
       </div>
     );
   }

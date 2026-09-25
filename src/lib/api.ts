@@ -590,10 +590,12 @@ export const fetchCurrentUser = async (timeoutMs: number = 15000) => {
     const data = await response.json().catch(() => ({})) as CurrentUserResponse;
 
     // If the response indicates not authenticated, return null
-    if (data?.authenticated === false || !data?.user) {
+    if (data?.authenticated === false || data?.user === null) {
       console.log(`[API] ${timestamp} User not authenticated (response indicated unauthenticated)`);
+      if (getSessionToken()) setSessionToken(null);
       return null;
     }
+    if (!data?.user) throw new Error("Invalid session response");
 
     console.log(`[API] ${timestamp} ✓ User authenticated as: ${data.user.name} (${data.user.email})`);
     return data.user;
@@ -601,29 +603,13 @@ export const fetchCurrentUser = async (timeoutMs: number = 15000) => {
     const errorMessage = error instanceof Error ? error.message : String(error);
     const errorTimestamp = new Date().toISOString();
 
-    // Check if it's an abort (timeout)
-    if (error instanceof DOMException && error.name === "AbortError") {
-      console.warn(`[API] ${errorTimestamp} Session check timed out or was aborted after ${timeoutMs}ms`);
-      return null;
+    if (controller.signal.aborted) {
+      console.warn(`[API] ${errorTimestamp} Session check timed out after ${timeoutMs}ms`);
+      throw new Error("Session check timed out");
     }
 
-    // Handle CORS or network errors gracefully
-    if (error instanceof TypeError && (error.message.includes("Failed to fetch") || error.message.includes("CORS"))) {
-      console.warn(`[API] ${errorTimestamp} Session check failed due to network/CORS error`);
-      console.warn(`[API] This may be a preview environment issue - CORS headers may not be configured on the API server`);
-      console.warn(`[API] Returning null to allow app to continue`);
-      return null;
-    }
-
-    // 401 is expected when user is not authenticated - this is not an error condition
-    if (errorMessage.includes("Unauthorized") || errorMessage.includes("401")) {
-      console.log(`[API] ${errorTimestamp} User not authenticated (401 response - session expired or not logged in)`);
-      return null;
-    }
-
-    console.warn(`[API] ${errorTimestamp} ⚠️ ME endpoint error (will return null and keep local session):`, errorMessage);
-    // API unavailable, network error - return null gracefully so we don't log users out unnecessarily
-    return null;
+    console.warn(`[API] ${errorTimestamp} ME endpoint error:`, errorMessage);
+    throw error;
   } finally {
     if (timeoutHandle) clearTimeout(timeoutHandle);
   }

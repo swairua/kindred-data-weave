@@ -59,6 +59,18 @@ beforeEach(() => {
 });
 
 describe("RecordTestWizard project loading", () => {
+  it("offers a retry instead of redirecting when session verification fails", async () => {
+    wizardMocks.fetchCurrentUser
+      .mockRejectedValueOnce(new Error("API unavailable"))
+      .mockResolvedValueOnce({ id: 1 });
+    renderWizard();
+
+    expect(await screen.findByText("We couldn’t verify your session. Check your connection and try again.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByRole("combobox", { name: "Project" })).toBeInTheDocument();
+    expect(wizardMocks.fetchCurrentUser).toHaveBeenCalledTimes(2);
+  });
+
   it("does not reload a successful empty result and keeps project creation available", async () => {
     renderWizard();
 
