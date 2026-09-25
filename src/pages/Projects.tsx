@@ -192,12 +192,12 @@ const Projects = () => {
         <div className="flex flex-col min-h-screen bg-background">
           {/* Header */}
           <header className="border-b bg-card sticky top-0 z-10">
-            <div className="flex items-center justify-between h-14 px-4 gap-2">
+            <div className="flex items-center justify-between h-11 px-3 sm:px-4 gap-2">
               <div className="flex items-center gap-2">
                 <SidebarTrigger />
                 <div>
-                  <h1 className="text-lg font-semibold">Projects</h1>
-                  <p className="text-xs text-muted-foreground">
+                  <h1 className="text-sm font-semibold leading-4">Projects</h1>
+                  <p className="text-[10px] leading-3 text-muted-foreground">
                     All user engagements
                   </p>
                 </div>
@@ -207,39 +207,37 @@ const Projects = () => {
 
           {/* Main Content */}
           <main className="flex-1 overflow-auto">
-            <div className="p-6">
-              <Card className="border-0 shadow-sm">
-                <CardHeader className="pb-4">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div>
-                      <CardTitle>Projects</CardTitle>
-                      <CardDescription>
+            <div className="p-3 sm:p-4">
+              <Card className="rounded-md border border-border shadow-none">
+                <CardHeader className="px-3 py-2.5 sm:px-4">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <div className="shrink-0">
+                      <CardTitle className="text-sm font-semibold leading-5">Projects</CardTitle>
+                      <CardDescription className="text-[11px] leading-4">
                         {filteredProjects.length} project{filteredProjects.length !== 1 ? "s" : ""}
                         {totalPages > 1 && ` • Page ${currentPage} of ${totalPages}`}
                       </CardDescription>
                     </div>
+                    <div className="w-full sm:flex-1">
+                      <Input
+                        placeholder="Search project name, client or code..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="h-8 text-xs"
+                      />
+                    </div>
                     <Button
                       onClick={handleNewProject}
-                      className="gap-2 h-10 w-full sm:w-auto"
+                      className="h-8 w-full gap-1.5 px-3 text-xs sm:w-auto sm:shrink-0"
                       size="sm"
                     >
-                      <Plus className="h-4 w-4" />
+                      <Plus className="h-3.5 w-3.5" />
                       New project
                     </Button>
                   </div>
-
-                  {/* Search */}
-                  <div className="mt-6 max-w-xs">
-                    <Input
-                      placeholder="Search project name, client or code..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="h-10"
-                    />
-                  </div>
                 </CardHeader>
 
-                <CardContent className="pt-0">
+                <CardContent className="px-3 pb-3 pt-0 sm:px-4 sm:pb-4">
                   {isLoading ? (
                     <div className="flex items-center justify-center py-12">
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -271,15 +269,15 @@ const Projects = () => {
                       )}
                     </div>
                   ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-2">
                       <div className="overflow-x-auto">
                         <Table>
                           <TableHeader>
                             <TableRow className="bg-muted/40 hover:bg-muted/40">
-                              <TableHead className="font-semibold">PROJECT</TableHead>
-                              <TableHead className="font-semibold hidden sm:table-cell">DATE CREATED</TableHead>
-                              <TableHead className="font-semibold text-center hidden sm:table-cell">SAMPLES</TableHead>
-                              <TableHead className="font-semibold text-right">ACTION</TableHead>
+                              <TableHead className="h-8 px-2 text-[10px] font-semibold tracking-wide text-muted-foreground">PROJECT</TableHead>
+                              <TableHead className="hidden h-8 px-2 text-[10px] font-semibold tracking-wide text-muted-foreground sm:table-cell">DATE CREATED</TableHead>
+                              <TableHead className="hidden h-8 px-2 text-center text-[10px] font-semibold tracking-wide text-muted-foreground sm:table-cell">SAMPLES</TableHead>
+                              <TableHead className="h-8 px-2 text-right text-[10px] font-semibold tracking-wide text-muted-foreground">ACTION</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -288,29 +286,31 @@ const Projects = () => {
                                 key={project.id}
                                 className="border-b last:border-0 hover:bg-muted/50"
                               >
-                                <TableCell>
-                                  <div className="space-y-1">
-                                    <p className="font-semibold">{project.name}</p>
-                                    <p className="text-xs text-muted-foreground">
+                                <TableCell className="px-2 py-1.5">
+                                  <div>
+                                    <p className="text-xs font-medium leading-4">{project.name}</p>
+                                    <p className="text-[10px] leading-3 text-muted-foreground">
                                       {project.client_name || "No client"}
                                     </p>
-                                    <p className="text-xs text-muted-foreground sm:hidden">
+                                    <p className="text-[10px] leading-3 text-muted-foreground sm:hidden">
                                       {formatDate(project.created_at)}
                                     </p>
                                   </div>
                                 </TableCell>
-                                <TableCell className="text-sm hidden sm:table-cell">
+                                <TableCell className="hidden px-2 py-1.5 text-xs sm:table-cell">
                                   {formatDate(project.created_at)}
                                 </TableCell>
-                                <TableCell className="text-center font-medium hidden sm:table-cell">
-                                  {project.samples || "0"}
+                                <TableCell className="hidden px-2 py-1.5 text-center font-medium sm:table-cell">
+                                  <span className="inline-flex min-w-5 justify-center rounded-sm bg-muted px-1 py-0.5 text-[10px] leading-none">
+                                    {project.samples || "0"}
+                                  </span>
                                 </TableCell>
-                                <TableCell className="text-right">
+                                <TableCell className="px-2 py-1.5 text-right">
                                   <div className="flex items-center justify-end gap-2">
                                     <Button
                                       variant="outline"
                                       size="sm"
-                                      className="h-9"
+                                      className="h-7 px-2.5 text-[11px]"
                                       onClick={() => handleOpenProject(project.id)}
                                     >
                                       Open →
@@ -325,19 +325,19 @@ const Projects = () => {
 
                       {/* Pagination Controls */}
                       {totalPages > 1 && (
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-2">
-                          <p className="text-sm text-muted-foreground">
-                            Showing {startIndex + 1} to {Math.min(endIndex, filteredProjects.length)} of {filteredProjects.length}
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-t pt-2">
+                          <p className="text-[10px] text-muted-foreground">
+                            {startIndex + 1}-{Math.min(endIndex, filteredProjects.length)} of {filteredProjects.length}
                           </p>
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex flex-wrap gap-1.5">
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                               disabled={currentPage === 1}
-                              className="gap-1"
+                              className="h-7 gap-1 px-2 text-[10px]"
                             >
-                              <ChevronLeft className="h-4 w-4" />
+                              <ChevronLeft className="h-3 w-3" />
                               Previous
                             </Button>
                             <div className="flex items-center gap-1">
@@ -347,7 +347,7 @@ const Projects = () => {
                                   variant={page === currentPage ? "default" : "outline"}
                                   size="sm"
                                   onClick={() => setCurrentPage(page)}
-                                  className="w-9 h-9 p-0"
+                                  className="h-7 w-7 p-0 text-[10px]"
                                 >
                                   {page}
                                 </Button>
@@ -358,10 +358,10 @@ const Projects = () => {
                               size="sm"
                               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                               disabled={currentPage === totalPages}
-                              className="gap-1"
+                              className="h-7 gap-1 px-2 text-[10px]"
                             >
                               Next
-                              <ChevronRight className="h-4 w-4" />
+                              <ChevronRight className="h-3 w-3" />
                             </Button>
                           </div>
                         </div>

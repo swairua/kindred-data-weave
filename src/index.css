@@ -487,6 +487,14 @@
     @apply border-r-0;
   }
 
+  .grading-sieve-table th {
+    @apply whitespace-normal px-1 py-1 text-center align-bottom text-[8px] leading-tight;
+  }
+
+  .grading-sieve-table td {
+    @apply px-1 py-1 text-center;
+  }
+
   .record-table tbody tr:last-child td {
     @apply border-b-0;
   }
