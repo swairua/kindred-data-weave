@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import GradingTest from "@/components/soil/GradingTest";
 import { ProjectContext } from "@/context/ProjectContext";
@@ -58,5 +58,15 @@ describe("GradingTest selected record", () => {
     expect(await screen.findByDisplayValue("123")).toBeInTheDocument();
     expect(screen.getByText("Selected sample")).toBeInTheDocument();
     expect(screen.queryByDisplayValue("999")).not.toBeInTheDocument();
+    expect(screen.getByText("Record results — BS 1377 Part 2")).toBeInTheDocument();
+    expect(screen.getByText("Group Index")).toBeInTheDocument();
+    expect(screen.getByText("Atterberg")).toBeInTheDocument();
+    expect(screen.getByText("Sand (0.075–4.75 mm)")).toBeInTheDocument();
+    expect(screen.getByText("Boulders (>63 mm)")).toBeInTheDocument();
+
+    fireEvent.keyDown(screen.getByRole("button", { name: "Export options" }), { key: "Enter" });
+    expect(await screen.findByText("PDF")).toBeInTheDocument();
+    expect(screen.getByText("Excel")).toBeInTheDocument();
+    expect(screen.getByText("CSV")).toBeInTheDocument();
   });
 });
