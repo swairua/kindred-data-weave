@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from "recharts";
+import { classifyAtterberg } from "@/lib/atterbergCalculations";
 
 interface PlasticityChartProps {
   liquidLimit: number | null;
@@ -57,39 +58,19 @@ const uscsDescriptionMap: Record<string, string> = {
 };
 
 /**
- * Get USCS classification code based on LL and PI
- */
-const getUSCSCode = (ll: number, pi: number): string => {
-  if (pi < 0 || pi === 0) return "ML"; // Non-plastic
-
-  const aLineValue = 0.73 * (ll - 20);
-  const aboveLine = pi > aLineValue;
-
-  if (ll < 50) {
-    // Low plasticity
-    if (aboveLine && pi >= 4 && pi <= 7) {
-      return "CL-ML"; // Hatched zone
-    }
-    if (aboveLine) {
-      return "CL";
-    }
-    return "ML";
-  } else {
-    // High plasticity
-    return aboveLine ? "CH" : "MH";
-  }
-};
-
-/**
- * Classify soil based on LL and PI using ASTM D2487 / BS 1377
- * Returns full descriptive label with code
+ * Classify soil based on LL and PI using ASTM D2487 / BS 1377.
+ * Returns a full descriptive label with code — delegates to the canonical
+ * classifyAtterberg so the chart never diverges from the other surfaces.
  */
 const getSoilClassification = (ll: number | null, pi: number | null): string => {
   if (ll === null || pi === null) return "No data";
-  if (pi < 0) return "Non-plastic";
-  if (pi === 0) return "Non-plastic";
+  if (pi <= 0) return "NP";
 
-  const code = getUSCSCode(ll, pi);
+  const result = classifyAtterberg(ll, ll - pi);
+  if (result.status === "suspect") return "Suspect (PI above U-line)";
+  if (result.status !== "classified" || !result.USCS_classification) return "No data";
+
+  const code = result.USCS_dual ?? result.USCS_classification;
   const description = uscsDescriptionMap[code] || code;
   return `${description} (${code})`;
 };

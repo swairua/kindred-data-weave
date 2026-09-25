@@ -14,6 +14,7 @@ import {
   calculateLinearShrinkage,
   calculatePlasticityIndex,
   calculateModulusOfPlasticity,
+  classifyAtterberg,
 } from "./atterbergCalculations";
 import { fetchAdminImagesAsBase64 } from "./imageUtils";
 
@@ -518,18 +519,23 @@ export const generateAtterbergXLSX = async (
 
     let uscsCode = "";
     let uscsDesc = "";
+    let bsCode = "";
+    let bsDesc = "";
     if (plasticLimit !== null && liquidLimit !== null) {
-      const pi = plasticityIndex ?? 0;
-      if (pi < 4) {
-        uscsCode = liquidLimit < 50 ? "ML" : "MH";
-        uscsDesc = liquidLimit < 50 ? "SILT OF LOW PLASTICITY" : "SILT OF HIGH PLASTICITY";
-      } else if (pi >= 4 && pi < 7) {
-        uscsCode = "CL-ML";
-        uscsDesc = "SILTY CLAY OF LOW PLASTICITY";
-      } else {
-        uscsCode = liquidLimit < 50 ? "CL" : "CH";
-        uscsDesc = liquidLimit < 50 ? "CLAY OF LOW PLASTICITY" : "CLAY OF HIGH PLASTICITY";
+      // Canonical classifier — one source of truth for the A-line / LL rules.
+      const c = classifyAtterberg(liquidLimit, plasticLimit);
+      if (c.status === "NP") {
+        uscsCode = "NP";
+        uscsDesc = "NON-PLASTIC";
+      } else if (c.status === "suspect") {
+        uscsCode = "—";
+        uscsDesc = "PI ABOVE U-LINE — CHECK TEST DATA";
+      } else if (c.flags.valid && c.USCS_classification) {
+        uscsCode = c.USCS_dual ?? c.USCS_classification;
+        uscsDesc = (c.USCS_dual === "CL-ML" ? "SILTY CLAY OF LOW PLASTICITY" : c.plasticity_description ?? "").toUpperCase();
       }
+      bsCode = c.BS_classification ?? "";
+      bsDesc = (c.plasticity_description ?? "").toUpperCase();
     }
     let aashtoCode = "";
     if (liquidLimit !== null && plasticityIndex !== null && plasticityIndex !== undefined) {
@@ -545,6 +551,11 @@ export const generateAtterbergXLSX = async (
     ws.mergeCells(`H${ry}:J${ry}`);
     setCell(ws, ry, 8, uscsDesc, dataFont, allThin);
     setCell(ws, ry, 11, uscsCode, dataBoldFont, allThin);
+    ry += 1;
+    setCell(ws, ry, 7, "BS 1377", dataBoldFont, allThin);
+    ws.mergeCells(`H${ry}:J${ry}`);
+    setCell(ws, ry, 8, bsDesc, dataFont, allThin);
+    setCell(ws, ry, 11, bsCode, dataBoldFont, allThin);
     ry += 1;
     setCell(ws, ry, 7, "AASHTO", dataBoldFont, allThin);
     ws.mergeCells(`H${ry}:K${ry}`);

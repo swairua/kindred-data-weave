@@ -1401,101 +1401,152 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
     console.log(`[Chart Ref] Total registered charts:`, chartRefsMap.current.size);
   }, []);
 
-  const captureAllChartImages = useCallback(async (recordIds: string[], expandRecords?: (ids: string[]) => void): Promise<{ [key: string]: string }> => {
+const captureAllChartImages = useCallback(async (recordIds: string[], expandRecords?: (ids: string[]) => void): Promise<{ [key: string]: string }> => {
     const chartImages: { [key: string]: string } = {};
 
     // Expand all records before capturing to ensure charts are visible
     if (expandRecords) {
       expandRecords(recordIds);
       console.log(`[Chart Capture] Expanded records for visibility`);
-      // Wait for the expand animation/render to complete
       await new Promise((resolve) => setTimeout(resolve, 300));
     }
 
     for (const recordId of recordIds) {
-      // Try to get chart element from registered ref (new approach with AtterbergRecordView)
-      let chartElement = chartRefsMap.current.get(recordId);
-
-      // Fallback: try legacy class selector (for LiquidLimitSection if still used)
-      if (!chartElement) {
-        const legacyElement = document.querySelector(`.liquid-limit-export-chart-${recordId}`);
-        chartElement = legacyElement as HTMLDivElement | null;
+      // Find the print sheet chart instead of the data entry chart
+      // The print sheet uses variant="print" (matching the report preview exactly)
+      const recordCard = document.querySelector(`[data-atterberg-record-id="${recordId}"]`);
+      const visibleChart = (chartRefsMap.current.get(recordId) as HTMLElement | undefined)
+        ?? recordCard?.querySelector<HTMLElement>('[data-record-chart]');
+      console.log(`[Chart Capture] Visible chart for record ${recordId}`, {
+        recordCardFound: !!recordCard,
+        visibleChartFound: !!visibleChart,
+      });
+      if (visibleChart) {
+        try {
+          await new Promise((resolve) => setTimeout(resolve, 60));
+          const canvas = await html2canvas(visibleChart as HTMLElement, {
+            backgroundColor: "#ffffff",
+            scale: 3,
+            logging: false,
+            useCORS: true,
+            allowTaint: true,
+            imageTimeout: 0,
+          });
+          chartImages[`${recordId}-liquidLimit`] = canvas.toDataURL("image/png");
+          console.log(`[Chart Capture] Captured VISIBLE chart for record ${recordId}`);
+          continue;
+        } catch (error) {
+          console.error(`[Chart Capture] Visible capture failed for record ${recordId}:`, error instanceof Error ? error.message : String(error));
+        }
       }
-
-      console.log(`[Chart Capture] Attempting to capture plasticity chart for record ${recordId}`, {
-        elementFound: !!chartElement,
-        elementVisible: chartElement ? chartElement.offsetParent !== null : false,
-        isFromRef: !!chartRefsMap.current.get(recordId),
+      const printSheet = recordCard?.querySelector<HTMLElement>('.atterberg-print-sheet');
+      const chartBox = printSheet?.querySelector<HTMLElement>('.aps-chart-box');
+      console.log(`[Chart Capture] Print-sheet fallback for record ${recordId}`, {
+        printSheetFound: !!printSheet,
+        chartBoxFound: !!chartBox,
       });
 
-      if (chartElement) {
-        // Wait briefly for any pending render
-        await new Promise((resolve) => setTimeout(resolve, 50));
+      if (chartBox) {
+        // Temporarily override display:none on the print sheet so html2canvas can see dimensions
+        const wasDisplayNone = printSheet!.style.display === 'none';
+        const originalDisplay = printSheet!.style.display;
+        const originalVisibility = printSheet!.style.visibility;
+        printSheet!.style.display = 'block';
+        printSheet!.style.visibility = 'hidden';
+        printSheet!.style.position = 'absolute';
+        printSheet!.style.left = '-9999px';
+        printSheet!.style.top = '0';
+        printSheet!.style.width = '560px';
 
-        const svg = chartElement.querySelector('svg');
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        const svg = chartBox.querySelector('svg');
         if (svg) {
           const svgWidth = svg.getAttribute('width');
           const svgHeight = svg.getAttribute('height');
           if (svgWidth && svgHeight) {
-            // Temporarily disable overflow hidden on children so html2canvas doesn't clip the chart
-            const overflowEls: HTMLElement[] = [];
-            const restoreOverflows: string[] = [];
             try {
-              await new Promise((resolve) => setTimeout(resolve, 150));
+              await new Promise((resolve) => setTimeout(resolve, 100));
 
-              chartElement.querySelectorAll<HTMLElement>('*').forEach((el) => {
-                if (getComputedStyle(el).overflow === 'hidden') {
-                  overflowEls.push(el);
-                  restoreOverflows.push(el.style.overflow);
-                  el.style.overflow = 'visible';
-                }
-              });
-
-              console.log(`[Chart Capture] Starting html2canvas for plasticity chart of record ${recordId}`, {
-                element: chartElement,
+              console.log(`[Chart Capture] Starting html2canvas for print sheet chart of record ${recordId}`, {
+                element: chartBox,
                 hasSvg: !!svg,
-                svgDimensions: { width: svgWidth, height: svgHeight },
+                svgDimensions: { width: svgWidth, svgHeight },
                 elementDimensions: {
-                  width: chartElement.offsetWidth,
-                  height: chartElement.offsetHeight,
+                  width: chartBox.offsetWidth,
+                  height: chartBox.offsetHeight,
                 },
               });
 
-              const canvas = await html2canvas(chartElement, {
+              const canvas = await html2canvas(chartBox, {
                 backgroundColor: "#ffffff",
                 scale: 4,
                 logging: false,
                 useCORS: true,
                 allowTaint: true,
                 imageTimeout: 0,
-                windowWidth: Math.max(chartElement.scrollWidth, 1200),
-                windowHeight: Math.max(chartElement.scrollHeight, 800),
+                windowWidth: Math.max(chartBox.scrollWidth, 560),
+                windowHeight: Math.max(chartBox.scrollHeight, 380),
               });
 
               const imageData = canvas.toDataURL("image/png");
               chartImages[`${recordId}-liquidLimit`] = imageData;
-              console.log(`[Chart Capture] Successfully captured plasticity chart for record ${recordId}`, {
+              console.log(`[Chart Capture] Successfully captured print sheet chart for record ${recordId}`, {
                 imageDataLength: imageData.length,
                 canvasWidth: canvas.width,
                 canvasHeight: canvas.height,
               });
             } catch (error) {
-              console.error(`[Chart Capture] Failed to capture plasticity chart for record ${recordId}:`, {
+              console.error(`[Chart Capture] Failed to capture print sheet chart for record ${recordId}:`, {
                 error: error instanceof Error ? error.message : String(error),
                 stack: error instanceof Error ? error.stack : undefined,
               });
-            } finally {
-              // Restore original overflow values
-              overflowEls.forEach((el, i) => {
-                el.style.overflow = restoreOverflows[i];
-              });
             }
           } else {
-            console.warn(`[Chart Capture] Plasticity chart SVG missing dimensions for record ${recordId}`, { svgWidth, svgHeight });
+            console.warn(`[Chart Capture] Print sheet chart SVG missing dimensions for record ${recordId}`, { svgWidth, svgHeight });
           }
         } else {
-          console.warn(`[Chart Capture] No SVG found in plasticity chart for record ${recordId}`);
+          console.warn(`[Chart Capture] No SVG found in print sheet chart for record ${recordId}`);
         }
+
+        // Restore original print sheet display
+        printSheet!.style.display = originalDisplay;
+        printSheet!.style.visibility = originalVisibility;
+        printSheet!.style.position = '';
+        printSheet!.style.left = '';
+        printSheet!.style.top = '';
+        printSheet!.style.width = '';
+      } else {
+        // Fallback: try legacy data entry chart ref
+        const legacyElement = chartRefsMap.current.get(recordId) || document.querySelector(`.liquid-limit-export-chart-${recordId}`);
+        if (legacyElement) {
+          const chartElement = legacyElement as HTMLDivElement;
+          const svg = chartElement.querySelector('svg');
+          if (svg) {
+            const svgWidth = svg.getAttribute('width');
+            const svgHeight = svg.getAttribute('height');
+            if (svgWidth && svgHeight) {
+              try {
+                await new Promise((resolve) => setTimeout(resolve, 50));
+                const canvas = await html2canvas(chartElement, {
+                  backgroundColor: "#ffffff",
+                  scale: 4,
+                  logging: false,
+                  useCORS: true,
+                  allowTaint: true,
+                  imageTimeout: 0,
+                  windowWidth: Math.max(chartElement.scrollWidth, 1200),
+                  windowHeight: Math.max(chartElement.scrollHeight, 800),
+                });
+                const imageData = canvas.toDataURL("image/png");
+                chartImages[`${recordId}-liquidLimit`] = imageData;
+              } catch (error) {
+                console.error(`[Chart Capture] Legacy fallback failed for record ${recordId}:`, error instanceof Error ? error.message : String(error));
+              }
+            }
+          }
+        }
+        console.warn(`[Chart Capture] No print sheet chart found for record ${recordId}, using fallback`);
       }
     }
 

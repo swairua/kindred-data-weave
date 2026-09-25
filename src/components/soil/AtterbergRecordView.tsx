@@ -30,6 +30,7 @@ import {
   calculateModulusOfPlasticity,
   calculatePlasticLimit,
   calculatePlasticityIndex,
+  classifyAtterberg,
   getDrySoilMass,
   getTrialMoisture,
   getWaterMass,
@@ -193,7 +194,7 @@ const AtterbergRecordView = ({
   );
   // Centralized USCS / AASHTO classification (matches Excel report wording).
   // Atterberg-only flow → assume fine-grained (fines = 100) so the LL/PI branch is selected.
-  const { uscs, aashto } = useMemo(() => {
+  const { uscs, bs, aashto } = useMemo(() => {
     const atterberg = {
       liquidLimit: liquidLimit ?? undefined,
       plasticLimit: plasticLimit ?? undefined,
@@ -202,10 +203,14 @@ const AtterbergRecordView = ({
     const grain = { gravel: 0, sand: 0, fines: 100 };
     const u = classifySoilUSCS(grain, atterberg);
     const a = classifySoilAASHTO(grain, atterberg);
+    const b = classifyAtterberg(liquidLimit, plasticLimit);
     return {
       uscs: liquidLimit === null && plasticityIndex === null
         ? "—"
         : `${u.uscsSymbol} — ${u.uscsDescription}`,
+      bs: liquidLimit === null && plasticityIndex === null
+        ? "—"
+        : `${b.BS_classification ?? "—"}${b.plasticity_description ? ` — ${b.plasticity_description}` : ""}`,
       aashto: liquidLimit === null && plasticityIndex === null ? "—" : a,
     };
   }, [liquidLimit, plasticLimit, plasticityIndex]);
@@ -478,12 +483,12 @@ const AtterbergRecordView = ({
         {/* Chart + Linear Shrinkage + Results */}
         <section className="grid gap-4 lg:grid-cols-10">
           {/* Liquid Limit flow curve (Moisture % vs Penetration log scale) — also captured for PDF/Excel exports */}
-          <div className="lg:col-span-7 card p-3 print:col-span-5 h-full flex flex-col" ref={setChartRef} data-record-chart>
-            <div className="mb-2 text-sm font-semibold text-foreground">
+          <div className="lg:col-span-7 card p-2 print:col-span-5 h-full flex flex-col" ref={setChartRef} data-record-chart>
+            <div className="mb-1 text-sm font-semibold text-foreground">
               Liquid Limit Flow Curve
             </div>
             <div className="flex-1 w-full min-h-0 overflow-hidden">
-              <LiquidLimitFlowChart trials={llTrials} />
+              <LiquidLimitFlowChart trials={llTrials} height="100%" />
             </div>
           </div>
 
@@ -575,6 +580,9 @@ const AtterbergRecordView = ({
             <div className="divide-y">
               <KvRow label="USCS">
                 <span className="text-sm font-semibold">{uscs}</span>
+              </KvRow>
+              <KvRow label="BS 1377">
+                <span className="text-sm font-semibold">{bs}</span>
               </KvRow>
               <KvRow label="AASHTO">
                 <span className="text-sm font-semibold">{aashto}</span>

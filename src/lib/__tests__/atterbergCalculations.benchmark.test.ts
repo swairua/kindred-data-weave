@@ -485,14 +485,14 @@ describe("Atterberg Calculations - BS 1377 Standard Validation", () => {
       expect(result).toBe("Silt (MH)");
     });
 
-    it("should return 'Non-plastic' if PI is 0", () => {
+    it("should return 'NP' if PI is 0", () => {
       const result = classifySoil(30, 0);
-      expect(result).toBe("Non-plastic");
+      expect(result).toBe("NP");
     });
 
-    it("should return 'Non-plastic' if PI is negative", () => {
+    it("should return 'NP' if PI is negative", () => {
       const result = classifySoil(30, -5);
-      expect(result).toBe("Non-plastic");
+      expect(result).toBe("NP");
     });
 
     it("should return 'No data' if LL is null", () => {

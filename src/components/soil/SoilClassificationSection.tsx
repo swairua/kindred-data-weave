@@ -5,6 +5,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { useMemo } from "react";
 import type { CalculatedResults } from "@/context/TestDataContext";
+import { classifyAtterberg } from "@/lib/atterbergCalculations";
 import {
   classifySoilUSCS,
   classifySoilAASHTO,
@@ -54,6 +55,11 @@ const SoilClassificationSection = ({
     if (!grainSize) return null;
     return classifySoilUSCS(grainSize, atterbergResults);
   }, [grainSize, atterbergResults]);
+
+  const atterbergClassification = useMemo(
+    () => classifyAtterberg(atterbergResults.liquidLimit, atterbergResults.plasticLimit),
+    [atterbergResults.liquidLimit, atterbergResults.plasticLimit],
+  );
 
   const aashtoGroup = useMemo(() => {
     if (!grainSize) return null;
@@ -153,6 +159,27 @@ const SoilClassificationSection = ({
                   <p className="text-sm font-bold text-blue-600 dark:text-blue-400 mt-1">{classification.uscsSymbol}</p>
                   <p className="text-xs text-muted-foreground mt-1">{classification.uscsGroup}</p>
                   <p className="text-xs text-foreground mt-1">{classification.uscsDescription}</p>
+                </div>
+              </div>
+
+              <div className="rounded-lg border bg-card p-3 space-y-2">
+                <div>
+                  <Label className="text-xs font-medium text-muted-foreground">BS 1377 Classification</Label>
+                  <p className="text-sm font-bold text-amber-600 dark:text-amber-400 mt-1">
+                    {atterbergClassification.BS_classification ?? "—"}
+                  </p>
+                  <p className="text-xs text-foreground mt-1">
+                    {atterbergClassification.plasticity_description ?? "—"}
+                  </p>
+                  {atterbergClassification.engineering_note && (
+                    <p className="text-xs text-muted-foreground mt-1">{atterbergClassification.engineering_note}</p>
+                  )}
+                  {atterbergClassification.flags.borderline && (
+                    <p className="text-xs text-amber-600 mt-1">Borderline (PI &lt; 4) — classify with caution.</p>
+                  )}
+                  {!atterbergClassification.flags.valid && atterbergClassification.flags.error && (
+                    <p className="text-xs text-red-600 mt-1">{atterbergClassification.flags.error}</p>
+                  )}
                 </div>
               </div>
 

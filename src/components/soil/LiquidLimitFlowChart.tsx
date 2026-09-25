@@ -5,7 +5,8 @@ import { getLiquidLimitGraphData, calculateLogLinearRegression } from "@/lib/att
 interface LiquidLimitFlowChartProps {
   trials: LiquidLimitTrial[];
   width?: number | string;
-  height?: number;
+  /** Numeric height, or "100%" to fill the parent container (used for export capture). */
+  height?: number | string;
   variant?: "preview" | "print";
 }
 
@@ -24,13 +25,20 @@ const LiquidLimitFlowChart = ({ trials, width, height, variant = "preview" }: Li
   const dotR = isPrint ? 4.5 : 6;
   const chartMargin = isPrint
     ? { top: 10, right: 18, left: 10, bottom: 22 }
-    : { top: 12, right: 20, left: 12, bottom: 24 };
+    : { top: 8, right: 12, left: 12, bottom: 24 };
+  // When height is "100%" the chart stretches to its parent; keep a floor so the
+  // chart never collapses if the parent's percentage height cannot resolve.
+  const rootStyle: { width: number | string; height: number | string; minHeight?: number } = {
+    width: finalWidth,
+    height: finalHeight,
+    ...(finalHeight === "100%" ? { minHeight: 420 } : null),
+  };
 
   if (graphData.length === 0) {
     return (
       <div
         className="flex items-center justify-center bg-white text-sm text-muted-foreground"
-        style={{ width: finalWidth, height: finalHeight }}
+        style={rootStyle}
       >
         Enter penetration & moisture to view the flow curve
       </div>
@@ -92,6 +100,14 @@ const LiquidLimitFlowChart = ({ trials, width, height, variant = "preview" }: Li
         tick={{ fontSize: axisTickSize, fill: "#111827" }}
       />
       <ReferenceLine x={20} stroke="#000" strokeDasharray="4 4" />
+      {regression && (
+        <ReferenceLine
+          y={regression.slope * Math.log10(20) + regression.intercept}
+          stroke="#166534"
+          strokeDasharray="4 4"
+          label={{ value: `LL ${(regression.slope * Math.log10(20) + regression.intercept).toFixed(1)}%`, position: "insideTopLeft", fontSize: axisTickSize, fontWeight: "bold", fill: "#166534" }}
+        />
+      )}
       <Line
         type="linear"
         dataKey="moisture"
@@ -126,7 +142,7 @@ const LiquidLimitFlowChart = ({ trials, width, height, variant = "preview" }: Li
   }
 
   return (
-    <div className="bg-white w-full" style={{ width: finalWidth, height: finalHeight }}>
+    <div className="bg-white w-full h-full" style={rootStyle}>
       <ResponsiveContainer width="100%" height="100%">
         {chartInner}
       </ResponsiveContainer>

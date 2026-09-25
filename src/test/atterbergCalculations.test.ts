@@ -454,14 +454,14 @@ describe("Soil Classification (ASTM D2487 / BS 1377)", () => {
     expect(result).toBe("Silt (MH)");
   });
 
-  it("should classify as Non-plastic when PI < 0", () => {
+  it("should classify as NP when PI < 0", () => {
     const result = classifySoil(30, -5);
-    expect(result).toBe("Non-plastic");
+    expect(result).toBe("NP");
   });
 
-  it("should classify as Non-plastic when PI = 0", () => {
+  it("should classify as NP when PI = 0", () => {
     const result = classifySoil(30, 0);
-    expect(result).toBe("Non-plastic");
+    expect(result).toBe("NP");
   });
 
   it("should return 'No data' when LL or PI is null", () => {

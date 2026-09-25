@@ -284,22 +284,228 @@ export const getULinePI = (liquidLimit: number): number => {
 };
 
 /**
+ * Status of a canonical Atterberg classification attempt.
+ * - "classified": BS + USCS codes produced (flags.borderline marks PI < 4)
+ * - "NP": non-plastic (PL = LL / PI = 0) — classification skipped, code "NP"
+ * - "suspect": PI above the U-line (likely test error) — no classification produced
+ * - "invalid": missing or negative LL/PL inputs
+ * - "error": PL > LL (physically impossible)
+ */
+export type AtterbergStatus = "classified" | "NP" | "suspect" | "invalid" | "error";
+
+/**
+ * Structured classification payload returned to the UI (per the guide spec).
+ * Everything is derived from LL and PL only — PI and the A-line/U-line values
+ * are computed, never accepted as inputs.
+ */
+export interface AtterbergClassification {
+  status: AtterbergStatus;
+  liquidLimit: number | null;
+  plasticLimit: number | null;
+  plasticityIndex: number | null;
+  aLinePI: number | null;
+  uLinePI: number | null;
+  position: "Above A-line" | "Below A-line" | null;
+  /** BS 1377 two-letter code, e.g. "CI", "MH", or "NP". */
+  BS_classification: string | null;
+  /** ASTM D2487 / USCS: one of "CL", "CH", "ML", "MH" (null when not classified). */
+  USCS_classification: string | null;
+  /** Optional ASTM extension: "CL-ML" in the hatched zone (LL < 50, 4 ≤ PI ≤ 7, at/above A-line). */
+  USCS_dual: string | null;
+  plasticity_description: string | null;
+  engineering_note: string | null;
+  flags: {
+    /** false when no classification was produced (invalid / error / suspect). */
+    valid: boolean;
+    error: string | null;
+    /** PI < 4 — barely plastic soil; classified with caution. */
+    borderline: boolean;
+    /** PI above the U-line — likely a test error; not classified. */
+    suspect: boolean;
+    nonPlastic: boolean;
+  };
+}
+
+/**
+ * BS plasticity descriptor bands — the second letter of the BS classification.
+ * LL < 35 → L, 35 ≤ LL < 50 → I, 50 ≤ LL < 70 → H,
+ * 70 ≤ LL < 90 → V, LL ≥ 90 → E (a boundary belongs to the higher band).
+ */
+const BS_BANDS: ReadonlyArray<{ maxLL: number; letter: string; descriptor: string; note: string }> = [
+  { maxLL: 35, letter: "L", descriptor: "Low", note: "Low volume change potential" },
+  { maxLL: 50, letter: "I", descriptor: "Intermediate", note: "Moderate volume change potential" },
+  { maxLL: 70, letter: "H", descriptor: "High", note: "High volume change potential" },
+  { maxLL: 90, letter: "V", descriptor: "Very High", note: "High volume change potential" },
+  { maxLL: Infinity, letter: "E", descriptor: "Extremely High", note: "Very high volume change potential" },
+];
+
+const unclassifiedResult = (
+  status: AtterbergStatus,
+  ll: number | null,
+  pl: number | null,
+  error: string,
+  extraFlags: Partial<AtterbergClassification["flags"]> = {},
+  plasticityIndex: number | null = null,
+): AtterbergClassification => ({
+  status,
+  liquidLimit: ll,
+  plasticLimit: pl,
+  plasticityIndex,
+  aLinePI: ll !== null && ll >= 0 ? getALinePI(ll) : null,
+  uLinePI: ll !== null && ll >= 0 ? getULinePI(ll) : null,
+  position: null,
+  BS_classification: null,
+  USCS_classification: null,
+  USCS_dual: null,
+  plasticity_description: null,
+  engineering_note: null,
+  flags: {
+    valid: false,
+    error,
+    borderline: false,
+    suspect: false,
+    nonPlastic: false,
+    ...extraFlags,
+  },
+});
+
+/**
+ * Canonical Atterberg soil classification — the single source of truth for
+ * BS 1377 and USCS decisions (see also classifySoil, a thin legacy wrapper).
+ *
+ * Guard order (per the guide):
+ *  1. null / non-finite / negative LL or PL → invalid
+ *  2. PL > LL → error
+ *  3. PL = LL (PI = 0) → NP — skip classification
+ *  4. PI above the U-line → suspect — do not classify
+ *  5. PI < 4 → borderline, but still classified
+ *
+ * Main logic: A-line (PI ≥ 0.73(LL − 20) → clay; equality → clay by
+ * convention), BS second letter from the LL band (L/I/H/V/E), and the four
+ * fixed USCS outputs (CL/CH/ML/MH) at the LL = 50 boundary. CL-ML dual
+ * symbol (optional ASTM extension) is emitted in the hatched zone.
+ *
+ * Never throws — call sites are React useMemo hooks; failures come back as
+ * flags.valid === false with an explanatory flags.error.
+ */
+export const classifyAtterberg = (
+  liquidLimit: number | null | undefined,
+  plasticLimit: number | null | undefined,
+): AtterbergClassification => {
+  const ll = isNumber(liquidLimit) ? liquidLimit : null;
+  const pl = isNumber(plasticLimit) ? plasticLimit : null;
+
+  // Guard 1: missing or negative inputs → invalid
+  if (ll === null || pl === null) {
+    return unclassifiedResult("invalid", ll, pl, "Liquid Limit and Plastic Limit are required for classification.");
+  }
+  if (ll < 0 || pl < 0) {
+    return unclassifiedResult("invalid", ll, pl, "Liquid Limit and Plastic Limit cannot be negative.");
+  }
+
+  const pi = round(ll - pl);
+
+  // Guard 2: PL > LL is physically impossible → error
+  if (pl > ll) {
+    return unclassifiedResult(
+      "error",
+      ll,
+      pl,
+      "Plastic Limit cannot exceed Liquid Limit (PL > LL). Check the test data.",
+      {},
+      pi,
+    );
+  }
+
+  // Guard 3: PL = LL tie-break → PI = 0 → non-plastic, skip classification
+  if (pi <= 0) {
+    return {
+      status: "NP",
+      liquidLimit: ll,
+      plasticLimit: pl,
+      plasticityIndex: 0,
+      aLinePI: getALinePI(ll),
+      uLinePI: getULinePI(ll),
+      position: null,
+      BS_classification: "NP",
+      USCS_classification: null,
+      USCS_dual: null,
+      plasticity_description: "Non-plastic",
+      engineering_note: null,
+      flags: { valid: true, error: null, borderline: false, suspect: false, nonPlastic: true },
+    };
+  }
+
+  const aLinePI = getALinePI(ll);
+  const uLinePI = getULinePI(ll);
+
+  // Guard 4: PI above the U-line → suspect, do not classify
+  if (pi > uLinePI) {
+    return unclassifiedResult(
+      "suspect",
+      ll,
+      pl,
+      "Plasticity Index is above the U-line (PI > 0.9(LL − 8)) — likely a test error. Classification withheld.",
+      { suspect: true },
+      pi,
+    );
+  }
+
+  // Main logic: A-line decision (equality → clay) + LL band lookup
+  const isClay = pi >= aLinePI;
+  const firstLetter = isClay ? "C" : "M";
+  const soilType = isClay ? "Clay" : "Silt";
+  const band = BS_BANDS.find((b) => ll < b.maxLL) ?? BS_BANDS[BS_BANDS.length - 1];
+
+  const uscs = isClay ? (ll < 50 ? "CL" : "CH") : ll < 50 ? "ML" : "MH";
+  const dual = ll < 50 && isClay && pi >= 4 && pi <= 7 ? "CL-ML" : null;
+
+  return {
+    status: "classified",
+    liquidLimit: ll,
+    plasticLimit: pl,
+    plasticityIndex: pi,
+    aLinePI,
+    uLinePI,
+    position: isClay ? "Above A-line" : "Below A-line",
+    BS_classification: `${firstLetter}${band.letter}`,
+    USCS_classification: uscs,
+    USCS_dual: dual,
+    plasticity_description: `${soilType} of ${band.descriptor} Plasticity`,
+    engineering_note: band.note,
+    flags: { valid: true, error: null, borderline: pi < 4, suspect: false, nonPlastic: false },
+  };
+};
+
+/** Human-readable labels for the wrapper below. */
+const USCS_LABELS: Record<string, string> = {
+  CL: "Clay (CL)",
+  CH: "Clay (CH)",
+  ML: "Silt (ML)",
+  MH: "Silt (MH)",
+  "CL-ML": "Silty Clay (CL-ML)",
+};
+
+/**
  * Classify soil based on LL and PI using ASTM D2487 / BS 1377
- * Returns classification code (CL, CH, ML, MH) or "Non-plastic"
+ * Returns a human-readable label ("Clay (CL)", "Silt (MH)", "NP", "No data", …)
+ *
+ * Thin wrapper over classifyAtterberg kept for existing call sites and
+ * benchmark tests that pass PI directly — PI = LL − PL is reconstructed here.
  */
 export const classifySoil = (liquidLimit: number | null, plasticityIndex: number | null): string => {
   if (liquidLimit === null || plasticityIndex === null) return "No data";
-  if (plasticityIndex < 0) return "Non-plastic";
-  if (plasticityIndex === 0) return "Non-plastic";
+  // Negative or zero PI (incl. the LL 25–30 negative-PI carve-out of
+  // calculatePlasticityIndex) settles as non-plastic before delegating.
+  if (plasticityIndex <= 0) return "NP";
 
-  const aLinePI = getALinePI(liquidLimit);
-  const isAboveALine = plasticityIndex > aLinePI;
+  const result = classifyAtterberg(liquidLimit, liquidLimit - plasticityIndex);
+  if (result.status === "suspect") return "Suspect (PI above U-line)";
+  if (result.status === "NP") return "NP";
+  if (result.status !== "classified") return "No data";
 
-  if (liquidLimit < 50) {
-    return isAboveALine ? "Clay (CL)" : "Silt (ML)";
-  } else {
-    return isAboveALine ? "Clay (CH)" : "Silt (MH)";
-  }
+  const symbol = result.USCS_dual ?? result.USCS_classification;
+  return (symbol && USCS_LABELS[symbol]) || "No data";
 };
 
 export const calculateTestResult = (test: AtterbergTest): CalculatedResults => {

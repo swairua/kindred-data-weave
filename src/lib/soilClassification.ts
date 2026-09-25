@@ -1,4 +1,5 @@
 import type { CalculatedResults } from "@/context/TestDataContext";
+import { classifyAtterberg, getALinePI } from "./atterbergCalculations";
 
 /**
  * USCS (Unified Soil Classification System) Classification
@@ -32,6 +33,15 @@ const uscsDescriptionMap: Record<string, string> = {
   "CL-ML": "Silty Clay of Low Plasticity",
   CL: "Clay of Low Plasticity",
   CH: "Clay of High Plasticity",
+};
+
+/** AASHTO groupings paired with each fine-grained USCS symbol. */
+const AASHTO_FINE: Record<string, { group: string; description: string }> = {
+  "CL-ML": { group: "A-4", description: "Silty clay soil" },
+  CL: { group: "A-6", description: "Clayey soil" },
+  ML: { group: "A-4 or A-5", description: "Silty soil" },
+  CH: { group: "A-7-6", description: "Highly plastic soil" },
+  MH: { group: "A-7-5", description: "Elastic silty soil" },
 };
 
 /**
@@ -79,62 +89,42 @@ const classifyFineGrained = (ll: number | undefined, pi: number | undefined): Cl
     };
   }
 
-  // A-line: PI = 0.73(LL - 20)
-  const aLineValue = 0.73 * (ll - 20);
-  const aboveLine = pi > aLineValue;
+  // Delegate the A-line / LL-boundary decision to the canonical classifier
+  // so this surface never diverges from the guide's rules (equality → clay).
+  const result = classifyAtterberg(ll, ll - pi);
 
-  if (ll < 50) {
-    // Low plasticity
-    if (aboveLine && pi >= 4 && pi <= 7) {
-      // Hatched zone — dual symbol
-      return {
-        uscsGroup: "Inorganic",
-        uscsSymbol: "CL-ML",
-        uscsDescription: uscsDescriptionMap["CL-ML"],
-        aashtoGroup: "A-4",
-        aashtoDescription: "Silty clay soil",
-        classification: "fine-grained",
-      };
-    }
-    if (aboveLine) {
-      return {
-        uscsGroup: "Inorganic",
-        uscsSymbol: "CL",
-        uscsDescription: uscsDescriptionMap["CL"],
-        aashtoGroup: "A-6",
-        aashtoDescription: "Clayey soil",
-        classification: "fine-grained",
-      };
-    }
+  if (result.status === "suspect") {
     return {
-      uscsGroup: "Inorganic",
-      uscsSymbol: "ML",
-      uscsDescription: uscsDescriptionMap["ML"],
-      aashtoGroup: "A-4 or A-5",
-      aashtoDescription: "Silty soil",
-      classification: "fine-grained",
-    };
-  } else {
-    // High plasticity (LL ≥ 50)
-    if (aboveLine) {
-      return {
-        uscsGroup: "Inorganic",
-        uscsSymbol: "CH",
-        uscsDescription: uscsDescriptionMap["CH"],
-        aashtoGroup: "A-7-6",
-        aashtoDescription: "Highly plastic soil",
-        classification: "fine-grained",
-      };
-    }
-    return {
-      uscsGroup: "Inorganic",
-      uscsSymbol: "MH",
-      uscsDescription: uscsDescriptionMap["MH"],
-      aashtoGroup: "A-7-5",
-      aashtoDescription: "Elastic silty soil",
+      uscsGroup: "Suspect data",
+      uscsSymbol: "—",
+      uscsDescription: "Plasticity Index above U-line — check test data",
+      aashtoGroup: "—",
+      aashtoDescription: "Classification withheld until test data is verified",
       classification: "fine-grained",
     };
   }
+
+  const symbol = result.USCS_dual ?? result.USCS_classification;
+  if (!result.flags.valid || !symbol) {
+    return {
+      uscsGroup: "Inorganic",
+      uscsSymbol: "CH/CL",
+      uscsDescription: "Clay (inorganic) - insufficient data for precise classification",
+      aashtoGroup: "A-7",
+      aashtoDescription: "Silty or clayey soil",
+      classification: "fine-grained",
+    };
+  }
+
+  const aashto = AASHTO_FINE[symbol];
+  return {
+    uscsGroup: "Inorganic",
+    uscsSymbol: symbol,
+    uscsDescription: uscsDescriptionMap[symbol] ?? symbol,
+    aashtoGroup: aashto.group,
+    aashtoDescription: aashto.description,
+    classification: "fine-grained",
+  };
 };
 
 /**
@@ -159,7 +149,8 @@ const classifySand = (
   }
 
   // Fines > 12% — use A-line to determine clayey vs silty
-  const aboveLine = ll !== undefined && pi !== undefined && pi > 0.73 * (ll - 20);
+  // (equality → clay per the guide; same rounding as the canonical classifier)
+  const aboveLine = ll !== undefined && pi !== undefined && pi >= getALinePI(ll);
 
   if (aboveLine) {
     return {
@@ -202,8 +193,8 @@ const classifyGravel = (
     };
   }
 
-  // Fines > 12% — use A-line
-  const aboveLine = ll !== undefined && pi !== undefined && pi > 0.73 * (ll - 20);
+  // Fines > 12% — use A-line (equality → clay per the guide)
+  const aboveLine = ll !== undefined && pi !== undefined && pi >= getALinePI(ll);
 
   if (aboveLine) {
     return {
@@ -295,18 +286,14 @@ export const calculatePlasticityChart = (
   else if (plasticityIndex < 15) characteristics.push("Medium plasticity");
   else characteristics.push("High plasticity");
 
-  // A-line position
-  const aLineValue = 0.73 * (liquidLimit - 20);
-  const aboveLine = plasticityIndex > aLineValue;
+  // Delegate the A-line / LL-boundary decision to the canonical classifier.
+  const result = classifyAtterberg(liquidLimit, liquidLimit - plasticityIndex);
 
-  let symbol: string;
-  if (liquidLimit < 50) {
-    if (aboveLine && plasticityIndex >= 4 && plasticityIndex <= 7) symbol = "CL-ML";
-    else if (aboveLine) symbol = "CL";
-    else symbol = "ML";
-  } else {
-    symbol = aboveLine ? "CH" : "MH";
+  if (result.status === "suspect") {
+    return { classification: "Suspect data — check test values", characteristics, nonPlastic: false };
   }
+
+  const symbol = result.USCS_dual ?? result.USCS_classification ?? "ML";
 
   return {
     classification: uscsDescriptionMap[symbol] || symbol,

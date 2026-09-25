@@ -6,7 +6,7 @@ import type {
   PlasticLimitTrial,
   ShrinkageLimitTrial,
 } from "@/context/TestDataContext";
-import { calculateMoistureFromMass, getTrialMoisture, calculateLogLinearRegression } from "./atterbergCalculations";
+import { calculateLogLinearRegression, calculateMoistureFromMass, getTrialMoisture, classifyAtterberg } from "./atterbergCalculations";
 import { fetchAdminImagesAsBase64, type AdminImages } from "./imageUtils";
 import { classifySoilUSCS, type GrainSizeDistribution } from "./soilClassification";
 
@@ -41,10 +41,12 @@ const COLORS = {
   primary: [41, 98, 163] as [number, number, number], // #2962A3
   dark: [30, 30, 30] as [number, number, number],
   muted: [120, 120, 120] as [number, number, number],
-  border: [180, 180, 180] as [number, number, number],
+  border: [136, 136, 136] as [number, number, number], // #888 matching print sheet
   lightBg: [245, 247, 250] as [number, number, number],
   headerBg: [220, 230, 245] as [number, number, number], // #DCE6F5 (light blue from Excel)
   plHighlight: [255, 235, 153] as [number, number, number], // #FFEB99 (light yellow from Excel)
+  chartBg: [255, 248, 236] as [number, number, number], // #fff8ec matching .aps-chart-box
+  labelBg: [244, 246, 250] as [number, number, number], // #f4f6fa matching .aps-meta td.lbl
 };
 
 const num = (v: string | undefined): number | null => {
@@ -57,293 +59,223 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 const fmt = (v: number | string | null | undefined): string =>
   v === null || v === undefined ? "-" : typeof v === "number" ? String(round2(v)) : v;
 
-// ── Table drawing helper ──
-interface TableConfig {
-  doc: jsPDF;
-  x: number;
-  y: number;
-  width: number;
-  colWidths: number[]; // Proportional column widths
-  rowHeight: number;
-  headers: string[];
-  rows: string[][];
-  isPLSection?: boolean;
-  plTrialStartIndex?: number;
-  plTrialEndIndex?: number;
-  fontSize?: number;
+// Desired-export style helpers (white tables, black borders, auto-fit text)
+const fitText = (d: jsPDF, text: string, maxWidth: number, startSize: number, minSize = 5.5): number => {
+  let s = startSize;
+  const t = text ?? "";
+  try {
+    while (s > minSize && d.getTextWidth(t) > Math.max(maxWidth, 1)) s -= 0.5;
+  } catch { /* ignore */ }
+  return s;
+};
+const cellText = (
+  d: jsPDF,
+  text: string,
+  cx: number,
+  cy: number,
+  colW: number,
+  o: { align?: "left" | "center" | "right"; bold?: boolean; size?: number; red?: boolean } = {},
+) => {
+  const t = text ?? "-";
+  d.setFontSize(fitText(d, t, Math.max(colW - 1.6, 3), o.size ?? 7.5));
+  d.setFont("helvetica", o.bold ? "bold" : "normal");
+  if (o.red) d.setTextColor(178, 0, 0);
+  else d.setTextColor(...COLORS.dark);
+  d.text(t, cx, cy, { align: o.align ?? "center", baseline: "middle" });
+};
+interface TrialRowDef { label: string; values: string[]; bold?: boolean }
+function drawTrialsTableDesired(d: jsPDF, x: number, y: number, w: number, headers: string[], rows: TrialRowDef[], footer: { label: string; value: string } | null): number {
+  const n = Math.max(headers.length, 1);
+  const labelW = 50;
+  const tw = (w - labelW) / n;
+  const rh = 5.4;
+  let cy = y;
+  d.setDrawColor(0, 0, 0); d.setLineWidth(0.35);
+  let cx = x;
+  d.setFillColor(255, 255, 255); d.rect(cx, cy, labelW, rh, "FD");
+  cx += labelW;
+  headers.forEach((h) => { d.setFillColor(255, 255, 255); d.rect(cx, cy, tw, rh, "FD"); cellText(d, h, cx + tw / 2, cy + rh / 2, tw, { bold: true, size: 8 }); cx += tw; });
+  cy += rh;
+  for (const r of rows) {
+    cx = x;
+    d.setFillColor(255, 255, 255); d.rect(cx, cy, labelW, rh, "FD");
+    cellText(d, r.label, cx + 1.2, cy + rh / 2, labelW, { align: "left", bold: true, size: 7 });
+    cx += labelW;
+    r.values.forEach((v) => { d.setFillColor(255, 255, 255); d.rect(cx, cy, tw, rh, "FD"); cellText(d, v, cx + tw / 2, cy + rh / 2, tw, { bold: r.bold ?? false, size: 7.5 }); cx += tw; });
+    cy += rh;
+  }
+  if (footer) {
+    d.setFillColor(255, 255, 255); d.rect(x, cy, w, rh, "FD");
+    cellText(d, footer.label, x + w / 2, cy + rh / 2, w - tw - 4, { bold: true, size: 8 });
+    cellText(d, footer.value, x + w - tw / 2, cy + rh / 2, tw, { bold: true, size: 8 });
+    cy += rh;
+  }
+  return cy;
 }
-
-function drawTable(config: TableConfig): number {
-  const { doc, x, y, width, colWidths, rowHeight, headers, rows, isPLSection = false, plTrialStartIndex = -1, plTrialEndIndex = -1, fontSize = 6.5 } = config;
-
-  let currentY = y;
-  const headerBgColor = COLORS.headerBg;
-  const plHeaderColor = COLORS.plHighlight;
-  const moistureRowColor = COLORS.headerBg; // Light blue tint for moisture row like Excel
-
-  // Normalize column widths to actual pixel widths
-  const totalProportional = colWidths.reduce((a, b) => a + b, 0);
-  const actualColWidths = colWidths.map((w) => (w / totalProportional) * width);
-
-  // Draw header row
-  let currentX = x;
-  doc.setDrawColor(...COLORS.border);
-  doc.setLineWidth(0.3);
-  for (let i = 0; i < headers.length; i++) {
-    const colW = actualColWidths[i];
-
-    // Determine header background color
-    let headerColor = headerBgColor;
-    if (i > 0 && i >= plTrialStartIndex && i <= plTrialEndIndex) {
-      headerColor = plHeaderColor;
-    }
-
-    doc.setFillColor(...headerColor);
-    doc.rect(currentX, currentY, colW, rowHeight, "FD");
-
-    doc.setFontSize(6);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...COLORS.dark);
-
-    const headerText = headers[i];
-    doc.text(headerText, currentX + colW / 2, currentY + rowHeight / 2 + 1, {
-      align: "center",
-      baseline: "middle",
+function drawSidePanelDesired(d: jsPDF, x: number, y: number, w: number, title: string, rows: { cells: string[]; frac: number[] }[], rowH = 5): number {
+  const hh = 5.6;
+  let cy = y;
+  d.setDrawColor(0, 0, 0); d.setLineWidth(0.35);
+  d.setFillColor(255, 255, 255); d.rect(x, cy, w, hh, "FD");
+  cellText(d, title, x + w / 2, cy + hh / 2, w, { bold: true, size: 8 });
+  cy += hh;
+  const tot = (r: { frac: number[] }) => r.frac.reduce((a, b) => a + b, 0);
+  for (const r of rows) {
+    let cx = x;
+    const t = tot(r);
+    r.cells.forEach((txt, i) => {
+      const cw = (w * r.frac[i]) / t;
+      d.setFillColor(255, 255, 255); d.rect(cx, cy, cw, rowH, "FD");
+      const left = i === 0 && r.cells.length === 2;
+      cellText(d, txt, left ? cx + 1.2 : cx + cw / 2, cy + rowH / 2, cw, { align: left ? "left" : "center", bold: i === 0, size: 7 });
+      cx += cw;
     });
-    currentX += colW;
+    cy += rowH;
   }
-  currentY += rowHeight;
-
-  // Draw data rows
-  for (let rowIdx = 0; rowIdx < rows.length; rowIdx++) {
-    const row = rows[rowIdx];
-    currentX = x;
-
-    const isMoistureRow = rowIdx === rows.length - 1; // Last row is moisture content
-
-    for (let cellIdx = 0; cellIdx < row.length; cellIdx++) {
-      const colW = actualColWidths[cellIdx];
-      const cellText = row[cellIdx];
-
-      // Determine cell background color
-      let bgColor = [255, 255, 255] as [number, number, number];
-      if (isMoistureRow) {
-        bgColor = moistureRowColor;
-      }
-      if (cellIdx > 0 && cellIdx >= plTrialStartIndex && cellIdx <= plTrialEndIndex) {
-        bgColor = plHeaderColor;
-      }
-
-      doc.setFillColor(...bgColor);
-      doc.setDrawColor(...COLORS.border);
-      doc.setLineWidth(0.3);
-      doc.rect(currentX, currentY, colW, rowHeight, "FD");
-
-      // Draw cell text — first column gets larger font + more padding so long labels never clip
-      const isFirstCol = cellIdx === 0;
-      doc.setFontSize(isFirstCol ? 6.5 : fontSize);
-      const isBold = isFirstCol || isMoistureRow;
-      doc.setFont("helvetica", isBold ? "bold" : "normal");
-      doc.setTextColor(...COLORS.dark);
-
-      const textX = isFirstCol ? currentX + 1.5 : currentX + colW / 2;
-      const align = isFirstCol ? "left" : "center";
-      doc.text(cellText, textX, currentY + rowHeight / 2 + 1, {
-        align: align as "left" | "center" | "right",
-        baseline: "middle",
-      });
-
-      currentX += colW;
-    }
-    currentY += rowHeight;
-  }
-
-  return currentY;
+  return cy;
 }
 
-// ── Draw the cone penetration / moisture graph (BS 1377 style) with logarithmic scaling ──
-function drawConeGraph(
-  doc: jsPDF,
-  llTrials: LiquidLimitTrial[],
-  liquidLimit: number | undefined,
+// ── Native vector flow-curve: always-available fallback when html2canvas capture fails ──
+// Renders the same semi-log LL curve (pink plot bg, grid, red trial dots,
+// green best-fit line, LL dashed marker) directly with jsPDF primitives.
+function drawFlowCurveNative(
+  d: jsPDF,
   x: number,
   y: number,
   w: number,
   h: number,
-) {
-  const margin = { top: 14, bottom: 20, left: 28, right: 8 };
-  const plotX = x + margin.left;
-  const plotY = y + margin.top;
-  const plotW = w - margin.left - margin.right;
-  const plotH = h - margin.top - margin.bottom;
+  trials: LiquidLimitTrial[],
+): void {
+  // Tight inner padding: plot hugs the box on all sides (esp. bottom).
+  const padL = 12;
+  const padR = 3;
+  const padT = 3.5;
+  const padB = 8.5;
+  const px = x + padL;
+  const py = y + padT;
+  const pw2 = Math.max(w - padL - padR, 10);
+  const ph2 = Math.max(h - padT - padB, 10);
 
-  // Title
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...COLORS.primary);
-  doc.text("CONE PENETRATION vs MOISTURE CONTENT (Semi-Log, ASTM D4318)", x + w / 2, y + 8, { align: "center" });
-
-  // Axes
-  doc.setDrawColor(...COLORS.dark);
-  doc.setLineWidth(0.3);
-  doc.line(plotX, plotY, plotX, plotY + plotH); // Y axis
-  doc.line(plotX, plotY + plotH, plotX + plotW, plotY + plotH); // X axis
-
-  // FIRST: Gather and process data points (calculate first)
-  const points: Array<{ pen: number; mc: number }> = [];
-  for (const trial of llTrials) {
-    const pen = num(trial.penetration);
-    const mcStr = getTrialMoisture(trial);
-    const mc = mcStr ? Number(mcStr) : null;
-    if (pen !== null && mc !== null && pen > 0 && mc > 0) {
-      points.push({ pen, mc });
-    }
-  }
-
-  if (points.length === 0) {
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "italic");
-    doc.setTextColor(...COLORS.muted);
-    doc.text("No data", x + w / 2, y + h / 2, { align: "center" });
+  const pts = trials
+    .map((t) => {
+      const mc = getTrialMoisture(t);
+      return { pen: Number(t.penetration), mc: mc ? Number(mc) : NaN };
+    })
+    .filter((p) => Number.isFinite(p.pen) && p.pen > 0 && Number.isFinite(p.mc));
+  if (pts.length === 0) {
+    cellText(d, "No cone data", x + w / 2, y + h / 2, w - 6, { size: 8 });
     return;
   }
+  const reg = calculateLogLinearRegression(pts.map((p) => ({ x: p.pen, y: p.mc })));
+  const pens = pts.map((p) => p.pen);
+  const mcs = pts.map((p) => p.mc);
+  const x0 = Math.min(Math.min(...pens) * 0.95, 14);
+  const x1 = Math.max(Math.max(...pens) * 1.08, 26);
+  let y0 = Math.min(...mcs);
+  let y1 = Math.max(...mcs);
+  if (reg) {
+    [x0, x1].forEach((xx) => {
+      const yy = reg.slope * Math.log10(xx) + reg.intercept;
+      y0 = Math.min(y0, yy);
+      y1 = Math.max(y1, yy);
+    });
+  }
+  const span = Math.max(y1 - y0, 1);
+  y0 -= span * 0.06;
+  y1 += span * 0.10;
+  const lx0 = Math.log10(x0);
+  const lx1 = Math.log10(x1);
+  const X = (pen: number) => px + ((Math.log10(pen) - lx0) / Math.max(lx1 - lx0, 1e-6)) * pw2;
+  const Y = (mc: number) => py + (1 - (mc - y0) / Math.max(y1 - y0, 1e-6)) * ph2;
 
-  // Determine ranges using linear moisture and logarithmic penetration (semi-log plot per ASTM D4318)
-  // Always include 18..26 mm so the 20 mm reference line and tick are visible.
-  const mcValues = points.map((p) => p.mc);
-  const penValuesForRange = [...points.map((p) => p.pen), 18, 26];
-  const logPenValues = penValuesForRange.map((v) => Math.log10(v));
-  const mcMin = Math.min(...mcValues);
-  const mcMax = Math.max(...mcValues);
-  const logPenMin = Math.min(...logPenValues);
-  const logPenMax = Math.max(...logPenValues);
+  // plot background + border
+  d.setFillColor(253, 242, 240);
+  d.setDrawColor(0, 0, 0);
+  d.setLineWidth(0.35);
+  d.rect(px, py, pw2, ph2, "FD");
 
-  // Add 10% padding to ranges
-  const mcPadding = (mcMax - mcMin) * 0.1 || 1;
-  const logPenPadding = (logPenMax - logPenMin) * 0.05;
-  const mcMinVal = mcMin - mcPadding;
-  const mcMaxVal = mcMax + mcPadding;
-  const penMinLog = logPenMin - logPenPadding;
-  const penMaxLog = logPenMax + logPenPadding;
+  // gridlines (log ticks + linear ticks)
+  d.setDrawColor(225, 225, 225);
+  d.setLineWidth(0.2);
+  [10, 12, 15, 18, 20, 22, 25, 30, 40].filter((t) => t >= x0 && t <= x1).forEach((t) => {
+    const gx = X(t);
+    d.line(gx, py, gx, py + ph2);
+  });
+  for (let i = 0; i <= 4; i++) {
+    const gy = py + (ph2 * i) / 4;
+    d.line(px, gy, px + pw2, gy);
+  }
 
-  // Semi-log scale functions: X axis is log penetration, Y axis is linear moisture
-  const scaleX = (pen: number) => plotX + ((Math.log10(pen) - penMinLog) / (penMaxLog - penMinLog)) * plotW;
-  const scaleY = (mc: number) => plotY + plotH - ((mc - mcMinVal) / (mcMaxVal - mcMinVal)) * plotH;
+  // axes labels + ticks
+  d.setFontSize(5.5);
+  d.setFont("helvetica", "normal");
+  d.setTextColor(60, 60, 60);
+  [10, 12, 15, 18, 20, 22, 25, 30, 40].filter((t) => t >= x0 && t <= x1).forEach((t) => {
+    d.text(String(t), X(t), py + ph2 + 3.4, { align: "center" });
+  });
+  for (let i = 0; i <= 4; i++) {
+    const v = y1 - ((y1 - y0) * i) / 4;
+    d.text(String(Math.round(v * 10) / 10), px - 1.2, py + (ph2 * i) / 4 + 1, { align: "right" });
+  }
+  d.setFontSize(6);
+  d.setFont("helvetica", "bold");
+  d.setTextColor(...COLORS.dark);
+  d.text("Penetration (mm)", px + pw2 / 2, y + h - 1.6, { align: "center" });
+  d.text("Moisture Content (%)", x + 3.2, py + ph2 / 2, { align: "center", angle: 90 });
 
-  // Grid lines and tick marks
-  doc.setFontSize(5.5);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(...COLORS.muted);
-  doc.setDrawColor(220, 220, 220);
-  doc.setLineWidth(0.15);
-
-  // X-axis ticks (penetration - logarithmic)
-  const penTickValues = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
-  for (const pen of penTickValues) {
-    if (pen >= Math.pow(10, penMinLog) && pen <= Math.pow(10, penMaxLog)) {
-      const px = scaleX(pen);
-      doc.line(px, plotY, px, plotY + plotH);
-      doc.text(String(pen), px, plotY + plotH + 5, { align: "center" });
+  // best-fit line (green like desired print)
+  if (reg) {
+    d.setDrawColor(22, 101, 52);
+    d.setLineWidth(0.7);
+    const steps = 24;
+    let prevX = X(x0);
+    let prevY = Y(reg.slope * Math.log10(x0) + reg.intercept);
+    for (let i = 1; i <= steps; i++) {
+      const pen = x0 + ((x1 - x0) * i) / steps;
+      const cx2 = X(pen);
+      const cy2 = Y(reg.slope * Math.log10(pen) + reg.intercept);
+      d.line(prevX, prevY, cx2, cy2);
+      prevX = cx2;
+      prevY = cy2;
     }
+    // R² top-right INSIDE the plot (green, like the preview chart).
+    // Derived identically to the preview: log-linear regression of moisture
+    // on log10(penetration): y = m·log10(x) + b, R² = 1 − SSres/SStot
+    // (see calculateLogLinearRegression in atterbergCalculations.ts).
+    d.setFontSize(6);
+    d.setFont("helvetica", "bold");
+    d.setTextColor(22, 101, 52);
+    d.text(`R² = ${reg.rSquared.toFixed(3)}`, px + pw2 - 1.5, py + 4, { align: "right" });
+    d.setTextColor(...COLORS.dark);
   }
 
-  // Y-axis ticks (moisture content - linear)
-  const mcTickValues = [10, 15, 20, 30, 40, 50, 60, 70, 80, 90, 100];
-  for (const mc of mcTickValues) {
-    if (mc >= mcMinVal && mc <= mcMaxVal) {
-      const py = scaleY(mc);
-      doc.line(plotX, py, plotX + plotW, py);
-      doc.text(String(mc), plotX - 3, py + 1.5, { align: "right" });
-    }
+  // LL marker at 20mm penetration — full cross like desiredexport:
+  // vertical dashed line at x=20 + horizontal dashed line at y=LL + green LL label.
+  if (reg && 20 >= x0 && 20 <= x1) {
+    const ll = reg.slope * Math.log10(20) + reg.intercept;
+    const lx = X(20);
+    const ly = Y(ll);
+    d.setDrawColor(22, 101, 52);
+    d.setLineWidth(0.35);
+    d.setLineDashPattern([1.4, 1.4], 0);
+    d.line(lx, ly, lx, py + ph2); // vertical down to x-axis
+    d.line(px, ly, lx, ly); // horizontal from y-axis
+    d.setLineDashPattern([], 0);
+    d.setFontSize(6);
+    d.setFont("helvetica", "bold");
+    d.setTextColor(22, 101, 52);
+    d.text(`LL ${String(Math.round(ll * 10) / 10)}%`, px + 1.5, ly - 1.8);
+    d.setTextColor(...COLORS.dark);
   }
 
-  // 20mm reference line (vertical at penetration = 20mm on log scale)
-  doc.setDrawColor(200, 50, 50);
-  doc.setLineWidth(0.3);
-  doc.setLineDashPattern([2, 2], 0);
-  const x20 = scaleX(20);
-  doc.line(x20, plotY, x20, plotY + plotH);
-  doc.setFontSize(5);
-  doc.setTextColor(200, 50, 50);
-  doc.text("20mm", x20, plotY - 2, { align: "center" });
-  doc.setLineDashPattern([], 0);
-
-  // Sort points by penetration (X axis) so the polyline is monotonic in x.
-  const sorted = [...points].sort((a, b) => a.pen - b.pen);
-
-  // Calculate log-linear regression (ASTM D4318 compliant): moisture = m·log₁₀(penetration) + b
-  // Same format as chart: { x: penetration, y: moisture }
-  const regressionResult = calculateLogLinearRegression(
-    points.map(p => ({ x: p.pen, y: p.mc }))
-  );
-
-  const slope = regressionResult?.slope ?? 0;
-  const intercept = regressionResult?.intercept ?? 0;
-
-  // Draw data line with semi-log scaling (RED for trial data)
-  doc.setDrawColor(200, 50, 50);
-  doc.setLineWidth(0.5);
-  for (let i = 1; i < sorted.length; i++) {
-    doc.line(
-      scaleX(sorted[i - 1].pen),
-      scaleY(sorted[i - 1].mc),
-      scaleX(sorted[i].pen),
-      scaleY(sorted[i].mc),
-    );
-  }
-
-  // Draw regression line in BLACK
-  doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(0.6);
-  // Calculate two points on the regression line spanning the plot area
-  // Using log-linear equation: moisture = m·log₁₀(penetration) + b
-  const penMin = Math.pow(10, penMinLog);
-  const penMax = Math.pow(10, penMaxLog);
-  const mcStart = slope * Math.log10(penMin) + intercept;
-  const mcEnd = slope * Math.log10(penMax) + intercept;
-
-  doc.line(
-    scaleX(penMin),
-    scaleY(mcStart),
-    scaleX(penMax),
-    scaleY(mcEnd),
-  );
-
-  // Draw data points with semi-log scaling (RED for trial data)
-  for (const pt of sorted) {
-    const cx = scaleX(pt.pen);
-    const cy = scaleY(pt.mc);
-    doc.setFillColor(200, 50, 50);
-    doc.circle(cx, cy, 1.2, "F");
-  }
-
-  // Mark LL at 20mm if available (horizontal line at LL moisture value)
-  if (liquidLimit !== undefined && liquidLimit > 0) {
-    const llY = scaleY(liquidLimit);
-    doc.setDrawColor(200, 50, 50);
-    doc.setLineDashPattern([1, 1], 0);
-    doc.setLineWidth(0.3);
-    doc.line(plotX, llY, plotX + plotW, llY);
-    doc.setLineDashPattern([], 0);
-    doc.setFontSize(5.5);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(200, 50, 50);
-    doc.text(`LL=${round2(liquidLimit)}%`, plotX + plotW + 1, llY + 1.5, { align: "left" });
-  }
-
-  // Axis labels
-  doc.setFontSize(6);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...COLORS.dark);
-  doc.text("Penetration (mm) - Log Scale", x + w / 2, y + h - 2, { align: "center" });
-
-  // Rotated Y label
-  doc.saveGraphicsState();
-  const yLabelX = x + 4;
-  const yLabelY = y + h / 2;
-  doc.text("Moisture Content (%) - Linear Scale", yLabelX, yLabelY, { angle: 90 });
-  doc.restoreGraphicsState();
+  // trial dots (red)
+  d.setFillColor(185, 28, 28);
+  pts.forEach((p) => {
+    d.circle(X(p.pen), Y(p.mc), 1.1, "F");
+  });
 }
+
+// (legacy drawTable removed — replaced by drawTrialsTableDesired / drawSidePanelDesired above)
 
 function drawRecordPage(
   doc: jsPDF,
@@ -354,81 +286,92 @@ function drawRecordPage(
   const { projectName, clientName, projectState, chartImages } = options;
   const pw = doc.internal.pageSize.getWidth();
   const ph = doc.internal.pageSize.getHeight();
-  const margin = 14;
+  const margin = 10;
   const contentW = pw - margin * 2;
 
-  let y = 10;
+  // Report label top-left like desired ("Atterberg Limits Report")
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...COLORS.dark);
+  doc.text("Atterberg Limits Report", margin, 9);
 
-  // ── Header images: logo (left) + contacts (right) — compact, aligned to page margins ──
-  const headerH = 18; // Reduced from 22
+  let y = 13;
+
+  // ── Header: logo left / contacts right, no boxes ──
+  const headerH = 20;
   if (images.logo || images.contacts) {
-    const imgW = contentW * 0.28; // Reduced from 0.32
+    const imgW = 62;
     if (images.logo) {
       try {
-        console.log("Adding logo image to PDF");
-        const base64String = extractBase64FromDataUrl(images.logo);
-        doc.addImage(base64String, "PNG", margin, y, imgW, headerH, undefined, "NONE");
-        console.log("Logo image added successfully");
-      } catch (error) {
-        console.error("Failed to add logo image:", error instanceof Error ? error.message : error);
-      }
+        doc.addImage(extractBase64FromDataUrl(images.logo), "PNG", margin, y, imgW, headerH, undefined, "FAST");
+      } catch { /* optional */ }
     }
     if (images.contacts) {
       try {
-        console.log("Adding contacts image to PDF");
-        const base64String = extractBase64FromDataUrl(images.contacts);
-        doc.addImage(base64String, "PNG", pw - margin - imgW, y, imgW, headerH, undefined, "NONE");
-        console.log("Contacts image added successfully");
-      } catch (error) {
-        console.error("Failed to add contacts image:", error instanceof Error ? error.message : error);
-      }
+        doc.addImage(extractBase64FromDataUrl(images.contacts), "PNG", pw - margin - imgW, y, imgW, headerH, undefined, "FAST");
+      } catch { /* optional */ }
     }
-    y += headerH + 1; // Reduced spacing
+    y += headerH + 2;
   }
 
-  // ── Title bar ──
-  doc.setFillColor(...COLORS.primary);
-  doc.roundedRect(margin, y, contentW, 10, 1.5, 1.5, "F");
-  doc.setFontSize(9.5);
+  // thin rule under header
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.5);
+  doc.line(margin, y, margin + contentW, y);
+  y += 3;
+
+  // ── Centered underlined title (desired style) ──
+  const title = "ATTERBERG LIMITS (BS 1377 PART 2, 4.3 : 1990)";
+  doc.setFontSize(10.5);
   doc.setFont("helvetica", "bold");
-  doc.setTextColor(255, 255, 255);
-  doc.text("ATTERBERG LIMITS (BS 1377 PART 2, 4.3 : 1990)", pw / 2, y + 6.5, { align: "center" });
-  y += 12; // Reduced from 16
+  doc.setTextColor(...COLORS.dark);
+  doc.text(title, pw / 2, y + 3, { align: "center" });
+  const twTitle = doc.getTextWidth(title);
+  doc.setLineWidth(0.4);
+  doc.line(pw / 2 - twTitle / 2, y + 4.2, pw / 2 + twTitle / 2, y + 4.2);
+  y += 8;
 
-  // ── Metadata section ──
-  const metaRows = [
-    [{ label: "Client name:", value: clientName || projectState.clientName || "-" }],
-    [{ label: "Project/Site name:", value: projectName || projectState.projectName || "-" }],
-    [
-      { label: "Sampled by:", value: projectState.labOrganization || "-" },
-      { label: "Date submitted:", value: record.dateSubmitted || "-" },
-      { label: "Date tested:", value: record.dateTested || "-" },
-    ],
-    [
-      { label: "Sample ID:", value: record.label || "-" },
-      { label: "Sample depth:", value: (record as any).sampleDepth || "-" },
-      { label: "Sample No:", value: record.sampleNumber || "-" },
-    ],
-  ];
-
-  doc.setFontSize(7);
-  for (const row of metaRows) {
-    const colW = contentW / row.length;
-    row.forEach((item, i) => {
-      const x = margin + i * colW;
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(...COLORS.primary);
-      doc.text(item.label, x + 1.5, y + 2.5);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(...COLORS.dark);
-      doc.text(item.value, x + 1.5, y + 6);
-      doc.setDrawColor(...COLORS.border);
-      doc.rect(x, y, colW, 7.5);
+  // ── Metadata: white table, black borders, red values ──
+  const metaH = 5.6;
+  const proj = projectState as unknown as Record<string, string | undefined>;
+  const sampledBy = proj.labOrganization || (record as unknown as Record<string, string | undefined>).sampledBy || "-";
+  const dateSubmitted = (record as unknown as Record<string, string | undefined>).dateSubmitted || proj.dateSubmitted || "-";
+  const dateTested = record.dateTested || "-";
+  const sampleDepth = (record as unknown as Record<string, string | undefined>).sampleDepth
+    || record.sampleNumber || "-";
+  const sampleNo = record.sampleNumber || "-";
+  const drawMetaRow = (cells: { label: string; value: string; labelW: number; valueW: number; valueRed?: boolean }[]) => {
+    let cx = margin;
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.35);
+    cells.forEach((c) => {
+      doc.setFillColor(255, 255, 255);
+      doc.rect(cx, y, c.labelW, metaH, "FD");
+      cellText(doc, c.label, cx + 1.2, y + metaH / 2, c.labelW, { align: "left", bold: true, size: 7.5 });
+      cx += c.labelW;
+      doc.setFillColor(255, 255, 255);
+      doc.rect(cx, y, c.valueW, metaH, "FD");
+      cellText(doc, c.value, cx + c.valueW / 2, y + metaH / 2, c.valueW, { bold: true, size: 8, red: c.valueRed ?? true });
+      cx += c.valueW;
     });
-    y += 7.5;
-  }
+    y += metaH;
+  };
+  const fullLabelW = 52;
+  drawMetaRow([{ label: "Client name:", value: clientName || projectState.clientName || "-", labelW: fullLabelW, valueW: contentW - fullLabelW }]);
+  drawMetaRow([{ label: "Project/Site name:", value: projectName || projectState.projectName || "-", labelW: fullLabelW, valueW: contentW - fullLabelW }]);
+  const metaPairs: { label: string; value: string; labelW: number; valueW: number }[] = [
+      { label: "Sampled and submitted by:", value: sampledBy, labelW: 42, valueW: contentW * 0.175 },
+      { label: "Date submitted:", value: dateSubmitted, labelW: 27, valueW: contentW * 0.15 },
+      { label: "Date tested:", value: dateTested, labelW: 22, valueW: contentW - (42 + contentW * 0.175 + 27 + contentW * 0.15 + 22) },
+    ];
+    drawMetaRow(metaPairs.map((p) => ({ ...p, valueRed: false })));
+  drawMetaRow([
+    { label: "Sample ID:", value: record.label || "-", labelW: 38, valueW: contentW * 0.185, valueRed: false },
+    { label: "Sample depth (M):", value: sampleDepth, labelW: 30, valueW: contentW * 0.155, valueRed: false },
+    { label: "Sample No:", value: sampleNo, labelW: 22, valueW: contentW - (38 + contentW * 0.185 + 30 + contentW * 0.155 + 22), valueRed: false },
+  ]);
 
-  y += 1; // Reduced from 2
+  y += 1;
 
   // ── Record notes (if present) ──
   if (record.note && record.note.trim() && y < ph - 120) { // Only show notes if space available
@@ -457,357 +400,175 @@ function drawRecordPage(
   const plTrials = (plTest?.type === "plasticLimit" ? plTest.trials : []) as PlasticLimitTrial[];
   const slTrials = (slTest?.type === "shrinkageLimit" ? slTest.trials : []) as ShrinkageLimitTrial[];
 
-  // ── Data table: Combined LL and PL trials into single unified table ──
-  const dataLabels = [
-    "Container No",
-    "Penetration (mm)",
-    "Cont + Wet Soil (g)",
-    "Cont + Dry Soil (g)",
-    "Container (g)",
-    "Wt Moisture (g)",
-    "Wt Dry Soil (g)",
-    "Moisture Content (%)",
+  // Desired-export data table: ONE unified table, C1..C7 columns.
+  // LL trials first, then PL trials mapped into the same row structure
+  // (penetration blank for PL, exactly like desiredexport's "—" cells).
+  const allTrials: { kind: "LL" | "PL"; ll?: LiquidLimitTrial; pl?: PlasticLimitTrial }[] = [
+    ...llTrials.map((t) => ({ kind: "LL" as const, ll: t })),
+    ...plTrials.map((t) => ({ kind: "PL" as const, pl: t })),
   ];
+  const totalCols = Math.max(allTrials.length, 1);
+  const headers = allTrials.map((_, i) => `C${i + 1}`);
+  const colOf = (fn: (t: { kind: "LL" | "PL"; ll?: LiquidLimitTrial; pl?: PlasticLimitTrial }) => string): string[] =>
+    allTrials.map(fn);
+  const containers = colOf((t) => t.ll?.containerNo || t.pl?.containerNo || "-");
+  const pens = colOf((t) => (t.kind === "LL" ? fmt(num(t.ll?.penetration)) : "—"));
+  const wetMasses = colOf((t) => {
+    const tr = (t.ll ?? t.pl)!;
+    const wet = num(tr.containerWetMass);
+    const dry = num(tr.containerDryMass);
+    const cont = num(tr.containerMass);
+    const mc = getTrialMoisture(tr as LiquidLimitTrial);
+    const mcNum = mc ? Number(mc) : null;
+    const drySoil = dry !== null && cont !== null ? round2(dry - cont) : null;
+    let water = wet !== null && dry !== null ? round2(wet - dry) : null;
+    let wcalc = wet;
+    if (water === null && drySoil !== null && drySoil > 0 && mcNum !== null) water = round2((drySoil * mcNum) / 100);
+    if (wcalc === null && dry !== null && water !== null) wcalc = round2(dry + water);
+    return fmt(wcalc ?? wet);
+  });
+  const dryMasses = colOf((t) => fmt(num((t.ll ?? t.pl)?.containerDryMass)));
+  const contMasses = colOf((t) => fmt(num((t.ll ?? t.pl)?.containerMass)));
+  const waterMass = colOf((t) => {
+    const tr = (t.ll ?? t.pl)!;
+    const wet = num(tr.containerWetMass);
+    const dry = num(tr.containerDryMass);
+    const cont = num(tr.containerMass);
+    const mc = getTrialMoisture(tr as LiquidLimitTrial);
+    const mcNum = mc ? Number(mc) : null;
+    const drySoil = dry !== null && cont !== null ? round2(dry - cont) : null;
+    let water = wet !== null && dry !== null ? round2(wet - dry) : null;
+    if (water === null && drySoil !== null && drySoil > 0 && mcNum !== null) water = round2((drySoil * mcNum) / 100);
+    return water !== null ? fmt(water) : "-";
+  });
+  const drySoilMass = colOf((t) => {
+    const tr = (t.ll ?? t.pl)!;
+    const dry = num(tr.containerDryMass);
+    const cont = num(tr.containerMass);
+    return dry !== null && cont !== null ? fmt(round2(dry - cont)) : "-";
+  });
+  const moistures = colOf((t) => {
+    const mc = getTrialMoisture((t.ll ?? t.pl) as LiquidLimitTrial);
+    return mc ? String(round2(Number(mc))) : "-";
+  });
+  void totalCols;
+  const rowDefs: TrialRowDef[] = [
+    { label: "Container No", values: containers },
+    { label: "Penetration (mm)", values: pens.map((v) => (v === "-" ? "—" : v)), bold: true },
+    { label: "Wt of Container + Wet Soil (g)", values: wetMasses },
+    { label: "Wt of Container + Dry Soil (g)", values: dryMasses },
+    { label: "Wt of Container (g)", values: contMasses },
+    { label: "Wt of Moisture (g)", values: waterMass },
+    { label: "Wt of Dry Soil (g)", values: drySoilMass },
+    { label: "Moisture Content (%)", values: moistures, bold: true },
+  ];
+  y = drawTrialsTableDesired(doc, margin, y, contentW, headers, rowDefs, {
+    label: "PLASTIC LIMIT",
+    value: fmt(record.results.plasticLimit),
+  });
+  y += 2;
 
-  // Check if we need a page break before the combined table
-  // For single record on single page, never page break here
-  if ((llTrials.length > 0 || plTrials.length > 0) && y > ph - 100 && options.records.length > 1) {
-    doc.addPage();
-    y = 20;
-  }
-
-  // ── COMBINED ATTERBERG LIMITS TABLE ──
-  if (llTrials.length > 0 || plTrials.length > 0) {
-    // Add section header
-    doc.setFillColor(...COLORS.headerBg);
-    doc.rect(margin, y, contentW, 7, "F");
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...COLORS.primary);
-    doc.text("ATTERBERG LIMITS TEST", margin + 2, y + 5);
-    y += 9;
-
-    // Calculate column widths: wide label column + equal distribution for all trials
-    const totalTrials = llTrials.length + plTrials.length;
-    const labelW = 32;
-    const remainingW = contentW - labelW;
-    const perColW = totalTrials > 0 ? remainingW / totalTrials : 0;
-
-    // Build combined headers
-    const colHeaders = [""];
-    const colWidths = [labelW];
-
-    // Add LL trial headers
-    for (let i = 0; i < llTrials.length; i++) {
-      const trial = llTrials[i];
-      const containerInfo = trial.containerNo ? ` (${trial.containerNo})` : "";
-      colHeaders.push(`Trial ${i + 1} (LL)${containerInfo}`);
-      colWidths.push(perColW);
-    }
-
-    // Add PL trial headers
-    for (let i = 0; i < plTrials.length; i++) {
-      const trial = plTrials[i];
-      const containerInfo = trial.containerNo ? ` (${trial.containerNo})` : "";
-      colHeaders.push(`Trial ${i + 1} (PL)${containerInfo}`);
-      colWidths.push(perColW);
-    }
-
-    // Build combined data rows
-    const combinedDataRows: string[][] = dataLabels.map((label, rowIdx) => {
-      const row = [label];
-
-      // Add LL trial data
-      for (const trial of llTrials) {
-        const wet = num(trial.containerWetMass);
-        const dry = num(trial.containerDryMass);
-        const cont = num(trial.containerMass);
-        switch (rowIdx) {
-          case 0: row.push(trial.containerNo || "-"); break;
-          case 1: row.push(fmt(num(trial.penetration))); break;
-          case 2: row.push(fmt(wet)); break;
-          case 3: row.push(fmt(dry)); break;
-          case 4: row.push(fmt(cont)); break;
-          case 5: row.push(wet !== null && dry !== null ? fmt(round2(wet - dry)) : "-"); break;
-          case 6: row.push(dry !== null && cont !== null ? fmt(round2(dry - cont)) : "-"); break;
-          case 7: {
-            const mc = getTrialMoisture(trial);
-            row.push(mc ? String(round2(Number(mc))) : "-");
-            break;
-          }
-        }
-      }
-
-      // Add PL trial data
-      for (const trial of plTrials) {
-        const wet = num(trial.containerWetMass);
-        const dry = num(trial.containerDryMass);
-        const cont = num(trial.containerMass);
-        const mc = getTrialMoisture(trial);
-        const mcNum = mc ? Number(mc) : null;
-
-        const drySoilMass = dry !== null && cont !== null ? round2(dry - cont) : null;
-        let waterMass = wet !== null && dry !== null ? round2(wet - dry) : null;
-        let wetCalc = wet;
-
-        if (waterMass === null && drySoilMass !== null && drySoilMass > 0 && mcNum !== null) {
-          waterMass = round2((drySoilMass * mcNum) / 100);
-        }
-        if (wetCalc === null && dry !== null && waterMass !== null) {
-          wetCalc = round2(dry + waterMass);
-        }
-
-        switch (rowIdx) {
-          case 0: row.push(trial.containerNo || "-"); break;
-          case 1: row.push("-"); break;
-          case 2: row.push(fmt(wetCalc ?? wet)); break;
-          case 3: row.push(fmt(dry)); break;
-          case 4: row.push(fmt(cont)); break;
-          case 5: row.push(waterMass !== null ? fmt(waterMass) : "-"); break;
-          case 6: row.push(drySoilMass !== null ? fmt(drySoilMass) : "-"); break;
-          case 7: row.push(mcNum !== null ? fmt(round2(mcNum)) : "-"); break;
-        }
-      }
-
-      return row;
-    });
-
-    // Draw the combined table with tightened row height; first column uses extra padding via labelW=32
-    y = drawTable({
-      doc,
-      x: margin,
-      y: y,
-      width: contentW,
-      colWidths,
-      rowHeight: 4, // Reduced from 4.5
-      headers: colHeaders,
-      rows: combinedDataRows,
-      plTrialStartIndex: llTrials.length > 0 ? llTrials.length + 1 : -1,
-      plTrialEndIndex: totalTrials,
-      fontSize: 5.5,
-    });
-
-    y += 1; // Reduced from 2
-  }
-
-  // ── Plastic Limit result row ──
-  doc.setDrawColor(...COLORS.border);
-  doc.setFillColor(...COLORS.headerBg);
-  doc.rect(margin, y, contentW, 5, "FD");
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...COLORS.primary);
-  doc.text("PLASTIC LIMIT", margin + contentW * 0.55, y + 3.3);
-  doc.setTextColor(...COLORS.dark);
-  doc.text(fmt(record.results.plasticLimit), margin + contentW * 0.85, y + 3.3);
-  y += 6; // Reduced from 7
-
-  // ── Layout: Left side = charts, Right side = LS + Results + Classification ──
-  const leftW = contentW * 0.55; // Wider chart cell so captured PNG isn't squeezed
-  const rightX = margin + leftW + 4; // 4mm gutter
-  const rightW = contentW - leftW - 4;
-  const sectionStartY = y;
-
-  // Optimized for single-page fit
-  const chartH = leftW * 0.72; // Taller box to match captured chart aspect
-  const rightStackH = 80;
-  const footerBlockNeeded = 52; // Reserve more space for the 24mm footer gap
-  const requiredBottom = sectionStartY + Math.max(chartH, rightStackH) + footerBlockNeeded;
-  // For single records, avoid page breaks; for multiple, allow if needed
-  if (requiredBottom > ph - 12 && options.records.length > 1) {
-    doc.addPage();
-    y = 20;
-  }
-
+  // Desired layout: chart left (60%) + side panels right (40%)
+  // Chart height fills the page: footer sits near the bottom, no big whitespace.
+  const gap = 3;
+  const leftW = (contentW - gap) * 0.60;
+  const rightX = margin + leftW + gap;
+  const rightW = contentW - leftW - gap;
   const sectionStartY2 = y;
+  const footerTargetY = ph - 20;
+  const chartH = Math.max(92, Math.min(175, footerTargetY - 12 - sectionStartY2));
+  const chartKey = `${record.id}-liquidLimit`;
+  const chartDataUrl = chartImages?.[chartKey];
+  const pad = 1.5;
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.35);
+  doc.setFillColor(255, 255, 255);
+  doc.rect(margin, y, leftW, chartH, "FD");
 
-  // ── LEFT: Cone Graph (use captured linear chart image) ──
-  const llChartImageKey = `${record.id}-liquidLimit`;
-  const hasChartImage = chartImages && chartImages[llChartImageKey];
-
-  if (hasChartImage) {
+  let chartEmbedded = false;
+  if (chartDataUrl && chartDataUrl.length > 100) {
     try {
-      const base64String = extractBase64FromDataUrl(hasChartImage);
-      // White background guard so any oversized image is masked to its box
-      doc.setFillColor(255, 255, 255);
-      doc.rect(margin, y, leftW, chartH, "F");
-      // Lossless embedding: pass "NONE" compression so jsPDF doesn't recompress the high-res capture
-      doc.addImage(base64String, "PNG", margin, y, leftW, chartH, undefined, "NONE");
-      console.log("Captured liquid limit chart image added successfully to PDF");
-    } catch (error) {
-      console.error("Failed to add captured chart image:", error instanceof Error ? error.message : error);
-      // No fallback - log error and continue with empty space
-      doc.setFontSize(10);
-      doc.setTextColor(...COLORS.muted);
-      doc.text("Chart image could not be embedded", margin + leftW / 2, y + chartH / 2, { align: "center" });
+      const imgFmt = chartDataUrl.startsWith("data:image/jpeg") ? "JPEG" : "PNG";
+      doc.addImage(extractBase64FromDataUrl(chartDataUrl), imgFmt, margin + pad, sectionStartY2 + pad, leftW - pad * 2, chartH - pad * 2, undefined, "FAST");
+      chartEmbedded = true;
+    } catch (err) {
+      console.warn("[PDF] captured chart failed to embed, drawing native curve:", err instanceof Error ? err.message : err);
     }
   } else {
-    console.warn("No chart image captured for record", record.id, "- displaying placeholder");
-    // Display placeholder message instead of drawing fallback graph
-    doc.setFillColor(...COLORS.lightBg);
-    doc.rect(margin, y, leftW, chartH, "F");
-    doc.setFontSize(10);
-    doc.setTextColor(...COLORS.muted);
-    doc.text("Chart image not captured", margin + leftW / 2, y + chartH / 2, { align: "center" });
+    console.warn("[PDF] no captured chart for record", record.id, "- drawing native flow curve");
+  }
+  if (!chartEmbedded) {
+    drawFlowCurveNative(doc, margin + pad, sectionStartY2 + pad, leftW - pad * 2, chartH - pad * 2, llTrials);
   }
 
-  // ── RIGHT: Linear Shrinkage ──
+  // ── RIGHT stack (white panels, black borders) ──
+  // Spread the 3 panels across the full chart height: gaps grow as the chart elongates.
+  const chartBottom = sectionStartY2 + chartH;
+  const PANEL_GAP_BASE = 3;
+  const stackNatural =
+    (5.6 + 3 * 5) + PANEL_GAP_BASE + (5.6 + 6 * 5) + PANEL_GAP_BASE + (5.6 + 3 * 5);
+  const extraGap = Math.max(0, (chartBottom - sectionStartY2 - stackNatural) / 4);
+  const panelGap = PANEL_GAP_BASE + extraGap;
   let ry = sectionStartY2;
   const slTrial = slTrials[0];
-  const lsData = [
-    ["Initial length (mm)", fmt(slTrial ? num(slTrial.initialLength) ?? 140 : 140)],
-    ["Final length (mm)", fmt(slTrial ? num(slTrial.finalLength) : null)],
-    ["Shrinkage (%)", fmt(record.results.linearShrinkage)],
-  ];
+  ry = drawSidePanelDesired(doc, rightX, ry, rightW, "LINEAR SHRINKAGE", [
+    { cells: ["Initial length", "(mm)", fmt(slTrial ? num(slTrial.initialLength) ?? 140 : 140)], frac: [3, 1.4, 1.6] },
+    { cells: ["Final length", "(mm)", fmt(slTrial ? num(slTrial.finalLength) : null)], frac: [3, 1.4, 1.6] },
+    { cells: ["Shrinkage", "(%)", fmt(record.results.linearShrinkage)], frac: [3, 1.4, 1.6] },
+  ]);
+  ry += panelGap;
+  ry = drawSidePanelDesired(doc, rightX, ry, rightW, "RESULTS SUMMARY", [
+    { cells: ["LIQUID LIMIT", "(%)", fmt(record.results.liquidLimit)], frac: [3, 1.2, 1.6] },
+    { cells: ["PLASTIC LIMIT", "(%)", fmt(record.results.plasticLimit)], frac: [3, 1.2, 1.6] },
+    { cells: ["PLASTICITY INDEX", "(%)", fmt(record.results.plasticityIndex)], frac: [3, 1.2, 1.6] },
+    { cells: ["Passing 425 um", "(%)", fmt(num(record.passing425um))], frac: [3, 1.2, 1.6] },
+    { cells: ["MODULUS OF PLASTICITY", "", fmt(record.results.modulusOfPlasticity)], frac: [3, 1.2, 1.6] },
+    { cells: ["LINEAR SHRINKAGE", "(%)", fmt(record.results.linearShrinkage)], frac: [3, 1.2, 1.6] },
+  ]);
 
-  doc.setFillColor(...COLORS.primary);
-  doc.roundedRect(rightX, ry, rightW, 6, 0.75, 0.75, "F");
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(255, 255, 255);
-  doc.text("LINEAR SHRINKAGE", rightX + rightW / 2, ry + 4, { align: "center" });
-  ry += 7; // Reduced from 8
-
-  doc.setFontSize(6.5);
-  for (const [label, value] of lsData) {
-    doc.setDrawColor(...COLORS.border);
-    doc.rect(rightX, ry, rightW * 0.7, 4.5); // Reduced from 5
-    doc.rect(rightX + rightW * 0.7, ry, rightW * 0.3, 4.5);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...COLORS.dark);
-    doc.text(label, rightX + 1.5, ry + 3.2);
-    doc.setFont("helvetica", "normal");
-    doc.text(value, rightX + rightW * 0.7 + 1.5, ry + 3.2);
-    ry += 4.5;
-  }
-  ry += 2; // Reduced from 3
-
-  // ── RIGHT: Results Summary ──
-  const summaryData: [string, string][] = [
-    ["LIQUID LIMIT (%)", fmt(record.results.liquidLimit)],
-    ["PLASTIC LIMIT (%)", fmt(record.results.plasticLimit)],
-    ["PLASTICITY INDEX (%)", fmt(record.results.plasticityIndex)],
-    ["Passing 425 µm (%)", fmt(num(record.passing425um))],
-    ["MODULUS OF PLASTICITY", fmt(record.results.modulusOfPlasticity)],
-    ["LINEAR SHRINKAGE (%)", fmt(record.results.linearShrinkage)],
-  ];
-
-  doc.setFillColor(...COLORS.primary);
-  doc.roundedRect(rightX, ry, rightW, 6, 0.75, 0.75, "F");
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(255, 255, 255);
-  doc.text("RESULTS SUMMARY", rightX + rightW / 2, ry + 4, { align: "center" });
-  ry += 7; // Reduced from 8
-
-  doc.setFontSize(6.5);
-  for (const [label, value] of summaryData) {
-    doc.setDrawColor(...COLORS.border);
-    doc.rect(rightX, ry, rightW * 0.7, 4.5); // Reduced from 5
-    doc.rect(rightX + rightW * 0.7, ry, rightW * 0.3, 4.5);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...COLORS.dark);
-    doc.text(label, rightX + 1.5, ry + 3.2);
-    doc.setFont("helvetica", "normal");
-    doc.text(value, rightX + rightW * 0.7 + 1.5, ry + 3.2);
-    ry += 4.5;
-  }
-  ry += 2; // Reduced from 3
-
-  // ── RIGHT: Soil Classification (uses shared classifier; falls back to plasticity-only when no grain size) ──
+  ry += panelGap;
   const recordGrainSize = (record as unknown as { grainSize?: { gravel?: string | number; sand?: string | number; fines?: string | number } }).grainSize;
   const grainSize: GrainSizeDistribution = {
     gravel: Number(recordGrainSize?.gravel ?? 0) || 0,
     sand: Number(recordGrainSize?.sand ?? 0) || 0,
-    fines: Number(recordGrainSize?.fines ?? 100) || 100, // default to fine-grained when no grain data
+    fines: Number(recordGrainSize?.fines ?? 100) || 100,
   };
   const classification = classifySoilUSCS(grainSize, record.results);
+  const atterbergClass = classifyAtterberg(record.results.liquidLimit, record.results.plasticLimit);
+  const finesNote = "The fines in the soil are..";
+  const uscsText = `${classification.uscsSymbol} ${classification.uscsDescription}`.trim().slice(0, 60) || "-";
+  const bsText = atterbergClass.BS_classification
+    ? `${atterbergClass.BS_classification} — ${atterbergClass.plasticity_description ?? ""}`.trim().slice(0, 60)
+    : "-";
+  ry = drawSidePanelDesired(doc, rightX, ry, rightW, "SOIL CLASSIFICATION", [
+    { cells: [finesNote], frac: [1] },
+    { cells: [uscsText], frac: [1] },
+    { cells: ["BS 1377", bsText], frac: [1.2, 3] },
+  ]);
 
-  doc.setFillColor(...COLORS.headerBg);
-  doc.rect(rightX, ry, rightW, 6, "F");
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...COLORS.primary);
-  doc.text("SOIL CLASSIFICATION", rightX + rightW / 2, ry + 4, { align: "center" });
-  ry += 7; // Reduced from 8
-
-  doc.setFontSize(6.5);
-  // USCS row: label | description | symbol
-  doc.setDrawColor(...COLORS.border);
-  doc.rect(rightX, ry, rightW * 0.2, 4.5); // Reduced from 5
-  doc.rect(rightX + rightW * 0.2, ry, rightW * 0.6, 4.5);
-  doc.rect(rightX + rightW * 0.8, ry, rightW * 0.2, 4.5);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...COLORS.primary);
-  doc.text("USCS", rightX + 1.5, ry + 3.2);
-  doc.setTextColor(...COLORS.dark);
-  doc.setFont("helvetica", "normal");
-  doc.text(classification.uscsDescription, rightX + rightW * 0.2 + 1.5, ry + 3.2);
-  doc.setFont("helvetica", "bold");
-  doc.text(classification.uscsSymbol, rightX + rightW * 0.8 + 1.5, ry + 3.2);
-  ry += 4.5;
-
-  // AASHTO row: label | group | description
-  doc.rect(rightX, ry, rightW * 0.2, 4.5);
-  doc.rect(rightX + rightW * 0.2, ry, rightW * 0.2, 4.5);
-  doc.rect(rightX + rightW * 0.4, ry, rightW * 0.6, 4.5);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...COLORS.primary);
-  doc.text("AASHTO", rightX + 1.5, ry + 3.2);
-  doc.setTextColor(...COLORS.dark);
-  doc.text(classification.aashtoGroup, rightX + rightW * 0.2 + 1.5, ry + 3.2);
-  doc.setFont("helvetica", "normal");
-  doc.text(classification.aashtoDescription, rightX + rightW * 0.4 + 1.5, ry + 3.2);
-  ry += 4.5;
-
-  // ── Compute footer position AFTER all content is drawn ──
   const contentBottom = Math.max(ry, sectionStartY2 + chartH);
-  let footerY = contentBottom + 24; // ~24mm clearance from content above
-
-  // Page-break guard: for single records, avoid adding pages
-  const pageBottomReserved = 12; // reserve for page number area
-  const footerBlockHeight = 5 + 24; // footer text row + stamp height
-  if (footerY + footerBlockHeight > ph - pageBottomReserved && options.records.length > 1) {
-    doc.addPage();
-    footerY = 20;
-  }
-
-  // ── Separator line above footer ──
-  doc.setDrawColor(...COLORS.border);
-  doc.setLineWidth(0.15);
+  const footerY = Math.max(contentBottom + 6, ph - 20);
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.5);
   doc.line(margin, footerY - 4, margin + contentW, footerY - 4);
 
-  // ── Stamp image: positioned beside the "Checked by" field, below the classification ──
   if (images.stamp) {
     try {
-      console.log("Adding stamp image to PDF below classification");
-      const stampW = 22; // Reduced from 28
-      const stampH = 22;
-      const checkedByFieldX = margin + contentW * 0.7;
-      const checkedByFieldW = contentW * 0.3;
-      const stampX = checkedByFieldX + (checkedByFieldW / 2) - (stampW / 2);
-      let stampY = footerY - 1; // sit just below the footer text baseline
-
-      // Final overflow guard
-      if (stampY + stampH > ph - 6) {
-        stampY = ph - 6 - stampH;
-      }
-
+      const s = 26;
       const base64String = extractBase64FromDataUrl(images.stamp);
-      doc.addImage(base64String, "PNG", stampX, stampY, stampW, stampH);
-      console.log("Stamp added below classification", { stampX, stampY, footerY });
-    } catch (error) {
-      console.error("Failed to add stamp image:", error instanceof Error ? error.message : error);
+      doc.addImage(base64String, "PNG", margin + contentW - s - 4, footerY - 18, s, s, undefined, "FAST");
+    } catch {
+      /* optional */
     }
   }
 
-  // ── Footer text: Tested by / Date / Checked by ──
-  doc.setFontSize(6.5);
+  doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...COLORS.dark);
-  doc.text(`Tested by: ${record.testedBy || "___________"}`, margin, footerY);
-  doc.text(`Date reported: ${projectState.dateReported || "___________"}`, margin + contentW * 0.35, footerY);
-  doc.text(`Checked by: ${projectState.checkedBy || "___________"}`, margin + contentW * 0.7, footerY);
+  const col3 = contentW / 3;
+  doc.text(`Tested by ${record.testedBy || "___________"}`, margin, footerY);
+  doc.text(`Date reported ${projectState.dateReported || "___________"}`, margin + col3, footerY);
+  doc.text("Checked by:", margin + col3 * 2, footerY);
 }
 
 export const generateAtterbergPDF = async (

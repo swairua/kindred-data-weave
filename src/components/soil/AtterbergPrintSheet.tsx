@@ -13,6 +13,7 @@ import {
   calculateModulusOfPlasticity,
   calculatePlasticLimit,
   calculatePlasticityIndex,
+  classifyAtterberg,
   getDrySoilMass,
   getTrialMoisture,
   getWaterMass,
@@ -64,7 +65,7 @@ const AtterbergPrintSheet = ({ record, project, projectState }: Props) => {
     [plasticityIndex, record.passing425um],
   );
 
-  const { uscs, aashto } = useMemo(() => {
+  const { uscs, bs, aashto } = useMemo(() => {
     const atterberg = {
       liquidLimit: liquidLimit ?? undefined,
       plasticLimit: plasticLimit ?? undefined,
@@ -73,10 +74,14 @@ const AtterbergPrintSheet = ({ record, project, projectState }: Props) => {
     const grain = { gravel: 0, sand: 0, fines: 100 };
     const u = classifySoilUSCS(grain, atterberg);
     const a = classifySoilAASHTO(grain, atterberg);
+    const b = classifyAtterberg(liquidLimit, plasticLimit);
     return {
       uscs: liquidLimit === null && plasticityIndex === null
         ? { symbol: "—", description: "" }
         : { symbol: u.uscsSymbol, description: u.uscsDescription },
+      bs: liquidLimit === null && plasticityIndex === null
+        ? { symbol: "—", description: "" }
+        : { symbol: b.BS_classification ?? "—", description: b.plasticity_description ?? "" },
       aashto: liquidLimit === null && plasticityIndex === null ? "—" : a,
     };
   }, [liquidLimit, plasticLimit, plasticityIndex]);
@@ -230,6 +235,11 @@ const AtterbergPrintSheet = ({ record, project, projectState }: Props) => {
                 <td className="lbl">USCS</td>
                 <td>{uscs.description}</td>
                 <td className="strong">{uscs.symbol}</td>
+              </tr>
+              <tr>
+                <td className="lbl">BS 1377</td>
+                <td>{bs.description}</td>
+                <td className="strong">{bs.symbol}</td>
               </tr>
               <tr>
                 <td className="lbl">AASHTO</td>

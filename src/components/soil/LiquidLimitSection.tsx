@@ -20,6 +20,7 @@ import {
   calculatePlasticityIndex,
   getALinePI,
   classifySoil,
+  classifyAtterberg,
 } from "@/lib/atterbergCalculations";
 import { cn } from "@/lib/utils";
 import PlasticityChart from "./PlasticityChart";
@@ -292,6 +293,7 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId, plasticL
         const piValue = calculatePlasticityIndex(llValue ?? null, plasticLimit ?? null);
         const aLineThreshold = llValue !== null && llValue !== undefined ? getALinePI(llValue) : null;
         const classification = classifySoil(llValue ?? null, piValue);
+        const bsClassification = classifyAtterberg(llValue ?? null, plasticLimit ?? null);
 
         return (
           <>
@@ -402,6 +404,12 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId, plasticL
                     <span className="text-muted-foreground">USCS Class</span>
                     <span className="font-semibold text-foreground">{classification}</span>
                   </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">BS 1377 Class</span>
+                    <span className="font-semibold text-foreground">
+                      {bsClassification.BS_classification ?? "—"}
+                    </span>
+                  </div>
                   {passing425um && (
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Passing 425µm</span>
@@ -436,7 +444,7 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId, plasticL
               className={`liquid-limit-export-chart${recordId ? `-${recordId}` : ""}`}
               style={{ position: "absolute", left: "-100000px", top: 0, pointerEvents: "none" }}
             >
-              <div className="bg-white p-2" style={{ width: "900px", height: "700px" }}>
+              <div className="bg-white p-2 flex flex-col" style={{ width: "900px", height: "700px" }}>
                 {graphData.length > 0 && (() => {
                   // Calculate log-linear regression for line of best fit (ASTM D4318 compliant)
                   const regressionDataExport = calculateLogLinearRegression(
@@ -473,6 +481,8 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId, plasticL
                   ].sort((a, b) => a.penetration - b.penetration);
 
                   return (
+                    <>
+                    <div style={{ width: "100%", height: "640px" }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={mergedChartDataExport} margin={{ top: 20, right: 30, left: 60, bottom: 60 }}>
                         <CartesianGrid stroke="#e5e7eb" strokeWidth={1.5} fill="#F5E6D3" />
@@ -522,6 +532,17 @@ const LiquidLimitSection = ({ trials, result, onChangeTrials, recordId, plasticL
                         )}
                       </LineChart>
                     </ResponsiveContainer>
+                    </div>
+                    {regressionDataExport && (
+                      <p
+                        className="text-center font-mono"
+                        style={{ fontSize: 18, fontWeight: 600, color: "#166534", marginTop: 4 }}
+                      >
+                        y = {regressionDataExport.slope.toFixed(2)}·log₁₀(x) + {regressionDataExport.intercept.toFixed(2)}
+                        &nbsp;|&nbsp; R² = {regressionDataExport.rSquared.toFixed(3)}
+                      </p>
+                    )}
+                    </>
                   );
                 })()}
               </div>
