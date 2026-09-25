@@ -1048,7 +1048,7 @@ const RecordTestWizard = () => {
               )}
 
               {steps[step]?.id === "project" && (
-                <section className="mx-auto w-full max-w-xl space-y-6 animate-fade-in">
+                <section className="mx-auto w-full max-w-lg space-y-5 animate-fade-in">
                   <Button type="button" variant="ghost" onClick={handleBack} className="-ml-2 h-auto gap-2 px-2 py-1 text-muted-foreground hover:text-foreground">
                     <ArrowLeft className="h-4 w-4" /> Back
                   </Button>
@@ -1066,7 +1066,7 @@ const RecordTestWizard = () => {
                       onValueChange={(v) => pickProject(Number(v))}
                       disabled={loadingProjects || !!projectsLoadError || projects.length === 0}
                     >
-                      <SelectTrigger id="project-select" className="h-11">
+                      <SelectTrigger id="project-select" className="h-10">
                         {loadingProjects ? (
                           <div className="flex items-center gap-2">
                             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
