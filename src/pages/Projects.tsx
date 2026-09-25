@@ -18,6 +18,7 @@ import { useProject } from "@/context/ProjectContext";
 import { useTestData } from "@/context/TestDataContext";
 import { type ApiProjectRow } from "@/types/api";
 import { listRecords, fetchFullProject } from "@/lib/api";
+import { useSession } from "@/context/SessionContext";
 import { toast } from "sonner";
 
 interface ApiTestResult {
@@ -37,6 +38,7 @@ const Projects = () => {
   const navigate = useNavigate();
   const project = useProject();
   const testData = useTestData();
+  const { user, logout } = useSession();
   const [searchQuery, setSearchQuery] = useState("");
   const [apiProjects, setApiProjects] = useState<ApiProjectRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -114,9 +116,9 @@ const Projects = () => {
   const endIndex = startIndex + itemsPerPage;
   const paginatedProjects = filteredProjects.slice(startIndex, endIndex);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logout();
     toast.success("Logged out");
-    navigate("/login", { replace: true });
   };
 
   const handleNewProject = () => {
@@ -172,8 +174,6 @@ const Projects = () => {
     navigate(`/tests?projectId=${projectId}#atterberg`);
   };
 
-  const currentUser: { name?: string; email?: string } | null = null;
-
   const formatDate = (dateString?: string) => {
     if (!dateString) return "-";
     try {
@@ -194,8 +194,8 @@ const Projects = () => {
         currentView="projects"
         onViewChange={() => {}}
         onLogout={handleLogout}
-        userName={currentUser?.name}
-        userEmail={currentUser?.email}
+        userName={user.name}
+        userEmail={user.email}
       />
       <SidebarInset>
         <div className="flex flex-col min-h-screen bg-background">

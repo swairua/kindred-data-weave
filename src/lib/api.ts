@@ -568,6 +568,9 @@ export const fetchCurrentUser = async (timeoutMs: number = 15000) => {
     // Clear timeout on successful response
     if (timeoutHandle) clearTimeout(timeoutHandle);
 
+    const rotatedToken = response.headers.get("X-Session-Token");
+    if (rotatedToken && rotatedToken !== sessionToken) setSessionToken(rotatedToken);
+
     console.log(`[API] ${timestamp} === ME ENDPOINT RESPONSE ===`);
 
     if (!response.ok) {

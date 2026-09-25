@@ -4,7 +4,6 @@ import RecordTestWizard from "@/pages/RecordTestWizard";
 
 const wizardMocks = vi.hoisted(() => ({
   listRecords: vi.fn(),
-  fetchCurrentUser: vi.fn(),
   fetchFullProject: vi.fn(),
   createRecord: vi.fn(),
   listCompressiveTests: vi.fn(),
@@ -14,12 +13,15 @@ const wizardMocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/api", () => ({
   listRecords: wizardMocks.listRecords,
-  fetchCurrentUser: wizardMocks.fetchCurrentUser,
   fetchFullProject: wizardMocks.fetchFullProject,
   createRecord: wizardMocks.createRecord,
   listCompressiveTests: wizardMocks.listCompressiveTests,
   setSessionToken: vi.fn(),
   logoutUser: vi.fn(),
+}));
+
+vi.mock("@/context/SessionContext", () => ({
+  useSession: () => ({ user: { id: 1, name: "Test User", email: "test@example.com" }, logout: vi.fn() }),
 }));
 
 vi.mock("@/context/TestDataContext", () => ({
@@ -50,7 +52,6 @@ beforeEach(() => {
   HTMLElement.prototype.scrollIntoView = vi.fn();
   sessionStorage.clear();
   wizardMocks.listRecords.mockReset().mockResolvedValue({ data: [] });
-  wizardMocks.fetchCurrentUser.mockReset().mockResolvedValue({ id: 1 });
   wizardMocks.fetchFullProject.mockReset().mockResolvedValue({ id: 42, name: "Existing project", client_name: "Client" });
   wizardMocks.createRecord.mockReset().mockResolvedValue({ data: { id: 43 } });
   wizardMocks.listCompressiveTests.mockReset().mockResolvedValue({ data: [] });
@@ -59,18 +60,6 @@ beforeEach(() => {
 });
 
 describe("RecordTestWizard project loading", () => {
-  it("offers a retry instead of redirecting when session verification fails", async () => {
-    wizardMocks.fetchCurrentUser
-      .mockRejectedValueOnce(new Error("API unavailable"))
-      .mockResolvedValueOnce({ id: 1 });
-    renderWizard();
-
-    expect(await screen.findByText("We couldn’t verify your session. Check your connection and try again.")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
-    expect(await screen.findByRole("combobox", { name: "Project" })).toBeInTheDocument();
-    expect(wizardMocks.fetchCurrentUser).toHaveBeenCalledTimes(2);
-  });
-
   it("does not reload a successful empty result and keeps project creation available", async () => {
     renderWizard();
 

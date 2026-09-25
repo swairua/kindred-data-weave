@@ -3,9 +3,10 @@ import { fetchCurrentUser, getSessionToken, setSessionToken } from "@/lib/api";
 
 const fetchMock = vi.fn();
 
-const response = (status: number, body: unknown): Response => ({
+const response = (status: number, body: unknown, headers: HeadersInit = {}): Response => ({
   ok: status >= 200 && status < 300,
   status,
+  headers: new Headers(headers),
   json: vi.fn().mockResolvedValue(body),
 }) as unknown as Response;
 
@@ -48,6 +49,23 @@ describe("fetchCurrentUser", () => {
     fetchMock.mockResolvedValue(response(503, { message: "Service unavailable" }));
 
     await expect(fetchCurrentUser()).rejects.toThrow("Service unavailable");
+    expect(getSessionToken()).toBe("preview-test-session");
+  });
+
+  it("stores a rotated session token from the current-user response", async () => {
+    fetchMock.mockResolvedValue(response(200, {
+      authenticated: true,
+      user: { id: 7, name: "Test User", email: "test@example.com" },
+    }, { "X-Session-Token": "rotated-session" }));
+
+    await expect(fetchCurrentUser()).resolves.toEqual({ id: 7, name: "Test User", email: "test@example.com" });
+    expect(getSessionToken()).toBe("rotated-session");
+  });
+
+  it("preserves the token and rejects malformed session responses", async () => {
+    fetchMock.mockResolvedValue(response(200, { authenticated: true }));
+
+    await expect(fetchCurrentUser()).rejects.toThrow("Invalid session response");
     expect(getSessionToken()).toBe("preview-test-session");
   });
 

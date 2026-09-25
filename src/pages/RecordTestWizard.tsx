@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import WizardStepper, { type WizardStep } from "@/components/WizardStepper";
 import FormCard from "@/components/wizard/FormCard";
-import { listRecords, fetchCurrentUser, setSessionToken, logoutUser, fetchFullProject, createRecord, listCompressiveTests } from "@/lib/api";
+import { listRecords, fetchFullProject, createRecord, listCompressiveTests } from "@/lib/api";
+import { useSession } from "@/context/SessionContext";
 import { type ApiProjectRow } from "@/types/api";
 import { getExpectedTestType, hasRequiredSoilSampleMetadata, isInitialTestValid, isTestAllowed, toRecordMetadata, type Material } from "@/lib/recordTestWizard";
 import { cn } from "@/lib/utils";
@@ -163,44 +164,11 @@ const RecordTestWizard = () => {
   const projectIdParam = searchParams.get("projectId");
   const projectIdFromParam = projectIdParam ? parseInt(projectIdParam, 10) : null;
   const testData = useTestData();
+  const { user, logout } = useSession();
 
   useEffect(() => {
     void testData.refreshTestDefinitions();
   }, [testData.refreshTestDefinitions]);
-
-  const [authChecking, setAuthChecking] = useState(true);
-  const [authCheckError, setAuthCheckError] = useState(false);
-  const [authCheckRetry, setAuthCheckRetry] = useState(0);
-
-  // Validate session against backend on mount. A local token is not enough —
-  // it may be stale (backend session expired), in which case downstream API
-  // calls fail and the user gets bounced mid-wizard.
-  useEffect(() => {
-    let active = true;
-    const checkAuth = async () => {
-      const redirectToLogin = () => {
-        setSessionToken(null);
-        const next = encodeURIComponent(location.pathname + location.search);
-        navigate(`/login?next=${next}`, { replace: true });
-      };
-      try {
-        const user = await fetchCurrentUser(15000); // Increased timeout to 15 seconds
-        if (!active) return;
-        if (user) {
-          setAuthChecking(false);
-          return;
-        }
-        redirectToLogin();
-      } catch (error) {
-        if (!active) return;
-        console.warn("[RecordTestWizard] Auth check failed:", error instanceof Error ? error.message : error);
-        setAuthCheckError(true);
-        setAuthChecking(false);
-      }
-    };
-    checkAuth();
-    return () => { active = false; };
-  }, [navigate, authCheckRetry]);
 
   const [state, setState] = useState<WizardState>(() => {
     const defaults = { ...emptyState, material: initialMaterial, testKey: initialTest };
@@ -236,7 +204,6 @@ const RecordTestWizard = () => {
 
   // Preload project from URL parameter when component mounts
   useEffect(() => {
-    if (authChecking) return;
     if (!projectIdFromParam) return;
     let active = true;
     const preloadProjectFromParam = async () => {
@@ -286,11 +253,10 @@ const RecordTestWizard = () => {
     };
     preloadProjectFromParam();
     return () => { active = false; };
-  }, [projectIdFromParam, authChecking, testData]);
+  }, [projectIdFromParam, testData]);
 
   // Load compressive tests when selecting compressive strength test
   useEffect(() => {
-    if (authChecking) return;
     const isCompressiveStrengthTest = state.testKey === "compressive";
     if (!isCompressiveStrengthTest) {
       setCompressiveTests([]);
@@ -317,7 +283,7 @@ const RecordTestWizard = () => {
       .finally(() => active && setLoadingCompressiveTests(false));
 
     return () => { active = false; };
-  }, [authChecking, state.material, state.testKey]);
+  }, [state.material, state.testKey]);
 
   const update = <K extends keyof WizardState>(key: K, value: WizardState[K]) => {
     setState((prev) => ({ ...prev, [key]: value }));
@@ -421,7 +387,6 @@ const RecordTestWizard = () => {
 
   // Load projects when reaching project step (and after retry)
   useEffect(() => {
-    if (authChecking) return;
     const projectStepIndex = steps.findIndex((s) => s.id === "project");
     if (step !== projectStepIndex) return;
     if (projectsLoadedKey.current === projectLoadKey || projectsAttemptedKey.current === projectLoadKey) return;
@@ -455,7 +420,7 @@ const RecordTestWizard = () => {
       })
       .finally(() => active && setLoadingProjects(false));
     return () => { active = false; };
-  }, [step, projectLoadKey, projectsLoadedKey, authChecking, navigate, steps]);
+  }, [step, projectLoadKey, projectsLoadedKey, navigate, steps]);
 
   const handleNext = () => {
     if (step < steps.length - 1) setStep(step + 1);
@@ -801,44 +766,9 @@ const RecordTestWizard = () => {
     })();
   };
 
-  if (authChecking) {
-    return (
-      <div className="min-h-svh flex items-center justify-center bg-background">
-        <p className="text-sm text-muted-foreground">Checking your session…</p>
-      </div>
-    );
-  }
-
-  if (authCheckError) {
-    return (
-      <div className="min-h-svh flex items-center justify-center bg-background px-4">
-        <div className="w-full max-w-sm space-y-4 text-center">
-          <p className="text-sm text-muted-foreground">We couldn’t verify your session. Check your connection and try again.</p>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              setAuthCheckError(false);
-              setAuthChecking(true);
-              setAuthCheckRetry((retry) => retry + 1);
-            }}
-          >
-            Retry
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   const handleLogout = async () => {
-    try {
-      await logoutUser();
-    } catch (error) {
-      console.error("Logout error:", error);
-    } finally {
-      setSessionToken(null);
-      navigate("/login", { replace: true });
-    }
+    await logout();
+    toast.success("Logged out");
   };
 
   return (
@@ -847,8 +777,8 @@ const RecordTestWizard = () => {
         currentView="tests"
         onViewChange={() => {}}
         onLogout={handleLogout}
-        userName=""
-        userEmail=""
+        userName={user.name}
+        userEmail={user.email}
       />
       <SidebarInset className="flex flex-col min-h-svh">
         {/* Header */}
