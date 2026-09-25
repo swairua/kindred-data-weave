@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { CartesianGrid, Line, LineChart, ReferenceArea, ReferenceLine, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { useProject } from "@/context/ProjectContext";
-import { useTestData } from "@/context/TestDataContext";
+import { type RecordMetadata, useTestData } from "@/context/TestDataContext";
 import { captureChartAsBase64 } from "@/lib/chartCapture";
 import { createRecord, deleteRecord, listRecords, updateRecord } from "@/lib/api";
 import { generateTestCSV } from "@/lib/csvExporter";
@@ -138,7 +138,7 @@ const DEFAULT_HYDROMETER_INPUTS = {
   temperatureCorrection: "",
 };
 
-const emptyRecord = (metadata: Record<string, string | undefined>): GradingRecord => ({
+const emptyRecord = (metadata: RecordMetadata): GradingRecord => ({
   label: metadata.sampleId || "",
   sampleNumber: metadata.sampleNumber || "",
   sampleDepthFrom: metadata.sampleDepthFrom || "",
@@ -159,7 +159,7 @@ const isObject = (value: unknown): value is Record<string, unknown> => typeof va
 const readString = (value: unknown) => typeof value === "string" ? value : value == null ? "" : String(value);
 const readBoolean = (value: unknown) => value === true;
 
-const normalizeRecord = (value: unknown, metadata: Record<string, string | undefined>): GradingRecord => {
+const normalizeRecord = (value: unknown, metadata: RecordMetadata): GradingRecord => {
   const source = isObject(value) ? value : {};
   const fallback = emptyRecord(metadata);
   const preparation = isObject(source.samplePreparation) ? source.samplePreparation : {};
@@ -218,7 +218,7 @@ const normalizeRecord = (value: unknown, metadata: Record<string, string | undef
   };
 };
 
-const getPayloadRecord = (payload: unknown, metadata: Record<string, string | undefined>) => {
+const getPayloadRecord = (payload: unknown, metadata: RecordMetadata) => {
   let parsedPayload = payload;
   if (typeof payload === "string") {
     try {
@@ -248,6 +248,8 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
   const isNewRecord = searchParams.get("newRecord") === "1";
   const sourceProjectIdValue = Number.parseInt(searchParams.get("sourceProjectId") || "", 10);
   const sourceProjectId = Number.isInteger(sourceProjectIdValue) && sourceProjectIdValue > 0 ? sourceProjectIdValue : null;
+  const resultIdValue = Number.parseInt(searchParams.get("resultId") || "", 10);
+  const selectedResultId = Number.isInteger(resultIdValue) && resultIdValue > 0 ? resultIdValue : null;
   const projectId = project.currentProjectId ?? null;
   const metadata = useMemo(() => testData.recordMetadata.grading || {}, [testData.recordMetadata.grading]);
   const metadataKey = JSON.stringify(metadata);
@@ -312,7 +314,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
     listRecords<ApiTestResultRow>("test_results", { limit: 5000, orderBy: "updated_at", direction: "DESC" })
       .then((response) => {
         if (!active) return;
-        const result = (response.data || []).find((row) => Number(row.project_id) === loadProjectId && row.test_key === "grading" && row.payload_json);
+        const result = (response.data || []).find((row) => Number(row.project_id) === loadProjectId && row.test_key === "grading" && (!selectedResultId || row.id === selectedResultId) && row.payload_json);
         const loadedRecord = getPayloadRecord(result?.payload_json, metadata);
         setRecordId(isNewRecord ? null : result?.id ?? null);
         setRecord(isNewRecord ? {
@@ -333,7 +335,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       })
       .finally(() => active && setIsLoading(false));
     return () => { active = false; };
-  }, [projectId, isNewRecord, sourceProjectId, metadataKey, metadata]);
+  }, [projectId, isNewRecord, sourceProjectId, selectedResultId, metadataKey, metadata]);
 
   const updateRecordField = <K extends keyof GradingRecord>(field: K, value: GradingRecord[K]) => {
     setRecord((current) => ({ ...current, [field]: value }));
@@ -421,7 +423,8 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
   const clear = async () => {
     if (projectId) {
       const response = await listRecords<ApiTestResultRow>("test_results", { limit: 5000 });
-      const rows = (response.data || []).filter((row) => Number(row.project_id) === projectId && row.test_key === "grading");
+      const targetResultId = recordId ?? selectedResultId;
+      const rows = (response.data || []).filter((row) => Number(row.project_id) === projectId && row.test_key === "grading" && (!targetResultId || row.id === targetResultId));
       await Promise.all(rows.map((row) => deleteRecord("test_results", row.id)));
     }
     setRecord(emptyRecord(metadata));

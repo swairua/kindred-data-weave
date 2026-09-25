@@ -61,6 +61,7 @@ import { useTestReport } from "@/hooks/useTestReport";
 import {
   createRecord as createApiRecord,
   deleteRecord as deleteApiRecord,
+  fetchFullProject,
   listRecords,
   updateRecord as updateApiRecord,
 } from "@/lib/api";
@@ -310,22 +311,17 @@ const hasLookupCriteria = (lookup: AtterbergProjectLookup) => lookup.projectName
 
 const loadAtterbergProjectFromApi = async (lookup: AtterbergProjectLookup, projectId?: number | null) => {
   try {
-    // Increased limit from 1000 to 5000 to reduce chance of missing existing records
-    const [projectsResponse, resultsResponse] = await Promise.all([
-      listRecords<ApiProjectRow>("projects", { limit: 5000, orderBy: "updated_at", direction: "DESC" }),
-      listRecords<ApiAtterbergResultRow>("test_results", { limit: 5000, orderBy: "updated_at", direction: "DESC" }),
-    ]);
+    const resultsResponse = await listRecords<ApiAtterbergResultRow>("test_results", { limit: 5000, orderBy: "updated_at", direction: "DESC" });
 
     if (projectId) {
       const resultRow = resultsResponse.data.find(
         (row) => row.test_key === "atterberg" && Number(row.project_id) === projectId && row.payload_json,
       );
-      if (resultRow) {
-        const loadedState = extractAtterbergPayload(resultRow.payload_json);
-        const recordCount = loadedState?.records?.length || 0;
-        console.log(`[Atterberg Load] Loaded project (ID: ${projectId}) with ${recordCount} test records from API`);
-        return loadedState;
-      }
+      if (!resultRow) return null;
+      const loadedState = extractAtterbergPayload(resultRow.payload_json);
+      const recordCount = loadedState?.records?.length || 0;
+      console.log(`[Atterberg Load] Loaded project (ID: ${projectId}) with ${recordCount} test records from API`);
+      return loadedState;
     }
 
     if (!hasLookupCriteria(lookup)) {
@@ -333,6 +329,7 @@ const loadAtterbergProjectFromApi = async (lookup: AtterbergProjectLookup, proje
       return null;
     }
 
+    const projectsResponse = await listRecords<ApiProjectRow>("projects", { limit: 5000, orderBy: "updated_at", direction: "DESC" });
     const projectRow = projectsResponse.data.find((row) => matchesProjectLookup(row, lookup));
     if (!projectRow) return null;
 
@@ -363,7 +360,7 @@ const loadAtterbergProjectFromApi = async (lookup: AtterbergProjectLookup, proje
   }
 };
 
-const persistAtterbergProjectToApi = async ({
+export const persistAtterbergProjectToApi = async ({
   lookup,
   payload,
   dataPoints,
@@ -379,24 +376,21 @@ const persistAtterbergProjectToApi = async ({
   projectId?: number | null;
 }): Promise<string | null> => {
   try {
-    // Load project data
-    const projectsResponse = await retryWithBackoff(
-      () => listRecords<ApiProjectRow>("projects", { limit: 5000, orderBy: "updated_at", direction: "DESC" })
-    );
-
-    // Find or create project
-    // Note: When projectId is provided from the wizard, we ignore it to force new project creation.
-    // The wizard selection is treated as metadata/template, not as the actual project to use.
-    let projectRow = hasLookupCriteria(lookup)
-      ? projectsResponse.data.find((row) => matchesProjectLookup(row, lookup)) ?? null
-      : null;
+    let projectRow: ApiProjectRow | null = null;
+    if (projectId) {
+      projectRow = await retryWithBackoff(() => fetchFullProject(projectId));
+    } else if (hasLookupCriteria(lookup)) {
+      const projectsResponse = await retryWithBackoff(
+        () => listRecords<ApiProjectRow>("projects", { limit: 5000, orderBy: "updated_at", direction: "DESC" })
+      );
+      projectRow = projectsResponse.data.find((row) => matchesProjectLookup(row, lookup)) ?? null;
+    }
 
     const projectName = normalizeLookupValue(payload.project.title) || "Atterberg Limits Testing";
     const clientName = normalizeLookupValue(payload.project.clientName);
     const projectDate = normalizeLookupValue(payload.project.date);
 
     console.log(`[Atterberg Save] Lookup criteria:`, lookup);
-    console.log(`[Atterberg Save] Found ${projectsResponse.data.length} projects`);
 
     let lastSavedAt: string | null = null;
 
@@ -527,22 +521,22 @@ const saveAtterbergProjectToApi = (args: {
   projectId?: number | null;
 }) => persistAtterbergProjectToApi(args);
 
-const clearAtterbergProjectFromApi = async (lookup: AtterbergProjectLookup) => {
+const clearAtterbergProjectFromApi = async (lookup: AtterbergProjectLookup, projectId?: number | null) => {
   try {
-    // Increased limit from 1000 to 5000 to reduce chance of missing records
-    const [projectsResponse, resultsResponse] = await Promise.all([
-      listRecords<ApiProjectRow>("projects", { limit: 5000, orderBy: "updated_at", direction: "DESC" }),
-      listRecords<ApiAtterbergResultRow>("test_results", { limit: 5000, orderBy: "updated_at", direction: "DESC" }),
-    ]);
+    const resultsResponse = await listRecords<ApiAtterbergResultRow>("test_results", { limit: 5000, orderBy: "updated_at", direction: "DESC" });
 
     let resultRows: ApiAtterbergResultRow[] = [];
 
-    if (hasLookupCriteria(lookup)) {
+    if (projectId) {
+      resultRows = resultsResponse.data.filter(
+        (row) => Number(row.project_id) === projectId && row.test_key === "atterberg",
+      );
+    } else if (hasLookupCriteria(lookup)) {
+      const projectsResponse = await listRecords<ApiProjectRow>("projects", { limit: 5000, orderBy: "updated_at", direction: "DESC" });
       const projectRow = projectsResponse.data.find((row) => matchesProjectLookup(row, lookup)) ?? null;
       if (projectRow) {
-        // Find all atterberg test results for this project
         resultRows = resultsResponse.data.filter(
-          (row) => row.project_id === projectRow.id && row.test_key === "atterberg"
+          (row) => Number(row.project_id) === projectRow.id && row.test_key === "atterberg",
         );
       }
     } else {
@@ -704,6 +698,12 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
             if (remoteState) {
               skipNextPersistRef.current = true;
               setProjectState(collapseAllOnLoad(remoteState));
+              hydratedRef.current = true;
+              return;
+            }
+            if (project.currentProjectId) {
+              skipNextPersistRef.current = true;
+              setProjectState({ records: [] });
               hydratedRef.current = true;
               return;
             }
@@ -1348,7 +1348,7 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
   const handleClearAll = useCallback(async () => {
     try {
       skipNextPersistRef.current = true;
-      await clearAtterbergProjectFromApi(effectiveProjectLookup);
+      await clearAtterbergProjectFromApi(effectiveProjectLookup, project.currentProjectId);
       setProjectState({ records: [] });
       localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem("enhancedAtterbergTests");

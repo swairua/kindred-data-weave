@@ -13,6 +13,7 @@ import NotFound from "./pages/NotFound.tsx";
 import RecordTestWizard from "./pages/RecordTestWizard.tsx";
 import TestResults from "./pages/TestResults.tsx";
 import Projects from "./pages/Projects.tsx";
+import ProjectOverview from "./pages/ProjectOverview.tsx";
 import UserManagement from "./pages/UserManagement.tsx";
 import Settings from "./pages/Settings.tsx";
 
@@ -33,6 +34,7 @@ const App = () => {
                   <Route element={<SessionGuard />}>
                     <Route path="/" element={<RecordTestWizard />} />
                     <Route path="/projects" element={<Projects />} />
+                    <Route path="/projects/:projectId" element={<ProjectOverview />} />
                     <Route path="/record" element={<RecordTestWizard />} />
                   </Route>
                   <Route path="/tests" element={<Index initialTab="soil" />} />
