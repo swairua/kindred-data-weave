@@ -275,6 +275,12 @@ type ApiAtterbergResultRow = {
   id: number;
   project_id: number;
   test_key: string;
+  // Added by migrate_atterberg_samples.sql. A blank sample_key marks the legacy
+  // project-level row that held every sample in one records[] array.
+  sample_key?: string | null;
+  sample_label?: string | null;
+  sample_depth?: string | null;
+  sort_order?: number | null;
   payload_json: unknown;
   updated_at?: string;
 };
@@ -393,6 +399,21 @@ const listAtterbergResultRows = async (projectRowId: number): Promise<ApiAtterbe
     .sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || "") || Number(b.id) - Number(a.id));
 };
 
+/** Read a string field off an untyped payload record. */
+const readPayloadString = (value: unknown, field: string): string => {
+  if (!isObject(value)) return "";
+  const raw = value[field];
+  return typeof raw === "string" ? raw : "";
+};
+
+/**
+ * The identity of a sample. Uses the record's own id, which already existed in the
+ * payload before the migration and is therefore stable across saves. Falling back to
+ * the record's position keeps the key deterministic when a payload has no id.
+ */
+const sampleKeyForRecord = (record: unknown, order: number): string =>
+  readPayloadString(record, "id") || `sample-${order}`;
+
 
 export const persistAtterbergProjectToApi = async ({
   lookup,
@@ -457,9 +478,23 @@ export const persistAtterbergProjectToApi = async ({
       throw new Error("Unable to save project");
     }
 
-    // PHASE 1: resolve the existing row for this (project, test) pair and write in place.
-    // test_results holds one row per pair, so a save must update rather than insert.
-    const resultPayload = {
+    // PHASE 1: one test_results row per sample.
+    // After migrate_atterberg_samples.sql a save diffs the form's records against the
+    // stored sample rows, keyed by the record's own id. The project aggregate
+    // (status, data_points, key_results_json) is copied onto every sample row so
+    // reports keep reading the same values they did when one row held them all.
+    const projectEnvelope: Record<string, unknown> = isObject(payload.project) ? payload.project : {};
+    const records = Array.isArray(projectEnvelope.records) ? projectEnvelope.records : [];
+
+    if (records.length === 0) {
+      // An empty records array means the project never hydrated - it does not mean every
+      // sample was deleted. Writing here would erase real samples, so test_results is
+      // deliberately left untouched.
+      console.warn("[Atterberg Save] Payload has no records; leaving test_results untouched");
+      return lastSavedAt;
+    }
+
+    const sharedColumns = {
       project_id: projectRow.id,
       test_key: "atterberg",
       name: projectName,
@@ -467,70 +502,98 @@ export const persistAtterbergProjectToApi = async ({
       status,
       data_points: dataPoints,
       key_results_json: keyResults,
-      payload_json: payload,
     };
 
     let existingResultRows: ApiAtterbergResultRow[] = [];
     try {
       existingResultRows = await listAtterbergResultRows(projectRow.id);
     } catch (lookupError) {
-      console.warn("[Atterberg Save] Could not read existing results, will attempt a create:", lookupError);
+      console.warn("[Atterberg Save] Could not read existing results, will attempt creates:", lookupError);
     }
 
-    let savedRowId: number | null = null;
+    // Split what is stored into the sample we can update in place, and the rows that
+    // must go: the legacy project-level row, plus any duplicate of a sample.
+    const storedBySampleKey = new Map<string, ApiAtterbergResultRow>();
+    const obsoleteRows: ApiAtterbergResultRow[] = [];
+    for (const row of existingResultRows) {
+      const key = readPayloadString(row, "sample_key");
+      if (key === "" || storedBySampleKey.has(key)) {
+        obsoleteRows.push(row);
+        continue;
+      }
+      storedBySampleKey.set(key, row);
+    }
+
     try {
-      if (existingResultRows.length > 0) {
-        const existingRow = existingResultRows[0];
-        const updateResponse = await retryWithBackoff(
-          () => updateApiRecord<{ id: number }>("test_results", existingRow.id, resultPayload)
-        );
-        savedRowId = updateResponse.data?.id ?? existingRow.id;
-        lastSavedAt = updateResponse.last_saved_at ?? lastSavedAt;
-      } else {
+      for (let order = 0; order < records.length; order += 1) {
+        const record = records[order];
+        const sampleKey = sampleKeyForRecord(record, order);
+        const rowPayload = {
+          ...sharedColumns,
+          sample_key: sampleKey,
+          sample_label: readPayloadString(record, "label") || null,
+          sample_depth: readPayloadString(record, "sampleNumber") || null,
+          sort_order: order,
+          // Same project envelope, records narrowed to this one sample.
+          payload_json: { ...payload, project: { ...projectEnvelope, records: [record] } },
+        };
+
+        const existing = storedBySampleKey.get(sampleKey);
+        if (existing) {
+          storedBySampleKey.delete(sampleKey);
+          const updateResponse = await retryWithBackoff(
+            () => updateApiRecord<{ id: number }>("test_results", existing.id, rowPayload)
+          );
+          lastSavedAt = updateResponse.last_saved_at ?? lastSavedAt;
+          continue;
+        }
+
         try {
           const createResponse = await retryWithBackoff(
-            () => createApiRecord<{ id: number }>("test_results", resultPayload)
+            () => createApiRecord<{ id: number }>("test_results", rowPayload)
           );
-          savedRowId = createResponse.data?.id ?? null;
           lastSavedAt = createResponse.last_saved_at ?? lastSavedAt;
         } catch (createError) {
-          // A unique index on (project_id, test_key) rejects the insert, so fall back to updating
-          // the row that won the race. Only rethrow when there is genuinely nothing to update.
-          const raced = await listAtterbergResultRows(projectRow.id);
-          if (raced.length === 0) throw createError;
-          const updateResponse = await retryWithBackoff(
-            () => updateApiRecord<{ id: number }>("test_results", raced[0].id, resultPayload)
+          // The unique key (project_id, test_key, sample_key) rejects a second row for the
+          // same sample, which happens when two tabs save at once. Re-read and update the
+          // row that won the race; only rethrow when there is genuinely nothing to update.
+          const raced = (await listAtterbergResultRows(projectRow.id)).find(
+            (row) => readPayloadString(row, "sample_key") === sampleKey
           );
-          savedRowId = updateResponse.data?.id ?? raced[0].id;
+          if (!raced) throw createError;
+          const updateResponse = await retryWithBackoff(
+            () => updateApiRecord<{ id: number }>("test_results", raced.id, rowPayload)
+          );
           lastSavedAt = updateResponse.last_saved_at ?? lastSavedAt;
         }
       }
     } catch (writeError) {
-      console.error("[Atterberg Save] Failed to write the test_results record:", writeError);
+      console.error("[Atterberg Save] Failed to write the test_results samples:", writeError);
       throw new Error(`Failed to save test results: ${writeError instanceof Error ? writeError.message : String(writeError)}`);
     }
 
-    // PHASE 2: collapse any leftover duplicate rows for this pair. This is defensive and heals
-    // databases that already accumulated several rows before the save switched to update-in-place.
-    const duplicateRows = existingResultRows.filter((row) => Number(row.id) !== Number(savedRowId));
-    if (duplicateRows.length > 0) {
+    // PHASE 2: remove the samples the form no longer contains, plus the legacy row and
+    // any duplicate. Deliberately last: a mid-save failure leaves extra rows that the next
+    // save reconciles, never missing ones.
+    const staleRows = [...storedBySampleKey.values(), ...obsoleteRows];
+    if (staleRows.length > 0) {
       try {
         await Promise.all(
-          duplicateRows.map((row) =>
+          staleRows.map((row) =>
             retryWithBackoff(() => deleteApiRecord("test_results", row.id)).catch((deleteError) => {
-              console.error(`[Atterberg Save] Failed to delete duplicate record ${row.id}:`, deleteError);
+              console.error(`[Atterberg Save] Failed to delete stale record ${row.id}:`, deleteError);
               return null;
             })
           )
         );
-        console.log(`[Atterberg Save] Removed ${duplicateRows.length} duplicate row(s) for project ${projectRow.id}`);
+        console.log(`[Atterberg Save] Removed ${staleRows.length} stale row(s) for project ${projectRow.id}`);
       } catch (cleanupError) {
-        console.warn(`[Atterberg Save] Duplicate cleanup had errors:`, cleanupError);
-        // The record is already written, so a failed cleanup must not fail the save.
+        console.warn(`[Atterberg Save] Stale row cleanup had errors:`, cleanupError);
+        // The samples are already written, so a failed cleanup must not fail the save.
       }
     }
 
-    console.log(`[Atterberg Save] === SAVE COMPLETE ===`);
+    console.log(`[Atterberg Save] === SAVE COMPLETE: ${records.length} sample(s) ===`);
 
     return lastSavedAt;
   } catch (error) {

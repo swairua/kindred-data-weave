@@ -205,9 +205,19 @@ const ProjectOverview = () => {
     toast.success("Logged out");
   };
 
-  // test_results holds one row per (project, test). The list is newest-first, so keeping one row
-  // per test_key hides the legacy duplicates that the previous save behaviour created. A row whose
+  // test_results holds one row per (project, test_key, sample_key). The list is newest-first, so
+  // keeping one row per test_key collapses the samples of a multi-sample test into a single entry
+  // here - which is what this page wants, since it lists tests rather than samples. A row whose
   // first stored record is null cannot be resumed, so it is only used when nothing better exists.
+  // The sample count is taken from the stored rows so a project with 13 depths reads as 13, not 1.
+  const sampleCountByTestKey = (() => {
+    const counts = new Map<string, number>();
+    for (const result of testResults) {
+      const key = String(result.test_key);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return counts;
+  })();
   const orderedTestResults = (() => {
     const newestFirst = [...testResults].sort((a, b) =>
       (b.updated_at || b.created_at || "").localeCompare(a.updated_at || a.created_at || ""),
@@ -382,6 +392,10 @@ const ProjectOverview = () => {
                                 <p className="font-medium">{result.name || result.test_key}</p>
                                 <p className="text-sm text-muted-foreground">
                                   {result.status ? `${result.status} · ` : ""}
+                                  {(() => {
+                                    const count = sampleCountByTestKey.get(String(result.test_key)) ?? 1;
+                                    return `${count} sample${count === 1 ? "" : "s"} · `;
+                                  })()}
                                   <CalendarDays className="mr-1 inline h-3.5 w-3.5" />
                                   Updated {formatDate(result.updated_at || result.created_at)}
                                 </p>
