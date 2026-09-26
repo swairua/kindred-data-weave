@@ -142,4 +142,49 @@ describe("TestResults duplicate handling", () => {
     // Deduping is scoped to (project, test), so a second project still gets its own row.
     expect(await screen.findAllByRole("button", { name: "Open →" }, FIND)).toHaveLength(2);
   });
+
+  it("orders the register newest first", async () => {
+    // Three distinct projects, supplied oldest-first, so no dedup can collapse them and the
+    // assertion cannot pass by accident through the order the rows happened to arrive in.
+    resultsMocks.listRecords.mockResolvedValue({
+      data: [
+        { ...gradingRow("10", "2026-05-01 09:00:00", [{ sampleNumber: "Oldest" }]), project_id: "42" },
+        { ...gradingRow("15", "2026-06-10 09:00:00", [{ sampleNumber: "Middle" }]), project_id: "43" },
+        { ...gradingRow("20", "2026-06-20 09:00:00", [{ sampleNumber: "Newest" }]), project_id: "44" },
+      ],
+    });
+
+    const { container } = renderResults();
+
+    await screen.findByText(/Newest/, undefined, FIND);
+    const depths = Array.from(container.querySelectorAll("tbody tr")).map((row) => row.textContent ?? "");
+    expect(depths).toHaveLength(3);
+    expect(depths[0]).toMatch(/Newest/);
+    expect(depths[1]).toMatch(/Middle/);
+    expect(depths[2]).toMatch(/Oldest/);
+  });
+
+  it("keeps the samples of one project together and in their stored order", async () => {
+    // Both sample rows inherit the parent row's timestamp, so the stable sort has to leave
+    // them adjacent and in sort_order rather than scattering them.
+    const sample = (id: string, order: number, depth: string) => ({
+      ...gradingRow(id, "2026-06-12 09:00:00", [{ sampleNumber: depth }]),
+      project_id: "42",
+      sample_key: `record-${id}`,
+      sample_label: "BH01",
+      sort_order: order,
+    });
+    resultsMocks.listRecords.mockResolvedValue({
+      data: [sample("30", 0, "0.0-3.0"), sample("31", 1, "3.0-7.5"), sample("32", 2, "7.5-10.0")],
+    });
+
+    const { container } = renderResults();
+
+    await screen.findByText(/0\.0-3\.0/, undefined, FIND);
+    const depths = Array.from(container.querySelectorAll("tbody tr")).map((row) => row.textContent ?? "");
+    expect(depths).toHaveLength(3);
+    expect(depths[0]).toMatch(/0\.0-3\.0/);
+    expect(depths[1]).toMatch(/3\.0-7\.5/);
+    expect(depths[2]).toMatch(/7\.5-10\.0/);
+  });
 }, 30000);

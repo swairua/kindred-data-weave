@@ -104,8 +104,14 @@ const TestResults = () => {
 
   // Convert API test results to display format - one row per sample, so a project with
   // several boreholes and depths appears once per sample rather than once in total.
+  //
+  // collectSamples returns rows grouped by project in sort_order, because that is the
+  // order the Atterberg form has to be rebuilt in. A register of results reads better
+  // newest-first, so the ordering is inverted for display only - sort_order is left
+  // alone. The sort is stable, so samples of one project stay adjacent and keep their
+  // stored order: they inherit the parent row's timestamps, so nothing separates them.
   const tests = useMemo(() => {
-    return samples.map((sample, index) => {
+    const rows = samples.map((sample, index) => {
       const result = sample.row;
       const record = sample.record;
       const depthFrom = recordField(record, "sampleDepthFrom");
@@ -129,8 +135,12 @@ const TestResults = () => {
         date_created: dateCreated,
         created_by: testedBy,
         material_type: result.category || "Soil",
+        // Most recently touched first, falling back to the creation date.
+        sort_stamp: result.updated_at || result.created_at || "",
       };
     });
+
+    return rows.sort((a, b) => b.sort_stamp.localeCompare(a.sort_stamp));
   }, [samples]);
 
   // Get unique material types from the test data
