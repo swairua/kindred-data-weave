@@ -620,7 +620,12 @@ const RecordTestWizard = () => {
     toast.success(`Started ${tests.find((t) => t.key === state.testKey)?.name ?? "test"} record`);
     const fromExisting = finalProjectId !== null;
     const sourceParam = sourceProjectId !== null ? `&sourceProjectId=${sourceProjectId}` : "";
-    const suffix = fromExisting ? `?newRecord=1&fromProject=${finalProjectId}${sourceParam}` : "";
+    // Carry the compressive test id across so the cube grid can load the results already
+    // stored for it. Without this the form opens blank against a test that has data.
+    const testParam = isCompressiveStrengthTest && selectedExistingTestId !== null
+      ? `&testId=${selectedExistingTestId}`
+      : "";
+    const suffix = fromExisting ? `?newRecord=1&fromProject=${finalProjectId}${sourceParam}${testParam}` : "";
     navigate(`/tests${suffix}#${state.testKey}`);
   };
 

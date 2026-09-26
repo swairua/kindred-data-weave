@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import TestSection from "@/components/TestSection";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -14,21 +15,45 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, PieChart, 
 import { Label } from "@/components/ui/label";
 import { useTestReport } from "@/hooks/useTestReport";
 import { captureChartAsBase64 } from "@/lib/chartCapture";
-import { saveCompressiveTest } from "@/lib/api";
+import { saveCompressiveTest, listCompressiveCubes, type CompressiveCubeApiRow } from "@/lib/api";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  ACCEPTANCE_MARGIN_MPA,
+  ageOf,
+  buildAgeGroups,
+  cubeStrengthFromClass,
+  emptyCubeRow,
+  formatDensity,
+  formatStrength,
+  getPassFailResults,
+  getStrengthDistribution,
+  isFiniteNumber,
+  parseNumber,
+  strengthOf,
+  densityOf,
+  strengthRemark,
+  toInputValue,
+  type CompressiveCubeInput,
+} from "@/lib/compressiveCalculations";
 
-interface Row {
-  mark: string;
-  dateOfCast: string;
-  dateOfTest: string;
-  load: string;
-  width: string;
-  height: string;
-  depth: string;
-  mass: string;
-  remarks: string;
-}
+type Row = CompressiveCubeInput;
+
+/** Map a stored cube back into an editable row. */
+const cubeFromApi = (cube: CompressiveCubeApiRow): Row => ({
+  id: Number(cube.id),
+  // Older rows stored a placeholder "Unknown" for a blank mark; show those as blank again
+  // rather than pretending the technician wrote a mark.
+  mark: cube.cube_mark && cube.cube_mark !== "Unknown" ? String(cube.cube_mark) : "",
+  dateOfCast: toInputValue(cube.date_of_cast),
+  dateOfTest: toInputValue(cube.date_of_test),
+  load: toInputValue(cube.load_kn),
+  width: toInputValue(cube.width_mm, "150"),
+  height: toInputValue(cube.height_mm, "150"),
+  depth: toInputValue(cube.depth_mm, "150"),
+  mass: toInputValue(cube.mass_g),
+  remarks: cube.remarks ? String(cube.remarks) : "",
+});
 
 interface TestDetails {
   cement: string;
@@ -51,15 +76,21 @@ interface CompressiveStrengthTestProps {
 const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   const project = useProject();
   const testData = useTestData();
-  const defaultRows: Row[] = [
-    { mark: "", dateOfCast: "", dateOfTest: "", load: "", width: "150", height: "150", depth: "150", mass: "", remarks: "" },
-  ];
-  const [rows, setRows] = useState<Row[]>(defaultRows);
+  const location = useLocation();
+  const [rows, setRows] = useState<Row[]>(() => [emptyCubeRow()]);
+  const [isLoadingCubes, setIsLoadingCubes] = useState(false);
+
+  // The wizard passes the id of the test being edited through the URL, the same way GradingTest
+  // reads ?resultId. Without this the form always starts from one blank cube, and because the
+  // save is a diff the technician would silently "confirm" an empty set of results.
+  const testIdParam = Number.parseInt(new URLSearchParams(location.search).get("testId") || "", 10);
+  const existingTestId = Number.isInteger(testIdParam) && testIdParam > 0 ? testIdParam : null;
   const [isSaving, setIsSaving] = useState(false);
   const [saveCompleted, setSaveCompleted] = useState(false);
   const [editingRemarksIndex, setEditingRemarksIndex] = useState<number | null>(null);
   const [highlightedRowIndex, setHighlightedRowIndex] = useState<number | null>(null);
   const [passFailThreshold, setPassFailThreshold] = useState(25);
+  const [isThresholdOverridden, setIsThresholdOverridden] = useState(false);
   const [passFailMode, setPassFailMode] = useState<"simple" | "multi">("simple");
   const [multiStandardTargets, setMultiStandardTargets] = useState({
     sevenDay: 17,
@@ -91,72 +122,47 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     }
   }, [testData.projectMetadata?.contractor, testData.projectMetadata?.county]);
 
+  // Load the cubes of the test being edited. This is what makes an existing test editable:
+  // previously the grid always rendered one blank row, so a technician re-opening a saved
+  // test saw no results at all and saving from that view dropped every stored cube.
+  const cubesLoadStartedRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (existingTestId === null) return;
+    if (cubesLoadStartedRef.current === existingTestId) return;
+    cubesLoadStartedRef.current = existingTestId;
+
+    let active = true;
+    setIsLoadingCubes(true);
+    listCompressiveCubes(existingTestId)
+      .then((response) => {
+        if (!active) return;
+        const loaded = (response.data || []).map(cubeFromApi);
+        setRows(loaded.length > 0 ? loaded : [emptyCubeRow()]);
+      })
+      .catch((error) => {
+        if (!active) return;
+        const message = error instanceof Error ? error.message : String(error);
+        console.error("[CompressiveStrengthTest] Failed to load saved cubes:", message);
+        toast.error("Couldn't load the saved cube results — don't save over them blindly");
+      })
+      .finally(() => {
+        if (active) setIsLoadingCubes(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [existingTestId]);
+
   const getAge = (dateOfCast: string, dateOfTest: string) => {
-    if (!dateOfCast || !dateOfTest) return "";
-    // Parse YYYY-MM-DD strings and create dates in local timezone
-    const [castYear, castMonth, castDay] = dateOfCast.split('-').map(Number);
-    const [testYear, testMonth, testDay] = dateOfTest.split('-').map(Number);
-    const cast = new Date(castYear, castMonth - 1, castDay, 0, 0, 0, 0);
-    const test = new Date(testYear, testMonth - 1, testDay, 0, 0, 0, 0);
-    const days = Math.floor((test.getTime() - cast.getTime()) / (1000 * 60 * 60 * 24));
-    return days >= 0 ? String(days) : "";
+    const days = ageOf(dateOfCast, dateOfTest);
+    return days === null ? "" : String(days);
   };
 
-  const getDensity = (row: Row) => {
-    const mass = parseFloat(row.mass);
-    const w = parseFloat(row.width);
-    const h = parseFloat(row.height);
-    const d = parseFloat(row.depth);
-    if (!mass || !w || !h || !d) return "";
-    const volume = (w * h * d) / 1000000000; // mm³ to m³
-    const massKg = mass / 1000;
-    return (massKg / volume).toFixed(0);
-  };
-
-  const getStrength = (row: Row) => {
-    const load = parseFloat(row.load);
-    const w = parseFloat(row.width);
-    const h = parseFloat(row.height);
-    if (!load || !w || !h) return "";
-    return ((load * 1000) / (w * h)).toFixed(2);
-  };
-
-  const getRemarks = (row: Row) => {
-    const strength = parseFloat(getStrength(row));
-    if (!strength) return "";
-    if (strength < 7) return "Very low strength";
-    if (strength < 20) return "Low strength";
-    if (strength < 40) return "Normal structural concrete";
-    return "High strength";
-  };
-
-  const isAbnormalDensity = (row: Row) => {
-    const density = parseFloat(getDensity(row));
-    return density && (density < 2200 || density > 2600);
-  };
-
-  const getStrengthCategory = (strength: number): "veryLow" | "low" | "normal" | "high" => {
-    if (strength < 7) return "veryLow";
-    if (strength < 20) return "low";
-    if (strength < 40) return "normal";
-    return "high";
-  };
-
-  const getPassFailResults = (testRows: Row[], threshold: number) => {
-    const strengths = testRows.map(r => parseFloat(getStrength(r))).filter(Boolean);
-    const passCount = strengths.filter(s => s >= threshold).length;
-    const failCount = strengths.filter(s => s < threshold).length;
-    const passRate = strengths.length ? (passCount / strengths.length) * 100 : 0;
-    return { passCount, failCount, passRate };
-  };
-
-  const getStrengthDistribution = (testRows: Row[]) => {
-    const categories = { veryLow: 0, low: 0, normal: 0, high: 0 };
-    testRows.forEach(r => {
-      const strength = parseFloat(getStrength(r));
-      if (strength) categories[getStrengthCategory(strength)]++;
-    });
-    return categories;
+  /** True only for a density that was actually measured and sits outside the normal range. */
+  const isAbnormalDensity = (row: Row): boolean => {
+    const density = densityOf(row);
+    return density !== null && (density < 2200 || density > 2600);
   };
 
   const update = (i: number, field: keyof Row, val: string) => {
@@ -174,31 +180,50 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
       toast.error("No project selected");
       return;
     }
-
-    const cubesWithData = rows.filter(r => r.load && r.width && r.height);
-    if (cubesWithData.length === 0) {
-      toast.error("Please enter data for at least one cube");
+    if (isLoadingCubes) {
+      toast.error("Still loading the saved results — please wait a moment");
       return;
+    }
+
+    // A cube counts as "entered" when it actually yields a strength, which is stricter and
+    // more honest than the old `r.load && r.width && r.height` (that passed the string
+    // "0" and silently persisted NaN dimensions).
+    const cubesWithData = rows.filter(row => isFiniteNumber(strengthOf(row)));
+    if (cubesWithData.length === 0) {
+      toast.error("Please enter a load and cube dimensions for at least one cube");
+      return;
+    }
+
+    const unmarked = cubesWithData.filter(row => !row.mark.trim()).length;
+    if (unmarked > 0) {
+      toast.warning(
+        `${unmarked} cube${unmarked > 1 ? "s have" : " has"} no mark — recorded as blank, not "Unknown"`,
+      );
     }
 
     setIsSaving(true);
     try {
       const cubesPayload = cubesWithData.map(row => ({
-        cube_mark: row.mark || "Unknown",
-        date_of_cast: row.dateOfCast,
-        date_of_test: row.dateOfTest,
-        load_kn: parseFloat(row.load),
-        width_mm: parseFloat(row.width),
-        height_mm: parseFloat(row.height),
-        depth_mm: parseFloat(row.depth),
-        mass_g: parseFloat(row.mass),
-        calculated_strength_mpa: parseFloat(getStrength(row) || "0"),
-        density_kg_m3: parseFloat(getDensity(row) || "0"),
-        remarks: row.remarks,
+        // Carried through so the API can update this row in place instead of re-inserting it.
+        id: row.id ?? null,
+        // Unmeasured values are stored as NULL. Writing 0 (or a NaN that JSON turns into null)
+        // made a missing mass look like a measured 0 kg/m³ that then slipped past the
+        // abnormal-density check.
+        cube_mark: row.mark.trim() || null,
+        date_of_cast: row.dateOfCast || null,
+        date_of_test: row.dateOfTest || null,
+        load_kn: parseNumber(row.load),
+        width_mm: parseNumber(row.width),
+        height_mm: parseNumber(row.height),
+        depth_mm: parseNumber(row.depth),
+        mass_g: parseNumber(row.mass),
+        calculated_strength_mpa: strengthOf(row),
+        density_kg_m3: densityOf(row),
+        remarks: row.remarks.trim() || null,
       }));
 
       const testDataPayload = {
-        date_tested: testDetails.dateTested,
+        date_tested: testDetails.dateTested || null,
         cement: testDetails.cement,
         fine_aggregate: testDetails.fineAggregate,
         coarse_aggregate: testDetails.coarseAggregate,
@@ -211,11 +236,26 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
         status: "submitted",
       };
 
-      await saveCompressiveTest({
+      const result = await saveCompressiveTest({
         projectId: project.currentProjectId,
         testData: testDataPayload,
         cubes: cubesPayload,
+        testId: existingTestId,
       });
+
+      // Adopt the ids the server assigned. Without this a second save would treat every row
+      // as new and duplicate the whole set of cubes.
+      const idByRow = new Map<Row, number>();
+      result.cubeIds.forEach((id, index) => {
+        const row = cubesWithData[index];
+        if (row && id) idByRow.set(row, id);
+      });
+      if (idByRow.size > 0) {
+        setRows(prev => prev.map(row => {
+          const id = idByRow.get(row);
+          return id ? { ...row, id } : row;
+        }));
+      }
 
       toast.success("Compressive strength test saved successfully");
       setSaveCompleted(true);
@@ -225,35 +265,35 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     } finally {
       setIsSaving(false);
     }
-  }, [project.currentProjectId, rows, testDetails, getStrength]);
+  }, [project.currentProjectId, rows, testDetails, isLoadingCubes, existingTestId]);
 
   const chartData = useMemo(() =>
     rows
-      .filter(r => getStrength(r))
-      .map(r => ({ name: r.mark || "—", strength: parseFloat(getStrength(r)) })),
+      .map((r, idx) => ({ strength: strengthOf(r), name: r.mark.trim() || `Cube ${idx + 1}` }))
+      .filter((point): point is { strength: number; name: string } => isFiniteNumber(point.strength)),
     [rows]
   );
 
   const strengthTrendData = useMemo(() =>
     rows
-      .filter(r => getStrength(r))
       .map((r, idx) => ({
-        name: r.mark || `Cube ${idx + 1}`,
-        strength: parseFloat(getStrength(r)),
-        age: parseInt(getAge(r.dateOfCast, r.dateOfTest)) || 0,
+        name: r.mark.trim() || `Cube ${idx + 1}`,
+        strength: strengthOf(r),
+        age: ageOf(r.dateOfCast, r.dateOfTest),
         index: idx,
-      })),
+      }))
+      .filter((point): point is { name: string; strength: number; age: number | null; index: number } =>
+        isFiniteNumber(point.strength)),
     [rows]
   );
 
   const densityChartData = useMemo(() =>
     rows
-      .filter(r => getDensity(r))
-      .map((r, idx) => ({
-        name: r.mark || `Cube ${idx + 1}`,
-        density: parseFloat(getDensity(r)),
-        isAbnormal: isAbnormalDensity(r),
-        index: idx,
+      .map((r, idx) => ({ density: densityOf(r), name: r.mark.trim() || `Cube ${idx + 1}`, index: idx }))
+      .filter((point): point is { density: number; name: string; index: number } => isFiniteNumber(point.density))
+      .map((point) => ({
+        ...point,
+        isAbnormal: point.density < 2200 || point.density > 2600,
       })),
     [rows]
   );
@@ -268,43 +308,126 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     ];
   }, [rows]);
 
-  const passFailData = useMemo(() => getPassFailResults(rows, passFailThreshold), [rows, passFailThreshold]);
+  /**
+   * Target strength for the simple tally. Taken from the recorded concrete class when there is
+   * one ("C25/30" -> 30 MPa cubes) so a stale hand-typed threshold can't quietly mislabel a
+   * whole batch. Typing in the box takes over via isThresholdOverridden.
+   */
+  const classTargetStrength = useMemo(
+    () => cubeStrengthFromClass(testDetails.concreteClass),
+    [testDetails.concreteClass],
+  );
+  const effectiveThreshold = isThresholdOverridden ? passFailThreshold : (classTargetStrength ?? passFailThreshold);
 
-  const multiStandardResults = useMemo(() => {
-    const sevenDay = rows.filter(r => {
-      const age = parseInt(getAge(r.dateOfCast, r.dateOfTest)) || 0;
-      const strength = parseFloat(getStrength(r)) || 0;
-      return age <= 7 && strength;
-    });
-    const twentyEightDay = rows.filter(r => {
-      const age = parseInt(getAge(r.dateOfCast, r.dateOfTest)) || 0;
-      const strength = parseFloat(getStrength(r)) || 0;
-      return age >= 25 && age <= 31 && strength;
-    });
+  const passFailData = useMemo(
+    () => getPassFailResults(rows, effectiveThreshold),
+    [rows, effectiveThreshold],
+  );
 
-    return {
-      sevenDay: sevenDay.length ? {
-        pass: sevenDay.filter(r => parseFloat(getStrength(r)) >= multiStandardTargets.sevenDay).length,
-        fail: sevenDay.filter(r => parseFloat(getStrength(r)) < multiStandardTargets.sevenDay).length,
-        total: sevenDay.length,
-      } : null,
-      twentyEightDay: twentyEightDay.length ? {
-        pass: twentyEightDay.filter(r => parseFloat(getStrength(r)) >= multiStandardTargets.twentyEightDay).length,
-        fail: twentyEightDay.filter(r => parseFloat(getStrength(r)) < multiStandardTargets.twentyEightDay).length,
-        total: twentyEightDay.length,
-      } : null,
-    };
-  }, [rows, multiStandardTargets]);
+  /**
+   * Cubes grouped by the age they were actually tested at.
+   *
+   * Cube acceptance is judged on the mean of a group broken at one age, so averaging a 7-day
+   * and a 28-day cube together produces a number that describes nothing. Each band is reported
+   * separately, and anything outside every tolerance window is surfaced as "Other ages" rather
+   * than being dropped on the floor.
+   */
+  const ageGroups = useMemo(
+    () => buildAgeGroups(rows, multiStandardTargets),
+    [rows, multiStandardTargets],
+  );
 
   const chartConfig = { strength: { label: "Strength (MPa)", color: "hsl(var(--primary))" } };
 
-  const strengths = rows.map(r => parseFloat(getStrength(r))).filter(Boolean);
+  const strengths = useMemo(
+    () => rows.map(strengthOf).filter(isFiniteNumber),
+    [rows],
+  );
   const avgStrength = strengths.length ? (strengths.reduce((a, b) => a + b, 0) / strengths.length).toFixed(2) : "";
   const compResults = useMemo(() => [
-    { label: "Avg Strength", value: avgStrength ? `${avgStrength} MPa` : "" },
+    { label: "Avg Strength (all ages)", value: avgStrength ? `${avgStrength} MPa` : "" },
     { label: "Cubes Tested", value: strengths.length ? String(strengths.length) : "" },
   ], [avgStrength, strengths.length]);
   useTestReport("compressive", strengths.length, compResults);
+
+  /**
+   * Report-ready summary + per-age-group breakdown, shared by the PDF and XLSX exports.
+   * The per-age rows matter: a single blended "Avg Strength" is not a reportable figure
+   * because it mixes cubes broken at different ages.
+   */
+  const buildExportTables = () => {
+    const dist = getStrengthDistribution(rows);
+    const classification = {
+      headers: ["Classification", "Count"],
+      rows: [
+        ["Very Low (< 7 MPa)", String(dist.veryLow)],
+        ["Low (7–20 MPa)", String(dist.low)],
+        ["Normal (20–40 MPa)", String(dist.normal)],
+        ["High (> 40 MPa)", String(dist.high)],
+      ],
+    };
+
+    const groupRows = ageGroups.bands
+      .filter((group) => group.count > 0)
+      .map((group) => [
+        group.label,
+        String(group.count),
+        group.mean !== null ? group.mean.toFixed(2) : "—",
+        group.min !== null ? group.min.toFixed(2) : "—",
+        group.max !== null ? group.max.toFixed(2) : "—",
+        group.target !== null ? String(group.target) : "—",
+        group.verdict
+          ? (group.verdict.accepted ? "Accept" : (group.verdict.meetsMean ? "Mean OK, low cube" : "Reject"))
+          : "—",
+      ]);
+
+    if (ageGroups.other.count > 0) {
+      groupRows.push([
+        ageGroups.other.label,
+        String(ageGroups.other.count),
+        ageGroups.other.mean !== null ? ageGroups.other.mean.toFixed(2) : "—",
+        ageGroups.other.min !== null ? ageGroups.other.min.toFixed(2) : "—",
+        ageGroups.other.max !== null ? ageGroups.other.max.toFixed(2) : "—",
+        "—",
+        "Not assessable — outside every reporting window",
+      ]);
+    }
+
+    const ageBreakdown = {
+      headers: ["Age Group", "Cubes", "Mean (MPa)", "Min (MPa)", "Max (MPa)", "Target (MPa)", "Result"],
+      rows: groupRows,
+    };
+
+    const cubeRows = rows.map((r, i) => [
+      String(i + 1),
+      r.mark.trim() || "—",
+      r.dateOfCast || "—",
+      r.dateOfTest || "—",
+      getAge(r.dateOfCast, r.dateOfTest) || "—",
+      // Rendered as one unit rather than "150××" when a dimension was left blank.
+      [r.width, r.height, r.depth].every((part) => part.trim() !== "")
+        ? `${r.width}×${r.height}×${r.depth}`
+        : "—",
+      r.mass || "—",
+      formatDensity(r) || "—",
+      r.load || "—",
+      formatStrength(r) || "—",
+      r.remarks || strengthRemark(r) || "—",
+    ]);
+
+    const summaryFields = [
+      { label: "Avg Strength (all ages)", value: avgStrength ? `${avgStrength} MPa` : "—" },
+      { label: "Cubes Tested", value: strengths.length ? String(strengths.length) : "—" },
+      { label: "Concrete Class", value: testDetails.concreteClass || "—" },
+      { label: "Target (from class)", value: classTargetStrength !== null ? `${classTargetStrength} MPa` : "—" },
+      { label: "Tally Threshold", value: `${effectiveThreshold} MPa${isThresholdOverridden ? " (manual)" : classTargetStrength !== null ? " (from class)" : ""}` },
+      { label: "Pass Count", value: String(passFailData.passCount) },
+      { label: "Fail Count", value: String(passFailData.failCount) },
+      { label: "Pass Rate", value: `${passFailData.passRate.toFixed(0)}%` },
+    ];
+
+    return { summaryFields, tables: [classification, ageBreakdown, { headers: ["#", "Cube Mark", "Date of Cast", "Date of Test", "Age", "Dims", "Mass", "Density", "Load", "Strength", "Remarks"], rows: cubeRows }] };
+  };
 
   const exportPDF = async () => {
     let chartImages = {};
@@ -315,37 +438,14 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
       }
     }
 
-    const summaryFields = [
-      { label: "Avg Strength", value: avgStrength ? `${avgStrength} MPa` : "—" },
-      { label: "Cubes Tested", value: strengths.length ? String(strengths.length) : "—" },
-      { label: "Pass/Fail Threshold", value: `${passFailThreshold} MPa` },
-      { label: "Pass Count", value: String(passFailData.passCount) },
-      { label: "Fail Count", value: String(passFailData.failCount) },
-      { label: "Pass Rate", value: `${passFailData.passRate.toFixed(0)}%` },
-    ];
-
-    const dist = getStrengthDistribution(rows);
-    const classificationTable = [{
-      headers: ["Classification", "Count"],
-      rows: [
-        ["Very Low (< 7 MPa)", String(dist.veryLow)],
-        ["Low (7–20 MPa)", String(dist.low)],
-        ["Normal (20–40 MPa)", String(dist.normal)],
-        ["High (> 40 MPa)", String(dist.high)],
-      ]
-    }];
+    const { summaryFields, tables } = buildExportTables();
 
     generateTestPDF({
       title: "Compressive Strength (Cube Test)",
+      standard: "BS EN 206:2013, Table 18 / BS 8500-1:2015",
       ...project,
       fields: summaryFields,
-      tables: [
-        classificationTable[0],
-        {
-          headers: ["#", "Cube Mark", "Date of Cast", "Date of Test", "Age", "Dims", "Mass", "Density", "Load", "Strength", "Remarks"],
-          rows: rows.map((r, i) => [String(i + 1), r.mark || "—", r.dateOfCast || "—", r.dateOfTest || "—", getAge(r.dateOfCast, r.dateOfTest) || "—", `${r.width}×${r.height}×${r.depth}`, r.mass || "—", getDensity(r) || "—", r.load || "—", getStrength(r) || "—", r.remarks || getRemarks(r) || "—"])
-        }
-      ],
+      tables,
       chartImages
     });
   };
@@ -359,37 +459,13 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
       }
     }
 
-    const summaryFields = [
-      { label: "Avg Strength", value: avgStrength ? `${avgStrength} MPa` : "—" },
-      { label: "Cubes Tested", value: strengths.length ? String(strengths.length) : "—" },
-      { label: "Pass/Fail Threshold", value: `${passFailThreshold} MPa` },
-      { label: "Pass Count", value: String(passFailData.passCount) },
-      { label: "Fail Count", value: String(passFailData.failCount) },
-      { label: "Pass Rate", value: `${passFailData.passRate.toFixed(0)}%` },
-    ];
-
-    const dist = getStrengthDistribution(rows);
-    const classificationTable = {
-      headers: ["Classification", "Count"],
-      rows: [
-        ["Very Low (< 7 MPa)", String(dist.veryLow)],
-        ["Low (7–20 MPa)", String(dist.low)],
-        ["Normal (20–40 MPa)", String(dist.normal)],
-        ["High (> 40 MPa)", String(dist.high)],
-      ]
-    };
+    const { summaryFields, tables } = buildExportTables();
 
     generateTestExcel({
       data: {
         title: "Compressive Strength (Cube Test)",
         fields: summaryFields,
-        tables: [
-          classificationTable,
-          {
-            headers: ["#", "Cube Mark", "Date of Cast", "Date of Test", "Age", "Dims", "Mass", "Density", "Load", "Strength", "Remarks"],
-            rows: rows.map((r, i) => [String(i + 1), r.mark || "—", r.dateOfCast || "—", r.dateOfTest || "—", getAge(r.dateOfCast, r.dateOfTest) || "—", `${r.width}×${r.height}×${r.depth}`, r.mass || "—", getDensity(r) || "—", r.load || "—", getStrength(r) || "—", r.remarks || getRemarks(r) || "—"])
-          }
-        ],
+        tables,
         chartImages,
       },
       projectName: project.projectName,
@@ -482,9 +558,9 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
                     </div>
                   </td>
                   <td className="py-1.5 px-2 hidden md:table-cell"><Input type="number" value={row.mass} onChange={(e) => update(i, "mass", e.target.value)} className="h-8 text-sm" placeholder="—" /></td>
-                  <td className={`py-1.5 px-2 hidden md:table-cell ${isDensityAbnormal ? "text-red-600 font-semibold" : ""}`}><CalculatedInput value={getDensity(row)} /></td>
+                  <td className={`py-1.5 px-2 hidden md:table-cell ${isDensityAbnormal ? "text-red-600 font-semibold" : ""}`}><CalculatedInput value={formatDensity(row)} /></td>
                   <td className="py-1.5 px-2"><Input type="number" value={row.load} onChange={(e) => update(i, "load", e.target.value)} className="h-8 text-sm" placeholder="0" /></td>
-                  <td className="py-1.5 px-2"><CalculatedInput value={getStrength(row)} /></td>
+                  <td className="py-1.5 px-2"><CalculatedInput value={formatStrength(row)} /></td>
                   <td className="py-1.5 px-2">
                     {editingRemarksIndex === i ? (
                       <div className="flex gap-1">
@@ -493,7 +569,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
                       </div>
                     ) : (
                       <div className="flex gap-1 items-center group">
-                        <CalculatedInput value={row.remarks || getRemarks(row)} />
+                        <CalculatedInput value={row.remarks || strengthRemark(row)} />
                         <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100" onClick={() => setEditingRemarksIndex(i)}>
                           <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                         </Button>
@@ -508,7 +584,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
         </table>
       </div>
       <div className="flex items-center justify-between mt-3">
-        <Button variant="outline" size="sm" onClick={() => setRows([...rows, { mark: "", dateOfCast: "", dateOfTest: "", load: "", width: "150", height: "150", depth: "150", mass: "", remarks: "" }])}><Plus className="h-3.5 w-3.5 mr-1" /> Add row</Button>
+        <Button variant="outline" size="sm" onClick={() => setRows([...rows, emptyCubeRow()])}><Plus className="h-3.5 w-3.5 mr-1" /> Add row</Button>
         {saveCompleted ? (
           <Button size="sm" variant="default" onClick={handlePrint}><Printer className="h-3.5 w-3.5 mr-1" /> Print to Browser</Button>
         ) : isSaving ? (
@@ -599,10 +675,29 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
               <Input
                 type="number"
                 value={passFailThreshold}
-                onChange={(e) => setPassFailThreshold(parseFloat(e.target.value) || 25)}
+                onChange={(e) => {
+                  setPassFailThreshold(parseFloat(e.target.value) || 25);
+                  setIsThresholdOverridden(true);
+                }}
                 className="h-8 w-20 text-sm"
               />
+              <span className="text-[11px] text-muted-foreground">
+                {classTargetStrength !== null && !isThresholdOverridden
+                  ? `Using ${classTargetStrength} MPa from class ${testDetails.concreteClass}`
+                  : isThresholdOverridden
+                    ? "Manual override"
+                    : "No concrete class set — using 25 MPa default"}
+              </span>
             </div>
+            {classTargetStrength !== null && !isThresholdOverridden && (
+              <button
+                type="button"
+                className="text-[11px] text-primary underline underline-offset-2"
+                onClick={() => setIsThresholdOverridden(true)}
+              >
+                Override the class-derived target
+              </button>
+            )}
             <div className="grid grid-cols-3 gap-2">
               <div className="rounded bg-green-50 border border-green-200 p-3 text-center">
                 <div className="text-2xl font-bold text-green-600">{passFailData.passCount}</div>
@@ -651,16 +746,51 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
                 />
               </div>
             </div>
-            {multiStandardResults.sevenDay && (
-              <div className="rounded bg-blue-50 border border-blue-200 p-3">
-                <div className="text-xs font-semibold text-blue-900 mb-2">7-Day Results</div>
-                <div className="text-sm text-blue-700">Pass: {multiStandardResults.sevenDay.pass} / {multiStandardResults.sevenDay.total}</div>
+            {ageGroups.bands.map((group) => (
+              <div
+                key={group.key}
+                className={`rounded border p-3 ${
+                  group.count === 0
+                    ? "bg-muted/30 border-border"
+                    : group.verdict?.accepted
+                      ? "bg-green-50 border-green-200"
+                      : "bg-amber-50 border-amber-200"
+                }`}
+              >
+                <div className="text-xs font-semibold text-gray-900 mb-1">{group.label}</div>
+                {group.count === 0 ? (
+                  <div className="text-xs text-muted-foreground">No cubes broken at this age</div>
+                ) : (
+                  <div className="text-xs text-gray-700 space-y-0.5">
+                    <div>
+                      {group.count} cube{group.count > 1 ? "s" : ""} · mean{" "}
+                      <strong>{group.mean !== null ? group.mean.toFixed(2) : "—"} MPa</strong> · min{" "}
+                      {group.min !== null ? group.min.toFixed(2) : "—"} · max{" "}
+                      {group.max !== null ? group.max.toFixed(2) : "—"}
+                    </div>
+                    <div>
+                      Target {group.target} MPa ·{" "}
+                      {group.verdict?.accepted
+                        ? <span className="text-green-700 font-semibold">Group accepted</span>
+                        : group.verdict?.meetsMean
+                          ? <span className="text-amber-700 font-semibold">Mean reached, but a cube is more than {ACCEPTANCE_MARGIN_MPA} MPa below target</span>
+                          : <span className="text-red-700 font-semibold">Group mean below target</span>}
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-            {multiStandardResults.twentyEightDay && (
-              <div className="rounded bg-purple-50 border border-purple-200 p-3">
-                <div className="text-xs font-semibold text-purple-900 mb-2">28-Day Results</div>
-                <div className="text-sm text-purple-700">Pass: {multiStandardResults.twentyEightDay.pass} / {multiStandardResults.twentyEightDay.total}</div>
+            ))}
+            {ageGroups.other.count > 0 && (
+              <div className="rounded bg-slate-50 border border-slate-200 p-3">
+                <div className="text-xs font-semibold text-slate-900 mb-1">{ageGroups.other.label}</div>
+                <div className="text-xs text-slate-700">
+                  {ageGroups.other.count} cube{ageGroups.other.count > 1 ? "s" : ""} · mean{" "}
+                  <strong>{ageGroups.other.mean !== null ? ageGroups.other.mean.toFixed(2) : "—"} MPa</strong> · min{" "}
+                  {ageGroups.other.min !== null ? ageGroups.other.min.toFixed(2) : "—"}
+                </div>
+                <div className="text-[11px] text-slate-600 mt-1">
+                  Outside 7±1 and 28±3 days — not assessable against a standard reporting age.
+                </div>
               </div>
             )}
           </TabsContent>
@@ -685,7 +815,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   );
 
   return (
-    <TestSection title="Compressive Strength (Cube Test)" testKey={testKey} onClear={() => setRows([{ mark: "", dateOfCast: "", dateOfTest: "", load: "", width: "150", height: "150", depth: "150", mass: "", remarks: "" }])}>
+    <TestSection title="Compressive Strength (Cube Test)" testKey={testKey} onClear={() => setRows([emptyCubeRow()])}>
       <>
         <div className="flex flex-col gap-6 w-full">
           <div className="w-full">

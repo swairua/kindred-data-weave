@@ -815,14 +815,53 @@ export const logoutUser = async () => {
 };
 
 // Compressive Strength Test API helpers
+export interface CompressiveCubeApiRow {
+  id: number;
+  test_id: number;
+  cube_mark: string | null;
+  date_of_cast: string | null;
+  date_of_test: string | null;
+  load_kn: number | null;
+  width_mm: number | null;
+  height_mm: number | null;
+  depth_mm: number | null;
+  mass_g: number | null;
+  density_kg_m3: number | null;
+  calculated_strength_mpa: number | null;
+  remarks: string | null;
+}
+
+/**
+ * Read the cubes belonging to one compressive test.
+ * Filtered server-side: pulling every cube in the database and discarding most of them
+ * client-side does not scale past a few thousand rows.
+ */
+export const listCompressiveCubes = async (testId: number) => {
+  try {
+    const response = await listRecords<CompressiveCubeApiRow>("compressive_cubes", {
+      filter: `test_id=${testId}`,
+      limit: 5000,
+      orderBy: "id",
+      direction: "ASC",
+    });
+    return response;
+  } catch (error) {
+    console.error("[API] Failed to list compressive cubes:", error);
+    throw error;
+  }
+};
+
 export const saveCompressiveTest = async ({
   projectId,
   testData,
   cubes,
+  testId: existingTestId,
 }: {
   projectId: number;
   testData: Record<string, unknown>;
-  cubes: Array<Record<string, unknown>>;
+  cubes: Array<Record<string, unknown> & { id?: number | null }>;
+  /** Id of the test being edited. When given it is updated in place instead of re-matched. */
+  testId?: number | null;
 }): Promise<{ testId: number; cubeIds: number[] }> => {
   try {
     const testPayload = {
@@ -841,8 +880,10 @@ export const saveCompressiveTest = async ({
     const existingRow = (existingTests.data || []).find(
       (row) => Number(row.project_id) === Number(projectId) && row.test_key === "compressive",
     );
+    const targetRow = existingRow
+      ?? (existingTests.data || []).find((row) => Number(row.id) === Number(existingTestId));
 
-    let testId: number | null = existingRow ? Number(existingRow.id) : null;
+    let testId: number | null = targetRow ? Number(targetRow.id) : null;
     if (testId === null) {
       const created = await createRecord<{ id: number }>("compressive_tests", testPayload);
       testId = created.data?.id ?? null;
@@ -855,33 +896,52 @@ export const saveCompressiveTest = async ({
     }
     const resolvedTestId = testId;
 
-    // Replace the cubes rather than appending, so repeated saves cannot duplicate them either.
-    if (existingRow) {
-      const existingCubes = await listRecords<{ id: number; test_id: number }>("compressive_cubes", { limit: 5000 });
-      const staleCubes = (existingCubes.data || []).filter((row) => Number(row.test_id) === resolvedTestId);
-      await Promise.all(
-        staleCubes.map((row) =>
-          deleteRecord("compressive_cubes", row.id).catch((deleteError) => {
-            console.error(`[API] Failed to delete compressive cube ${row.id}:`, deleteError);
-            return null;
-          }),
-        ),
-      );
-    }
-
-    // Create cube records linked to test
+    // Diff the submitted cubes against what is already stored rather than deleting the whole
+    // set and re-inserting it. Rows carrying an `id` are updated in place, rows without one are
+    // created, and only ids the caller actually removed are deleted. Blanking the form and
+    // saving can no longer destroy results the user never intended to touch.
+    const existingCubes = await listRecords<{ id: number }>("compressive_cubes", {
+      filter: `test_id=${resolvedTestId}`,
+      limit: 5000,
+    });
+    const storedIds = new Set((existingCubes.data || []).map((row) => Number(row.id)));
+    const keptIds = new Set<number>();
     const cubeIds: number[] = [];
-    for (const cube of cubes) {
-      const cubePayload = {
-        test_id: resolvedTestId,
-        ...cube,
-      };
 
-      const cubeResponse = await createRecord<{ id: number }>("compressive_cubes", cubePayload);
-      if (cubeResponse.data?.id) {
-        cubeIds.push(cubeResponse.data.id);
+    for (const cube of cubes) {
+      const { id, ...fields } = cube;
+      const numericId = typeof id === "number" && id > 0 ? id : null;
+      // Only trust an id that genuinely belongs to this test, otherwise fall back to a create.
+      const isStored = numericId !== null && storedIds.has(numericId);
+
+      if (isStored) {
+        await updateRecord<{ id: number }>("compressive_cubes", numericId, fields);
+        keptIds.add(numericId);
+        cubeIds.push(numericId);
+        continue;
+      }
+
+      const created = await createRecord<{ id: number }>("compressive_cubes", {
+        test_id: resolvedTestId,
+        ...fields,
+      });
+      if (created.data?.id) {
+        keptIds.add(created.data.id);
+        cubeIds.push(created.data.id);
       }
     }
+
+    // Deletions run only after every write has succeeded, so a failure part-way through the
+    // loop leaves the previous cubes intact instead of leaving the test half written.
+    const removedIds = [...storedIds].filter((id) => !keptIds.has(id));
+    await Promise.all(
+      removedIds.map((id) =>
+        deleteRecord("compressive_cubes", id).catch((deleteError) => {
+          console.error(`[API] Failed to delete compressive cube ${id}:`, deleteError);
+          return null;
+        }),
+      ),
+    );
 
     return { testId: resolvedTestId, cubeIds };
   } catch (error) {
