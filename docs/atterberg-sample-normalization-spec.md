@@ -108,20 +108,32 @@ Full step-by-step SQL, with expected results and rollback, is in
 
 1. **STEP 0–1** — pre-flight and record the per-project sample baseline (106).
 2. **STEP 2** — the single `ALTER`.
-3. **STEP 3** — back up the 19 project-level rows. Must sit *outside* the transaction
-   because `CREATE TABLE … AS SELECT` is DDL and forces an implicit commit.
-4. **STEP 4** — backfill 106 rows with `JSON_TABLE` (MySQL 8.0.36), inside a transaction.
-5. **STEP 5** — six verification queries, still inside the transaction.
-6. **STEP 6** — delete the 19 originals, then `COMMIT`.
-7. **STEP 7** — final verification.
+3. **STEP 3** — back up the 19 project-level rows.
+4. **STEP 4** — backfill 106 rows with `JSON_TABLE`.
+5. **STEP 4b** — undo the backfill; run this if any STEP 5 check fails.
+6. **STEP 5** — six verification queries.
+7. **STEP 6** — delete the 19 originals.
+8. **STEP 7** — final verification.
 
-The 106 new rows coexist with the 19 originals because their `sample_key` is non-empty
-while the originals hold `''`, so the unique key cannot collide during the window.
+**Autocommit only — no `START TRANSACTION`.** This is a hard requirement, learned the hard
+way on 2026-09-26. phpMyAdmin closes the MySQL connection at the end of each submission, and
+InnoDB rolls back an open transaction when the connection closes. A submission containing
+`START TRANSACTION;` followed by the backfill therefore reported *"106 rows inserted"* and
+then silently discarded them; the next submission read 0, and the subsequent `DELETE` removed
+the originals, leaving `test_results` empty. Because the backup table held the originals, the
+data was fully recoverable — `restore_test_results.sql` restores it.
+
+Autocommit is the more robust choice here regardless: the backfill is purely additive, the
+backup is never modified, and STEP 4b returns the table to its exact prior state. Nothing in
+this migration can half-apply.
+
+**The habit that prevents a repeat:** after STEP 4, re-run STEP 5 check 1 **in a new
+submission** and confirm it reports 106 before running anything else.
 
 **Check 6 is the safety net.** For every backed-up row it counts how many of *its* samples
 landed in the new rows and compares that with how many it had. Any output means samples are
-missing, so do not commit. An earlier draft compared only the first record, which would have
-missed a partial loss.
+missing. In the incident above it reported `migrated_samples = 0` for all 19 rows — which is
+exactly the signal that should have stopped the run before STEP 6.
 
 ## 5. Rollout order — dual-read must ship first
 

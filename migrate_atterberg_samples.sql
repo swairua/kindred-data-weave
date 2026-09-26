@@ -58,13 +58,26 @@
 --  HOW TO RUN
 --  ---------------------------------------------------------------------------
 --  phpMyAdmin -> SQL tab -> paste ONE STEP AT A TIME -> read the stated
---  expected result before continuing. Do not paste the whole file: phpMyAdmin
---  would run the DELETE and the COMMIT in one submission and skip every
---  checkpoint.
+--  expected result before continuing. Do not paste the whole file.
+--
+--  ####################################################################
+--  ##  DO NOT USE START TRANSACTION / COMMIT IN phpMyAdmin.             ##
+--  ##                                                                  ##
+--  ##  phpMyAdmin runs each submission and then closes the MySQL        ##
+--  ##  connection. An open transaction is rolled back when that          ##
+--  ##  connection closes, so a "BEGIN ... INSERT" batch is silently      ##
+--  ##  UNDONE before you can see the result. The next submission then   ##
+--  ##  reports the old row count, and if you keep going you delete the  ##
+--  ##  originals with nothing to replace them.                          ##
+--  ##                                                                  ##
+--  ##  This file therefore uses AUTOCOMMIT only. The backup table is the ##
+--  ##  safety net, and STEP 4b explicitly undoes the backfill if a check  ##
+--  ##  fails. That is more robust here than a transaction, because        ##
+--  ##  nothing here can half-apply.                                       ##
+--  ####################################################################
 --
 --  STEP 2 is the only DDL. It is a single ALTER, so MySQL 8 applies it
---  atomically, but it causes an IMPLICIT COMMIT - which is why STEP 3 and
---  STEP 4 cannot share a transaction with it.
+--  atomically.
 --
 --  A full ROLLBACK is at the end of this file. Keep
 --  test_results_sample_migration_backup until you are satisfied.
@@ -152,7 +165,7 @@ SELECT COUNT(*) AS backup_rows FROM `test_results_sample_migration_backup`;
 
 
 -- =============================================================================
--- STEP 4  Backfill one row per sample (inside a transaction)
+-- STEP 4  Backfill one row per sample  (AUTOCOMMIT - no BEGIN, no COMMIT)
 --
 -- JSON_TABLE walks payload_json.project.records[] and emits one output row per
 -- sample, carrying the project's columns through unchanged.
@@ -171,12 +184,13 @@ SELECT COUNT(*) AS backup_rows FROM `test_results_sample_migration_backup`;
 --   reports byte-identical to today.
 --
 -- These 106 new rows coexist with the 19 originals because their sample_keys
--- are non-empty while the originals hold ''. Nothing is overwritten yet.
+-- are non-empty while the originals hold ''. Nothing is overwritten, so if the
+-- STEP 5 checks fail, run STEP 4b and you are back where you started.
 --
--- Expect: "106 row(s) affected."
+-- Expect: "106 rows inserted."  Then IMMEDIATELY re-run check 1 below in its
+-- own submission - it must report 106. If it reports 0, the insert did not
+-- stick and you must stop.
 -- =============================================================================
-START TRANSACTION;
-
 INSERT INTO `test_results`
   (`user_id`, `project_id`, `test_key`, `sample_key`, `sample_label`, `sample_depth`,
    `name`, `category`, `status`, `data_points`, `key_results_json`, `payload_json`,
@@ -220,7 +234,24 @@ WHERE tr.`test_key` = 'atterberg'
 
 
 -- -----------------------------------------------------------------------------
--- STEP 5  Verify BEFORE removing anything. Still inside the transaction.
+-- STEP 4b  UNDO the backfill - run this if ANY check in STEP 5 fails, or if
+-- check 1 does not report 106.
+--
+-- The 19 originals were never modified, so deleting the 106 rows returns the
+-- table to exactly its pre-STEP-4 state. Nothing is lost by running this.
+--
+-- Expect: "106 row(s) affected", then total_rows back to 19.
+-- -----------------------------------------------------------------------------
+-- DELETE FROM `test_results` WHERE `sample_key` <> '';
+--
+-- SELECT COUNT(*) AS total_rows FROM `test_results`;                    -- expect 19
+-- SELECT COUNT(*) AS rows_holding_samples
+--   FROM `test_results` WHERE `test_key` = 'atterberg'
+--   AND JSON_LENGTH(JSON_EXTRACT(`payload_json`, '$.project.records')) > 0;
+
+
+-- -----------------------------------------------------------------------------
+-- STEP 5  Verify BEFORE removing anything.
 --
 -- Check 1: expect 106
 -- -----------------------------------------------------------------------------
@@ -283,10 +314,15 @@ HAVING migrated_samples <> backup_samples;
 
 
 -- =============================================================================
--- STEP 6  Remove the 19 project-level rows, then commit
+-- STEP 6  Remove the 19 project-level rows
 --
--- Only do this once STEP 5 is clean. After the COMMIT the originals are gone
--- from test_results (they remain in the backup table).
+-- Only do this once STEP 5 is completely clean. After this the originals are
+-- gone from test_results; they remain in test_results_sample_migration_backup,
+-- which is what makes this reversible.
+--
+-- There is no COMMIT: this runs in autocommit. That is deliberate, because a
+-- transaction opened in one phpMyAdmin submission is rolled back when that
+-- submission's connection closes - see the warning at the top of this file.
 --
 -- Expect: "19 row(s) affected", then 106.
 -- =============================================================================
@@ -295,8 +331,6 @@ WHERE `test_key` = 'atterberg'
   AND `sample_key` = '';
 
 SELECT COUNT(*) AS total_rows FROM `test_results`;
-
-COMMIT;
 
 
 -- =============================================================================
