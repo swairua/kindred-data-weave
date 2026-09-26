@@ -113,9 +113,13 @@ class DatabaseSessionHandler implements SessionHandlerInterface
                 if (!$stmt) return false;
                 $stmt->bind_param('ssisi', $id, $data, $userId, $data, $userId);
             } else {
+                // Deliberately does NOT clear a stored user_id on update. This branch also runs
+                // when read() failed - for example on a transient database error - and
+                // clobbering user_id there would silently sign the user out. Signing out goes
+                // through destroy(), which deletes the row outright.
                 $sql = "INSERT INTO `sessions` (session_id, session_data, expires_at, updated_at, user_id)
                         VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 30 MINUTE), NOW(), NULL)
-                        ON DUPLICATE KEY UPDATE session_data = ?, updated_at = NOW(), expires_at = DATE_ADD(NOW(), INTERVAL 30 MINUTE), user_id = NULL";
+                        ON DUPLICATE KEY UPDATE session_data = ?, updated_at = NOW(), expires_at = DATE_ADD(NOW(), INTERVAL 30 MINUTE)";
                 $stmt = $this->conn->prepare($sql);
                 if (!$stmt) return false;
                 $stmt->bind_param('sss', $id, $data, $data);
@@ -230,9 +234,32 @@ function apiLogAction(): string
     return preg_match('/^[a-z0-9_-]{1,64}$/', $action) === 1 ? $action : 'unknown';
 }
 
+/**
+ * Whether a 4xx response is worth writing to the error log.
+ *
+ * A 401 is the designed answer to "is this request authenticated?". The client polls
+ * action=me every few minutes to refresh the session, and every list request made while
+ * signed out is answered with 401 as well. Logging those as "API error response" buried
+ * genuine failures - a real 500 was invisible in a stream of routine 401s.
+ *
+ * So a 401 is only an error when the request arrived *with* a session: that means the
+ * session exists but was rejected, which is a real fault rather than a normal sign-out.
+ * Every other 4xx, and every 5xx, is still logged.
+ */
+function shouldLogApiError(int $status): bool
+{
+    if ($status < 400) {
+        return false;
+    }
+    if ($status !== 401) {
+        return true;
+    }
+    return isset($_SESSION['user_id']);
+}
+
 function respond(array $payload, int $status = 200): never
 {
-    if ($status >= 400) {
+    if (shouldLogApiError($status)) {
         error_log(sprintf('API error response: status=%d, action=%s', $status, apiLogAction()));
     }
 
