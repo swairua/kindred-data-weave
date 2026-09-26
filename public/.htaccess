@@ -1,0 +1,30 @@
+# SPA fallback for Apache / cPanel.
+#
+# This is the React build output, not a multi-page site, so a request for a client-side
+# route such as /tests or /projects/results has no file behind it. Without this rule
+# Apache answers 404 and a browser refresh loses the page.
+#
+# The two RewriteCond lines are what makes it safe: anything that IS a real file or
+# directory is served as-is, so assets under /assets keep working and api.php is reached
+# directly instead of being rewritten to index.html.
+#
+# NOTE: this file is used by Apache only. Render does not read .htaccess - see
+# render.yaml and the note in the repository README for the Render equivalent.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Serve real files and directories untouched.
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Everything else is a client-side route, so hand it to the app shell.
+  RewriteRule ^ /index.html [L]
+</IfModule>
+
+# Do not list directory contents.
+Options -Indexes
+
+# Let the app handle its own client-side 404 for unmatched paths.
+ErrorDocument 404 /index.html

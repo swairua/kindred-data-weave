@@ -1,20 +1,15 @@
 const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
 
-// Detect if running in a Builder.io preview or sandbox environment
-const isBuilderPreview = typeof window !== 'undefined' &&
-  window.location.hostname.includes('builderio.xyz');
-
 // In development (localhost), use the proxied path to bypass CORS
-// In preview/production, use the full URL to the actual API server
+// In production, use the full URL to the actual API server
 // If VITE_API_BASE_URL is set, always use that
 export const API_BASE_URL = configuredApiBaseUrl ||
-  (import.meta.env.DEV && !isBuilderPreview ? "/api.php" : "https://lab.wayrus.co.ke/api.php");
+  (import.meta.env.DEV ? "/api.php" : "https://lab.wayrus.co.ke/api.php");
 
 // Log API configuration on module load
 console.log("[API] === CONFIGURATION ===");
 console.log("[API] VITE_API_BASE_URL env:", configuredApiBaseUrl ? `"${configuredApiBaseUrl}"` : "(not set)");
 console.log("[API] Development mode:", import.meta.env.DEV);
-console.log("[API] Builder.io preview detected:", isBuilderPreview);
 console.log("[API] Final API_BASE_URL:", API_BASE_URL);
 console.log("[API] window.location.origin:", window.location.origin);
 
@@ -454,16 +449,6 @@ export const apiRequest = async <T>(
       console.warn(`[API]   2. Network connectivity issue`);
       console.warn(`[API]   3. CORS or proxy configuration issue`);
       console.warn(`[API]   4. API_BASE_URL is incorrect`);
-
-      // Check if we're in a Builder.io preview environment
-      const isPreview = typeof window !== 'undefined' &&
-        window.location.hostname.includes('builderio.xyz');
-
-      if (isPreview) {
-        console.warn(`[API] ⚠️ PREVIEW ENVIRONMENT DETECTED: Cross-origin requests may be blocked by CORS`);
-        console.warn(`[API] The API at ${url} is not accessible from this preview domain`);
-        console.warn(`[API] To fix: Configure CORS headers on the backend or set VITE_API_BASE_URL to a relative path`);
-      }
 
       // For background tasks (like project loading), be less verbose
       const isBackgroundTask = ['list', 'me', 'logout'].includes(String(action));

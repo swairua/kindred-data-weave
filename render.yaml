@@ -1,0 +1,19 @@
+# Render deployment definition.
+#
+# The important part is the rewrite at the bottom. Render serves static sites from its own
+# CDN and does NOT read .htaccess, so a React app whose routes are handled by react-router
+# answers 404 on any refresh that is not "/" - /tests, /projects and /results all did.
+# The rewrite sends every path that has no matching file to index.html, and Render still
+# serves real assets first, so hashed bundles are unaffected.
+#
+# The public/.htaccess file covers Apache / cPanel instead, where the same build is served.
+services:
+  - type: web
+    name: kindred-data-weave
+    runtime: static
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

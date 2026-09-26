@@ -6,19 +6,14 @@ header('Content-Type: application/json; charset=utf-8');
 // CORS headers - use specific origin instead of * when credentials are involved
 $allowed_origins = [
     'https://lab.wayrus.co.ke',
-    'https://26823065fd2a4fa3bd380434d33615c0-gentle-road-nwozm8we.builderio.xyz',
-    'https://lab-data-craft.lovable.app',
+    'https://kindred-data-weave.onrender.com',
     'http://localhost:3000',
     'http://localhost:5173',
     'http://localhost:8080',
 ];
 
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-// Allow any Lovable preview subdomain
-$isLovablePreview = (bool) preg_match('/^https:\/\/[a-z0-9\-]+\.lovable\.app$/', $origin);
-// Allow any Builder.io preview subdomain
-$isBuilderPreview = (bool) preg_match('/^https:\/\/[a-z0-9\-]+\.builderio\.xyz$/', $origin);
-if (in_array($origin, $allowed_origins, true) || $isLovablePreview || $isBuilderPreview) {
+if (in_array($origin, $allowed_origins, true)) {
     header('Access-Control-Allow-Origin: ' . $origin);
     header('Access-Control-Allow-Credentials: true');
 } elseif ($origin) {
