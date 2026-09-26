@@ -16,16 +16,18 @@ vi.mock("@/context/TestDataContext", () => ({
   useTestData: () => ({ recordMetadata: {} }),
 }));
 
+// Ids and project ids are strings because that is what the PHP API returns: `api.php` uses a plain
+// `new mysqli(...)` and `hydrateRow()` only decodes `*_json` columns.
 const savedResults = [
   {
-    id: 88,
-    project_id: 42,
+    id: "88",
+    project_id: "42",
     test_key: "grading",
     payload_json: { project: { records: [{ sampleNumber: "Selected sample", sampledSubmittedBy: "Sample submitter", testedBy: "Lab technician", samplePreparation: { initialDryMass: "123" } }] } },
   },
   {
-    id: 89,
-    project_id: 42,
+    id: "89",
+    project_id: "42",
     test_key: "grading",
     payload_json: { project: { records: [{ sampleNumber: "Newest sample", samplePreparation: { initialDryMass: "999" } }] } },
   },

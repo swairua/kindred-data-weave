@@ -41,6 +41,18 @@ type ApiTestResult = {
   status?: string;
   created_at?: string;
   updated_at?: string;
+  payload_json?: {
+    project?: {
+      records?: Array<unknown> | null;
+    };
+  };
+};
+
+/** A row can be resumed when its first stored record is a real object rather than null. */
+const isUsableTestResult = (result: ApiTestResult) => {
+  const records = result.payload_json?.project?.records;
+  if (!Array.isArray(records) || records.length === 0) return false;
+  return typeof records[0] === "object" && records[0] !== null;
 };
 
 const toDraft = (project: ProjectDetails): ProjectDraft => ({
@@ -193,9 +205,27 @@ const ProjectOverview = () => {
     toast.success("Logged out");
   };
 
-  const orderedTestResults = [...testResults].sort((a, b) =>
-    (b.updated_at || b.created_at || "").localeCompare(a.updated_at || a.created_at || ""),
-  );
+  // test_results holds one row per (project, test). The list is newest-first, so keeping one row
+  // per test_key hides the legacy duplicates that the previous save behaviour created. A row whose
+  // first stored record is null cannot be resumed, so it is only used when nothing better exists.
+  const orderedTestResults = (() => {
+    const newestFirst = [...testResults].sort((a, b) =>
+      (b.updated_at || b.created_at || "").localeCompare(a.updated_at || a.created_at || ""),
+    );
+    const chosen = new Map<string, ApiTestResult>();
+    for (const result of newestFirst) {
+      const key = String(result.test_key);
+      if (!chosen.has(key)) chosen.set(key, result);
+    }
+    for (const result of newestFirst) {
+      const key = String(result.test_key);
+      const current = chosen.get(key);
+      if (current && !isUsableTestResult(current) && isUsableTestResult(result)) chosen.set(key, result);
+    }
+    return Array.from(chosen.values()).sort((a, b) =>
+      (b.updated_at || b.created_at || "").localeCompare(a.updated_at || a.created_at || ""),
+    );
+  })();
   const addTestKey = project?.test_type === "grading" ? "grading" : "atterberg";
   const addTestLabel = project?.test_type === "grading" ? "Add Grading" : "Add Atterberg";
 

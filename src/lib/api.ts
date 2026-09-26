@@ -639,11 +639,55 @@ export interface ApiWriteResponse<T> {
   last_saved_at?: string;
 }
 
+/**
+ * Integer columns that the PHP API hands back as strings.
+ *
+ * `api.php` opens the connection with a plain `new mysqli(...)` (no
+ * `MYSQLI_OPT_INT_AND_FLOAT_NATIVE`) and `hydrateRow()` only JSON-decodes `*_json` columns, so every
+ * other column reaches the browser as a string. Coercing them here makes the declared `number` types
+ * true and stops `row.id === someNumber` comparisons from silently failing, which is what caused
+ * duplicate `test_results` rows when a test result was edited from the Test results page.
+ */
+const NUMERIC_COLUMNS = new Set([
+  "id",
+  "user_id",
+  "project_id",
+  "test_id",
+  "parent_id",
+  "company_id",
+  "record_id",
+  "test_result_id",
+  "data_points",
+  "sort_order",
+]);
+
+const coerceNumericColumns = (row: unknown): unknown => {
+  if (typeof row !== "object" || row === null || Array.isArray(row)) return row;
+  const source = row as Record<string, unknown>;
+  const result: Record<string, unknown> = { ...source };
+  for (const key of Object.keys(result)) {
+    if (!NUMERIC_COLUMNS.has(key)) continue;
+    const value = result[key];
+    if (typeof value !== "string") continue;
+    const trimmed = value.trim();
+    if (trimmed === "" || !Number.isFinite(Number(trimmed))) continue;
+    result[key] = Number(trimmed);
+  }
+  return result;
+};
+
+const coerceWriteResponse = <T>(response: ApiWriteResponse<T>): ApiWriteResponse<T> => ({
+  ...response,
+  id: typeof response.id === "string" ? Number(response.id) : response.id,
+  data: coerceNumericColumns(response.data) as T | null,
+});
+
 export const listRecords = async <T>(table: string, params?: Record<string, string | number | boolean | null | undefined>) => {
   const timestamp = new Date().toISOString();
   console.log(`[API] ${timestamp} Starting list request for table: ${table} with params:`, params);
   try {
     const response = await apiRequest<ApiListResponse<T>>(undefined, { action: "list", table, ...params });
+    response.data = (response.data || []).map((row) => coerceNumericColumns(row) as T);
     console.log(`[API] ${timestamp} Successfully loaded ${response.data.length} records from ${table}`);
     return response;
   } catch (error) {
@@ -653,8 +697,10 @@ export const listRecords = async <T>(table: string, params?: Record<string, stri
   }
 };
 
-export const readRecord = async <T>(table: string, id: string | number) =>
-  apiRequest<ApiReadResponse<T>>(undefined, { action: "read", table, id });
+export const readRecord = async <T>(table: string, id: string | number): Promise<ApiReadResponse<T>> => {
+  const response = await apiRequest<ApiReadResponse<T>>(undefined, { action: "read", table, id });
+  return { ...response, data: coerceNumericColumns(response.data) as T };
+};
 
 /**
  * Fetch a complete project record with all fields including advanced metadata.
@@ -689,10 +735,10 @@ export const fetchFullProject = async (projectId: string | number) => {
 };
 
 export const createRecord = async <T>(table: string, data: Record<string, unknown>) =>
-  apiRequest<ApiWriteResponse<T>>({ method: "POST", body: JSON.stringify({ table, data }) }, { action: "create" });
+  coerceWriteResponse(await apiRequest<ApiWriteResponse<T>>({ method: "POST", body: JSON.stringify({ table, data }) }, { action: "create" }));
 
 export const updateRecord = async <T>(table: string, id: string | number, data: Record<string, unknown>) =>
-  apiRequest<ApiWriteResponse<T>>({ method: "PUT", body: JSON.stringify({ table, id, data }) }, { action: "update" });
+  coerceWriteResponse(await apiRequest<ApiWriteResponse<T>>({ method: "PUT", body: JSON.stringify({ table, id, data }) }, { action: "update" }));
 
 export const deleteRecord = async <T>(table: string, id: string | number) =>
   apiRequest<ApiWriteResponse<T>>({ method: "DELETE", body: JSON.stringify({ table, id }) }, { action: "delete" });
@@ -792,25 +838,55 @@ export const saveCompressiveTest = async ({
   cubes: Array<Record<string, unknown>>;
 }): Promise<{ testId: number; cubeIds: number[] }> => {
   try {
-    // Create or find test record
     const testPayload = {
       project_id: projectId,
       test_key: "compressive",
       ...testData,
     };
 
-    const testResponse = await createRecord<{ id: number }>("compressive_tests", testPayload);
-    const testId = testResponse.data?.id;
+    // Create or find test record. Reusing the existing row is what stops a re-save from adding a
+    // second compressive test for the same project.
+    const existingTests = await listRecords<{ id: number; project_id: number; test_key: string }>("compressive_tests", {
+      limit: 5000,
+      orderBy: "updated_at",
+      direction: "DESC",
+    });
+    const existingRow = (existingTests.data || []).find(
+      (row) => Number(row.project_id) === Number(projectId) && row.test_key === "compressive",
+    );
 
-    if (!testId) {
-      throw new Error("Failed to create compressive test record");
+    let testId: number | null = existingRow ? Number(existingRow.id) : null;
+    if (testId === null) {
+      const created = await createRecord<{ id: number }>("compressive_tests", testPayload);
+      testId = created.data?.id ?? null;
+    } else {
+      await updateRecord<{ id: number }>("compressive_tests", testId, testPayload);
+    }
+
+    if (testId === null) {
+      throw new Error("Failed to save compressive test record");
+    }
+    const resolvedTestId = testId;
+
+    // Replace the cubes rather than appending, so repeated saves cannot duplicate them either.
+    if (existingRow) {
+      const existingCubes = await listRecords<{ id: number; test_id: number }>("compressive_cubes", { limit: 5000 });
+      const staleCubes = (existingCubes.data || []).filter((row) => Number(row.test_id) === resolvedTestId);
+      await Promise.all(
+        staleCubes.map((row) =>
+          deleteRecord("compressive_cubes", row.id).catch((deleteError) => {
+            console.error(`[API] Failed to delete compressive cube ${row.id}:`, deleteError);
+            return null;
+          }),
+        ),
+      );
     }
 
     // Create cube records linked to test
     const cubeIds: number[] = [];
     for (const cube of cubes) {
       const cubePayload = {
-        test_id: testId,
+        test_id: resolvedTestId,
         ...cube,
       };
 
@@ -820,7 +896,7 @@ export const saveCompressiveTest = async ({
       }
     }
 
-    return { testId, cubeIds };
+    return { testId: resolvedTestId, cubeIds };
   } catch (error) {
     console.error("[API] Failed to save compressive test:", error);
     throw error;

@@ -13,12 +13,26 @@ export const loadProctorResult = async (projectId: number) => {
 };
 
 export const saveProctorResult = async (projectId: number, recordId: number | null, data: Record<string, unknown>) => {
-  const response = recordId
-    ? await updateRecord<{ id: number }>("test_results", recordId, { ...data, project_id: projectId })
-    : await createRecord<{ id: number }>("test_results", { ...data, project_id: projectId });
-  const savedId = recordId ?? response.data?.id ?? response.id ?? null;
-  if (savedId === null) throw new Error("Saving this record returned no ID");
-  return savedId;
+  const payload = { ...data, project_id: projectId };
+  if (recordId) {
+    const response = await updateRecord<{ id: number }>("test_results", recordId, payload);
+    const updatedId = response.data?.id ?? recordId;
+    if (updatedId === null) throw new Error("Saving this record returned no ID");
+    return updatedId;
+  }
+  try {
+    const response = await createRecord<{ id: number }>("test_results", payload);
+    const savedId = response.data?.id ?? response.id ?? null;
+    if (savedId === null) throw new Error("Saving this record returned no ID");
+    return savedId;
+  } catch (createError) {
+    // A unique index on (project_id, test_key) rejects a second row for this project, so fall back
+    // to updating the row that already exists rather than surfacing a hard error.
+    const existing = await loadProctorResult(projectId);
+    if (!existing) throw createError;
+    const response = await updateRecord<{ id: number }>("test_results", existing.id, payload);
+    return response.data?.id ?? existing.id;
+  }
 };
 
 export const clearProctorResults = async (projectId: number) => {

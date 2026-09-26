@@ -68,7 +68,7 @@ const TestResults = () => {
     const loadTestResults = async () => {
       try {
         setIsLoading(true);
-        const response = await listRecords<ApiTestResult>("test_results", { limit: 100 });
+        const response = await listRecords<ApiTestResult>("test_results", { limit: 5000, orderBy: "updated_at", direction: "DESC" });
         setApiTestResults(response.data || []);
       } catch (error) {
         console.error("Failed to load test results:", error);
@@ -104,9 +104,34 @@ const TestResults = () => {
     return null;
   };
 
+  // test_results holds one row per (project, test). Databases written by the previous save
+  // behaviour may still contain the duplicates it created, so keep only the most recent of each
+  // pair instead of listing the same test several times. A row whose first stored record is null
+  // opens as a blank form, so it is only used when no resumable row exists.
+  const latestResults = useMemo(() => {
+    const isUsable = (result: ApiTestResult) => {
+      const records = result.payload_json?.project?.records;
+      if (!Array.isArray(records) || records.length === 0) return false;
+      return typeof records[0] === "object" && records[0] !== null;
+    };
+    const stamp = (result: ApiTestResult) => result.updated_at || result.created_at || "";
+    const newest = new Map<string, ApiTestResult>();
+    for (const result of apiTestResults) {
+      const key = `${result.project_id}::${result.test_key}`;
+      const current = newest.get(key);
+      if (!current || stamp(result) > stamp(current)) newest.set(key, result);
+    }
+    for (const result of apiTestResults) {
+      const key = `${result.project_id}::${result.test_key}`;
+      const current = newest.get(key);
+      if (current && !isUsable(current) && isUsable(result)) newest.set(key, result);
+    }
+    return Array.from(newest.values());
+  }, [apiTestResults]);
+
   // Convert API test results to display format
   const tests = useMemo(() => {
-    return apiTestResults.map((result) => {
+    return latestResults.map((result) => {
       const record = getFirstRecord(result);
       const sampleId = record?.label || "-";
       const depth = record?.sampleDepthFrom || record?.sampleDepthTo
@@ -119,6 +144,7 @@ const TestResults = () => {
 
       return {
         id: String(result.id),
+        resultId: Number(result.id),
         project_id: result.project_id,
         test_key: result.test_key,
         project_name: projectName,
@@ -183,10 +209,12 @@ const TestResults = () => {
 
     toast.success(`Opened ${test.project_name}`);
 
-    // Navigate to tests page with:
+    // Navigate to the tests page with:
     // - hash for the specific test (#atterberg)
-    // - query param for the project ID (so Index.tsx can load full project data)
-    navigate(`/tests?projectId=${test.project_id}#${test.test_key}`);
+    // - resultId so the record that was clicked is the one edited, even if the database still
+    //   holds duplicate rows for the same (project, test) pair
+    // - projectId so Index.tsx can load full project data
+    navigate(`/tests?projectId=${test.project_id}&resultId=${test.resultId}#${test.test_key}`);
   };
 
   const handleLogout = () => {

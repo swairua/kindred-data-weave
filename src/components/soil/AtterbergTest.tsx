@@ -275,6 +275,7 @@ type ApiAtterbergResultRow = {
   project_id: number;
   test_key: string;
   payload_json: unknown;
+  updated_at?: string;
 };
 
 type AtterbergProjectLookup = {
@@ -360,6 +361,18 @@ const loadAtterbergProjectFromApi = async (lookup: AtterbergProjectLookup, proje
   }
 };
 
+/** Every test_results row belonging to one (project, test_key) pair, newest first. */
+const listAtterbergResultRows = async (projectRowId: number): Promise<ApiAtterbergResultRow[]> => {
+  const response = await retryWithBackoff(
+    () => listRecords<ApiAtterbergResultRow>("test_results", { limit: 5000, orderBy: "updated_at", direction: "DESC" })
+  );
+  // Sorted again here so the newest row is chosen even if the API ordering is not honoured.
+  return (response.data || [])
+    .filter((row) => Number(row.project_id) === Number(projectRowId) && row.test_key === "atterberg")
+    .sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || "") || Number(b.id) - Number(a.id));
+};
+
+
 export const persistAtterbergProjectToApi = async ({
   lookup,
   payload,
@@ -423,9 +436,8 @@ export const persistAtterbergProjectToApi = async ({
       throw new Error("Unable to save project");
     }
 
-    // PHASE 1: CREATE NEW TEST RESULT RECORD FIRST (before deleting old ones)
-    // This ensures atomicity: if creation fails, old data is preserved
-    console.log(`[Atterberg Save] === PHASE 1: CREATE NEW TEST RESULT ===`);
+    // PHASE 1: resolve the existing row for this (project, test) pair and write in place.
+    // test_results holds one row per pair, so a save must update rather than insert.
     const resultPayload = {
       project_id: projectRow.id,
       test_key: "atterberg",
@@ -437,70 +449,64 @@ export const persistAtterbergProjectToApi = async ({
       payload_json: payload,
     };
 
-    console.log(`[Atterberg Save] Step 1: Preparing to create new test_results record...`);
-    console.log(`[Atterberg Save] Step 1a: Project ID = ${projectRow.id}`);
-    console.log(`[Atterberg Save] Step 1b: Test status = ${status}`);
-    console.log(`[Atterberg Save] Step 1c: Data points = ${dataPoints}`);
-    console.log(`[Atterberg Save] Step 1d: Payload has ${Object.keys(payload).length} keys and ${payload.project.records?.length || 0} test records`);
-
-    let newRecordId: number | null = null;
+    let existingResultRows: ApiAtterbergResultRow[] = [];
     try {
-      console.log(`[Atterberg Save] Step 2: Sending POST request to create test_results...`);
-      const createResponse = await retryWithBackoff(
-        () => createApiRecord<{ id: number }>("test_results", resultPayload)
-      );
-      console.log(`[Atterberg Save] Step 2 complete: POST request successful`);
-      newRecordId = createResponse.data?.id ?? null;
-      console.log(`[Atterberg Save] Successfully created test_results record ID ${newRecordId}`);
-      if (createResponse.last_saved_at) {
-        lastSavedAt = createResponse.last_saved_at;
-      }
-    } catch (createError) {
-      console.error(`[Atterberg Save] === CRITICAL ERROR IN PHASE 1 ===`);
-      console.error(`[Atterberg Save] Failed to create test_results record`);
-      console.error(`[Atterberg Save] Error type:`, createError instanceof Error ? createError.constructor.name : typeof createError);
-      console.error(`[Atterberg Save] Error message:`, createError instanceof Error ? createError.message : String(createError));
-      console.error(`[Atterberg Save] Full error:`, createError);
-      throw new Error(`Failed to save test results: ${createError instanceof Error ? createError.message : String(createError)}`);
+      existingResultRows = await listAtterbergResultRows(projectRow.id);
+    } catch (lookupError) {
+      console.warn("[Atterberg Save] Could not read existing results, will attempt a create:", lookupError);
     }
 
-    // PHASE 2: CLEANUP OLD TEST RESULT RECORDS (after successful creation)
-    // This is safe now because new data is already persisted
-    console.log(`[Atterberg Save] === PHASE 2: CLEANUP OLD RECORDS ===`);
-    console.log(`[Atterberg Save] Project saved with ID ${projectRow.id}, now cleaning up orphaned test_results...`);
-
+    let savedRowId: number | null = null;
     try {
-      console.log(`[Atterberg Save] Step 3: Querying existing test_results...`);
-      const existingResultsResponse = await retryWithBackoff(
-        () => listRecords<ApiAtterbergResultRow>("test_results", { limit: 5000, orderBy: "updated_at", direction: "DESC" })
-      );
-      console.log(`[Atterberg Save] Step 3 complete: Found ${existingResultsResponse.data.length} total test_results records`);
+      if (existingResultRows.length > 0) {
+        const existingRow = existingResultRows[0];
+        const updateResponse = await retryWithBackoff(
+          () => updateApiRecord<{ id: number }>("test_results", existingRow.id, resultPayload)
+        );
+        savedRowId = updateResponse.data?.id ?? existingRow.id;
+        lastSavedAt = updateResponse.last_saved_at ?? lastSavedAt;
+      } else {
+        try {
+          const createResponse = await retryWithBackoff(
+            () => createApiRecord<{ id: number }>("test_results", resultPayload)
+          );
+          savedRowId = createResponse.data?.id ?? null;
+          lastSavedAt = createResponse.last_saved_at ?? lastSavedAt;
+        } catch (createError) {
+          // A unique index on (project_id, test_key) rejects the insert, so fall back to updating
+          // the row that won the race. Only rethrow when there is genuinely nothing to update.
+          const raced = await listAtterbergResultRows(projectRow.id);
+          if (raced.length === 0) throw createError;
+          const updateResponse = await retryWithBackoff(
+            () => updateApiRecord<{ id: number }>("test_results", raced[0].id, resultPayload)
+          );
+          savedRowId = updateResponse.data?.id ?? raced[0].id;
+          lastSavedAt = updateResponse.last_saved_at ?? lastSavedAt;
+        }
+      }
+    } catch (writeError) {
+      console.error("[Atterberg Save] Failed to write the test_results record:", writeError);
+      throw new Error(`Failed to save test results: ${writeError instanceof Error ? writeError.message : String(writeError)}`);
+    }
 
-      const projectTestResults = existingResultsResponse.data.filter(
-        (row) => row.project_id === projectRow.id && row.test_key === "atterberg" && row.id !== newRecordId
-      );
-      console.log(`[Atterberg Save] Step 4: Filtered to ${projectTestResults.length} old records for project ${projectRow.id} (excluding newly created record)`);
-
-      if (projectTestResults.length > 0) {
-        console.log(`[Atterberg Save] Step 5: Deleting ${projectTestResults.length} old records...`);
-        const deleteResults = await Promise.all(
-          projectTestResults.map((row) =>
-            retryWithBackoff(() => deleteApiRecord("test_results", row.id)).catch(err => {
-              console.error(`[Atterberg Save] Failed to delete record ${row.id}:`, err);
+    // PHASE 2: collapse any leftover duplicate rows for this pair. This is defensive and heals
+    // databases that already accumulated several rows before the save switched to update-in-place.
+    const duplicateRows = existingResultRows.filter((row) => Number(row.id) !== Number(savedRowId));
+    if (duplicateRows.length > 0) {
+      try {
+        await Promise.all(
+          duplicateRows.map((row) =>
+            retryWithBackoff(() => deleteApiRecord("test_results", row.id)).catch((deleteError) => {
+              console.error(`[Atterberg Save] Failed to delete duplicate record ${row.id}:`, deleteError);
               return null;
             })
           )
         );
-        const successCount = deleteResults.filter(r => r !== null).length;
-        console.log(`[Atterberg Save] Step 5 complete: Successfully deleted ${successCount} of ${projectTestResults.length} old records`);
-      } else {
-        console.log(`[Atterberg Save] Step 4: No old records found, skipping delete phase`);
+        console.log(`[Atterberg Save] Removed ${duplicateRows.length} duplicate row(s) for project ${projectRow.id}`);
+      } catch (cleanupError) {
+        console.warn(`[Atterberg Save] Duplicate cleanup had errors:`, cleanupError);
+        // The record is already written, so a failed cleanup must not fail the save.
       }
-      console.log(`[Atterberg Save] === CLEANUP PHASE COMPLETE ===`);
-    } catch (cleanupError) {
-      console.warn(`[Atterberg Save] Warning: Cleanup phase had errors:`, cleanupError);
-      // Don't fail the entire save operation if cleanup fails, just warn and continue
-      // New data is already persisted, so this is safe
     }
 
     console.log(`[Atterberg Save] === SAVE COMPLETE ===`);

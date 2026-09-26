@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fetchCurrentUser, getSessionToken, setSessionToken } from "@/lib/api";
+import { createRecord, fetchCurrentUser, getSessionToken, listRecords, readRecord, setSessionToken } from "@/lib/api";
 
 const fetchMock = vi.fn();
 
@@ -81,5 +81,67 @@ describe("fetchCurrentUser", () => {
 
     await rejectedCheck;
     expect(getSessionToken()).toBe("preview-test-session");
+  });
+});
+
+describe("numeric column coercion", () => {
+  /**
+   * The PHP API returns every non-JSON column as a string (`new mysqli(...)` without
+   * MYSQLI_OPT_INT_AND_FLOAT_NATIVE, and hydrateRow() only decodes `*_json`). The client coerces
+   * the known integer columns back to numbers so id comparisons such as
+   * `row.id === selectedResultId` cannot silently fail and create duplicate records.
+   */
+  it("converts string ids and counts to numbers in list records", async () => {
+    fetchMock.mockResolvedValue(response(200, {
+      table: "test_results",
+      data: [
+        { id: "88", project_id: "42", user_id: "1", test_key: "grading", data_points: "7", name: "PSD", updated_at: "2026-06-12 10:00:00" },
+        { id: "89", project_id: "42", test_key: "proctor", data_points: "0", name: "Proctor" },
+      ],
+      limit: 5000,
+      offset: 0,
+    }));
+
+    const result = await listRecords<{ id: number; project_id: number; user_id: number; data_points: number }>("test_results");
+
+    expect(result.data[0]).toMatchObject({ id: 88, project_id: 42, user_id: 1, data_points: 7 });
+    // Non-numeric columns are left untouched.
+    expect(result.data[0]).toMatchObject({ test_key: "grading", name: "PSD", updated_at: "2026-06-12 10:00:00" });
+    expect(result.data[1]).toMatchObject({ id: 89, data_points: 0 });
+  });
+
+  it("leaves null ids and non-numeric values alone", async () => {
+    fetchMock.mockResolvedValue(response(200, {
+      table: "test_results",
+      data: [
+        { id: null, project_id: "abc", test_key: "grading", data_points: "" },
+        { id: "5", project_id: "7" },
+      ],
+      limit: 10,
+      offset: 0,
+    }));
+
+    const result = await listRecords<Record<string, unknown>>("test_results");
+
+    expect(result.data[0]).toMatchObject({ id: null, project_id: "abc", data_points: "" });
+    expect(result.data[1]).toMatchObject({ id: 5, project_id: 7 });
+  });
+
+  it("converts the id returned by a read and by a write", async () => {
+    fetchMock.mockResolvedValueOnce(response(200, {
+      table: "projects",
+      data: { id: "42", name: "Project" },
+    }));
+    const read = await readRecord<{ id: number; name: string }>("projects", 42);
+    expect(read.data).toMatchObject({ id: 42, name: "Project" });
+
+    fetchMock.mockResolvedValueOnce(response(200, {
+      table: "test_results",
+      id: "99",
+      data: { id: "99", project_id: "42" },
+    }));
+    const created = await createRecord<{ id: number }>("test_results", { test_key: "grading" });
+    expect(created.id).toBe(99);
+    expect(created.data).toMatchObject({ id: 99, project_id: 42 });
   });
 });

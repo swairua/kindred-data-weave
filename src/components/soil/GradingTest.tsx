@@ -385,7 +385,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
     listRecords<ApiTestResultRow>("test_results", { limit: 5000, orderBy: "updated_at", direction: "DESC" })
       .then((response) => {
         if (!active) return;
-        const result = (response.data || []).find((row) => Number(row.project_id) === loadProjectId && row.test_key === "grading" && (!selectedResultId || row.id === selectedResultId) && row.payload_json);
+        const result = (response.data || []).find((row) => Number(row.project_id) === loadProjectId && row.test_key === "grading" && (!selectedResultId || Number(row.id) === selectedResultId) && row.payload_json);
         const loadedRecord = getPayloadRecord(result?.payload_json, metadata);
         setRecordId(isNewRecord ? null : result?.id ?? null);
         setRecord(isNewRecord ? {
@@ -476,10 +476,24 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       payload_json: payload,
     };
     try {
-      const response = recordId
-        ? await updateRecord<{ id: number }>("test_results", recordId, data)
-        : await createRecord<{ id: number }>("test_results", data);
-      setRecordId(recordId || response.data?.id || response.id || null);
+      let savedId = recordId;
+      if (recordId) {
+        await updateRecord<{ id: number }>("test_results", recordId, data);
+      } else {
+        try {
+          const created = await createRecord<{ id: number }>("test_results", data);
+          savedId = created.data?.id ?? created.id ?? null;
+        } catch (createError) {
+          // A unique index on (project_id, test_key) rejects a second row for this project, so
+          // fall back to updating the existing one rather than surfacing a hard error.
+          const existing = await listRecords<ApiTestResultRow>("test_results", { limit: 5000, orderBy: "updated_at", direction: "DESC" });
+          const target = (existing.data || []).find((row) => Number(row.project_id) === projectId && row.test_key === "grading");
+          if (!target) throw createError;
+          await updateRecord<{ id: number }>("test_results", target.id, data);
+          savedId = Number(target.id);
+        }
+      }
+      setRecordId(savedId);
       setSaveStatus("saved");
       if (isNewRecord) {
         const params = new URLSearchParams(location.search);
@@ -502,8 +516,14 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
   const clear = async () => {
     if (projectId) {
       const response = await listRecords<ApiTestResultRow>("test_results", { limit: 5000 });
+      // Only remove the row this form is editing. If the project somehow holds several rows for the
+      // same test, the others may be separate samples and must not be destroyed.
       const targetResultId = recordId ?? selectedResultId;
-      const rows = (response.data || []).filter((row) => Number(row.project_id) === projectId && row.test_key === "grading" && (!targetResultId || row.id === targetResultId));
+      const rows = (response.data || []).filter((row) =>
+        Number(row.project_id) === projectId
+        && row.test_key === "grading"
+        && (!targetResultId || Number(row.id) === targetResultId),
+      );
       await Promise.all(rows.map((row) => deleteRecord("test_results", row.id)));
     }
     setRecord(emptyRecord(metadata));
