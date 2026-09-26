@@ -10,3 +10,9 @@ npm-debug.log*
 yarn.lock
 package-lock.json
 *.log
+
+# Live database dumps. These are taken from the production server and contain
+# session tokens and password hashes, so they must never reach the repository.
+# database/main.sql is intentionally NOT listed - it is the tracked schema dump.
+database/livemain.sql
+database/normalized.sql
