@@ -322,6 +322,7 @@ const loadAtterbergProjectFromApi = async (
   lookup: AtterbergProjectLookup,
   projectId?: number | null,
   focusResultId?: number | null,
+  focusSampleKey?: string | null,
 ): Promise<{ state: AtterbergProjectState; focusRecordId: string | null } | null> => {
   try {
     const resultsResponse = await listRecords<ApiAtterbergResultRow>("test_results", { limit: 5000, orderBy: "updated_at", direction: "DESC" });
@@ -340,9 +341,17 @@ const loadAtterbergProjectFromApi = async (
       const meta = isObject(firstPayload) && isObject(firstPayload.project) ? firstPayload.project : {};
       const state = normalizeAtterbergProjectState({ ...meta, records });
       if (!state) return null;
-      const focused = focusResultId
-        ? samples.find((sample) => Number(sample.resultId) === focusResultId)?.sampleKey ?? null
-        : null;
+      // The sample the user opened from the Test Results list. A migrated row holds exactly
+      // one sample, so ?resultId= identifies it. Before the per-sample migration several
+      // samples shared one row, so ?sampleKey= is honoured first when it is present.
+      const focusedByKey =
+        focusSampleKey && samples.some((sample) => sample.sampleKey === focusSampleKey)
+          ? focusSampleKey
+          : null;
+      const focused = focusedByKey
+        ?? (focusResultId
+          ? samples.find((sample) => Number(sample.resultId) === focusResultId)?.sampleKey ?? null
+          : null);
       return { state, focusRecordId: focused };
     };
 
@@ -680,6 +689,15 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
   const [printProcessing, setPrintProcessing] = useState<"idle" | "saving" | "processing" | "ready">("idle");
   const [adminImages, setAdminImages] = useState<{ logo?: string; contacts?: string; stamp?: string }>({});
 
+  // Only one sample is on screen at a time, chosen from the strip above it. A project can hold
+  // many samples, and stacking every form made the page grow downwards on each "Add Record".
+  const [activeRecordId, setActiveRecordId] = useState<string | null>(null);
+  // PDF/Excel/print read the chart and print sheet out of the DOM of every record, so those
+  // flows mount them all again before capturing.
+  const [renderAllRecords, setRenderAllRecords] = useState(false);
+  // Sample the list asked us to open, applied once the records exist.
+  const pendingFocusRecordIdRef = useRef<string | null>(null);
+
   // Load admin images (logo, contacts, stamp) once for use in HTML print sheet
   useEffect(() => {
     let active = true;
@@ -785,15 +803,24 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
           }
 
           try {
-            const focusRaw = new URLSearchParams(location.search).get("resultId");
+            const params = new URLSearchParams(location.search);
+            const focusRaw = params.get("resultId");
             const focusValue = Number.parseInt(focusRaw || "", 10);
             const focusResultId = Number.isInteger(focusValue) && focusValue > 0 ? focusValue : null;
-            const remote = await loadAtterbergProjectFromApi(effectiveProjectLookup, project.currentProjectId, focusResultId);
+            const focusSampleKey = params.get("sampleKey")?.trim() || null;
+            const remote = await loadAtterbergProjectFromApi(
+              effectiveProjectLookup,
+              project.currentProjectId,
+              focusResultId,
+              focusSampleKey,
+            );
             if (cancelled) return;
 
             if (remote) {
               skipNextPersistRef.current = true;
               setProjectState(collapseAllOnLoad(remote.state, remote.focusRecordId));
+              // Open the sample the user clicked rather than the first one of the project.
+              pendingFocusRecordIdRef.current = remote.focusRecordId;
               hydratedRef.current = true;
               return;
             }
@@ -1042,8 +1069,12 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
   );
 
   const addRecord = useCallback(() => {
+    // The id is minted here, outside the state updater, so the new record can also be made the
+    // one on screen. Records are entered in series: the freshly added sample opens in place of
+    // the previous one instead of the page growing downwards.
+    const newRecordId = makeId("record");
     setProjectState((prev) => {
-      const newRecord = createRecord(prev.records.length);
+      const newRecord = { ...createRecord(prev.records.length), id: newRecordId };
       // Set new record to expanded and collapse all other records
       return {
         ...prev,
@@ -1056,6 +1087,8 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
         }),
       };
     });
+    pendingFocusRecordIdRef.current = null;
+    setActiveRecordId(newRecordId);
   }, []);
 
   // When wizard launched against an existing project (?newRecord=1), force a fresh record.
@@ -1092,10 +1125,47 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
   }, [computedRecords.length, project.projectName, addRecord]);
 
   const removeRecord = useCallback((recordId: string) => {
+    const index = projectState.records.findIndex((record) => record.id === recordId);
+    const remaining = projectState.records.filter((record) => record.id !== recordId);
     setProjectState((prev) => ({
       records: prev.records.filter((record) => record.id !== recordId),
     }));
-  }, []);
+    // Hand the screen to the neighbouring sample so the strip never points at nothing.
+    setActiveRecordId((current) => {
+      if (current !== recordId) return current;
+      return remaining[index]?.id ?? remaining[index - 1]?.id ?? null;
+    });
+  }, [projectState.records]);
+
+  // Keep the visible sample valid: apply the sample the list asked for as soon as the records
+  // exist, and fall back to the first one when the active sample is gone (removed or cleared).
+  useEffect(() => {
+    if (computedRecords.length === 0) {
+      if (activeRecordId !== null) setActiveRecordId(null);
+      return;
+    }
+    if (computedRecords.some((record) => record.id === activeRecordId)) return;
+    const pending = pendingFocusRecordIdRef.current;
+    pendingFocusRecordIdRef.current = null;
+    const target = pending && computedRecords.find((record) => record.id === pending);
+    setActiveRecordId((target ?? computedRecords[0]).id);
+  }, [computedRecords, activeRecordId]);
+
+  // What the screen shows: the active sample only, or every record while an export mounts them.
+  const visibleRecords = useMemo(() => {
+    if (renderAllRecords) {
+      return computedRecords.map((record, index) => ({ record, index }));
+    }
+    if (computedRecords.length === 0) return [];
+    const active = computedRecords.find((record) => record.id === activeRecordId) ?? computedRecords[0];
+    return [{ record: active, index: computedRecords.indexOf(active) }];
+  }, [computedRecords, activeRecordId, renderAllRecords]);
+
+  // 1-based position of the sample on screen, for the strip's "Sample 2 of 7" caption.
+  const activeSampleNumber = useMemo(() => {
+    if (visibleRecords.length === 0) return 0;
+    return visibleRecords[0].index + 1;
+  }, [visibleRecords]);
 
   const addTest = useCallback(
     (recordId: string, type: AtterbergTestType = "liquidLimit", options?: { silent?: boolean }) => {
@@ -1338,6 +1408,9 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
         setPrintProcessing("processing");
 
         const performPrint = async () => {
+          // The chart is captured from the DOM, so the record has to be mounted even when the
+          // screen is showing another sample.
+          setRenderAllRecords(true);
           try {
             console.log(`[Print PDF] Starting PDF generation for ${recordIds.length} records`);
 
@@ -1386,6 +1459,8 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
             console.error("Error in PDF print flow:", error);
             toast.error("Error generating PDF for print");
             setPrintProcessing("idle");
+          } finally {
+            setRenderAllRecords(false);
           }
         };
 
@@ -1764,6 +1839,9 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
 
     setIsExporting("pdf");
     setIsPreviewLoading(true);
+    // The chart of every record is captured from the DOM, so all of them are mounted for the
+    // duration of the export even though the screen shows one at a time.
+    setRenderAllRecords(true);
     try {
       console.log(`[Export PDF] Starting PDF export for ${computedRecords.length} records`);
 
@@ -1807,6 +1885,7 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
     } finally {
       setIsPreviewLoading(false);
       setIsExporting(null);
+      setRenderAllRecords(false);
     }
 
     return true;
@@ -1935,6 +2014,8 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
 
     setIsExporting("xlsx");
     setIsPreviewLoading(true);
+    // Every record's chart is read out of the DOM, so they are all mounted for the export.
+    setRenderAllRecords(true);
     try {
       console.log(`[Export] Starting Excel export for ${computedRecords.length} records`);
       console.log(`[Export] Registered chart refs:`, Array.from(chartRefsMap.current.keys()));
@@ -1979,6 +2060,7 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
     } finally {
       setIsPreviewLoading(false);
       setIsExporting(null);
+      setRenderAllRecords(false);
     }
 
     return true;
@@ -2061,11 +2143,49 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
       >
       <div className="space-y-3 print:space-y-2">
 
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 print:hidden">
-          <Button type="button" onClick={addRecord} className="gap-2 w-full sm:w-auto">
-            <Plus className="h-4 w-4" /> Add Record
-          </Button>
-        </div>
+        {computedRecords.length === 0 ? null : (
+          <div className="flex items-center gap-2 print:hidden" data-testid="atterberg-sample-strip">
+            <span className="shrink-0 text-xs text-muted-foreground">
+              Sample {activeSampleNumber} of {computedRecords.length}
+            </span>
+            <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pb-1">
+              {computedRecords.map((record, index) => {
+                const isActive = !renderAllRecords && record.id === activeRecordId;
+                const summary = [
+                  record.results.liquidLimit !== undefined ? `LL ${record.results.liquidLimit}` : null,
+                  record.results.plasticityIndex !== undefined ? `PI ${record.results.plasticityIndex}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ");
+                return (
+                  <button
+                    key={record.id}
+                    type="button"
+                    onClick={() => setActiveRecordId(record.id)}
+                    aria-current={isActive}
+                    title={record.title}
+                    data-testid={`atterberg-sample-${record.id}`}
+                    data-active={isActive ? "true" : "false"}
+                    className={cn(
+                      "shrink-0 whitespace-nowrap rounded-md border px-2.5 py-1 text-left text-[11px] leading-tight transition-colors",
+                      isActive
+                        ? "border-primary bg-primary/10 text-foreground"
+                        : "border-border text-muted-foreground hover:bg-muted/40",
+                    )}
+                  >
+                    <span className="font-medium">
+                      {index + 1}. {record.label || record.title}
+                    </span>
+                    {summary ? <span className="ml-1.5 text-[10px] opacity-80">{summary}</span> : null}
+                  </button>
+                );
+              })}
+              <Button type="button" onClick={addRecord} size="sm" variant="outline" className="shrink-0 gap-1.5" data-testid="atterberg-add-sample">
+                <Plus className="h-3.5 w-3.5" /> Add sample
+              </Button>
+            </div>
+          </div>
+        )}
 
         {computedRecords.length === 0 ? (
           <div className="rounded-lg border bg-muted/20 py-10 text-center text-muted-foreground">
@@ -2073,7 +2193,7 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
           </div>
         ) : (
           <div className="space-y-4">
-            {computedRecords.map((record, index) => (
+            {visibleRecords.map(({ record, index }) => (
               <RecordCard
                 key={record.id}
                 record={record}
@@ -2208,6 +2328,9 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
                 // Generate and print PDF
                 if (ids.length > 0) {
                   setPrintProcessing("processing");
+                  // The selected samples are captured from the DOM, so they are all mounted
+                  // for the print even though the screen shows one at a time.
+                  setRenderAllRecords(true);
                   try {
                     console.log(`[Print PDF] Starting PDF generation for ${ids.length} records`);
 
@@ -2265,6 +2388,8 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
                     console.error("Error in print flow:", error);
                     toast.error("Error during print");
                     setPrintProcessing("idle");
+                  } finally {
+                    setRenderAllRecords(false);
                   }
                 }
               }}

@@ -99,6 +99,33 @@ describe("TestResults duplicate handling", () => {
     expect(await screen.findByTestId("current-location", undefined, FIND)).toHaveTextContent("/tests?projectId=42&resultId=90#grading");
   });
 
+  it("carries the sample key so the exact sample of a shared row is opened", async () => {
+    // The migrated shape: one row per sample, carrying the record id in sample_key.
+    resultsMocks.listRecords.mockResolvedValue({
+      data: [
+        {
+          id: "301",
+          project_id: "19",
+          test_key: "atterberg",
+          name: "KIKUYU",
+          project_name: "KIKUYU",
+          sample_key: "record-b",
+          sample_label: "BH02",
+          sort_order: 1,
+          updated_at: "2026-06-12 09:00:00",
+          payload_json: { project: { records: [{ id: "record-b", label: "BH02" }] } },
+        },
+      ],
+    });
+
+    renderResults();
+    fireEvent.click(await screen.findByRole("button", { name: "Open →" }, FIND));
+
+    expect(await screen.findByTestId("current-location", undefined, FIND)).toHaveTextContent(
+      "/tests?projectId=19&resultId=301&sampleKey=record-b#atterberg",
+    );
+  });
+
   it("falls back to a resumable row when the newest duplicate has no first record", async () => {
     resultsMocks.listRecords.mockResolvedValue({
       data: [

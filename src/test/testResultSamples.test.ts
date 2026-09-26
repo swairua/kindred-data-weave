@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { normalizeAtterbergProjectState } from "@/lib/jsonExporter";
 import {
   collectSamples,
   selectSampleRows,
@@ -6,6 +7,59 @@ import {
   readSampleRecords,
   type TestResultSampleRow,
 } from "@/lib/testResultSamples";
+
+/**
+ * The stored record id is the sample's identity: test_results.sample_key is written from it and
+ * ?sampleKey=/?resultId= deep links resolve to it, so loading a project must not renumber it.
+ */
+describe("record identity survives a load", () => {
+  const storedProject = {
+    project: {
+      title: "KIKUYU",
+      projectName: "KIKUYU",
+      clientName: "AHP",
+      date: "2026-06-12",
+      records: [
+        { id: "record-a", title: "Record 1", label: "BH01", tests: [] },
+        { id: "record-b", title: "Record 2", label: "BH02", tests: [] },
+      ],
+    },
+  };
+
+  it("keeps the stored ids", () => {
+    const state = normalizeAtterbergProjectState(storedProject);
+    expect(state?.records.map((r) => r.id)).toEqual(["record-a", "record-b"]);
+  });
+
+  it("keeps the ids that a migrated test_results row points at", () => {
+    const state = normalizeAtterbergProjectState(storedProject);
+    const sample = collectSamples([
+      {
+        id: 3,
+        project_id: 19,
+        test_key: "atterberg",
+        sample_key: "record-b",
+        sample_label: "BH02",
+        payload_json: storedProject,
+      } as unknown as TestResultSampleRow,
+    ])[0];
+
+    expect(state?.records.some((record) => record.id === sample.sampleKey)).toBe(true);
+  });
+
+  it("still gives an id to a record that has none", () => {
+    const state = normalizeAtterbergProjectState({ project: { records: [{ label: "BH01" }] } });
+    expect(state?.records[0].id).toBeTruthy();
+  });
+
+  it("does not keep a duplicated id twice", () => {
+    const state = normalizeAtterbergProjectState({
+      project: { records: [{ id: "record-a", label: "BH01" }, { id: "record-a", label: "BH02" }] },
+    });
+    expect(state?.records[0].id).toBe("record-a");
+    expect(state?.records[1].id).not.toBe("record-a");
+  });
+});
 
 /**
  * These cover the three database states the app can be in:

@@ -169,7 +169,11 @@ const normalizeRecord = (value: unknown, index: number): AtterbergRecord => {
   const tests = Array.isArray(record.tests) ? record.tests.map((test, testIndex) => normalizeTest(test, testIndex)) : [];
 
   return {
-    id: makeId("record"),
+    // The stored id is the sample's identity. It is what test_results.sample_key is written
+    // from, and what ?sampleKey=/?resultId= deep links resolve to, so it has to survive a load:
+    // minting a new one here made every save write fresh rows and made "open this exact sample"
+    // impossible. A record with no id at all still gets a generated one.
+    id: readString(record.id) || makeId("record"),
     title: readString(record.title) || readString(record.recordTitle) || `Record ${index + 1}`,
     label: readString(record.label),
     note: readString(record.note),
@@ -182,6 +186,24 @@ const normalizeRecord = (value: unknown, index: number): AtterbergRecord => {
     testedBy: readString(record.testedBy),
     passing425um: readString(record.passing425um),
   };
+};
+
+/**
+ * Legacy payloads can repeat a record id (two samples copied from one another). The first
+ * occurrence keeps it, because a duplicate would make React keys and the sample_key
+ * reconciliation ambiguous.
+ */
+const withUniqueRecordIds = (records: AtterbergRecord[]): AtterbergRecord[] => {
+  const seen = new Set<string>();
+  return records.map((record) => {
+    if (!seen.has(record.id)) {
+      seen.add(record.id);
+      return record;
+    }
+    const replacement: AtterbergRecord = { ...record, id: makeId("record") };
+    seen.add(replacement.id);
+    return replacement;
+  });
 };
 
 export const normalizeAtterbergProjectState = (value: unknown): AtterbergProjectState | null => {
@@ -197,14 +219,14 @@ export const normalizeAtterbergProjectState = (value: unknown): AtterbergProject
 
   if (Array.isArray(value.records)) {
     return {
-      records: value.records.map((record, index) => normalizeRecord(record, index)),
+      records: withUniqueRecordIds(value.records.map((record, index) => normalizeRecord(record, index))),
       ...getProjectMetadata(value),
     };
   }
 
   if (isObject(value.project) && Array.isArray(value.project.records)) {
     return {
-      records: value.project.records.map((record, index) => normalizeRecord(record, index)),
+      records: withUniqueRecordIds(value.project.records.map((record, index) => normalizeRecord(record, index))),
       ...getProjectMetadata(value.project),
     };
   }

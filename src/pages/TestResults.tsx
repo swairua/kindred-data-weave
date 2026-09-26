@@ -126,6 +126,9 @@ const TestResults = () => {
         // A row can still carry several samples, so the key needs the sample too.
         id: `${result.id}::${sample.sampleKey || index}`,
         resultId: Number(result.id),
+        // The record id, so the form can open that exact sample even when several samples
+        // still share one row.
+        sampleKey: sample.sampleKey,
         project_id: result.project_id,
         test_key: result.test_key,
         project_name: projectName,
@@ -196,10 +199,17 @@ const TestResults = () => {
 
     // Navigate to the tests page with:
     // - hash for the specific test (#atterberg)
-    // - resultId so the record that was clicked is the one edited, even if the database still
+    // - resultId so the row that was clicked is the one edited, even if the database still
     //   holds duplicate rows for the same (project, test) pair
+    // - sampleKey so the exact sample of that row is opened, which is the only way to tell them
+    //   apart while a single row still holds several samples
     // - projectId so Index.tsx can load full project data
-    navigate(`/tests?projectId=${test.project_id}&resultId=${test.resultId}#${test.test_key}`);
+    const params = new URLSearchParams({
+      projectId: String(test.project_id),
+      resultId: String(test.resultId),
+    });
+    if (test.sampleKey) params.set("sampleKey", test.sampleKey);
+    navigate(`/tests?${params.toString()}#${test.test_key}`);
   };
 
   const handleLogout = () => {
