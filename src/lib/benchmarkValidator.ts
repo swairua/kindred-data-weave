@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import JSZip from "jszip";
 import type {
   LiquidLimitTrial,
   PlasticLimitTrial,
@@ -242,6 +243,80 @@ const extractShrinkageLimitBenchmark = (
   return { trials, expectedValue, notes };
 };
 
+const SHEET_RELS = /^xl\/worksheets\/_rels\/[^/]+[.]rels$/;
+const SHEET_XML = /^xl\/worksheets\/sheet[0-9]+[.]xml$/;
+const DRAWING_PART = /^xl\/(drawings|charts)\//;
+
+/**
+ * ExcelJS 4.4.0 dereferences `drawing.anchors` for every drawing a sheet points at, including
+ * the chart drawings it never parses, so any workbook with a chart or a picture dies with
+ * "Cannot read properties of undefined (reading 'anchors')" before a single cell is read.
+ *
+ * The validator only reads cell values, so on that failure the drawing and chart parts are
+ * dropped from a copy of the package - together with the sheet elements and relationships that
+ * point at them - and the copy is loaded instead. The caller's buffer is never modified, and a
+ * workbook ExcelJS can already read still goes through the normal path untouched.
+ */
+const loadWithoutDrawings = async (buffer: ArrayBuffer): Promise<ArrayBuffer | null> => {
+  try {
+    const zip = await JSZip.loadAsync(buffer);
+
+    let removedParts = false;
+    Object.keys(zip.files).forEach((name) => {
+      if (DRAWING_PART.test(name)) {
+        zip.remove(name);
+        removedParts = true;
+      }
+    });
+    if (!removedParts) return null;
+
+    for (const name of Object.keys(zip.files)) {
+      const entry = zip.file(name);
+      if (!entry || (!SHEET_RELS.test(name) && !SHEET_XML.test(name))) continue;
+
+      const xml = await entry.async("string");
+      const cleaned = SHEET_RELS.test(name)
+        ? // A relationship left pointing at a removed part is what makes ExcelJS crash.
+          xml.replace(/<Relationship\b[^>]*\/>/g, (tag) => (/\/(drawings|charts)\//.test(tag) ? "" : tag))
+        : xml.replace(/<(drawing|legacyDrawing|picture)\b[^>]*\/>/g, "");
+
+      if (cleaned !== xml) zip.file(name, cleaned);
+    }
+
+    return await zip.generateAsync({ type: "arraybuffer" });
+  } catch {
+    // If the package cannot be rewritten, the caller reports the original ExcelJS failure.
+    return null;
+  }
+};
+
+/** Load a benchmark workbook, working around ExcelJS's chart/picture drawing crash. */
+const loadBenchmarkWorkbook = async (file: File | Buffer): Promise<ExcelJS.Workbook> => {
+  const arrayBuffer = (Buffer.isBuffer(file)
+    ? new Uint8Array(file).buffer
+    : await file.arrayBuffer()) as ArrayBuffer;
+
+  const workbook = new ExcelJS.Workbook();
+  try {
+    await workbook.xlsx.load(arrayBuffer);
+    return workbook;
+  } catch (loadError) {
+    const withoutDrawings = await loadWithoutDrawings(arrayBuffer);
+    if (withoutDrawings) {
+      const retry = new ExcelJS.Workbook();
+      try {
+        await retry.xlsx.load(withoutDrawings);
+        return retry;
+      } catch {
+        // Fall through to the original error, which describes the real problem.
+      }
+    }
+    throw new Error(
+      `Failed to load Excel file: ${loadError instanceof Error ? loadError.message : String(loadError)}`
+    );
+  }
+};
+
 /**
  * Validate calculations against Excel benchmarks
  */
@@ -250,23 +325,7 @@ export const validateAgainstExcel = async (file: File | Buffer): Promise<Benchma
 
   try {
     // Parse Excel file
-    const workbook = new ExcelJS.Workbook();
-
-    try {
-      if (Buffer.isBuffer(file)) {
-        // Handle Node.js Buffer - use the buffer directly with xlsx
-        await workbook.xlsx.load(new Uint8Array(file).buffer as ArrayBuffer);
-      } else {
-        // Handle File object
-        const arrayBuffer = await file.arrayBuffer();
-        await workbook.xlsx.load(arrayBuffer);
-      }
-    } catch (loadError) {
-      // If normal load fails, try with error handling enabled
-      throw new Error(
-        `Failed to load Excel file: ${loadError instanceof Error ? loadError.message : String(loadError)}`
-      );
-    }
+    const workbook = await loadBenchmarkWorkbook(file);
 
     const ws = workbook.worksheets[0];
     if (!ws) {

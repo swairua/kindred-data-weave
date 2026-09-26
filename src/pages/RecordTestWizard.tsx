@@ -13,7 +13,7 @@ import WizardStepper, { type WizardStep } from "@/components/WizardStepper";
 import FormCard from "@/components/wizard/FormCard";
 import { listRecords, fetchFullProject, createRecord, listCompressiveTests } from "@/lib/api";
 import { useSession } from "@/context/SessionContext";
-import { type ApiProjectRow } from "@/types/api";
+import { type ApiCompressiveTestRow, type ApiProjectRow } from "@/types/api";
 import { getExpectedTestType, hasRequiredSoilSampleMetadata, isInitialTestValid, isTestAllowed, toRecordMetadata, type Material } from "@/lib/recordTestWizard";
 import { cn } from "@/lib/utils";
 import { useTestData } from "@/context/TestDataContext";
@@ -126,24 +126,6 @@ const emptyState: WizardState = {
 };
 
 
-interface CompressiveTestRow {
-  id: number;
-  project_id: number;
-  test_key: string;
-  date_tested: string;
-  cement: string;
-  fine_aggregate: string;
-  coarse_aggregate: string;
-  contractor: string;
-  concrete_class: string;
-  section: string;
-  made_by: string;
-  slump: string;
-  client_ref: string;
-  created_at: string;
-  updated_at: string;
-}
-
 const filterProjectsByTestType = (projects: ApiProjectRow[], expectedTestType: string | null): ApiProjectRow[] => {
   if (!expectedTestType) return projects;
   return projects.filter(p => !p.test_type || p.test_type === expectedTestType);
@@ -182,7 +164,7 @@ const RecordTestWizard = () => {
   const [projectsReloadKey, setProjectsReloadKey] = useState(0);
   const projectsLoadedKey = useRef<string | null>(null);
   const projectsAttemptedKey = useRef<string | null>(null);
-  const [compressiveTests, setCompressiveTests] = useState<CompressiveTestRow[]>([]);
+  const [compressiveTests, setCompressiveTests] = useState<ApiCompressiveTestRow[]>([]);
   const [loadingCompressiveTests, setLoadingCompressiveTests] = useState(false);
   const [compressiveTestsError, setCompressiveTestsError] = useState<string | null>(null);
   const [selectedExistingTestId, setSelectedExistingTestId] = useState<number | null>(null);
@@ -1012,7 +994,7 @@ const RecordTestWizard = () => {
                       </div>
 
                       {selectedExistingTestId !== null && (
-                        <Accordion value={showTestDetails ? "test-details" : ""} onValueChange={(v) => setShowTestDetails(v === "test-details")} className="rounded-lg border px-4">
+                        <Accordion type="single" value={showTestDetails ? "test-details" : undefined} onValueChange={(v) => setShowTestDetails(v === "test-details")} className="rounded-lg border px-4">
                           <AccordionItem value="test-details" className="border-0">
                             <AccordionTrigger className="text-sm font-medium">Test details</AccordionTrigger>
                             <AccordionContent className="pt-4">

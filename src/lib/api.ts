@@ -1,3 +1,5 @@
+import { type ApiCompressiveTestRow } from "@/types/api";
+
 const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
 
 // In development (localhost), use the proxied path to bypass CORS
@@ -901,7 +903,9 @@ export const getCompressiveTest = async (testId: number) => {
 export const listCompressiveTests = async (projectId?: number) => {
   try {
     const params = projectId ? { filter: `project_id=${projectId}` } : undefined;
-    const response = await listRecords("compressive_tests", params);
+    // Typed so callers get the row shape instead of unknown[], which is what the wizard
+    // renders in the existing-test list.
+    const response = await listRecords<ApiCompressiveTestRow>("compressive_tests", params);
     return response;
   } catch (error) {
     console.error("[API] Failed to list compressive tests:", error);
