@@ -24,6 +24,7 @@ import Navigation from "@/components/Navigation";
 import { useTestData } from "@/context/TestDataContext";
 import { useProject } from "@/context/ProjectContext";
 import { listRecords } from "@/lib/api";
+import { collectSamples, recordField } from "@/lib/testResultSamples";
 import { toast } from "sonner";
 
 interface ApiTestResult {
@@ -95,68 +96,42 @@ const TestResults = () => {
     return testTypeMap[testKey] || testKey.charAt(0).toUpperCase() + testKey.slice(1);
   };
 
-  // Helper function to extract first record from payload
-  const getFirstRecord = (testResult: ApiTestResult) => {
-    const records = testResult.payload_json?.project?.records;
-    if (Array.isArray(records) && records.length > 0) {
-      return records[0];
-    }
-    return null;
-  };
+  // A test_results row holds one or more samples. After migrate_atterberg_samples.sql
+  // each sample is its own row, and before it several samples shared one row. collectSamples
+  // handles both, drops any legacy project-level row left behind by the migration, and keeps
+  // only the newest row per sample.
+  const samples = useMemo(() => collectSamples(apiTestResults), [apiTestResults]);
 
-  // test_results holds one row per (project, test). Databases written by the previous save
-  // behaviour may still contain the duplicates it created, so keep only the most recent of each
-  // pair instead of listing the same test several times. A row whose first stored record is null
-  // opens as a blank form, so it is only used when no resumable row exists.
-  const latestResults = useMemo(() => {
-    const isUsable = (result: ApiTestResult) => {
-      const records = result.payload_json?.project?.records;
-      if (!Array.isArray(records) || records.length === 0) return false;
-      return typeof records[0] === "object" && records[0] !== null;
-    };
-    const stamp = (result: ApiTestResult) => result.updated_at || result.created_at || "";
-    const newest = new Map<string, ApiTestResult>();
-    for (const result of apiTestResults) {
-      const key = `${result.project_id}::${result.test_key}`;
-      const current = newest.get(key);
-      if (!current || stamp(result) > stamp(current)) newest.set(key, result);
-    }
-    for (const result of apiTestResults) {
-      const key = `${result.project_id}::${result.test_key}`;
-      const current = newest.get(key);
-      if (current && !isUsable(current) && isUsable(result)) newest.set(key, result);
-    }
-    return Array.from(newest.values());
-  }, [apiTestResults]);
-
-  // Convert API test results to display format
+  // Convert API test results to display format - one row per sample, so a project with
+  // several boreholes and depths appears once per sample rather than once in total.
   const tests = useMemo(() => {
-    return latestResults.map((result) => {
-      const record = getFirstRecord(result);
-      const sampleId = record?.label || "-";
-      const depth = record?.sampleDepthFrom || record?.sampleDepthTo
-        ? `${record.sampleDepthFrom || "—"} to ${record.sampleDepthTo || "—"}`
-        : record?.sampleNumber || "-";
-      const testedBy = record?.sampledSubmittedBy || record?.testedBy || "-";
+    return samples.map((sample, index) => {
+      const result = sample.row;
+      const record = sample.record;
+      const depthFrom = recordField(record, "sampleDepthFrom");
+      const depthTo = recordField(record, "sampleDepthTo");
+      const depth = depthFrom || depthTo ? `${depthFrom || "—"} to ${depthTo || "—"}` : sample.depth;
+      const testedBy = recordField(record, "sampledSubmittedBy") || recordField(record, "testedBy") || "-";
       const projectName = result.project_name || `Project #${result.project_id}`;
       const testType = formatTestType(result.test_key);
       const dateCreated = result.created_at || result.updated_at || new Date().toISOString();
 
       return {
-        id: String(result.id),
+        // A row can still carry several samples, so the key needs the sample too.
+        id: `${result.id}::${sample.sampleKey || index}`,
         resultId: Number(result.id),
         project_id: result.project_id,
         test_key: result.test_key,
         project_name: projectName,
         test_type: testType,
-        sample_id: sampleId,
-        depth: depth,
+        sample_id: sample.label || "-",
+        depth: depth || "-",
         date_created: dateCreated,
         created_by: testedBy,
         material_type: result.category || "Soil",
       };
     });
-  }, [apiTestResults]);
+  }, [samples]);
 
   // Get unique material types from the test data
   const materialTypes = useMemo(() => {
@@ -273,7 +248,7 @@ const TestResults = () => {
                     <div className="shrink-0">
                       <CardTitle className="text-sm font-semibold leading-5">Test Records</CardTitle>
                       <CardDescription className="text-[11px] leading-4">
-                        {filteredTests.length} test{filteredTests.length !== 1 ? "s" : ""} found
+                        {filteredTests.length} sample{filteredTests.length !== 1 ? "s" : ""} found
                         {totalPages > 1 && ` • Page ${currentPage} of ${totalPages}`}
                       </CardDescription>
                     </div>

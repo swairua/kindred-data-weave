@@ -66,12 +66,12 @@ import {
   updateRecord as updateApiRecord,
 } from "@/lib/api";
 import {
-  extractAtterbergPayload,
   normalizeAtterbergProjectState,
   type AtterbergExportPayload,
   exportAsJSON,
   downloadJSON,
 } from "@/lib/jsonExporter";
+import { collectSamples } from "@/lib/testResultSamples";
 import { generateAtterbergXLSX } from "@/lib/xlsxExporter";
 import { ExportPreviewModal, type ExportPreviewData } from "@/components/ExportPreviewModal";
 import html2canvas from "html2canvas";
@@ -242,11 +242,12 @@ const createRecord = (index: number): AtterbergRecord => ({
   results: {},
 });
 
-const collapseAllOnLoad = (state: AtterbergProjectState): AtterbergProjectState => ({
+const collapseAllOnLoad = (state: AtterbergProjectState, expandRecordId?: string | null): AtterbergProjectState => ({
   ...state,
   records: state.records.map((record) => ({
     ...record,
-    isExpanded: false,
+    // Everything starts collapsed except the one sample the user opened from the list.
+    isExpanded: expandRecordId ? record.id === expandRecordId : false,
     // Drop tests that have no started trials (clears pre-seeded defaults from old saved state)
     tests: record.tests
       .filter((test) => {
@@ -286,14 +287,15 @@ type AtterbergProjectLookup = {
 
 const normalizeLookupValue = (value: string | null | undefined) => value?.trim() ?? "";
 
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
 const isRecordObject = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
 
 const matchesProjectLookup = (row: ApiProjectRow, lookup: AtterbergProjectLookup) =>
   normalizeLookupValue(row.name) === lookup.projectName &&
   normalizeLookupValue(row.client_name) === lookup.clientName &&
   normalizeLookupValue(row.project_date) === lookup.projectDate;
-
-// extractAtterbergPayload moved to @/lib/jsonExporter — re-imported below
 
 const getAtterbergLookup = (projectName: string, clientName: string, projectDate: string): AtterbergProjectLookup => ({
   projectName: normalizeLookupValue(projectName),
@@ -310,19 +312,40 @@ const getLookupCacheKey = (lookup: AtterbergProjectLookup, projectId?: number | 
 const hasLookupCriteria = (lookup: AtterbergProjectLookup) => lookup.projectName !== "" || lookup.clientName !== "" || lookup.projectDate !== "";
 
 
-const loadAtterbergProjectFromApi = async (lookup: AtterbergProjectLookup, projectId?: number | null) => {
+const loadAtterbergProjectFromApi = async (
+  lookup: AtterbergProjectLookup,
+  projectId?: number | null,
+  focusResultId?: number | null,
+): Promise<{ state: AtterbergProjectState; focusRecordId: string | null } | null> => {
   try {
     const resultsResponse = await listRecords<ApiAtterbergResultRow>("test_results", { limit: 5000, orderBy: "updated_at", direction: "DESC" });
 
+    // A project may hold several test_results rows: after the per-sample migration each row
+    // holds exactly one sample, and before it a single row held them all. collectSamples reads
+    // both, so this behaves the same in every state - including the window where the legacy
+    // project-level row still sits alongside the new sample rows.
+    const toState = (rows: ApiAtterbergResultRow[]) => {
+      const samples = collectSamples(rows);
+      if (samples.length === 0) return null;
+      const records = samples.map((sample) => sample.record).filter((r): r is AtterbergRecord => r !== null);
+      if (records.length === 0) return null;
+      // The project envelope (title, client, date) is repeated on every row; take the first.
+      const firstPayload = samples[0].row.payload_json;
+      const meta = isObject(firstPayload) && isObject(firstPayload.project) ? firstPayload.project : {};
+      const state = normalizeAtterbergProjectState({ ...meta, records });
+      if (!state) return null;
+      const focused = focusResultId
+        ? samples.find((sample) => Number(sample.resultId) === focusResultId)?.sampleKey ?? null
+        : null;
+      return { state, focusRecordId: focused };
+    };
+
     if (projectId) {
-      const resultRow = resultsResponse.data.find(
+      const pairRows = resultsResponse.data.filter(
         (row) => row.test_key === "atterberg" && Number(row.project_id) === projectId && row.payload_json,
       );
-      if (!resultRow) return null;
-      const loadedState = extractAtterbergPayload(resultRow.payload_json);
-      const recordCount = loadedState?.records?.length || 0;
-      console.log(`[Atterberg Load] Loaded project (ID: ${projectId}) with ${recordCount} test records from API`);
-      return loadedState;
+      if (pairRows.length === 0) return null;
+      return toState(pairRows);
     }
 
     if (!hasLookupCriteria(lookup)) {
@@ -334,13 +357,11 @@ const loadAtterbergProjectFromApi = async (lookup: AtterbergProjectLookup, proje
     const projectRow = projectsResponse.data.find((row) => matchesProjectLookup(row, lookup));
     if (!projectRow) return null;
 
-    const resultRow = resultsResponse.data.find((row) => row.test_key === "atterberg" && Number(row.project_id) === projectRow.id && row.payload_json);
-    if (!resultRow) return null;
-
-    const loadedState = extractAtterbergPayload(resultRow.payload_json);
-    const recordCount = loadedState?.records?.length || 0;
-    console.log(`[Atterberg Load] Loaded project "${projectRow.name}" (ID: ${projectRow.id}) with ${recordCount} test records from API`);
-    return loadedState;
+    const pairRows = resultsResponse.data.filter(
+      (row) => row.test_key === "atterberg" && Number(row.project_id) === Number(projectRow.id) && row.payload_json,
+    );
+    if (pairRows.length === 0) return null;
+    return toState(pairRows);
   } catch (error) {
     // If API is unavailable, unauthorized, or network error - return null to allow fallback to localStorage
     if (error instanceof Error) {
@@ -669,6 +690,9 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
     [effectiveProjectLookup, project.currentProjectId],
   );
   const hydrationDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  // Declared here rather than further down so the hydration effect below can read
+  // ?resultId= without relying on declaration order inside a closure.
+  const location = useLocation();
 
   useEffect(() => {
     if (lastLoadedLookupRef.current === lookupCacheKey) return;
@@ -698,12 +722,15 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
           }
 
           try {
-            const remoteState = await loadAtterbergProjectFromApi(effectiveProjectLookup, project.currentProjectId);
+            const focusRaw = new URLSearchParams(location.search).get("resultId");
+            const focusValue = Number.parseInt(focusRaw || "", 10);
+            const focusResultId = Number.isInteger(focusValue) && focusValue > 0 ? focusValue : null;
+            const remote = await loadAtterbergProjectFromApi(effectiveProjectLookup, project.currentProjectId, focusResultId);
             if (cancelled) return;
 
-            if (remoteState) {
+            if (remote) {
               skipNextPersistRef.current = true;
-              setProjectState(collapseAllOnLoad(remoteState));
+              setProjectState(collapseAllOnLoad(remote.state, remote.focusRecordId));
               hydratedRef.current = true;
               return;
             }
@@ -970,7 +997,6 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
 
   // When wizard launched against an existing project (?newRecord=1), force a fresh record.
   const newRecordHandledRef = useRef(false);
-  const location = useLocation();
   useEffect(() => {
     if (newRecordHandledRef.current) return;
     const params = new URLSearchParams(location.search);
