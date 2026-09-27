@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import WizardStepper, { type WizardStep } from "@/components/WizardStepper";
 import FormCard from "@/components/wizard/FormCard";
-import { listRecords, fetchFullProject, createRecord, listCompressiveTests } from "@/lib/api";
+import { listRecords, fetchFullProject, createRecord, listCompressiveTests, isRecordNotFoundError } from "@/lib/api";
 import { useSession } from "@/context/SessionContext";
 import { type ApiCompressiveTestRow, type ApiProjectRow } from "@/types/api";
 import { getExpectedTestType, hasRequiredSoilSampleMetadata, isInitialTestValid, isTestAllowed, toRecordMetadata, type Material } from "@/lib/recordTestWizard";
@@ -655,7 +655,11 @@ const RecordTestWizard = () => {
       dateTested: test.date_tested,
     }));
 
-    // Load full project data in the background
+    // Load full project data in the background. The parent project may have been
+    // deleted after the test was saved (compressive_tests carries no foreign key
+    // to projects), in which case the API answers 404 Record not found: keep the
+    // test's own fields but point the wizard at choosing a project so the test is
+    // not stranded against a project id that no longer exists.
     (async () => {
       try {
         const fullProject = await fetchFullProject(test.project_id);
@@ -676,7 +680,27 @@ const RecordTestWizard = () => {
         });
       } catch (error) {
         console.warn("[RecordTestWizard] Failed to load project for selected test:", error);
-        toast.error("Couldn't load project details");
+        if (isRecordNotFoundError(error)) {
+          setState((prev) => ({
+            ...prev,
+            projectId: null,
+            templateProjectId: null,
+            projectName: "",
+            clientName: "",
+            projectDate: "",
+          }));
+          testData.updateProjectMetadata({
+            projectName: "",
+            clientName: "",
+            projectDate: "",
+            currentProjectId: null,
+            contractor: test.contractor,
+            county: "",
+          });
+          toast.error("The project for this test was deleted. Choose a project to continue.");
+        } else {
+          toast.error("Couldn't load project details");
+        }
       }
     })();
   };

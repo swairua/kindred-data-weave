@@ -21,6 +21,8 @@ vi.mock("@/lib/api", () => ({
   fetchFullProject: wizardMocks.fetchFullProject,
   createRecord: wizardMocks.createRecord,
   listCompressiveTests: wizardMocks.listCompressiveTests,
+  isRecordNotFoundError: (error: unknown) =>
+    error instanceof Error && /record not found/i.test(error.message),
   setSessionToken: vi.fn(),
   logoutUser: vi.fn(),
 }));
@@ -45,6 +47,8 @@ vi.mock("@/lib/testRegistry", () => ({ registry: { hasTest: () => true } }));
 vi.mock("@/components/Navigation", () => ({ default: () => null }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
+import { toast } from "sonner";
+
 const renderWizard = (initialEntry = "/record?material=soil&test=proctor") => render(
   <MemoryRouter initialEntries={[initialEntry]}>
     <RecordTestWizard />
@@ -56,6 +60,7 @@ afterEach(cleanup);
 beforeEach(() => {
   HTMLElement.prototype.scrollIntoView = vi.fn();
   sessionStorage.clear();
+  vi.mocked(toast.error).mockClear();
   wizardMocks.listRecords.mockReset().mockResolvedValue({ data: [] });
   wizardMocks.fetchFullProject.mockReset().mockResolvedValue({ id: 42, name: "Existing project", client_name: "Client" });
   wizardMocks.createRecord.mockReset().mockResolvedValue({ data: { id: 43 } });
@@ -212,6 +217,48 @@ describe("RecordTestWizard selection flow", () => {
     fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
 
     expect(await screen.findByRole("heading", { name: "Concrete cube details" })).toBeInTheDocument();
+  });
+
+  it("recovers the wizard when the selected test's project no longer exists", async () => {
+    wizardMocks.listCompressiveTests.mockResolvedValue({
+      data: [{
+        id: 1,
+        project_id: 11,
+        test_key: "compressive",
+        date_tested: "2026-05-11",
+        cement: "dd",
+        fine_aggregate: "dd",
+        coarse_aggregate: "dd",
+        contractor: "Contractor",
+        concrete_class: "dd",
+        section: "dd",
+        made_by: "dd",
+        slump: "dd",
+        client_ref: "REF-1",
+        created_at: "2026-05-11T07:05:15Z",
+        updated_at: "2026-05-11T07:05:15Z",
+      }],
+    });
+    wizardMocks.fetchFullProject.mockRejectedValue(new Error("Record not found"));
+
+    renderWizard("/record?material=concrete&test=compressive");
+
+    await screen.findByRole("heading", { name: "Select test to edit" });
+    fireEvent.click(screen.getByRole("combobox", { name: "Existing tests" }));
+    fireEvent.click(await screen.findByRole("option", { name: /REF-1/ }));
+
+    // The test's own fields still load from the row...
+    await waitFor(() => expect(wizardMocks.fetchFullProject).toHaveBeenCalledWith(11));
+    expect(screen.getByDisplayValue("Contractor")).toBeInTheDocument();
+    // ...but the stale project reference is cleared so the wizard no longer
+    // points at a project id that does not exist, and the user gets a recovery
+    // path instead of the dead-end "Couldn't load project details" toast.
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith(
+      "The project for this test was deleted. Choose a project to continue.",
+    ));
+    expect(wizardMocks.updateProjectMetadata).toHaveBeenCalledWith(expect.objectContaining({
+      currentProjectId: null,
+    }));
   });
 
   it("opens the new project form directly when creating a new compressive test", async () => {

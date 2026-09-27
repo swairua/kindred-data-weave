@@ -617,6 +617,14 @@ export interface ApiReadResponse<T> {
   data: T;
 }
 
+/**
+ * The `read` endpoint answers 404 with `Record not found` when the row does
+ * not exist (or belongs to another user); callers use this to branch into
+ * their recovery path instead of showing a generic failure toast.
+ */
+export const isRecordNotFoundError = (error: unknown): boolean =>
+  error instanceof Error && /record not found/i.test(error.message);
+
 export interface ApiWriteResponse<T> {
   message: string;
   table: string;
@@ -900,11 +908,17 @@ export const saveCompressiveTest = async ({
     // set and re-inserting it. Rows carrying an `id` are updated in place, rows without one are
     // created, and only ids the caller actually removed are deleted. Blanking the form and
     // saving can no longer destroy results the user never intended to touch.
-    const existingCubes = await listRecords<{ id: number }>("compressive_cubes", {
+    // The client-side filter below mirrors the server-side `filter` param so this stays
+    // scoped to this test even against an older api.php that ignores `filter`.
+    const existingCubes = await listRecords<{ id: number; test_id?: number | string }>("compressive_cubes", {
       filter: `test_id=${resolvedTestId}`,
       limit: 5000,
     });
-    const storedIds = new Set((existingCubes.data || []).map((row) => Number(row.id)));
+    const storedIds = new Set(
+      (existingCubes.data || [])
+        .filter((row) => row.test_id === undefined || Number(row.test_id) === Number(resolvedTestId))
+        .map((row) => Number(row.id)),
+    );
     const keptIds = new Set<number>();
     const cubeIds: number[] = [];
 
@@ -966,6 +980,13 @@ export const listCompressiveTests = async (projectId?: number) => {
     // Typed so callers get the row shape instead of unknown[], which is what the wizard
     // renders in the existing-test list.
     const response = await listRecords<ApiCompressiveTestRow>("compressive_tests", params);
+    if (projectId) {
+      // Mirror the server-side `filter` client-side: an older api.php ignores
+      // `filter` and returns every test, so scope the result here as well.
+      response.data = (response.data || []).filter(
+        (row) => Number((row as ApiCompressiveTestRow).project_id) === Number(projectId),
+      );
+    }
     return response;
   } catch (error) {
     console.error("[API] Failed to list compressive tests:", error);

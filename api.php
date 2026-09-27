@@ -413,6 +413,43 @@ function normalizeValue(mixed $value): mixed
     return $value;
 }
 
+/**
+ * Parse the `filter` query param the API client sends as `column=value`
+ * (optionally comma-separated, e.g. `project_id=11,status=submitted`).
+ *
+ * Only columns that genuinely exist on the requested table are honoured, so
+ * callers can never reach unexpected columns, and every value is returned
+ * separately for bound placeholders - the filter string itself never goes
+ * into the SQL. Aliases must match the quoting used by the owning query
+ * (`tr` for the test_results JOIN, the bare table everywhere else).
+ */
+function listFilterConditions(array $schema, string $columnPrefix): array
+{
+    $raw = trim((string) ($_GET['filter'] ?? ''));
+    if ($raw === '') {
+        return ['conditions' => [], 'values' => []];
+    }
+
+    $conditions = [];
+    $values = [];
+    foreach (explode(',', $raw) as $pair) {
+        $pair = trim($pair);
+        if ($pair === '' || !str_contains($pair, '=')) {
+            continue;
+        }
+        [$column, $value] = explode('=', $pair, 2);
+        $column = strtolower(trim($column));
+        $value = trim($value);
+        if ($column === '' || !isset($schema['columns'][$column])) {
+            continue;
+        }
+        $conditions[] = "{$columnPrefix}`$column` = ?";
+        $values[] = $value;
+    }
+
+    return ['conditions' => $conditions, 'values' => $values];
+}
+
 function hydrateRow(array $row): array
 {
     foreach ($row as $key => $value) {
@@ -908,15 +945,25 @@ try {
 
         // Filter by user_id if the table has it and user is authenticated
         // EXCEPT for admin tables (users, user_allowed_tables) which should show all records
-        $whereClause = '';
+        $whereClauses = [];
         if ($userId && isset($schema['columns']['user_id']) && !in_array($table, $adminTables, true)) {
             // For test_results with JOIN, qualify column with table alias
             if ($table === 'test_results') {
-                $whereClause = "WHERE tr.`user_id` = $userId";
+                $whereClauses[] = "tr.`user_id` = $userId";
             } else {
-                $whereClause = "WHERE `user_id` = $userId";
+                $whereClauses[] = "`user_id` = $userId";
             }
         }
+
+        // Honour the `filter` query param the API client sends as `column=value`
+        // pairs (e.g. `project_id=11`). Unknown columns are dropped by the
+        // parser, and every value is bound - the raw filter never reaches SQL.
+        $listFilter = listFilterConditions($schema, $table === 'test_results' ? 'tr.' : '');
+        $filterValues = $listFilter['values'];
+        foreach ($listFilter['conditions'] as $condition) {
+            $whereClauses[] = $condition;
+        }
+        $whereClause = $whereClauses === [] ? '' : 'WHERE ' . implode(' AND ', $whereClauses);
 
         // Special handling for test_results: JOIN with projects to get project names
         if ($table === 'test_results') {
@@ -927,7 +974,12 @@ try {
             $sql = "SELECT * FROM `$table` $whereClause ORDER BY `$orderBy` $direction LIMIT ? OFFSET ?";
         }
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param('ii', $limit, $offset);
+        if (!$stmt) {
+            error_log("List query preparation failed for table=$table");
+            respond(['error' => 'Database error: ' . $conn->error], 500);
+        }
+        $listTypes = str_repeat('s', count($filterValues)) . 'ii';
+        bindParams($stmt, $listTypes, [...$filterValues, $limit, $offset]);
         $stmt->execute();
         $result = $stmt->get_result();
 
@@ -966,7 +1018,12 @@ try {
         $row = $stmt->get_result()->fetch_assoc();
 
         if (!$row) {
-            respond(['error' => 'Record not found'], 404);
+            respond([
+                'error' => 'Record not found',
+                'table' => $table,
+                'id' => $id,
+                'hint' => 'The record may have been deleted, or it may belong to a different user.',
+            ], 404);
         }
 
         respond(['table' => $table, 'data' => hydrateRow($row)]);
