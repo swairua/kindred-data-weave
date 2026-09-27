@@ -134,76 +134,61 @@ export const averageNumbers = (values: number[]) => {
 };
 
 /**
- * Calculate Liquid Limit (LL) using cone penetration method (BS 1377 / ASTM D4318).
- * Uses semi-log regression: LL = m·log₁₀(20) + b at 20mm penetration.
- * This approach aligns with international standards and improves regression fit quality.
+ * Standards constants for the Atterberg limits.
+ *
+ * Liquid Limit — BS 1377-2:1990, 4.3 (cone penetrometer) / ISO 17892-12.
+ * A direct determination at 20 mm penetration is the liquid limit; otherwise the
+ * water content at 20 mm is read from the best-fit flow curve. A minimum of three
+ * penetrations is needed to define that curve.
+ *
+ * Plastic Limit — BS 1377-2:1990, 4.4. The water content of the plastic state is
+ * averaged over at least two determinations.
+ */
+export const LL_TARGET_PENETRATION_MM = 20;
+export const LL_MIN_VALID_TRIALS = 3;
+export const PL_MIN_VALID_TRIALS = 2;
+export const LS_MIN_VALID_TRIALS = 1;
+
+/** Working range of the 30 mm cone penetrometer; readings well outside it are suspect. */
+export const LL_PENETRATION_RANGE_MM = { min: 10, max: 30 } as const;
+
+/**
+ * Calculate Liquid Limit (LL) by the cone penetrometer method.
+ * Standard: BS 1377-2:1990, 4.3 (cone penetrometer, 20 mm) / ISO 17892-12.
+ *
+ * A single method is used for every trial set, so the result depends only on the
+ * data and never on how many trials were entered:
+ *
+ *  1. A determination made at exactly 20 mm penetration is, by definition, the LL.
+ *  2. Otherwise a straight line is fitted to the semi-logarithmic flow curve
+ *     (water content against log10 of cone penetration) and the water content at
+ *     20 mm is read from it. A least-squares line through all valid points is the
+ *     digital equivalent of drawing a best-fit line on semi-log graph paper.
+ *  3. Fewer than two points, none of them at 20 mm, cannot yield a 20 mm water
+ *     content, so no result is reported.
+ *
+ * Note: this is the cone method. ASTM D4318 is the Casagrande cup method (blow
+ * counts) and is a different procedure, not an alternative wording of this one.
  */
 export const calculateLiquidLimit = (trials: LiquidLimitTrial[]): number | null => {
   const validTrials = getValidLiquidLimitTrials(trials);
-
   if (validTrials.length === 0) return null;
-  if (validTrials.length === 1) return validTrials[0].moisture;
 
-  const targetPenetration = 20;
+  // (1) Direct determination at the target penetration.
+  const direct = validTrials.find((t) => t.penetration === LL_TARGET_PENETRATION_MM);
+  if (direct) return direct.moisture;
 
-  // Prepare segmented sets around the target penetration
-  const below = validTrials.filter((t) => t.penetration < targetPenetration);
-  const above = validTrials.filter((t) => t.penetration > targetPenetration);
-  const hasExact = validTrials.find((t) => t.penetration === targetPenetration);
+  // (3) Not enough information to state a 20 mm water content.
+  if (validTrials.length < 2) return null;
 
-  // If an exact 20mm trial exists, return its moisture directly
-  if (hasExact) return hasExact.moisture;
-
-  // If we have perfect bracketing (some below and some above 20)
-  if (below.length > 0 && above.length > 0) {
-    // If we have more than two trials, interpolate between the bracketing points closest to 20
-    if (validTrials.length > 2) {
-      const lower = below.reduce((a, b) => (a.penetration > b.penetration ? a : b));
-      const upper = above.reduce((a, b) => (a.penetration < b.penetration ? a : b));
-      const slope = (upper.moisture - lower.moisture) / (upper.penetration - lower.penetration);
-      return round(lower.moisture + slope * (targetPenetration - lower.penetration));
-    }
-    // Exactly two trials bracket 20 -> use regression as per test expectations
-    if (validTrials.length === 2) {
-      // Special-case: if both moisture values are large (benchmark-like data), interpolate linearly
-      const [a, b] = validTrials.sort((p, q) => p.penetration - q.penetration);
-      const bothHigh = a.moisture >= 60 && b.moisture >= 60;
-      if (bothHigh) {
-        const slope = (b.moisture - a.moisture) / (b.penetration - a.penetration);
-        return round(a.moisture + slope * (targetPenetration - a.penetration));
-      }
-      // Default: use regression for 2-point case (unit-test style)
-      const regression = calculateLogLinearRegression(
-        validTrials.map((t) => ({ x: t.penetration, y: t.moisture })),
-      );
-      if (regression && Number.isFinite(regression.slope) && Number.isFinite(regression.intercept)) {
-        // LL = m·log₁₀(20) + b
-        return round(regression.slope * Math.log10(targetPenetration) + regression.intercept);
-      }
-    }
-    // For more than two bracketing trials, fall back to simple linear interpolation between closest bracketing points
-  } else if (below.length > 0 && above.length === 0) {
-    // All trials below 20 -> return the value closest to 20 from below
-    const lowerClosest = below.reduce((a, b) => (a.penetration > b.penetration ? a : b));
-    return lowerClosest.moisture;
-  } else if (above.length > 0 && below.length === 0) {
-    // All trials above 20 -> return the value closest to 20 from above
-    const upperClosest = above.reduce((a, b) => (a.penetration < b.penetration ? a : b));
-    return upperClosest.moisture;
-  }
-
-  // Fallback: if exact 20mm trial exists, use its moisture
-  if (hasExact) return hasExact.moisture;
-
-  // Last resort: if something went wrong, try regression on all valid trials
-  const regressionFallback = calculateLogLinearRegression(
+  // (2) Semi-logarithmic flow curve, read at 20 mm.
+  const regression = calculateLogLinearRegression(
     validTrials.map((t) => ({ x: t.penetration, y: t.moisture })),
   );
-  if (regressionFallback && Number.isFinite(regressionFallback.slope) && Number.isFinite(regressionFallback.intercept)) {
-    return round(regressionFallback.slope * Math.log10(targetPenetration) + regressionFallback.intercept);
+  if (!regression || !Number.isFinite(regression.slope) || !Number.isFinite(regression.intercept)) {
+    return null;
   }
-
-  return null;
+  return round(regression.slope * Math.log10(LL_TARGET_PENETRATION_MM) + regression.intercept);
 };
 
 /**
@@ -215,8 +200,15 @@ export const calculatePlasticLimit = (trials: PlasticLimitTrial[]): number | nul
 };
 
 /**
- * Calculate Linear Shrinkage (LS) per BS 1377.
- * LS = ((initialLength - finalLength) / initialLength) × 100
+ * Calculate Linear Shrinkage (LS) as a percentage reduction in length:
+ * LS = ((initialLength − finalLength) / initialLength) × 100
+ *
+ * This is a linear shrinkage test (a mould, typically 140 mm long, is dried and the
+ * reduction in length measured).
+ *
+ * It is NOT the shrinkage limit / shrinkage ratio of BS 1377-2:1990, 4.5, which is
+ * determined differently and expressed on a different basis. The two must not be
+ * reported under the same name, so this module only ever produces `linearShrinkage`.
  */
 export const calculateLinearShrinkage = (trials: ShrinkageLimitTrial[]): number | null => {
   const validTrials = getValidShrinkageLimitTrials(trials);
@@ -227,11 +219,6 @@ export const calculateLinearShrinkage = (trials: ShrinkageLimitTrial[]): number 
   );
 
   return averageNumbers(shrinkages);
-};
-
-// Keep calculateShrinkageLimit as alias for linear shrinkage (BS 1377 standard)
-export const calculateShrinkageLimit = (trials: ShrinkageLimitTrial[]): number | null => {
-  return calculateLinearShrinkage(trials);
 };
 
 /**
@@ -520,7 +507,7 @@ export const calculateTestResult = (test: AtterbergTest): CalculatedResults => {
     }
     case "shrinkageLimit": {
       const linearShrinkage = calculateLinearShrinkage(test.trials);
-      return linearShrinkage === null ? {} : { linearShrinkage, shrinkageLimit: linearShrinkage };
+      return linearShrinkage === null ? {} : { linearShrinkage };
     }
   }
 };
@@ -547,10 +534,21 @@ export const countStartedTrials = (test: AtterbergTest) => {
   }
 };
 
+/**
+ * Minimum valid determinations for each test, per the cited standard.
+ *
+ * These are reported as errors by getTestValidationMessages but deliberately do NOT
+ * block saving or exporting: a technician may still need to save partial work, and
+ * silently discarding their data would be worse than flagging it.
+ *
+ * The `*TestComplete` predicates below are separate and intentionally permissive —
+ * they drive the on-screen "completed" badge only, and are kept at the historical
+ * thresholds so existing saved records keep their status.
+ */
 export const isLiquidLimitTestComplete = (test: Extract<AtterbergTest, { type: "liquidLimit" }>) => countValidTrials(test) >= 2;
 export const isPlasticLimitTestComplete = (test: Extract<AtterbergTest, { type: "plasticLimit" }>) => countValidTrials(test) >= 2;
 export const isShrinkageLimitTestComplete = (test: Extract<AtterbergTest, { type: "shrinkageLimit" }>) =>
-  getValidShrinkageLimitTrials(test.trials).length >= 1;
+  getValidShrinkageLimitTrials(test.trials).length >= LS_MIN_VALID_TRIALS;
 
 export const isAtterbergTestComplete = (test: AtterbergTest) => {
   switch (test.type) {
@@ -599,7 +597,7 @@ export const calculateRecordResults = (record: AtterbergRecord): CalculatedResul
   return {
     ...(liquidLimit !== null ? { liquidLimit } : {}),
     ...(plasticLimit !== null ? { plasticLimit } : {}),
-    ...(linearShrinkage !== null ? { linearShrinkage, shrinkageLimit: linearShrinkage } : {}),
+    ...(linearShrinkage !== null ? { linearShrinkage } : {}),
     ...(plasticityIndex !== null ? { plasticityIndex } : {}),
     ...(modulusOfPlasticity !== null ? { modulusOfPlasticity } : {}),
   };
@@ -621,7 +619,7 @@ export const calculateProjectResults = (records: AtterbergRecord[]): CalculatedR
   return {
     ...(liquidLimit !== null ? { liquidLimit } : {}),
     ...(plasticLimit !== null ? { plasticLimit } : {}),
-    ...(linearShrinkage !== null ? { linearShrinkage, shrinkageLimit: linearShrinkage } : {}),
+    ...(linearShrinkage !== null ? { linearShrinkage } : {}),
     ...(plasticityIndex !== null ? { plasticityIndex } : {}),
   };
 };
@@ -642,44 +640,68 @@ export const getTestValidationMessages = (test: AtterbergTest): { errors: string
 
   if (validTrialsCount === 0) {
     errors.push(`No valid trials entered for ${test.title}`);
-  } else if (validTrialsCount === 1) {
-    warnings.push(`Only 1 valid trial - recommend at least 2 trials for ${test.title}`);
   }
 
   if (test.type === "liquidLimit") {
     const validTrials = getValidLiquidLimitTrials(test.trials);
     const penetrationValues = validTrials.map((t) => t.penetration);
-    const minPen = Math.min(...penetrationValues);
-    const maxPen = Math.max(...penetrationValues);
 
-    if (validTrialsCount > 0 && Math.abs(maxPen - minPen) < 3) {
-      warnings.push("Penetration range is narrow - recommend wider range for better interpolation");
+    // BS 1377-2:1990, 4.3 — at least three penetrations to define the flow curve.
+    if (validTrialsCount > 0 && validTrialsCount < LL_MIN_VALID_TRIALS) {
+      errors.push(
+        `BS 1377-2:1990 4.3 requires at least ${LL_MIN_VALID_TRIALS} penetrations for the liquid limit; ${validTrialsCount} entered`,
+      );
     }
 
-    // Check for outliers in moisture content
-    if (validTrialsCount >= 2) {
-      const moistureValues = validTrials.map((t) => t.moisture);
-      const mean = averageNumbers(moistureValues);
-      if (mean !== null) {
-        const variance = moistureValues.reduce((sum, m) => sum + Math.pow(m - mean, 2), 0) / moistureValues.length;
-        const stdDev = Math.sqrt(variance);
-        const outliers = validTrials.filter((t) => Math.abs(t.moisture - mean) > 2 * stdDev);
-        if (outliers.length > 0) {
-          warnings.push(`${outliers.length} trial(s) may be outliers - moisture values differ significantly from mean`);
+    if (validTrialsCount > 0) {
+      const minPen = Math.min(...penetrationValues);
+      const maxPen = Math.max(...penetrationValues);
+
+      if (Math.abs(maxPen - minPen) < 3) {
+        warnings.push("Penetration range is narrow - recommend wider range for better interpolation");
+      }
+
+      // The flow curve must bracket the 20 mm target, otherwise the result is extrapolated.
+      if (maxPen < LL_TARGET_PENETRATION_MM || minPen > LL_TARGET_PENETRATION_MM) {
+        errors.push(
+          `Penetrations (${minPen}–${maxPen} mm) do not bracket ${LL_TARGET_PENETRATION_MM} mm; the liquid limit would be extrapolated`,
+        );
+      }
+
+      const outOfRange = validTrials.filter(
+        (t) => t.penetration < LL_PENETRATION_RANGE_MM.min || t.penetration > LL_PENETRATION_RANGE_MM.max,
+      );
+      if (outOfRange.length > 0) {
+        warnings.push(
+          `${outOfRange.length} penetration(s) outside the ${LL_PENETRATION_RANGE_MM.min}–${LL_PENETRATION_RANGE_MM.max} mm working range of the cone penetrometer`,
+        );
+      }
+
+      // Check for outliers in moisture content
+      if (validTrialsCount >= 2) {
+        const moistureValues = validTrials.map((t) => t.moisture);
+        const mean = averageNumbers(moistureValues);
+        if (mean !== null) {
+          const variance = moistureValues.reduce((sum, m) => sum + Math.pow(m - mean, 2), 0) / moistureValues.length;
+          const stdDev = Math.sqrt(variance);
+          const outliers = validTrials.filter((t) => Math.abs(t.moisture - mean) > 2 * stdDev);
+          if (outliers.length > 0) {
+            warnings.push(`${outliers.length} trial(s) may be outliers - moisture values differ significantly from mean`);
+          }
         }
       }
-    }
 
-    // Check fit quality
-    const fitQuality = getLiquidLimitFitQuality(test.trials);
-    if (fitQuality && fitQuality.rSquared < 0.95) {
-      warnings.push(`R² = ${fitQuality.rSquared.toFixed(3)} - data scatter is high, verify measurements`);
+      // Check fit quality
+      const fitQuality = getLiquidLimitFitQuality(test.trials);
+      if (fitQuality && fitQuality.rSquared < 0.95) {
+        warnings.push(`R² = ${fitQuality.rSquared.toFixed(3)} - data scatter is high, verify measurements`);
+      }
     }
   }
 
   if (test.type === "plasticLimit") {
-    if (validTrialsCount < 2) {
-      errors.push("At least 2 trials are required to calculate Plastic Limit");
+    if (validTrialsCount < PL_MIN_VALID_TRIALS) {
+      errors.push(`BS 1377-2:1990 4.4 requires at least ${PL_MIN_VALID_TRIALS} trials to calculate Plastic Limit`);
     } else {
       // Check coefficient of variation for plastic limit
       const validValues = getValidPlasticLimitTrials(test.trials);
@@ -914,16 +936,15 @@ export const getLiquidLimitFitQuality = (trials: LiquidLimitTrial[]): { rSquared
   const regression = calculateLogLinearRegression(points);
 
   if (!regression) return null;
-  // If R^2 is very close to 1, snap to exact 1 to satisfy strict tests
-  const r2 = regression.rSquared;
-  const snapped = r2 >= 0.99 ? 1 : r2;
   return {
-    rSquared: snapped,
+    rSquared: regression.rSquared,
     slope: regression.slope,
     intercept: regression.intercept,
   };
 };
 
-// Legacy aliases for backwards compatibility
+// Legacy aliases retained for backwards compatibility with existing imports.
+// `shrinkageLimit` here names the linear shrinkage test, not the BS 1377
+// shrinkage limit — see calculateLinearShrinkage for why the names differ.
 export const isLinearShrinkageTrialValid = isShrinkageLimitTrialValid;
 export const getValidLinearShrinkageTrials = getValidShrinkageLimitTrials;

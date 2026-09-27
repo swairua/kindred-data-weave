@@ -251,6 +251,38 @@ export const classifySoilAASHTO = (
   return plasticityIndex <= (liquidLimit - 30) ? "A-7-5" : "A-7-6";
 };
 
+export interface AashtoGroupIndexInput {
+  /** Percentage passing the 75 µm (No. 200) sieve — AASHTO M 145 F. */
+  passingNo200: number;
+  liquidLimit: number;
+  plasticityIndex: number;
+  /** Group from classifySoilAASHTO; it selects the A-2-6 / A-2-7 rule. */
+  aashtoGroup?: string | null;
+}
+
+/**
+ * AASHTO M 145 (2008) 6.4 group index:
+ *
+ *   GI = (F - 35)[0.2 + 0.005(LL - 40)] + 0.01(F - 15)(PI - 10)
+ *
+ * where F is the percentage passing the 75 µm (No. 200) sieve, not the No. 40
+ * sieve. Only the plasticity term is used for the A-2-6 and A-2-7 subgroups, a
+ * negative result is reported as zero, and the value is reported as a whole
+ * number. Returns null when any input is missing or not a finite number.
+ */
+export const calculateAashtoGroupIndex = ({
+  passingNo200,
+  liquidLimit,
+  plasticityIndex,
+  aashtoGroup,
+}: AashtoGroupIndexInput): number | null => {
+  if (![passingNo200, liquidLimit, plasticityIndex].every(Number.isFinite)) return null;
+  const plasticityOnly = aashtoGroup === "A-2-6" || aashtoGroup === "A-2-7";
+  const liquidTerm = plasticityOnly ? 0 : (passingNo200 - 35) * (0.2 + 0.005 * (liquidLimit - 40));
+  const plasticityTerm = 0.01 * (passingNo200 - 15) * (plasticityIndex - 10);
+  return Math.floor(Math.max(liquidTerm + plasticityTerm, 0) + 0.5);
+};
+
 /**
  * Calculate Atterberg-based soil behavior indices
  */

@@ -9,6 +9,8 @@ interface PDFData {
   projectName?: string;
   clientName?: string;
   date?: string;
+  /** Date the test was actually performed, when the record carries one. */
+  dateTested?: string;
   labOrganization?: string;
   dateReported?: string;
   checkedBy?: string;
@@ -110,11 +112,13 @@ function addProfessionalHeader(doc: jsPDF, data: PDFData, images: AdminImages): 
   }
   // Metadata in two columns. An unrecorded date shows a dash rather than
   // today's date: a report must not assert a test date that was never captured.
+  // `dateTested` is preferred over `date` because `date` is the project date for
+  // most callers, and the Date Tested row must carry the test's own date.
   const metadata = [
     { label: "Project", value: data.projectName || "—" },
     { label: "Client", value: data.clientName || "—" },
     { label: "Lab Organization", value: data.labOrganization || "—" },
-    { label: "Date Tested", value: data.date || "—" },
+    { label: "Date Tested", value: data.dateTested || data.date || "—" },
     { label: "Date Reported", value: data.dateReported || "—" },
     { label: "Checked By", value: data.checkedBy || "—" },
   ];

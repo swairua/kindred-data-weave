@@ -19,13 +19,19 @@ const numeric = (value: string) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+/** The bottom row of the sieve stack is the pan, so no percentage passes it. Its mass still counts towards the sample total. */
+const isPanRow = (sieveSize: string) => {
+  const label = sieveSize.trim().toLowerCase();
+  return label === "pan" || label.startsWith("<");
+};
+
 export const calculateGrading = (rows: GradingRow[]): GradingCalculations => {
   const totalWeight = rows.reduce((sum, row) => sum + numeric(row.weightRetained), 0);
   const percentageRetained = rows.map((row) => totalWeight > 0 ? (numeric(row.weightRetained) / totalWeight) * 100 : 0);
   let retained = 0;
-  const cumulativePassing = rows.map((row, index) => {
+  const cumulativePassing = rows.map((row) => {
     retained += numeric(row.weightRetained);
-    return totalWeight > 0 && row.sieveSize.toLowerCase() !== "pan" ? (1 - retained / totalWeight) * 100 : null;
+    return totalWeight > 0 && !isPanRow(row.sieveSize) ? (1 - retained / totalWeight) * 100 : null;
   });
 
   const points = rows
@@ -113,22 +119,21 @@ const DEFAULT_KINEMATIC_VISCOSITY = 1.005;
 const STANDARD_GRAVITY = 9.80665;
 
 /**
- * Effective-depth calibration (H in cm against corrected reading R in g/L),
- * BS 1377-2:1990 Fig. 18. The intercept is a property of the hydrometer body,
- * so it is held per body type rather than derived.
+ * Effective depth H (cm) against the corrected reading R (g/L). The reading term
+ * is subtracted: a larger reading is a denser suspension, so the hydrometer
+ * floats higher and the bulb sits closer to the surface. The constants are the
+ * published scale calibrations of the two hydrometer bodies the lab records
+ * (L = 16.294964 - 0.164R for the 152H and 16.294964 - 0.2645R for the 151H).
+ * BS 1377-2:1990 9.5.7.2.2 takes the value from the calibration of the individual
+ * instrument derived under 9.5.4.2, so a body type that is not listed here falls
+ * back to the default rather than to a guessed curve.
  */
 const HYDROMETER_DEPTH_CALIBRATION: Record<string, { intercept: number; slope: number }> = {
-  "152H": { intercept: 15.2, slope: 0.4444 },
-  "151E": { intercept: 16.5, slope: 0.4444 },
+  "152H": { intercept: 16.294964, slope: 0.164 },
+  "151H": { intercept: 16.294964, slope: 0.2645 },
 };
 
-/** BS 1377-2:1990 Table 8 — temperature correction (g/L) for a BS 1512 hydrometer. */
-const HYDROMETER_TEMPERATURE_CORRECTIONS: Array<[number, number]> = [
-  [15, 0.66], [17, 0.36], [19, 0.09], [20, -0.05], [21, -0.2],
-  [23, -0.48], [25, -0.77], [27, -1.06], [29, -1.36], [31, -1.66],
-];
-
-/** Kinematic viscosity of water (m²/s × 10⁻⁶) used to derive Stokes' constant. */
+/** BS 1377-2:1990 Table 7 — kinematic viscosity of water (m²/s x 10⁻⁶) from which the Stokes' constant is derived. */
 const WATER_KINEMATIC_VISCOSITY: Array<[number, number]> = [
   [15, 1.141], [16, 1.112], [17, 1.083], [18, 1.056], [19, 1.03], [20, 1.005],
   [21, 0.981], [22, 0.958], [23, 0.934], [24, 0.913], [25, 0.893], [26, 0.874],
@@ -169,10 +174,12 @@ const EMPTY_HYDROMETER_RESULT: HydrometerResult = {
 };
 
 /**
- * BS 1377-2:1990 9.5 — for each hydrometer reading derives the adjusted and
- * corrected readings, the effective depth, the equivalent particle diameter
- * from Stokes' law, and the percentage finer on the hydrometer sample basis
- * and on the whole-sample basis used to draw the grading curve.
+ * BS 1377-2:1990 9.5.7.2 — for each hydrometer reading derives the true reading Rh from the
+ * meniscus correction on the observed reading (9.5.7.2.1), the reading Rd in the
+ * dispersant (9.5.7.2.4), the effective depth from the hydrometer's own scale
+ * calibration (9.5.7.2.2), the equivalent particle diameter from Stokes' law
+ * (9.5.7.2.3), and the percentage finer K (9.5.7.2.5) on the mass of soil used
+ * for the hydrometer test and on the whole sample, for the grading curve.
  */
 export const calculateHydrometer = (
   rows: HydrometerRowInput[],
@@ -191,8 +198,11 @@ export const calculateHydrometer = (
   const calibration = HYDROMETER_DEPTH_CALIBRATION[inputs.hydrometerType.trim()]
     ?? HYDROMETER_DEPTH_CALIBRATION[DEFAULT_HYDROMETER_TYPE];
 
-  const temperatureCorrection = manualTemperatureCorrection
-    ?? (temperature === null ? 0 : interpolateTable(HYDROMETER_TEMPERATURE_CORRECTIONS, temperature));
+  // BS 1377-2:1990 9.5.7.2.1 makes the true reading Rh = Rn' + Cm; the 1990 edition carries no
+  // temperature-correction term, it holds the suspension at the bath temperature (9.5.2.18)
+  // and covers drift by re-reading the dispersant blank (9.5.6.3.9). A manual value is
+  // still accepted for a lab working to a correction-based instrument.
+  const temperatureCorrection = manualTemperatureCorrection ?? 0;
   const compositeCorrection = meniscusCorrection + temperatureCorrection;
 
   // K = 1000·√(18ν/g) so that D(mm) = K·√(H(m) / ((sG − 1)·t(s)))
@@ -211,15 +221,19 @@ export const calculateHydrometer = (
 
     const adjustedReading = actual + zeroCorrection;
     const correctedReading = adjustedReading + compositeCorrection;
-    const effectiveDepth = calibration.intercept + calibration.slope * correctedReading;
+    const effectiveDepth = calibration.intercept - calibration.slope * correctedReading;
     const particleDiameter = effectiveDepth > 0 && specificGravity > 1 && time > 0
       ? stokesConstant * Math.sqrt((effectiveDepth / 100) / ((specificGravity - 1) * time * 60))
       : null;
-    const finesInSuspension = hydrometerMass !== null && hydrometerMass > 0 && suspensionVolume > 0
-      ? ((correctedReading * specificGravity * suspensionVolume) / (hydrometerMass * 1000)) * 100
+    // BS 1377-2:1990 9.5.7.2.5: K = 100 x sG x Rd / (m x (sG - 1)). The (sG - 1) divisor is the
+    // specific-gravity correction: it turns the density excess read on the hydrometer scale
+    // into the mass of soil in suspension, so K is only meaningful for sG > 1.
+    const specificGravityFactor = specificGravity > 1 ? specificGravity / (specificGravity - 1) : null;
+    const finesInSuspension = specificGravityFactor !== null && hydrometerMass !== null && hydrometerMass > 0 && suspensionVolume > 0
+      ? ((correctedReading * specificGravityFactor * suspensionVolume) / (hydrometerMass * 1000)) * 100
       : null;
-    const finesByHydrometer = sampleMass !== null && sampleMass > 0 && suspensionVolume > 0
-      ? ((correctedReading * specificGravity * suspensionVolume) / (sampleMass * 1000)) * 100
+    const finesByHydrometer = specificGravityFactor !== null && sampleMass !== null && sampleMass > 0 && suspensionVolume > 0
+      ? ((correctedReading * specificGravityFactor * suspensionVolume) / (sampleMass * 1000)) * 100
       : null;
 
     return {

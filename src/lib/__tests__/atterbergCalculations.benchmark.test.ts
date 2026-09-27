@@ -85,9 +85,12 @@ describe("Atterberg Calculations - BS 1377 Standard Validation", () => {
         },
       ];
 
-      // Expected: LL = 68.5 + ((75.2-68.5)/(25-15)) * (20-15) = 68.5 + 3.35 = 71.85
+      // Semi-log flow curve (BS 1377-2:1990 4.3): least-squares line through
+      // (15, 68.5) and (25, 75.2) against log10(penetration), read at 20 mm.
+      // m = 6.7 / (log25 − log15) = 30.20, b = 68.5 − 30.20·log15 = 32.98
+      // LL = 30.20·log20 + 32.98 = 72.27
       const result = calculateLiquidLimit(trials);
-      expect(result).toBe(71.85);
+      expect(result).toBe(72.27);
     });
 
     it("should return exact value if 20mm trial exists", () => {
@@ -174,11 +177,11 @@ describe("Atterberg Calculations - BS 1377 Standard Validation", () => {
         },
       ];
 
-      // Should interpolate between 15.3 and 25.8
-      // slope = (78.5-69.1)/(25.8-15.3) = 9.4/10.5 = 0.895238...
-      // LL = 69.1 + 0.895238 * (20-15.3) = 69.1 + 4.2076 = 73.3076 ≈ 73.31
+      // Least-squares line through all four points on the semi-log flow curve,
+      // read at 20 mm → 74.52. Using every valid point is the point of a
+      // best-fit line; interpolating between two neighbouring points is not.
       const result = calculateLiquidLimit(trials);
-      expect(result).toBe(73.31);
+      expect(result).toBe(74.52);
     });
 
     it("should handle penetration values below and above 20mm", () => {
@@ -197,10 +200,11 @@ describe("Atterberg Calculations - BS 1377 Standard Validation", () => {
         },
       ];
 
-      // slope = (80-60)/(35-5) = 20/30 = 0.667
-      // LL = 60 + 0.667 * (20-5) = 60 + 10 = 70
+      // Semi-log line through (5, 60) and (35, 80), read at 20 mm → 74.25.
+      // Note this is a wide bracket; the flow curve is nearly linear here so the
+      // semi-log answer is close to, but not equal to, the arithmetic one.
       const result = calculateLiquidLimit(trials);
-      expect(result).toBe(70);
+      expect(result).toBe(74.25);
     });
   });
 
@@ -615,11 +619,12 @@ describe("Atterberg Calculations - BS 1377 Standard Validation", () => {
         { id: "3", trialNo: "3", penetration: "25", moisture: "80" },
       ];
 
-      // Linear relationship: every 5mm penetration = 5% moisture
-      // This should have R² = 1.0 (perfect fit)
+      // These points are exactly linear in *penetration*, not in log10(penetration),
+      // so on the semi-log flow curve they give R² = 0.99 — a very good but not
+      // perfect fit. The true value is reported rather than snapped to 1.
       const result = getLiquidLimitFitQuality(trials);
       expect(result).not.toBeNull();
-      expect(result?.rSquared).toBe(1);
+      expect(result?.rSquared).toBeCloseTo(0.99, 2);
     });
 
     it("should calculate R² for less than perfect fit", () => {

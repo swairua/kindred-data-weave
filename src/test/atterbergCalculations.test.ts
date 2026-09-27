@@ -11,12 +11,27 @@ import {
   getULinePI,
   calculateLinearRegression,
   calculateCoefficientOfVariation,
+  calculateTestResult,
+  calculateRecordResults,
+  calculateProjectResults,
+  getTestValidationMessages,
+  LL_TARGET_PENETRATION_MM,
+  LL_MIN_VALID_TRIALS,
 } from "@/lib/atterbergCalculations";
 import type {
   LiquidLimitTrial,
   PlasticLimitTrial,
   ShrinkageLimitTrial,
+  AtterbergTest,
 } from "@/context/TestDataContext";
+
+// Builds a liquid-limit trial from just penetration and moisture.
+const llTrial = (id: string, penetration: string, moisture: string): LiquidLimitTrial => ({
+  id,
+  trialNo: id,
+  penetration,
+  moisture,
+});
 
 // ===== MOISTURE CONTENT CALCULATIONS (BS 1377) =====
 
@@ -109,7 +124,10 @@ describe("calculateLiquidLimit (Cone Penetration BS 1377)", () => {
     expect(result).toBe(36.50);
   });
 
-  it("should return single trial moisture value when only one trial", () => {
+  it("should return null when a single trial is not at 20mm (cannot state a 20mm water content)", () => {
+    // BS 1377-2:1990 4.3 needs either a determination at 20 mm or a curve built from
+    // at least two points. One point at 22 mm cannot yield the water content at 20 mm,
+    // so no liquid limit is reported rather than reporting 22 mm's value as the LL.
     const trials: LiquidLimitTrial[] = [
       {
         id: "1",
@@ -122,10 +140,27 @@ describe("calculateLiquidLimit (Cone Penetration BS 1377)", () => {
       },
     ];
     const result = calculateLiquidLimit(trials);
-    expect(result).toBe(34.75);
+    expect(result).toBeNull();
   });
 
-  it("should return lower trial value when all trials are below 20mm", () => {
+  it("should return null when a single trial IS at 20mm (direct determination)", () => {
+    const trials: LiquidLimitTrial[] = [
+      {
+        id: "1",
+        trialNo: "1",
+        penetration: "20",
+        moisture: "34.75",
+        containerWetMass: undefined,
+        containerDryMass: undefined,
+        containerMass: undefined,
+      },
+    ];
+    expect(calculateLiquidLimit(trials)).toBe(34.75);
+  });
+
+  it("should extrapolate the flow curve when all trials are below 20mm", () => {
+    // Semi-log fit through (10, 32.50) and (15, 34.20), read at 20 mm → 35.41.
+    // This is an extrapolation; getTestValidationMessages flags unbracketed data.
     const trials: LiquidLimitTrial[] = [
       {
         id: "1",
@@ -147,10 +182,11 @@ describe("calculateLiquidLimit (Cone Penetration BS 1377)", () => {
       },
     ];
     const result = calculateLiquidLimit(trials);
-    expect(result).toBe(34.20); // Takes closest lower value
+    expect(result).toBe(35.41);
   });
 
-  it("should return upper trial value when all trials are above 20mm", () => {
+  it("should extrapolate the flow curve when all trials are above 20mm", () => {
+    // Semi-log fit through (22, 36.50) and (28, 38.75), read at 20 mm → 35.61.
     const trials: LiquidLimitTrial[] = [
       {
         id: "1",
@@ -172,7 +208,7 @@ describe("calculateLiquidLimit (Cone Penetration BS 1377)", () => {
       },
     ];
     const result = calculateLiquidLimit(trials);
-    expect(result).toBe(36.50); // Takes closest upper value
+    expect(result).toBe(35.61);
   });
 
   it("should return null if no valid trials", () => {
@@ -394,6 +430,116 @@ describe("calculatePlasticityIndex", () => {
   it("should return 0 when LL equals PL (non-plastic soil)", () => {
     const result = calculatePlasticityIndex(25.0, 25.0);
     expect(result).toBe(0);
+  });
+});
+
+// ===== STANDARDS CONFORMANCE =====
+
+describe("Atterberg standards conformance", () => {
+  describe("Liquid limit uses one method regardless of trial count", () => {
+    // The old implementation switched between arithmetic interpolation, a
+    // "both moistures >= 60%" special case and "closest point" fallbacks, so the
+    // reported LL could change with the number of trials entered. These tests pin
+    // the single-method behaviour of BS 1377-2:1990 4.3.
+    const curve: LiquidLimitTrial[] = [
+      llTrial("1", "16", "62.0"),
+      llTrial("2", "18", "65.5"),
+      llTrial("3", "22", "71.0"),
+      llTrial("4", "24", "74.2"),
+    ];
+
+    it("is independent of the order trials are entered in", () => {
+      const forward = calculateLiquidLimit(curve);
+      const reversed = calculateLiquidLimit([...curve].reverse());
+      expect(forward).toBe(reversed);
+    });
+
+    it("ignores invalid trials without changing the result", () => {
+      const withNoise = [
+        ...curve,
+        llTrial("bad1", "0", "50.0"), // penetration <= 0 → invalid
+        llTrial("bad2", "19", "-3"), // negative moisture → invalid
+        llTrial("bad3", "", ""), // empty → invalid
+      ];
+      expect(calculateLiquidLimit(withNoise)).toBe(calculateLiquidLimit(curve));
+    });
+
+    it("treats a direct 20mm determination as the liquid limit even alongside other points", () => {
+      const withDirect = [...curve, llTrial("d", String(LL_TARGET_PENETRATION_MM), "68.25")];
+      expect(calculateLiquidLimit(withDirect)).toBe(68.25);
+    });
+  });
+
+  describe("Trial minimums are reported but do not block saving", () => {
+    const llTest = (trials: LiquidLimitTrial[]): AtterbergTest =>
+      ({ id: "t1", title: "Liquid Limit 1", type: "liquidLimit", isExpanded: false, result: {}, trials }) as AtterbergTest;
+
+    it("flags fewer than the standard minimum of liquid-limit penetrations", () => {
+      const { errors } = getTestValidationMessages(llTest([llTrial("1", "17", "60"), llTrial("2", "23", "70")]));
+      expect(errors.join(" ")).toContain("4.3");
+      expect(errors.join(" ")).toContain(String(LL_MIN_VALID_TRIALS));
+    });
+
+    it("accepts a compliant set of liquid-limit penetrations", () => {
+      const { errors } = getTestValidationMessages(
+        llTest([llTrial("1", "16", "62"), llTrial("2", "19", "68"), llTrial("3", "23", "73")]),
+      );
+      expect(errors).toEqual([]);
+    });
+
+    it("flags penetrations that do not bracket the 20mm target", () => {
+      const { errors } = getTestValidationMessages(
+        llTest([llTrial("1", "26", "70"), llTrial("2", "28", "74"), llTrial("3", "29", "77")]),
+      );
+      expect(errors.join(" ")).toContain("do not bracket");
+    });
+
+    it("still returns a result for an under-determined set (no hard block)", () => {
+      // Two points is below the BS minimum but the curve is still computable;
+      // the technician keeps their data and gets a warning, not a dead end.
+      const result = calculateLiquidLimit([llTrial("1", "16", "62"), llTrial("2", "24", "74")]);
+      expect(result).not.toBeNull();
+    });
+  });
+
+  describe("Linear shrinkage is never reported as a BS 1377 shrinkage limit", () => {
+    const slTest: AtterbergTest = {
+      id: "t3",
+      title: "Linear Shrinkage 1",
+      type: "shrinkageLimit",
+      isExpanded: false,
+      result: {},
+      trials: [{ id: "1", trialNo: "1", initialLength: "140", finalLength: "112" }],
+    } as AtterbergTest;
+
+    it("does not populate the mislabelled shrinkageLimit field on a test result", () => {
+      const result = calculateTestResult(slTest);
+      expect(result.linearShrinkage).toBe(20);
+      expect(result).not.toHaveProperty("shrinkageLimit");
+    });
+
+    it("does not populate it at record level either", () => {
+      const record = {
+        id: "r1",
+        title: "Record 1",
+        isExpanded: false,
+        note: "",
+        tests: [slTest],
+        results: calculateRecordResults({ id: "r1", title: "Record 1", isExpanded: false, note: "", tests: [slTest] } as never),
+        passing425um: undefined,
+      } as never;
+      const result = calculateRecordResults(record);
+      expect(result.linearShrinkage).toBe(20);
+      expect(result).not.toHaveProperty("shrinkageLimit");
+    });
+
+    it("does not populate it at project level either", () => {
+      const results = calculateProjectResults([
+        { results: { linearShrinkage: 20 } },
+      ] as never);
+      expect(results.linearShrinkage).toBe(20);
+      expect(results).not.toHaveProperty("shrinkageLimit");
+    });
   });
 });
 

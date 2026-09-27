@@ -42,6 +42,9 @@ const ChartContainer = React.forwardRef<
   return (
     <ChartContext.Provider value={{ config }}>
       <div
+        // `data-chart` drives the colour CSS below; `id` is what the export path
+        // resolves with document.getElementById, so both are needed here.
+        id={id}
         data-chart={chartId}
         ref={ref}
         className={cn(

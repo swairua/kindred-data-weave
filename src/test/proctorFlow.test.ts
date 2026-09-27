@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createElement } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { clearProctorResults, loadProctorResult, saveProctorResult } from "@/lib/proctorPersistence";
-import { airVoidsDensity, calculateProctor, calculateProctorPoint, createProctorPayload, createProctorRows, emptyProctorRecord, fitCompactionCurve, getProctorRecord, sampleCompactionCurve, zeroAirVoidsCurve, zeroAirVoidsDensity, type ProctorRow } from "@/lib/proctorRecords";
+import { airVoidsCurve, airVoidsDensity, calculateProctor, calculateProctorPoint, createProctorPayload, createProctorRows, emptyProctorRecord, fitCompactionCurve, getProctorRecord, sampleCompactionCurve, zeroAirVoidsCurve, zeroAirVoidsDensity, type ProctorRow } from "@/lib/proctorRecords";
 import { getExpectedTestType, hasRequiredSoilSampleMetadata, isInitialTestValid, isTestAllowed, toRecordMetadata } from "@/lib/recordTestWizard";
 import ProctorTest from "@/components/soil/ProctorTest";
 
@@ -226,7 +226,9 @@ describe("Proctor calculations", () => {
     expect(zeroAirVoidsDensity(2.7, 0)).toBeCloseTo(2700, 6);
     expect(zeroAirVoidsDensity(0, 12)).toBeNull();
     expect(zeroAirVoidsDensity(-2.7, 12)).toBeNull();
-    expect(airVoidsDensity(5, 2.7, 12)).toBeCloseTo(2116.2868, 3);
+    // rd(na) = rd(ZAV) x (1 - na), so the 5% line is 95% of the saturation density
+    expect(airVoidsDensity(5, 2.7, 12)).toBeCloseTo((2700 / 1.324) * 0.95, 6);
+    expect(airVoidsDensity(5, 2.7, 12)).toBeCloseTo(1937.3112, 3);
     expect(airVoidsDensity(100, 2.7, 12)).toBeNull();
     expect(airVoidsDensity(-5, 2.7, 12)).toBeNull();
 
@@ -235,6 +237,27 @@ describe("Proctor calculations", () => {
     expect(curve[0].moisture).toBeCloseTo(10, 6);
     expect(curve[39].moisture).toBeCloseTo(14, 6);
     expect(curve.every((point) => point.dryDensity > 0)).toBe(true);
+  });
+
+  it("keeps the target air voids line below the zero air voids line everywhere", () => {
+    // A soil can never be denser than the saturated state, so a line that is scaled up by the
+    // air voids percentage is physically impossible and must never reach the chart.
+    for (const airVoidsPercent of [1, 5, 10, 20]) {
+      for (const moisture of [5, 12, 25]) {
+        const saturation = zeroAirVoidsDensity(2.7, moisture) as number;
+        const voids = airVoidsDensity(airVoidsPercent, 2.7, moisture) as number;
+        expect(voids).toBeLessThan(saturation);
+        expect(voids).toBeCloseTo(saturation * (1 - airVoidsPercent / 100), 9);
+      }
+    }
+    // Zero air voids is the saturation line itself
+    expect(airVoidsDensity(0, 2.7, 12)).toBeCloseTo(zeroAirVoidsDensity(2.7, 12) as number, 9);
+
+    const range: [number, number] = [8, 20];
+    const voidsCurve = airVoidsCurve(5, 2.7, range);
+    const saturationCurve = zeroAirVoidsCurve(2.7, range);
+    expect(voidsCurve).toHaveLength(saturationCurve.length);
+    expect(voidsCurve.every((point, index) => point.dryDensity < (saturationCurve[index].dryDensity as number))).toBe(true);
   });
 
   it("samples the fitted curve so it can be drawn between the measured points", () => {

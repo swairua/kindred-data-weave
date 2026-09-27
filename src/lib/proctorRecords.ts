@@ -255,8 +255,10 @@ export const zeroAirVoidsDensity = (specificGravity: number, moisturePercent: nu
 };
 
 /**
- * Dry density at a target air voids content, taken off the zero air voids line as
- * rd(na) = rd(ZAV) * (1 + na / (1 + w.Gs)).
+ * Dry density at a target air voids content. Writing na = Va/V and the solid, water
+ * and air volumes as V = Vs(1 + w.Gs) + Va gives rd = Gs.rw(1 - na)/(1 + w.Gs), so
+ * the line is the zero air voids line scaled down by the air voids fraction:
+ * rd(na) = rd(ZAV) x (1 - na). It therefore always sits below the ZAV line.
  */
 export const airVoidsDensity = (
   airVoidsPercent: number,
@@ -266,8 +268,7 @@ export const airVoidsDensity = (
   const saturation = zeroAirVoidsDensity(specificGravity, moisturePercent);
   if (saturation === null) return null;
   if (!Number.isFinite(airVoidsPercent) || airVoidsPercent < 0 || airVoidsPercent >= 100) return null;
-  const w = moisturePercent / 100;
-  return saturation * (1 + (airVoidsPercent / 100) / (1 + w * specificGravity));
+  return saturation * (1 - airVoidsPercent / 100);
 };
 
 const sampleRange = (from: number, to: number, samples: number): number[] => {

@@ -336,12 +336,17 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
   const exportPDF = async () => {
     generateTestPDF({
       title: `Density/Moisture Content Relationship (${methodLabel(type)})`,
+      standard: `BS 1377-4:1990, ${methodClause(type)} (${type === "standard" ? "2.5 kg" : "4.5 kg"} rammer)`,
       projectName: project.projectName,
       clientName: project.clientName,
       date: project.projectDate || project.date,
+      // The record's own test date, not the project date, so the Date Tested row is truthful.
+      dateTested: record.dateTested,
       labOrganization: project.labOrganization,
       dateReported: project.dateReported,
       checkedBy: project.checkedBy,
+      // The record shows this as "TESTED BY"; without it the report printed a blank signature line.
+      testedBy: record.sampledSubmittedBy,
       fields: exportResultFields,
       tables: exportTables(),
       chartImages: await captureChart(),

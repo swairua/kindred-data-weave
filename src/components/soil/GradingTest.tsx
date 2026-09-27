@@ -15,7 +15,7 @@ import { generateTestCSV } from "@/lib/csvExporter";
 import { generateTestExcel } from "@/lib/genericExcelExporter";
 import { generateTestPDF } from "@/lib/pdfGenerator";
 import { calculateGrading, calculateHydrometer, calculateMoisture, type GradingRow } from "@/lib/gradingCalculations";
-import { classifySoilAASHTO, classifySoilUSCS } from "@/lib/soilClassification";
+import { calculateAashtoGroupIndex, classifySoilAASHTO, classifySoilUSCS } from "@/lib/soilClassification";
 import { toast } from "sonner";
 
 interface GradingTestProps {
@@ -346,21 +346,23 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
   }, [classificationValues, record.classification.liquidLimit, record.classification.plasticLimit]);
 
   /**
-   * AASHTO group index, BS 1377-2:1990 6.5.4 — uses the % passing 0.425 mm
-   * sieve, and is only meaningful for A-2-6, A-2-7, A-4, A-5, A-7-5 and A-7-6.
+   * AASHTO M 145 (2008) 6.4 group index. F is the percentage passing the 75 µm
+   * (No. 200) sieve, which is the fines value already read off the 0.075 mm row,
+   * and the value only means anything for A-2-6, A-2-7, A-4, A-5, A-6, A-7-5
+   * and A-7-6. The A-2-6 / A-2-7 subgroups use the plasticity term on its own.
    */
   const groupIndex = useMemo(() => {
     const liquidLimit = parseNumber(record.classification.liquidLimit);
     const plasticityIndex = classificationValues.plasticityIndex;
-    if (liquidLimit === null || plasticityIndex === null) return null;
-    const index = record.sieveRows.findIndex((row) => Number.parseFloat(row.sieveSize) === 0.425);
-    const passingNo40 = index >= 0 ? calculations.cumulativePassing[index] : null;
-    if (passingNo40 === null) return null;
-    const first = (passingNo40 - 35) * (0.2 + 0.005 * (liquidLimit - 40));
-    const second = 0.01 * (passingNo40 - 15) * (plasticityIndex - 10);
-    const raw = Math.max(first + second, 0);
-    return Math.min(Math.floor(raw + 0.5), 40);
-  }, [record.sieveRows, record.classification.liquidLimit, classificationValues.plasticityIndex, calculations.cumulativePassing]);
+    const passingNo200 = classificationValues.fines;
+    if (liquidLimit === null || plasticityIndex === null || passingNo200 === null) return null;
+    return calculateAashtoGroupIndex({
+      passingNo200,
+      liquidLimit,
+      plasticityIndex,
+      aashtoGroup: autoClassification?.aashtoGroup ?? null,
+    });
+  }, [record.classification.liquidLimit, classificationValues.plasticityIndex, classificationValues.fines, autoClassification?.aashtoGroup]);
 
   useEffect(() => {
     if (!projectId) {
@@ -511,7 +513,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       setError(saveError instanceof Error ? saveError.message : "Unable to save this record");
       throw saveError;
     }
-  }, [projectId, status, record, calculations, payload, recordId, isNewRecord, location, navigate]);
+  }, [projectId, status, record, calculations, payload, recordId, isNewRecord, location, navigate, autoClassification, groupIndex]);
 
   const clear = async () => {
     if (projectId) {
@@ -549,21 +551,50 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       headers: ["Sieve size (mm)", "Retained mass (g)", "% retained", "Cumulative passing (%)"],
       rows: record.sieveRows.map((row, index) => [row.sieveSize, row.weightRetained || "—", calculations.percentageRetained[index]?.toFixed(1) || "—", calculations.cumulativePassing[index]?.toFixed(1) || "—"]),
     }, {
-      headers: ["Time (min)", "Actual HR reading", "Corrected HR", "Effective depth (cm)", "Diameter (mm)", "% finer by hydrometer"],
+      // Column order follows the calculation chain in calculateHydrometer: the observed
+      // reading, the reading reduced to the dispersant baseline (Rd), the correction, then
+      // the true reading (Rh) that the effective depth and the plotted curve are read from.
+      headers: ["Time (min)", "R_n' (g/L)", "R_d = R_n' - R_o' (g/L)", "C_m + C_t (g/L)", "R_h (g/L)", "Effective depth (cm)", "Diameter (mm)", "% finer (hydrometer sample)", "% finer (whole sample)"],
       rows: record.hydrometerRows.map((row, index) => {
         const result = hydrometer.results[index];
         return [
           row.time,
           row.actualHydrometer || "—",
+          formatCell(result?.adjustedReading, 1),
+          formatCell(result?.compositeCorrection ?? null, 2),
           formatCell(result?.correctedReading, 1),
           formatCell(result?.effectiveDepth, 2),
           formatCell(result?.particleDiameter, 4),
+          formatCell(result?.finesInSuspension, 1),
           formatCell(result?.finesByHydrometer, 1),
         ];
       }),
     }];
+    // The headline numbers, shared by every export so the PDF cannot omit what the
+    // spreadsheet of the same test contains.
+    const resultFields = [
+      { label: "D10", value: formatValue(calculations.d10, 3) },
+      { label: "D30", value: formatValue(calculations.d30, 3) },
+      { label: "D60", value: formatValue(calculations.d60, 3) },
+      { label: "Cu", value: formatValue(calculations.cu) },
+      { label: "Cc", value: formatValue(calculations.cc) },
+      ...(autoClassification ? [{ label: "USCS", value: autoClassification.uscsSymbol }, { label: "AASHTO", value: autoClassification.aashtoGroup }] : []),
+      ...(groupIndex === null ? [] : [{ label: "Group Index", value: String(groupIndex) }]),
+    ];
+    // One metadata set for every export. `...project` carries no testedBy, so the PDF
+    // footer and the Date Tested row were previously blank and wrong respectively.
+    const metadata = {
+      projectName: project.projectName,
+      clientName: project.clientName,
+      date: project.projectDate || project.date,
+      dateTested: record.dateTested,
+      labOrganization: project.labOrganization,
+      dateReported: project.dateReported,
+      checkedBy: project.checkedBy,
+      testedBy: record.testedBy,
+    };
     if (type === "csv") {
-      generateTestCSV({ title: "Particle Size Distribution", ...project, tables });
+      generateTestCSV({ title: "Particle Size Distribution", ...metadata, fields: resultFields, tables });
       return;
     }
     const chartImages: Record<string, string> = {};
@@ -572,9 +603,16 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       if (chart) chartImages["Particle Size Distribution Curve"] = chart;
     }
     if (type === "pdf") {
-      generateTestPDF({ title: "Particle Size Distribution", ...project, tables, chartImages });
+      generateTestPDF({
+        title: "Particle Size Distribution",
+        standard: "BS 1377-2:1990, 9.2/9.3 (sieving) and 9.5 (hydrometer)",
+        ...metadata,
+        fields: resultFields,
+        tables,
+        chartImages,
+      });
     } else {
-      generateTestExcel({ data: { title: "Particle Size Distribution", fields: [{ label: "D10", value: formatValue(calculations.d10, 3) }, { label: "D30", value: formatValue(calculations.d30, 3) }, { label: "D60", value: formatValue(calculations.d60, 3) }, { label: "Cu", value: formatValue(calculations.cu) }, { label: "Cc", value: formatValue(calculations.cc) }, ...(autoClassification ? [{ label: "USCS", value: autoClassification.uscsSymbol }, { label: "AASHTO", value: autoClassification.aashtoGroup }] : []), ...(groupIndex === null ? [] : [{ label: "Group Index", value: String(groupIndex) }])], tables, chartImages }, projectName: project.projectName, clientName: project.clientName, date: project.projectDate || project.date, labOrganization: project.labOrganization, dateReported: project.dateReported, checkedBy: project.checkedBy });
+      generateTestExcel({ data: { title: "Particle Size Distribution", fields: resultFields, tables, chartImages }, ...metadata });
     }
   };
 
@@ -648,13 +686,13 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       </RecordSection>
 
       <div className="grid gap-3 md:grid-cols-[3fr_5fr]">
-        <RecordSection title="Wet & dry sieve analysis to BS 1377-2:1990:9.2/9.3/9.4">
+        <RecordSection title="Wet & dry sieve analysis to BS 1377-2:1990:9.2/9.3">
           <div className="overflow-x-auto"><table className="record-table grading-sieve-table w-full table-fixed"><thead><tr><th>Sieve size (mm)</th><th>Retained mass (g)</th><th>% retained</th><th>Cumulative passing (%)</th></tr></thead><tbody>{record.sieveRows.map((row, index) => <tr key={`${row.sieveSize}-${index}`}><td className="font-semibold">{row.sieveSize}</td><td><Input type="number" value={row.weightRetained} onChange={(event) => updateSieve(index, event.target.value)} className="record-input h-7 min-w-0 w-full px-1 text-center" /></td><td className="calculated-cell">{calculations.totalWeight > 0 ? calculations.percentageRetained[index].toFixed(1) : "auto"}</td><td className="calculated-cell">{calculations.cumulativePassing[index] === null ? "auto" : calculations.cumulativePassing[index]?.toFixed(1)}</td></tr>)}<tr className="font-semibold"><td>TOTAL</td><td className="calculated-cell">{calculations.totalWeight ? calculations.totalWeight.toFixed(1) : "auto"}</td><td className="calculated-cell">{calculations.totalWeight ? "100.0" : "auto"}</td><td className="calculated-cell">—</td></tr></tbody></table></div>
         </RecordSection>
 
         <RecordSection title="Hydrometer analysis to BS 1377-2:1990:9.5">
-          <div className="grid gap-px overflow-hidden rounded border sm:grid-cols-2"><HydrometerInput label="Dry weight (g)" value={record.hydrometerInputs.dryWeight} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, dryWeight: value })} /><HydrometerInput label="Suspension volume (cm³)" value={record.hydrometerInputs.suspensionVolume} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, suspensionVolume: value })} /><HydrometerInput label="Hydrometer type" value={record.hydrometerInputs.hydrometerType} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, hydrometerType: value })} /><HydrometerInput label="S.G (Mg/m³)" value={record.hydrometerInputs.sG} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, sG: value })} /><HydrometerInput label="Zero correction factor" value={record.hydrometerInputs.zeroCorrection} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, zeroCorrection: value })} /><HydrometerInput label="Temperature (°C)" value={record.hydrometerInputs.temperature} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, temperature: value })} /><HydrometerInput label="S.G correction factor" value={record.hydrometerInputs.meniscusCorrection} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, meniscusCorrection: value })} /><HydrometerInput label="K factor" value={record.hydrometerInputs.kFactor} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, kFactor: value })} /><HydrometerInput label="Temperature correction factor" value={record.hydrometerInputs.temperatureCorrection} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, temperatureCorrection: value })} /></div>
-          <div className="mt-2 overflow-x-auto"><table className="record-table min-w-[1080px]"><thead><tr><th>Time, min</th><th>Actual HR reading</th><th>Adjusted HR</th><th>Composite correction</th><th>Corrected HR</th><th>Effective depth (cm)</th><th>Diameter (mm)</th><th>% fines in suspension</th><th>% fines by hydrometer</th></tr></thead><tbody>{record.hydrometerRows.map((row, index) => {
+          <div className="grid gap-px overflow-hidden rounded border sm:grid-cols-2"><HydrometerInput label="Dry weight (g)" value={record.hydrometerInputs.dryWeight} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, dryWeight: value })} /><HydrometerInput label="Suspension volume (cm³)" value={record.hydrometerInputs.suspensionVolume} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, suspensionVolume: value })} /><HydrometerInput label="Hydrometer type" value={record.hydrometerInputs.hydrometerType} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, hydrometerType: value })} /><HydrometerInput label="S.G (Mg/m³)" value={record.hydrometerInputs.sG} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, sG: value })} /><HydrometerInput label="Dispersant reading −Ro′ (g/L)" value={record.hydrometerInputs.zeroCorrection} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, zeroCorrection: value })} /><HydrometerInput label="Temperature (°C)" value={record.hydrometerInputs.temperature} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, temperature: value })} /><HydrometerInput label="Meniscus correction Cm (g/L)" value={record.hydrometerInputs.meniscusCorrection} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, meniscusCorrection: value })} /><HydrometerInput label="Stokes constant K (optional)" value={record.hydrometerInputs.kFactor} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, kFactor: value })} /><HydrometerInput label="Temperature correction (g/L, 0 = none)" value={record.hydrometerInputs.temperatureCorrection} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, temperatureCorrection: value })} /></div>
+          <div className="mt-2 overflow-x-auto"><table className="record-table min-w-[1080px]"><thead><tr><th>Time, min</th><th>Reading Rn′ (g/L)</th><th>R_d = Rn′ − R_o′ (g/L)</th><th>C_m + C_t (g/L)</th><th>R_h = R_d + C_m + C_t (g/L)</th><th>Effective depth (cm)</th><th>Diameter (mm)</th><th>% finer than D (hydrometer sample)</th><th>% finer than D (whole sample)</th></tr></thead><tbody>{record.hydrometerRows.map((row, index) => {
     const result = hydrometer.results[index];
     return <tr key={row.time}><td className="font-semibold">{row.time}</td><td><Input value={row.actualHydrometer} onChange={(event) => updateHydrometer(index, "actualHydrometer", event.target.value)} className="record-input" /></td><td className="calculated-cell">{formatCell(result?.adjustedReading, 1)}</td><td className="calculated-cell">{formatCell(result?.compositeCorrection ?? null, 2)}</td><td className="calculated-cell">{formatCell(result?.correctedReading, 1)}</td><td className="calculated-cell">{formatCell(result?.effectiveDepth, 2)}</td><td className="calculated-cell">{formatCell(result?.particleDiameter, 4)}</td><td className="calculated-cell">{formatCell(result?.finesInSuspension, 1)}</td><td className="calculated-cell">{formatCell(result?.finesByHydrometer, 1)}</td></tr>;
   })}</tbody></table></div><div className="mt-1 flex justify-end"><span className="rounded-full border bg-muted/50 px-2 py-0.5 text-[8px] uppercase tracking-wide text-muted-foreground">Scroll →</span></div>

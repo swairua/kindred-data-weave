@@ -101,6 +101,11 @@ export interface ShrinkageLimitTrial {
 export interface CalculatedResults {
   liquidLimit?: number;
   plasticLimit?: number;
+  /**
+   * @deprecated Linear shrinkage was historically also written to `shrinkageLimit`,
+   * which is a different BS 1377 test. New results only populate `linearShrinkage`.
+   * Retained for reading legacy saved payloads; do not write to it.
+   */
   shrinkageLimit?: number;
   linearShrinkage?: number;
   plasticityIndex?: number;

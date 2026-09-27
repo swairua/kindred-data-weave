@@ -2518,7 +2518,11 @@ const buildTablesForExport = (records: ComputedRecord[]) => {
       record.testedBy || "-",
       record.results.liquidLimit !== undefined ? String(record.results.liquidLimit) : "-",
       record.results.plasticLimit !== undefined ? String(record.results.plasticLimit) : "-",
-      record.results.shrinkageLimit !== undefined ? String(record.results.shrinkageLimit) : "-",
+      // `linearShrinkage ?? shrinkageLimit` — records saved before the mislabelled
+      // `shrinkageLimit` field was retired still carry it; read it as a fallback only.
+      (record.results.linearShrinkage ?? record.results.shrinkageLimit) !== undefined
+        ? String(record.results.linearShrinkage ?? record.results.shrinkageLimit)
+        : "-",
       record.results.plasticityIndex !== undefined ? String(record.results.plasticityIndex) : "-",
       String(record.dataPoints),
     ]),
