@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, CalendarDays, Edit2, FlaskConical, Loader2, Plus, Save, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, Edit2, FileDown, FileText, FlaskConical, Loader2, Plus, Save, Sheet, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +12,11 @@ import Navigation from "@/components/Navigation";
 import { useSession } from "@/context/SessionContext";
 import { useTestData } from "@/context/TestDataContext";
 import { fetchFullProject, listRecords, updateRecord } from "@/lib/api";
+import { generateTestCSV } from "@/lib/csvExporter";
+import { generateTestExcel } from "@/lib/genericExcelExporter";
+import { generateTestPDF } from "@/lib/pdfGenerator";
+import { captureChartAsBase64 } from "@/lib/chartCapture";
+import { COMBINED_SOIL_FILENAME, loadCombinedSoilReport } from "@/lib/soilCombinedReport";
 import type { ApiProjectRow } from "@/types/api";
 
 type ProjectDetails = ApiProjectRow & {
@@ -86,6 +92,7 @@ const ProjectOverview = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     if (!Number.isInteger(projectId) || projectId < 1) {
@@ -192,6 +199,43 @@ const ProjectOverview = () => {
     const params = new URLSearchParams({ projectId: String(project.id) });
     if (resultId) params.set("resultId", String(resultId));
     navigate(`/tests?${params.toString()}#${testKey}`);
+  };
+
+  const exportCombined = async (format: "pdf" | "csv" | "excel") => {
+    if (!project || isExporting) return;
+    setIsExporting(true);
+    try {
+      const report = await loadCombinedSoilReport(projectId, {
+        projectName: project.name || "",
+        clientName: project.client_name || "",
+        date: project.project_date?.slice(0, 10) || "",
+        labOrganization: project.lab_organization || "",
+        dateReported: project.date_reported?.slice(0, 10) || "",
+        checkedBy: project.checked_by || "",
+      });
+      const chartImages: Record<string, string> = {};
+      const gChart = await captureChartAsBase64("grading-chart");
+      if (gChart) chartImages["Particle Size Distribution Curve"] = gChart;
+      const pChart = await captureChartAsBase64("proctor-chart");
+      if (pChart) chartImages["Proctor Curve"] = pChart;
+      const base = {
+        title: report.title, standard: report.standard,
+        projectName: report.projectMeta.projectName || project.name,
+        clientName: report.projectMeta.clientName || project.client_name,
+        date: report.projectMeta.dateTested || report.projectMeta.date,
+        dateTested: report.projectMeta.dateTested,
+        labOrganization: report.projectMeta.labOrganization,
+        dateReported: report.projectMeta.dateReported,
+        checkedBy: report.projectMeta.checkedBy,
+        testedBy: report.projectMeta.testedBy,
+        fields: report.fields, tables: report.tables,
+      };
+      if (format === "pdf") await generateTestPDF({ ...base, chartImages });
+      else if (format === "csv") generateTestCSV(base);
+      else await generateTestExcel({ data: { ...base, title: COMBINED_SOIL_FILENAME, chartImages } });
+      toast.success(`Combined PSD + Compaction ${format.toUpperCase()} exported`);
+    } catch (err) { toast.error(err instanceof Error ? err.message : "Combined export failed"); }
+    finally { setIsExporting(false); }
   };
 
   const handleCancelEdit = () => {
@@ -376,6 +420,27 @@ const ProjectOverview = () => {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
+                      {(orderedTestResults.some((r) => String(r.test_key) === "grading") || orderedTestResults.some((r) => String(r.test_key) === "proctor")) && (
+                        <div className="mb-4 flex flex-col gap-2 rounded-lg border bg-muted/40 p-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="text-sm">
+                            <p className="font-medium">Combined PSD + Compaction Report</p>
+                            <p className="text-muted-foreground">PSD summary (D10/D30/D60, Cu/Cc, USCS, AASHTO) joined with OMC/MDD plus fines/Cu/Cc/Gs vs OMC/MDD relationship checks. Exports PDF/Excel/CSV with full tables; charts attach when their test page has rendered them.</p>
+                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="outline" size="sm" disabled={isExporting}>
+                                {isExporting ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <FileDown className="mr-1.5 h-3.5 w-3.5" />}
+                                Combined PSD + Compaction
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onSelect={() => void exportCombined("pdf")}><FileDown className="mr-2 h-4 w-4" />PDF</DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => void exportCombined("csv")}><FileText className="mr-2 h-4 w-4" />CSV</DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => void exportCombined("excel")}><Sheet className="mr-2 h-4 w-4" />Excel</DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      )}
                       {orderedTestResults.length === 0 ? (
                         <div className="rounded-lg border border-dashed p-8 text-center">
                           <FlaskConical className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
