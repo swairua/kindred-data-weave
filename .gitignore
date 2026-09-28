@@ -16,3 +16,5 @@ package-lock.json
 # database/main.sql is intentionally NOT listed - it is the tracked schema dump.
 database/livemain.sql
 database/normalized.sql
+# Local numbered phpMyAdmin exports (e.g. "wayrusc1_labdatacraft (7).sql") - local dumps only.
+database/wayrusc1_labdatacraft*.sql
