@@ -33,6 +33,13 @@
 --  (a fresh import of database/main.sql will already have it). Only run step 2
 --  if step 1 returned no rows.
 --
+--  Every statement here works on shared hosting, where the database user cannot
+--  read information_schema. Nothing in this file needs privileges beyond those
+--  the user already holds on compressive_tests.
+--
+--  If step 2 reports "Duplicate column name 'lab_ref'", the column is already
+--  there - go to step 3. That message is safe to ignore, not a failure.
+--
 --  VERIFY
 --  ------
 --  Step 3 should return the new column. Then save a compressive strength test
@@ -43,12 +50,15 @@
 -- -----------------------------------------------------------------------------
 --  Step 1. Does the column already exist?  (read-only)
 --  Returns one row if lab_ref is present, none if it needs adding.
+--
+--  SHOW COLUMNS is used rather than a query against information_schema: on
+--  shared hosting the database user is granted rights only on its own schema,
+--  and reading information_schema fails with
+--      #1044 - Access denied for user '<user>'@'localhost' to database
+--             'information_schema'
+--  SHOW COLUMNS only needs the rights the user already has on compressive_tests.
 -- -----------------------------------------------------------------------------
-SELECT COLUMN_NAME
-FROM information_schema.COLUMNS
-WHERE TABLE_SCHEMA = DATABASE()
-  AND TABLE_NAME   = 'compressive_tests'
-  AND COLUMN_NAME  = 'lab_ref';
+SHOW COLUMNS FROM `compressive_tests` LIKE 'lab_ref';
 
 
 -- -----------------------------------------------------------------------------
