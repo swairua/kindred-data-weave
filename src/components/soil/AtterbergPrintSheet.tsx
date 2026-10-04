@@ -18,7 +18,6 @@ import {
   getTrialMoisture,
   getWaterMass,
 } from "@/lib/atterbergCalculations";
-import { classifySoilUSCS, classifySoilAASHTO } from "@/lib/soilClassification";
 import LiquidLimitFlowChart from "./LiquidLimitFlowChart";
 
 interface PrintProject {
@@ -65,25 +64,11 @@ const AtterbergPrintSheet = ({ record, project, projectState }: Props) => {
     [plasticityIndex, record.passing425um],
   );
 
-  const { uscs, bs, aashto } = useMemo(() => {
-    const atterberg = {
-      liquidLimit: liquidLimit ?? undefined,
-      plasticLimit: plasticLimit ?? undefined,
-      plasticityIndex: plasticityIndex ?? undefined,
-    };
-    const grain = { gravel: 0, sand: 0, fines: 100 };
-    const u = classifySoilUSCS(grain, atterberg);
-    const a = classifySoilAASHTO(grain, atterberg);
+  const bs = useMemo(() => {
     const b = classifyAtterberg(liquidLimit, plasticLimit);
-    return {
-      uscs: liquidLimit === null && plasticityIndex === null
-        ? { symbol: "—", description: "" }
-        : { symbol: u.uscsSymbol, description: u.uscsDescription },
-      bs: liquidLimit === null && plasticityIndex === null
-        ? { symbol: "—", description: "" }
-        : { symbol: b.BS_classification ?? "—", description: b.plasticity_description ?? "" },
-      aashto: liquidLimit === null && plasticityIndex === null ? "—" : a,
-    };
+    return liquidLimit === null && plasticityIndex === null
+      ? { symbol: "—", description: "" }
+      : { symbol: b.BS_classification ?? "—", description: b.plasticity_description ?? "" };
   }, [liquidLimit, plasticLimit, plasticityIndex]);
 
   // Always pad LL to at least 4 cols, PL to at least 3 cols
@@ -232,18 +217,9 @@ const AtterbergPrintSheet = ({ record, project, projectState }: Props) => {
           <table className="aps-kv">
             <tbody>
               <tr>
-                <td className="lbl">USCS</td>
-                <td>{uscs.description}</td>
-                <td className="strong">{uscs.symbol}</td>
-              </tr>
-              <tr>
                 <td className="lbl">BS 1377</td>
                 <td>{bs.description}</td>
                 <td className="strong">{bs.symbol}</td>
-              </tr>
-              <tr>
-                <td className="lbl">AASHTO</td>
-                <td colSpan={2}>{aashto}</td>
               </tr>
             </tbody>
           </table>

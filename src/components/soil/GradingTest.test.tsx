@@ -96,10 +96,22 @@ describe("GradingTest selected record", () => {
     expect(sectionOffsets).toEqual([...sectionOffsets].sort((a, b) => a - b));
     expect(screen.getByText("Group Index")).toBeInTheDocument();
     expect(screen.getByText("Atterberg")).toBeInTheDocument();
-    expect(screen.getByText("Fines (<0.075 mm)")).toBeInTheDocument();
-    expect(screen.getByText("Sand (0.075–4.75 mm)")).toBeInTheDocument();
-    expect(screen.getByText("Gravel (4.75–63 mm)")).toBeInTheDocument();
-    expect(screen.getByText("Boulders (>63 mm)")).toBeInTheDocument();
+    // The grading curve is now the BS 1377-2 sheet, so the ASTM fraction legend is gone.
+    expect(screen.getByText("SILT FRACTION")).toBeInTheDocument();
+    expect(screen.getByText("SAND FRACTION")).toBeInTheDocument();
+    expect(screen.getByText("GRAVEL FRACTION")).toBeInTheDocument();
+    expect(screen.queryByText("Fines (<0.075 mm)")).not.toBeInTheDocument();
+    // CLAY and COBBLES each appear twice: once on the sub-fraction row and once on
+    // the fraction band row, so they are matched by quantity rather than uniquely.
+    expect(screen.getAllByText("CLAY")).toHaveLength(2);
+    expect(screen.getAllByText("COBBLES")).toHaveLength(2);
+    expect(screen.getAllByText("Fine")).toHaveLength(3);
+    expect(screen.getAllByText("Medium")).toHaveLength(3);
+    expect(screen.getAllByText("Coarse")).toHaveLength(3);
+    expect(screen.getByText("FRACTION")).toBeInTheDocument();
+    expect(screen.getByText("Passing (%)")).toBeInTheDocument();
+    expect(screen.getByText("Particle size (mm)")).toBeInTheDocument();
+    expect(screen.getByText("PARTICLE SIZE DISTRIBUTION GRAPH")).toBeInTheDocument();
     expect(screen.getByText("Lab technician")).toBeInTheDocument();
     expect(screen.queryByText("Sample submitter")).not.toBeInTheDocument();
     expect(screen.getByText("2026-06-18")).toBeInTheDocument();
@@ -108,9 +120,10 @@ describe("GradingTest selected record", () => {
     expect(screen.getByText("Hydrometer analysis to BS 1377-2:1990:9.5")).toBeInTheDocument();
 
     fireEvent.keyDown(screen.getByRole("button", { name: "Export options" }), { key: "Enter" });
+    // The grading report is issued as a PDF sheet only; no spreadsheet formats are offered.
     expect(await screen.findByText("PDF")).toBeInTheDocument();
-    expect(screen.getByText("Excel")).toBeInTheDocument();
-    expect(screen.getByText("CSV")).toBeInTheDocument();
+    expect(screen.queryByText("Excel")).not.toBeInTheDocument();
+    expect(screen.queryByText("CSV")).not.toBeInTheDocument();
   });
 
   it("takes the AASHTO group index from the No. 200 sieve, not the No. 40 sieve", async () => {

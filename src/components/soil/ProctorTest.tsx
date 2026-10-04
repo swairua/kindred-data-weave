@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Check, ChevronDown, Download, FileDown, FileText, Loader2, Save, Sheet, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Download, FileDown, Loader2, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -17,7 +16,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { CartesianGrid, Line, LineChart, ReferenceLine, XAxis, YAxis } from "recharts";
+import MoistureDensityChart from "@/components/soil/MoistureDensityChart";
 import { useProject } from "@/context/ProjectContext";
 import { useTestData } from "@/context/TestDataContext";
 import {
@@ -35,12 +34,11 @@ import {
   type ProctorRecord,
   type ProctorRow,
 } from "@/lib/proctorRecords";
+import type { McVoidLine } from "@/lib/mcChartGeometry";
 import { clearProctorResults, loadProctorResult, saveProctorResult } from "@/lib/proctorPersistence";
 import { toast } from "sonner";
 import { useTestReport } from "@/hooks/useTestReport";
-import { generateTestPDF } from "@/lib/pdfGenerator";
-import { generateTestCSV } from "@/lib/csvExporter";
-import { generateTestExcel } from "@/lib/genericExcelExporter";
+import { generateMoistureDensityPDF } from "@/lib/mcPdfGenerator";
 import { captureChartAsBase64 } from "@/lib/chartCapture";
 
 interface ProctorTestProps {
@@ -126,29 +124,31 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
   const specificGravity = optionalNumber(record.specificGravity);
   const airVoidsTarget = optionalNumber(record.airVoidsTarget);
   const hasAirVoidsLine = specificGravity !== null && airVoidsTarget !== null && airVoidsTarget > 0;
-  const chartData = useMemo(() => {
-    if (measuredPoints.length === 0) return [];
-    const range: [number, number] = [measuredPoints[0].moisture, measuredPoints[measuredPoints.length - 1].moisture];
-    const fitted = optimum.curve ? sampleCompactionCurve(optimum.curve, range) : [];
-    const saturation = specificGravity === null ? [] : zeroAirVoidsCurve(specificGravity, range);
-    const voids = hasAirVoidsLine ? airVoidsCurve(airVoidsTarget!, specificGravity!, range) : [];
-    // One shared moisture grid so every series lines up on the same axis.
-    const grid = Array.from(new Set([
-      ...measuredPoints.map((point) => point.moisture),
-      ...fitted.map((point) => point.moisture),
-      ...saturation.map((point) => point.moisture),
-      ...voids.map((point) => point.moisture),
-    ])).sort((a, b) => a - b);
-    const sampleAt = (curve: ProctorCurvePoint[], moisture: number) =>
-      curve.find((point) => Math.abs(point.moisture - moisture) < 1e-9)?.dryDensity ?? null;
-    return grid.map((moisture) => ({
-      moisture,
-      dryDensity: sampleAt(measuredPoints, moisture),
-      fitted: sampleAt(fitted, moisture),
-      zeroAirVoids: sampleAt(saturation, moisture),
-      airVoids: sampleAt(voids, moisture),
-    }));
-  }, [measuredPoints, optimum.curve, specificGravity, airVoidsTarget, hasAirVoidsLine]);
+  // The fitted curve and the saturation lines are sampled over the measured range,
+  // which is where the compaction graph is read from.
+  const moistureRange = useMemo<[number, number] | null>(() => {
+    if (measuredPoints.length === 0) return null;
+    return [measuredPoints[0].moisture, measuredPoints[measuredPoints.length - 1].moisture];
+  }, [measuredPoints]);
+  const fittedPoints = useMemo<ProctorCurvePoint[]>(
+    () => (optimum.curve && moistureRange ? sampleCompactionCurve(optimum.curve, moistureRange) : []),
+    [optimum.curve, moistureRange],
+  );
+  // The printed sheet plots the 0 %, 5 % and 10 % air voids lines. The record's own
+  // target is drawn too when it is not one of those, so the extra line is never lost.
+  const voidLines = useMemo<McVoidLine[]>(() => {
+    if (specificGravity === null || !moistureRange) return [];
+    const percents = [0, 5, 10];
+    if (hasAirVoidsLine && !percents.includes(airVoidsTarget!)) percents.push(airVoidsTarget!);
+    return percents
+      .map((percent) => ({
+        percent,
+        points: (percent === 0
+          ? zeroAirVoidsCurve(specificGravity!, moistureRange)
+          : airVoidsCurve(percent, specificGravity!, moistureRange)) as ProctorCurvePoint[],
+      }))
+      .filter((line) => line.points.length > 1);
+  }, [specificGravity, moistureRange, hasAirVoidsLine, airVoidsTarget]);
   const summaries = useMemo(() => ({
     standard: calculateProctor(record.standardRows, record.standardMouldVolume),
     modified: calculateProctor(record.modifiedRows, record.modifiedMouldVolume),
@@ -279,64 +279,13 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
     });
   };
 
-  const exportTables = () => {
-    const calculated = rows.map((row) => calculateProctorPoint(row, mouldVolume));
-    const headers = ["Measurement", ...POINT_LABELS.slice(0, rows.length)];
-    const values = (getValue: (row: ProctorRow, index: number) => string) => rows.map(getValue);
-    return [{
-      title: `${methodLabel(type)} Proctor measurements`,
-      headers,
-      rows: [
-        ["Moisture addition (cc)", ...values((row) => row.moistureAdded || "—")],
-        ["Wt of mould + wet material (g)", ...values((row) => row.mouldWetMass || "—")],
-        ["Wt of mould (g)", ...values((row) => row.mouldTare || "—")],
-        ["Wt of wet material (g)", ...values((_, index) => displayValue(calculated[index]?.wetMaterialMass ?? null))],
-        ["Bulk density (kg/m³)", ...values((_, index) => displayValue(calculated[index]?.bulkDensity ?? null))],
-        ["Container No.", ...values((row) => row.containerNumber || "—")],
-        ["Wt of container + wet material (g)", ...values((row) => row.containerWetMass || "—")],
-        ["Wt of container + dry material (g)", ...values((row) => row.containerDryMass || "—")],
-        ["Wt of moisture (g)", ...values((_, index) => displayValue(calculated[index]?.waterMass ?? null))],
-        ["Wt of container (g)", ...values((row) => row.containerTare || "—")],
-        ["Wt of dry soil (g)", ...values((_, index) => displayValue(calculated[index]?.drySoilMass ?? null))],
-        ["Moisture content (%)", ...values((_, index) => displayMoisture(calculated[index]?.moistureContent ?? null))],
-        ["Dry density (kg/m³)", ...values((_, index) => displayDensity(calculated[index]?.dryDensity ?? null))],
-      ],
-    }, {
-      title: `${methodLabel(type)} Proctor results`,
-      headers: ["Result", "Value"],
-      rows: [
-        ["Optimum moisture content (%)", displayMoisture(optimum.omc)],
-        ["Maximum dry density (kg/m³)", displayDensity(optimum.mdd)],
-        ["Bulk density at OMC (kg/m³)", displayDensity(optimum.bulkDensity)],
-        ["Determined from", optimum.optimumSource === "curve" ? "Fitted compaction curve" : optimum.optimumSource === "peak-point" ? "Highest measured point" : "—"],
-        ["Curve R2", optimum.rSquared === null ? "—" : optimum.rSquared.toFixed(4)],
-        ["Moisture contents plotted", String(optimum.pointCount)],
-        ...optimum.warnings.map((warning) => [`Warning`, warning] as [string, string]),
-      ],
-    }];
-  };
-
-  const exportResultFields = [
-    { label: "Test Type", value: `${methodLabel(type)} Proctor (BS 1377-4:1990, ${methodClause(type)})` },
-    { label: "Optimum Moisture Content", value: optimum.omc === null ? "—" : `${displayMoisture(optimum.omc)}%` },
-    { label: "Maximum Dry Density", value: optimum.mdd === null ? "—" : `${displayDensity(optimum.mdd)} kg/m³` },
-    { label: "Bulk Density at OMC", value: optimum.bulkDensity === null ? "—" : `${displayDensity(optimum.bulkDensity)} kg/m³` },
-    { label: "Determined From", value: optimum.optimumSource === "curve" ? "Fitted compaction curve" : optimum.optimumSource === "peak-point" ? "Highest measured point" : "—" },
-    { label: "Curve R2", value: optimum.rSquared === null ? "—" : optimum.rSquared.toFixed(4) },
-    ...(specificGravity === null ? [] : [{ label: "Specific Gravity (Gs)", value: String(specificGravity) }]),
-    ...optimum.warnings.map((warning) => ({ label: "Warning", value: warning })),
-  ];
-
   const captureChart = async () => {
-    if (chartData.length < 2) return {};
-    const chart = await captureChartAsBase64("proctor-chart");
-    return chart ? { "Proctor Curve": chart } : {};
+    if (measuredPoints.length < 2) return null;
+    return captureChartAsBase64("proctor-chart");
   };
 
   const exportPDF = async () => {
-    generateTestPDF({
-      title: `Density/Moisture Content Relationship (${methodLabel(type)})`,
-      standard: `BS 1377-4:1990, ${methodClause(type)} (${type === "standard" ? "2.5 kg" : "4.5 kg"} rammer)`,
+    await generateMoistureDensityPDF({
       projectName: project.projectName,
       clientName: project.clientName,
       date: project.projectDate || project.date,
@@ -347,40 +296,24 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
       checkedBy: project.checkedBy,
       // The record shows this as "TESTED BY"; without it the report printed a blank signature line.
       testedBy: record.sampledSubmittedBy,
-      fields: exportResultFields,
-      tables: exportTables(),
-      chartImages: await captureChart(),
-    });
-  };
-
-  const exportCSV = async () => {
-    generateTestCSV({
-      title: `Density/Moisture Content Relationship (${methodLabel(type)})`,
-      projectName: project.projectName,
-      clientName: project.clientName,
-      date: project.projectDate || project.date,
-      labOrganization: project.labOrganization,
-      dateReported: project.dateReported,
-      checkedBy: project.checkedBy,
-      fields: exportResultFields,
-      tables: exportTables(),
-    });
-  };
-
-  const exportXLSX = async () => {
-    generateTestExcel({
-      data: {
-        title: `Density/Moisture Content Relationship (${methodLabel(type)})`,
-        fields: exportResultFields,
-        tables: exportTables(),
-        chartImages: await captureChart(),
+      method: type,
+      record: {
+        label: record.label,
+        sampleNumber: record.sampleNumber,
+        sampleDepthFrom: record.sampleDepthFrom,
+        sampleDepthTo: record.sampleDepthTo,
+        sampledSubmittedBy: record.sampledSubmittedBy,
+        dateSubmitted: record.dateSubmitted,
+        dateTested: record.dateTested,
+        mouldVolume,
+        specificGravity: record.specificGravity,
+        rows,
       },
-      projectName: project.projectName,
-      clientName: project.clientName,
-      date: project.projectDate || project.date,
-      labOrganization: project.labOrganization,
-      dateReported: project.dateReported,
-      checkedBy: project.checkedBy,
+      summary: optimum,
+      points: measuredPoints,
+      fitted: fittedPoints,
+      voidLines,
+      chartImage: await captureChart(),
     });
   };
 
@@ -466,25 +399,15 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
 
       <section className="record-card p-3">
         <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Proctor curve — {methodLabel(type)}</h3>
-        <ChartContainer id="proctor-chart" config={{
-          dryDensity: { label: "Measured dry density (kg/m³)", color: "hsl(var(--primary))" },
-          fitted: { label: "Fitted compaction curve", color: "#b45309" },
-          zeroAirVoids: { label: "Zero air voids", color: "#166534" },
-          airVoids: { label: `Air voids ${record.airVoidsTarget || "0"}%`, color: "#64748b" },
-        }} className="h-[280px] w-full">
-          <LineChart data={chartData} margin={{ top: 12, right: 18, bottom: 28, left: 16 }}>
-            <CartesianGrid strokeDasharray="2 2" />
-            <XAxis dataKey="moisture" type="number" domain={chartData.length ? ["dataMin - 2", "dataMax + 2"] : [8, 22]} label={{ value: "Moisture Content (%)", position: "insideBottom", offset: -18, className: "fill-muted-foreground text-[10px]" }} />
-            <YAxis type="number" domain={chartData.length ? ["dataMin - 100", "dataMax + 100"] : [1500, 1800]} label={{ value: "Dry Density (kg/m³)", angle: -90, position: "insideLeft", offset: 0, className: "fill-muted-foreground text-[10px]" }} />
-            <ChartTooltip content={<ChartTooltipContent />} />
-            {optimum.curve && <Line type="monotone" dataKey="fitted" stroke="var(--color-fitted)" strokeWidth={1.5} dot={false} activeDot={false} />}
-            {specificGravity !== null && <Line type="monotone" dataKey="zeroAirVoids" stroke="var(--color-zeroAirVoids)" strokeWidth={1.5} strokeDasharray="6 3" dot={false} activeDot={false} />}
-            {hasAirVoidsLine && <Line type="monotone" dataKey="airVoids" stroke="var(--color-airVoids)" strokeWidth={1.5} strokeDasharray="2 3" dot={false} activeDot={false} />}
-            <Line type="linear" dataKey="dryDensity" name="dryDensity" stroke="var(--color-dryDensity)" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} connectNulls />
-            {optimum.omc !== null && <ReferenceLine x={optimum.omc} stroke="hsl(var(--destructive))" strokeDasharray="5 5" label={{ value: `OMC: ${displayMoisture(optimum.omc)}%`, position: "top", className: "fill-destructive text-[10px]" }} />}
-            {optimum.mdd !== null && <ReferenceLine y={optimum.mdd} stroke="hsl(var(--destructive))" strokeDasharray="5 5" label={{ value: `MDD: ${displayDensity(optimum.mdd)} kg/m³`, position: "insideTopRight", className: "fill-destructive text-[10px]" }} />}
-          </LineChart>
-        </ChartContainer>
+        {/* The chart is the sheet's own drawing: red curve, square measurement
+            points, dashed air voids lines, so the export and the screen agree. */}
+        <MoistureDensityChart
+          id="proctor-chart"
+          className="w-full"
+          points={measuredPoints}
+          fitted={fittedPoints}
+          voidLines={voidLines}
+        />
         <div className="mt-3 grid gap-px overflow-hidden rounded-md border sm:grid-cols-2 lg:grid-cols-4">
           <ResultField label="Maximum Dry Density (kg/m³)" value={displayDensity(optimum.mdd)} />
           <ResultField label="Bulk Density at OMC (kg/m³)" value={displayDensity(optimum.bulkDensity)} />
@@ -523,9 +446,8 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
           <DropdownMenu>
             <DropdownMenuTrigger asChild><Button variant="outline" size="sm"><Download className="h-3.5 w-3.5" />Export<ChevronDown className="h-3 w-3" /></Button></DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {/* This report is issued as the printed sheet only; no spreadsheet formats. */}
               <DropdownMenuItem onSelect={() => void exportPDF()}><FileDown className="mr-2 h-4 w-4" />PDF</DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => void exportCSV()}><FileText className="mr-2 h-4 w-4" />CSV</DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => void exportXLSX()}><Sheet className="mr-2 h-4 w-4" />Excel</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <Button size="sm" className="min-w-20" onClick={handleSave} disabled={saveStatus === "saving" || isLoading}>

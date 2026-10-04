@@ -73,6 +73,32 @@ const LiquidLimitFlowChart = ({ trials, width, height, variant = "preview" }: Li
       : []),
   ].sort((a, b) => a.penetration - b.penetration);
 
+  // ── LL marker geometry ──────────────────────────────────────────────
+  // The flow curve, the vertical guide (x = 20) and the horizontal guide
+  // (y = LL) all cross at exactly (20, LL). Both guides are drawn as
+  // `segment` lines so they stop at that intersection instead of spanning
+  // the whole plot: the vertical one runs down to the x-axis, the horizontal
+  // one runs back to the y-axis.
+  const llValue = regression
+    ? regression.slope * Math.log10(20) + regression.intercept
+    : null;
+
+  // Plotted moisture range, used to push the vertical guide's lower endpoint
+  // below the auto Y domain so ifOverflow="hidden" clips it back to the x-axis.
+  const plottedMoisture = [
+    ...graphData.map((d) => d.moisture),
+    ...(regression
+      ? [
+          regression.slope * Math.log10(xStart) + regression.intercept,
+          regression.slope * Math.log10(xEnd) + regression.intercept,
+        ]
+      : []),
+  ].filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+
+  const yLow = plottedMoisture.length ? Math.min(...plottedMoisture) : 0;
+  const yHigh = plottedMoisture.length ? Math.max(...plottedMoisture) : 1;
+  const llGuideBottom = yLow - Math.max(yHigh - yLow, 1);
+
   const chartInner = (
     <LineChart
       data={merged}
@@ -99,14 +125,27 @@ const LiquidLimitFlowChart = ({ trials, width, height, variant = "preview" }: Li
         label={{ value: "Moisture Content (%)", angle: -90, position: "left", offset: 8, fontSize: axisLabelSize, fontWeight: "bold", fill: "#111827" }}
         tick={{ fontSize: axisTickSize, fill: "#111827" }}
       />
-      <ReferenceLine x={20} stroke="#000" strokeDasharray="4 4" />
-      {regression && (
-        <ReferenceLine
-          y={regression.slope * Math.log10(20) + regression.intercept}
-          stroke="#166534"
-          strokeDasharray="4 4"
-          label={{ value: `LL ${(regression.slope * Math.log10(20) + regression.intercept).toFixed(1)}%`, position: "insideTopLeft", fontSize: axisTickSize, fontWeight: "bold", fill: "#166534" }}
-        />
+      {llValue !== null ? (
+        <>
+          {/* Vertical guide: from the LL intersection (20, LL) down to the x-axis only.
+              The lower endpoint sits below the Y domain and is clipped by ifOverflow="hidden". */}
+          <ReferenceLine
+            segment={[{ x: 20, y: llValue }, { x: 20, y: llGuideBottom }]}
+            stroke="#000"
+            strokeDasharray="4 4"
+            ifOverflow="hidden"
+          />
+          {/* Horizontal guide: from the y-axis to the LL intersection only. */}
+          <ReferenceLine
+            segment={[{ x: xStart, y: llValue }, { x: 20, y: llValue }]}
+            stroke="#166534"
+            strokeDasharray="4 4"
+            label={{ value: `LL ${llValue.toFixed(1)}%`, position: "top", fontSize: axisTickSize, fontWeight: "bold", fill: "#166534" }}
+          />
+        </>
+      ) : (
+        /* No regression yet (fewer than 2 valid points) — keep the plain 20mm marker. */
+        <ReferenceLine x={20} stroke="#000" strokeDasharray="4 4" />
       )}
       <Line
         type="linear"

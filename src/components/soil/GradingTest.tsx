@@ -1,20 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Check, ChevronDown, FileDown, FileText, HelpCircle, Loader2, Save, Sheet, Trash2 } from "lucide-react";
+import { Check, ChevronDown, FileDown, HelpCircle, Loader2, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { CartesianGrid, Line, LineChart, ReferenceArea, ReferenceLine, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import ParticleSizeDistributionChart from "@/components/soil/ParticleSizeDistributionChart";
 import { useProject } from "@/context/ProjectContext";
 import { type RecordMetadata, useTestData } from "@/context/TestDataContext";
 import { captureChartAsBase64 } from "@/lib/chartCapture";
 import { createRecord, deleteRecord, listRecords, updateRecord } from "@/lib/api";
 import { generateTestCSV } from "@/lib/csvExporter";
 import { generateTestExcel } from "@/lib/genericExcelExporter";
-import { generateTestPDF } from "@/lib/pdfGenerator";
+import { generateParticleSizeDistributionPDF } from "@/lib/psdPdfGenerator";
 import { calculateGrading, calculateHydrometer, calculateMoisture, type GradingRow } from "@/lib/gradingCalculations";
+import { mergePsdSeries } from "@/lib/psdChartGeometry";
 import { calculateAashtoGroupIndex, classifySoilAASHTO, classifySoilUSCS } from "@/lib/soilClassification";
 import { toast } from "sonner";
 
@@ -286,27 +286,22 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
     { ...DEFAULT_HYDROMETER_INPUTS, ...record.hydrometerInputs },
     record.samplePreparation.initialDryMass,
   ), [record.hydrometerRows, record.hydrometerInputs, record.samplePreparation.initialDryMass]);
-  /** Hydrometer points extend the curve below the 0.075 mm sieve. */
-  const hydrometerChartData = useMemo(() => hydrometer.results
-    .map((result) => ({ size: result.particleDiameter, passing: result.finesByHydrometer }))
-    .filter((point): point is { size: number; passing: number } => point.size !== null && point.passing !== null)
-    .sort((a, b) => a.size - b.size), [hydrometer.results]);
-  const chartData = useMemo(() => {
-    interface CurvePoint { size: number; passing: number | null; passingHydrometer: number | null }
-    const points = new Map<number, CurvePoint>();
-    record.sieveRows.forEach((row, index) => {
-      const size = Number.parseFloat(row.sieveSize);
-      const passing = calculations.cumulativePassing[index];
-      if (size > 0 && passing !== null) {
-        points.set(size, { size, passing, passingHydrometer: points.get(size)?.passingHydrometer ?? null });
-      }
-    });
-    hydrometerChartData.forEach((point) => {
-      const existing = points.get(point.size);
-      points.set(point.size, { size: point.size, passing: existing?.passing ?? null, passingHydrometer: point.passing });
-    });
-    return [...points.values()].sort((a, b) => a.size - b.size);
-  }, [record.sieveRows, calculations.cumulativePassing, hydrometerChartData]);
+  /**
+   * One grading series for the BS sheet: sieve cumulative passing, extended
+   * below the finest sieve by the hydrometer diameters. `mergePsdSeries` keeps
+   * the sieve reading wherever both methods report the same size.
+   */
+  const psdSeries = useMemo(() => {
+    const sievePoints = record.sieveRows.map((row, index) => ({
+      size: Number.parseFloat(row.sieveSize),
+      passing: calculations.cumulativePassing[index],
+    }));
+    const hydrometerPoints = hydrometer.results.map((result) => ({
+      size: result.particleDiameter,
+      passing: result.finesByHydrometer,
+    }));
+    return mergePsdSeries(sievePoints, hydrometerPoints);
+  }, [record.sieveRows, calculations.cumulativePassing, hydrometer.results]);
   const classificationValues = useMemo(() => {
     const passingAt = (matcher: (size: string) => boolean) => {
       const index = record.sieveRows.findIndex((row) => matcher(row.sieveSize));
@@ -598,18 +593,28 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       return;
     }
     const chartImages: Record<string, string> = {};
-    if (chartData.length >= 2) {
+    if (psdSeries.length >= 2) {
       const chart = await captureChartAsBase64("grading-chart");
       if (chart) chartImages["Particle Size Distribution Curve"] = chart;
     }
     if (type === "pdf") {
-      generateTestPDF({
-        title: "Particle Size Distribution",
-        standard: "BS 1377-2:1990, 9.2/9.3 (sieving) and 9.5 (hydrometer)",
+      // The dedicated generator reproduces the BS 1377-2 sheet layout and falls
+      // back to a natively drawn grading curve when html2canvas captures nothing.
+      await generateParticleSizeDistributionPDF({
         ...metadata,
-        fields: resultFields,
-        tables,
-        chartImages,
+        record,
+        grading: calculations,
+        hydrometer,
+        hydrometerInputs: { ...DEFAULT_HYDROMETER_INPUTS, ...record.hydrometerInputs },
+        series: psdSeries,
+        chartImage: chartImages["Particle Size Distribution Curve"] ?? null,
+        gravelPercentage: classificationValues.gravel,
+        sandPercentage: classificationValues.sand,
+        finesPercentage: classificationValues.fines,
+        uscsSymbol: autoClassification?.uscsSymbol ?? record.classification.uscs,
+        uscsDescription: autoClassification?.uscsDescription ?? null,
+        aashtoGroup: autoClassification?.aashtoGroup ?? record.classification.aashtoGroup,
+        groupIndex,
       });
     } else {
       generateTestExcel({ data: { title: "Particle Size Distribution", fields: resultFields, tables, chartImages }, ...metadata });
@@ -710,11 +715,11 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       </RecordSection>
 
       <RecordSection title="Particle size distribution graph">
-        <div className="overflow-x-auto"><div id="grading-chart" className="relative h-[300px] min-w-[620px] overflow-hidden rounded-md border bg-card"><ChartContainer config={{ passing: { label: "% Passing (sieve)", color: "hsl(var(--primary))" }, passingHydrometer: { label: "% Passing (hydrometer)", color: "#b45309" } }} className="h-full w-full"><ResponsiveContainer width="100%" height="100%"><LineChart data={chartData} margin={{ top: 16, right: 18, bottom: 35, left: 28 }}><CartesianGrid strokeDasharray="2 2" /><ReferenceArea x1={0.001} x2={0.075} fill="#dcecdf" fillOpacity={0.65} /><ReferenceArea x1={0.075} x2={4.75} fill="#fff2cc" fillOpacity={0.65} /><ReferenceArea x1={4.75} x2={63} fill="#dceaf7" fillOpacity={0.65} /><ReferenceArea x1={63} x2={200} fill="#ece8e1" fillOpacity={0.65} /><ReferenceLine y={10} stroke="#9aa49d" strokeDasharray="3 3" /><ReferenceLine y={30} stroke="#9aa49d" strokeDasharray="3 3" /><ReferenceLine y={60} stroke="#9aa49d" strokeDasharray="3 3" /><XAxis dataKey="size" type="number" scale="log" domain={[0.001, 200]} ticks={[0.001, 0.002, 0.006, 0.01, 0.02, 0.06, 0.1, 0.2, 0.6, 1, 2, 6, 10, 20, 60, 100, 200]} tickFormatter={(value) => String(value)} label={{ value: "Particle size (mm)", position: "insideBottom", offset: -20 }} /><YAxis domain={[0, 100]} tickCount={11} label={{ value: "Passing (%)", angle: -90, position: "insideLeft", offset: -10 }} /><ChartTooltip content={<ChartTooltipContent />} /><Line type="monotone" dataKey="passing" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} connectNulls={false} /><Line type="monotone" dataKey="passingHydrometer" stroke="#b45309" strokeWidth={1.5} strokeDasharray="4 3" dot={{ r: 3, fill: "#b45309" }} activeDot={{ r: 5 }} connectNulls={false} /></LineChart></ResponsiveContainer></ChartContainer></div><div className="mt-2 grid min-w-[620px] grid-cols-[1.875fr_1.8fr_1.125fr_0.5fr] overflow-hidden rounded border text-center text-[9px] font-medium uppercase tracking-wide"><span className="bg-[#dcecdf] px-1 py-1.5">Fines (&lt;0.075 mm)</span><span className="bg-[#fff2cc] px-1 py-1.5">Sand (0.075–4.75 mm)</span><span className="bg-[#dceaf7] px-1 py-1.5">Gravel (4.75–63 mm)</span><span className="bg-[#ece8e1] px-1 py-1.5">Boulders (&gt;63 mm)</span></div></div>
+        <div className="overflow-x-auto bg-white p-1"><ParticleSizeDistributionChart id="grading-chart" points={psdSeries} className="h-[360px] min-w-[620px]" /></div>
       </RecordSection>
 
       <section className="record-card flex flex-col gap-3 px-4 py-3 text-[10px] sm:flex-row sm:items-center sm:justify-between"><div><span className="text-muted-foreground">TESTED BY</span><div className="font-semibold uppercase">{record.testedBy || "—"}</div></div><div><span className="text-muted-foreground">DATE REPORTED</span><div className="font-semibold">{project.dateReported || "—"}</div></div></section>
-      <div className="flex flex-wrap items-center justify-between gap-2 print:hidden"><Button variant="outline" size="sm" className="border-destructive/20 text-destructive hover:bg-destructive/10" onClick={handleClear}><Trash2 className="mr-1.5 h-3.5 w-3.5" />Delete</Button><div className="flex flex-wrap gap-0"><Button size="sm" className="rounded-r-none bg-primary" onClick={handleSave} disabled={saveStatus === "saving"}>{saveStatus === "saving" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : saveStatus === "saved" ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}{saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved" : "Save"}</Button><DropdownMenu><DropdownMenuTrigger asChild><Button size="sm" aria-label="Export options" className="rounded-l-none border-l border-primary-foreground/30 bg-primary px-2 text-primary-foreground hover:bg-primary/90"><ChevronDown className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => void exportFiles("pdf")}><FileDown className="mr-2 h-4 w-4" />PDF</DropdownMenuItem><DropdownMenuItem onSelect={() => void exportFiles("xlsx")}><Sheet className="mr-2 h-4 w-4" />Excel</DropdownMenuItem><DropdownMenuItem onSelect={() => void exportFiles("csv")}><FileText className="mr-2 h-4 w-4" />CSV</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div></div>
+      <div className="flex flex-wrap items-center justify-between gap-2 print:hidden"><Button variant="outline" size="sm" className="border-destructive/20 text-destructive hover:bg-destructive/10" onClick={handleClear}><Trash2 className="mr-1.5 h-3.5 w-3.5" />Delete</Button><div className="flex flex-wrap gap-0"><Button size="sm" className="rounded-r-none bg-primary" onClick={handleSave} disabled={saveStatus === "saving"}>{saveStatus === "saving" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : saveStatus === "saved" ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}{saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved" : "Save"}</Button><DropdownMenu><DropdownMenuTrigger asChild><Button size="sm" aria-label="Export options" className="rounded-l-none border-l border-primary-foreground/30 bg-primary px-2 text-primary-foreground hover:bg-primary/90"><ChevronDown className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => void exportFiles("pdf")}><FileDown className="mr-2 h-4 w-4" />PDF</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div></div>
     </div>
   );
 };

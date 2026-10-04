@@ -6,7 +6,7 @@ import type {
   PlasticLimitTrial,
   ShrinkageLimitTrial,
 } from "@/context/TestDataContext";
-import { calculateLogLinearRegression, calculateMoistureFromMass, getTrialMoisture, classifyAtterberg } from "./atterbergCalculations";
+import { calculateLogLinearRegression, calculateMoistureFromMass, getTrialMoisture } from "./atterbergCalculations";
 import { fetchAdminImagesAsBase64, type AdminImages } from "./imageUtils";
 import { classifySoilUSCS, type GrainSizeDistribution } from "./soilClassification";
 
@@ -534,16 +534,9 @@ function drawRecordPage(
     fines: Number(recordGrainSize?.fines ?? 100) || 100,
   };
   const classification = classifySoilUSCS(grainSize, record.results);
-  const atterbergClass = classifyAtterberg(record.results.liquidLimit, record.results.plasticLimit);
-  const finesNote = "The fines in the soil are..";
   const uscsText = `${classification.uscsSymbol} ${classification.uscsDescription}`.trim().slice(0, 60) || "-";
-  const bsText = atterbergClass.BS_classification
-    ? `${atterbergClass.BS_classification} — ${atterbergClass.plasticity_description ?? ""}`.trim().slice(0, 60)
-    : "-";
   ry = drawSidePanelDesired(doc, rightX, ry, rightW, "SOIL CLASSIFICATION", [
-    { cells: [finesNote], frac: [1] },
     { cells: [uscsText], frac: [1] },
-    { cells: ["BS 1377", bsText], frac: [1.2, 3] },
   ]);
 
   const contentBottom = Math.max(ry, sectionStartY2 + chartH);

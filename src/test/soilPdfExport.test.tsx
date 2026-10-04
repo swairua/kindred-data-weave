@@ -6,7 +6,8 @@ import ProctorTest from "@/components/soil/ProctorTest";
 
 const exportState = vi.hoisted(() => ({
   rows: [] as Array<Record<string, unknown>>,
-  pdfPayloads: [] as Array<Record<string, unknown>>,
+  mcPdfPayloads: [] as Array<Record<string, unknown>>,
+  psdPdfPayloads: [] as Array<Record<string, unknown>>,
   capturedIds: [] as string[],
   project: {
     projectName: "Export Project",
@@ -43,10 +44,17 @@ vi.mock("@/context/TestDataContext", () => ({
   useTestData: () => ({ recordMetadata: { proctor: exportState.recordMetadata, grading: exportState.recordMetadata }, updateTest: vi.fn() }),
 }));
 
-// Capture the payload the report is built from instead of writing a PDF file.
-vi.mock("@/lib/pdfGenerator", () => ({
-  generateTestPDF: vi.fn(async (data: Record<string, unknown>) => {
-    exportState.pdfPayloads.push(data);
+// Proctor has its own density/moisture content sheet generator rather than the generic one.
+vi.mock("@/lib/mcPdfGenerator", () => ({
+  generateMoistureDensityPDF: vi.fn(async (data: Record<string, unknown>) => {
+    exportState.mcPdfPayloads.push(data);
+  }),
+}));
+
+// Grading has its own BS 1377-2 sheet generator rather than the generic one.
+vi.mock("@/lib/psdPdfGenerator", () => ({
+  generateParticleSizeDistributionPDF: vi.fn(async (data: Record<string, unknown>) => {
+    exportState.psdPdfPayloads.push(data);
   }),
 }));
 
@@ -69,7 +77,8 @@ beforeAll(() => {
 
 beforeEach(() => {
   exportState.rows = [];
-  exportState.pdfPayloads = [];
+  exportState.mcPdfPayloads = [];
+  exportState.psdPdfPayloads = [];
   exportState.capturedIds = [];
 });
 
@@ -112,22 +121,57 @@ describe("Proctor PDF export", () => {
 
     await choosePdfExport("Export");
 
-    await waitFor(() => expect(exportState.pdfPayloads).toHaveLength(1));
-    const payload = exportState.pdfPayloads[0];
+    await waitFor(() => expect(exportState.mcPdfPayloads).toHaveLength(1));
+    const payload = exportState.mcPdfPayloads[0];
 
     expect(exportState.capturedIds).toEqual(["proctor-chart"]);
-    expect(Object.keys(payload.chartImages as Record<string, string>)).toEqual(["Proctor Curve"]);
+    expect(payload.chartImage).toBe("data:image/png;base64,iVBORw0KGgo=");
 
     // The signature line and the record's own test date, not the project date.
     expect(payload.testedBy).toBe("J. Doe");
     expect(payload.dateTested).toBe("2025-01-12");
     expect(payload.dateReported).toBe("2025-02-20");
     expect(payload.checkedBy).toBe("R. Checker");
-    expect(payload.standard).toContain("BS 1377-4:1990");
-    expect(payload.standard).toContain("2.5 kg rammer");
+    expect(payload.method).toBe("standard");
 
-    const labels = (payload.fields as Array<{ label: string }>).map((field) => field.label);
-    expect(labels).toEqual(expect.arrayContaining(["Optimum Moisture Content", "Maximum Dry Density"]));
+    // 3 points at 10/100, 10/102 and 10/105 water over dry soil; sorted by moisture.
+    const points = payload.points as Array<{ moisture: number; dryDensity: number }>;
+    expect(points).toHaveLength(3);
+    expect(points[0].moisture).toBeCloseTo(9.52, 2);
+    expect(points.at(-1)!.moisture).toBeCloseTo(10, 5);
+    points.forEach((point) => expect(point.dryDensity).toBeGreaterThan(0));
+    expect((payload.fitted as unknown[]).length).toBeGreaterThan(0);
+
+    const summary = payload.summary as { mdd: number | null; omc: number | null };
+    expect(summary.mdd).not.toBeNull();
+    expect(summary.omc).not.toBeNull();
+  });
+
+  it("plots the zero, five and ten per cent air voids lines once Gs is known", async () => {
+    render(createElement(MemoryRouter, null, createElement(ProctorTest, { testKey: "proctor" })));
+    expect(await screen.findByText(/Record results/)).toBeInTheDocument();
+
+    fillPoints(["50", "70", "90"], ["3000", "3100", "3200"], ["140", "142", "145"], ["130", "132", "135"]);
+    fireEvent.change(screen.getByLabelText("Specific gravity"), { target: { value: "2.7" } });
+
+    await choosePdfExport("Export");
+
+    await waitFor(() => expect(exportState.mcPdfPayloads).toHaveLength(1));
+    const voidLines = exportState.mcPdfPayloads[0].voidLines as Array<{ percent: number; points: unknown[] }>;
+
+    expect(voidLines.map((line) => line.percent)).toEqual([0, 5, 10]);
+    voidLines.forEach((line) => expect(line.points.length).toBeGreaterThan(1));
+  });
+
+  it("offers the printed sheet only, with no spreadsheet exports", async () => {
+    render(createElement(MemoryRouter, null, createElement(ProctorTest, { testKey: "proctor" })));
+    expect(await screen.findByText(/Record results/)).toBeInTheDocument();
+
+    fireEvent.keyDown(screen.getByRole("button", { name: "Export" }), { key: "Enter" });
+
+    expect(await screen.findByText("PDF")).toBeInTheDocument();
+    expect(screen.queryByText("Excel")).not.toBeInTheDocument();
+    expect(screen.queryByText("CSV")).not.toBeInTheDocument();
   });
 
 describe("Particle Size Distribution PDF export", () => {
@@ -164,22 +208,35 @@ describe("Particle Size Distribution PDF export", () => {
 
     await choosePdfExport("Export options");
 
-    await waitFor(() => expect(exportState.pdfPayloads).toHaveLength(1));
-    const payload = exportState.pdfPayloads[0];
+    await waitFor(() => expect(exportState.psdPdfPayloads).toHaveLength(1));
+    const payload = exportState.psdPdfPayloads[0];
 
     expect(exportState.capturedIds).toEqual(["grading-chart"]);
-    expect(Object.keys(payload.chartImages as Record<string, string>)).toEqual(["Particle Size Distribution Curve"]);
+    expect(payload.chartImage).toBe("data:image/png;base64,iVBORw0KGgo=");
 
     expect(payload.testedBy).toBe("L. Technician");
     expect(payload.dateTested).toBe("2025-01-15");
     expect(payload.dateReported).toBe("2025-02-20");
     expect(payload.checkedBy).toBe("R. Checker");
-    expect(payload.standard).toContain("BS 1377-2:1990");
-    expect(payload.standard).toContain("9.5");
 
-    // The summary the spreadsheet always carried must reach the PDF too.
-    const labels = (payload.fields as Array<{ label: string }>).map((field) => field.label);
-    expect(labels).toEqual(expect.arrayContaining(["D10", "D30", "D60", "Cu", "Cc", "Group Index"]));
+    // The BS sheet prints the fractions it classified the sample by. A 100 g sample
+    // retaining 10 g on 4.75 mm and 5 g on 0.075 mm is 10 % gravel, 50 % sand and
+    // 40 % fines.
+    expect(payload.gravelPercentage).toBeCloseTo(10, 5);
+    expect(payload.sandPercentage).toBeCloseTo(50, 5);
+    expect(payload.finesPercentage).toBeCloseTo(40, 5);
+
+    // The grading curve is handed over as a merged series ordered by ascending size,
+    // which is the direction a grading curve is drawn in. The pan row is left out
+    // because no percentage passes it.
+    const series = payload.series as Array<{ size: number; passing: number }>;
+    expect(series.map((point) => point.size)).toEqual([0.075, 0.15, 0.3, 0.425, 2, 4.75]);
+    expect(series[0].passing).toBeCloseTo(40, 5);
+    expect(series[5].passing).toBeCloseTo(90, 5);
+
+    // M 145 6.4 on 40 % passing No. 200, LL 30 and PI 11 gives
+    // (5)(0.15) + 0.01(25)(1) = 1.0, reported as 1.
+    expect(payload.groupIndex).toBe(1);
   });
 });
 });

@@ -36,7 +36,6 @@ import {
   getWaterMass,
   sanitizeNumericInput,
 } from "@/lib/atterbergCalculations";
-import { classifySoilUSCS, classifySoilAASHTO } from "@/lib/soilClassification";
 import LiquidLimitFlowChart from "./LiquidLimitFlowChart";
 import AtterbergPrintSheet from "./AtterbergPrintSheet";
 
@@ -113,7 +112,7 @@ const blankLSTrial = (): ShrinkageLimitTrial => ({
  * - Project context strip at top
  * - Unified A–G trial table (LL = A–E, PL = F–G)
  * - Casagrande chart + Linear Shrinkage panel side-by-side
- * - Results card (vertical key-value list) + Soil classification (USCS/AASHTO)
+ * - Results card (vertical key-value list) + Soil classification (BS 1377)
  * - Sticky Delete | Save split bar
  *
  * All math/exporters reused as-is; only layout changes here.
@@ -192,27 +191,13 @@ const AtterbergRecordView = ({
     () => calculateModulusOfPlasticity(plasticityIndex, record.passing425um),
     [plasticityIndex, record.passing425um],
   );
-  // Centralized USCS / AASHTO classification (matches Excel report wording).
-  // Atterberg-only flow → assume fine-grained (fines = 100) so the LL/PI branch is selected.
-  const { uscs, bs, aashto } = useMemo(() => {
-    const atterberg = {
-      liquidLimit: liquidLimit ?? undefined,
-      plasticLimit: plasticLimit ?? undefined,
-      plasticityIndex: plasticityIndex ?? undefined,
-    };
-    const grain = { gravel: 0, sand: 0, fines: 100 };
-    const u = classifySoilUSCS(grain, atterberg);
-    const a = classifySoilAASHTO(grain, atterberg);
+  // Centralized BS 1377 classification (matches Excel report wording).
+  // Atterberg-only flow → classification is derived from LL/PL alone.
+  const bs = useMemo(() => {
     const b = classifyAtterberg(liquidLimit, plasticLimit);
-    return {
-      uscs: liquidLimit === null && plasticityIndex === null
-        ? "—"
-        : `${u.uscsSymbol} — ${u.uscsDescription}`,
-      bs: liquidLimit === null && plasticityIndex === null
-        ? "—"
-        : `${b.BS_classification ?? "—"}${b.plasticity_description ? ` — ${b.plasticity_description}` : ""}`,
-      aashto: liquidLimit === null && plasticityIndex === null ? "—" : a,
-    };
+    return liquidLimit === null && plasticityIndex === null
+      ? "—"
+      : `${b.BS_classification ?? "—"}${b.plasticity_description ? ` — ${b.plasticity_description}` : ""}`;
   }, [liquidLimit, plasticLimit, plasticityIndex]);
 
   // Mutators (pad arrays so user can type into any column without first creating it)
@@ -578,14 +563,8 @@ const AtterbergRecordView = ({
               <div className="card-header-title">Soil Classification</div>
             </div>
             <div className="divide-y">
-              <KvRow label="USCS">
-                <span className="text-sm font-semibold">{uscs}</span>
-              </KvRow>
               <KvRow label="BS 1377">
                 <span className="text-sm font-semibold">{bs}</span>
-              </KvRow>
-              <KvRow label="AASHTO">
-                <span className="text-sm font-semibold">{aashto}</span>
               </KvRow>
             </div>
           </div>
