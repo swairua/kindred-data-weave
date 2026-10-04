@@ -9,7 +9,6 @@ import { Plus, X } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
 import { generateTestPDF } from "@/lib/pdfGenerator";
 import { generateTestCSV } from "@/lib/csvExporter";
-import { generateTestExcel } from "@/lib/genericExcelExporter";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Label } from "@/components/ui/label";
@@ -80,38 +79,10 @@ const CBRTest = ({ testKey }: CBRTestProps) => {
     });
   };
 
-  const exportXLSX = async () => {
-    let chartImages = {};
-    if (chartData.length >= 2) {
-      const chartBase64 = await captureChartAsBase64("cbr-chart");
-      if (chartBase64) {
-        chartImages = { "Penetration vs Load Curve": chartBase64 };
-      }
-    }
-
-    generateTestExcel({
-      data: {
-        title: "CBR (California Bearing Ratio)",
-        fields: [
-          { label: "CBR @ 2.5mm", value: cbr25 ? `${cbr25}%` : "—" },
-          { label: "CBR @ 5.0mm", value: cbr50 ? `${cbr50}%` : "—" },
-        ],
-        tables: [{ headers: ["Penetration (mm)", "Load (kN)", "CBR (%)"], rows: rows.map(r => [r.penetration, r.load || "—", getCBR(r.penetration, r.load) || "—"]) }],
-        chartImages,
-      },
-      projectName: project.projectName,
-      clientName: project.clientName,
-      date: project.date,
-      labOrganization: project.labOrganization,
-      dateReported: project.dateReported,
-      checkedBy: project.checkedBy,
-    });
-  };
-
   const status = filledCBR === 0 ? "No data" : filledCBR < rows.length ? "In progress" : "Complete";
 
   return (
-    <TestSection title="CBR (California Bearing Ratio)" testKey={testKey} onSave={() => {}} onClear={() => setRows([{ penetration: "", load: "" }])} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
+    <TestSection title="CBR (California Bearing Ratio)" testKey={testKey} onSave={() => {}} onClear={() => setRows([{ penetration: "", load: "" }])} onExportPDF={exportPDF}>
       <div className="space-y-4">
         {/* Overview metrics card */}
         <Card className="border bg-muted/20 shadow-none">

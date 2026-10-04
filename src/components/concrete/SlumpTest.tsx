@@ -6,7 +6,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { useProject } from "@/context/ProjectContext";
 import { generateTestPDF } from "@/lib/pdfGenerator";
 import { generateTestCSV } from "@/lib/csvExporter";
-import { generateTestExcel } from "@/lib/genericExcelExporter";
 import { useTestReport } from "@/hooks/useTestReport";
 
 interface SlumpTestProps {
@@ -29,26 +28,8 @@ const SlumpTest = ({ testKey }: SlumpTestProps) => {
     generateTestPDF({ title: "Slump Test", ...project, fields: [{ label: "Slump Value (mm)", value: slump }, { label: "Remarks", value: remarks }] });
   };
 
-  const exportXLSX = () => {
-    generateTestExcel({
-      data: {
-        title: "Slump Test",
-        fields: [
-          { label: "Slump Value (mm)", value: slump || "—" },
-          { label: "Remarks", value: remarks || "—" },
-        ],
-      },
-      projectName: project.projectName,
-      clientName: project.clientName,
-      date: project.date,
-      labOrganization: project.labOrganization,
-      dateReported: project.dateReported,
-      checkedBy: project.checkedBy,
-    });
-  };
-
   return (
-    <TestSection title="Slump Test" testKey={testKey} onSave={() => {}} onClear={() => { setSlump(""); setRemarks(""); }} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
+    <TestSection title="Slump Test" testKey={testKey} onSave={() => {}} onClear={() => { setSlump(""); setRemarks(""); }} onExportPDF={exportPDF}>
       {!hasProjectSelected && !slump ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">

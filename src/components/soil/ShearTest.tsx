@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Plus, X } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
 import { generateTestPDF } from "@/lib/pdfGenerator";
-import { generateTestExcel } from "@/lib/genericExcelExporter";
 import { generateTestCSV } from "@/lib/csvExporter";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Line } from "recharts";
@@ -83,14 +82,10 @@ const ShearTest = ({ testKey }: ShearTestProps) => {
     generateTestPDF({ title: "Shear Test", ...project, tables: [{ headers: ["Normal Stress (kPa)", "Shear Stress (kPa)"], rows: rows.map(r => [r.normalStress || "—", r.shearStress || "—"]) }], chartImages });
   };
 
-  const exportXLSX = async () => {
-    await generateTestExcel({ data: { title: "Shear Test", ...project, tables: [{ headers: ["Normal Stress (kPa)", "Shear Stress (kPa)"], rows: rows.map(r => [r.normalStress || "—", r.shearStress || "—"]) }] } });
-  };
-
   const status = filledShear === 0 ? "No data" : filledShear < rows.length ? "In progress" : "Complete";
 
   return (
-    <TestSection title="Shear Test" testKey={testKey} onSave={() => {}} onClear={() => setRows([{ normalStress: "", shearStress: "" }])} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
+    <TestSection title="Shear Test" testKey={testKey} onSave={() => {}} onClear={() => setRows([{ normalStress: "", shearStress: "" }])} onExportPDF={exportPDF}>
       <div className="space-y-4">
         {/* Overview metrics card */}
         <Card className="border bg-muted/20 shadow-none">

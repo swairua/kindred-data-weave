@@ -310,14 +310,8 @@ const drawTableHeader = (d: jsPDF, y: number): number => {
   return y + HEADER_H;
 };
 
-/**
- * Column headings of the results table, shared by the PDF and Excel exports so
- * the two sheets cannot drift apart.
- */
-export const CUBE_SHEET_COLUMNS: Col[] = COLS;
-
 /** Values for one cube, in column order, already formatted for print. */
-export const cubeSheetValues = (row: CompressiveCubeInput, classTarget: number | null): string[] => {
+const cubeSheetValues = (row: CompressiveCubeInput, classTarget: number | null): string[] => {
   const strength = strengthOf(row);
   const density = densityOf(row);
   const age = ageOf(row.dateOfCast, row.dateOfTest);

@@ -7,7 +7,6 @@ import { Plus, X } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
 import { generateTestPDF } from "@/lib/pdfGenerator";
 import { generateTestCSV } from "@/lib/csvExporter";
-import { generateTestExcel } from "@/lib/genericExcelExporter";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Label } from "@/components/ui/label";
@@ -71,36 +70,8 @@ const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
     generateTestPDF({ title: testName, ...project, tables: [tableData], chartImages });
   };
 
-  const exportXLSX = async () => {
-    let chartImages = {};
-    if (chartData.length >= 1) {
-      const chartBase64 = await captureChartAsBase64(chartId);
-      if (chartBase64) {
-        chartImages = { "Rebound & Estimated Strength": chartBase64 };
-      }
-    }
-
-    generateTestExcel({
-      data: {
-        title: testName,
-        fields: [
-          { label: "Avg Rebound", value: avgRebound || "—" },
-          { label: "Est. Strength", value: avgRebound ? `${getEstStrength(avgRebound)} MPa` : "—" },
-        ],
-        tables: [tableData],
-        chartImages,
-      },
-      projectName: project.projectName,
-      clientName: project.clientName,
-      date: project.date,
-      labOrganization: project.labOrganization,
-      dateReported: project.dateReported,
-      checkedBy: project.checkedBy,
-    });
-  };
-
   return (
-    <TestSection title={testName} onSave={() => {}} onClear={() => setRows([{ location: "L1", r1: "", r2: "", r3: "", r4: "", r5: "" }])} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
+    <TestSection title={testName} onSave={() => {}} onClear={() => setRows([{ location: "L1", r1: "", r2: "", r3: "", r4: "", r5: "" }])} onExportPDF={exportPDF}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Location</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R1</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R2</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R3</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R4</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R5</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Avg R</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Est. MPa</th><th className="w-10"></th></tr></thead>

@@ -6,7 +6,6 @@ import CalculatedInput from "@/components/CalculatedInput";
 import { Plus, X } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
 import { generateTestPDF } from "@/lib/pdfGenerator";
-import { generateTestExcel } from "@/lib/genericExcelExporter";
 import { useTestReport } from "@/hooks/useTestReport";
 
 interface Row { sampleId: string; load: string; area: string }
@@ -31,12 +30,8 @@ const UCSTest = () => {
     generateTestPDF({ title: "UCS (Unconfined Compressive Strength)", ...project, tables: [{ headers: ["Sample ID", "Load (kN)", "Area (mm²)", "Strength (MPa)"], rows: rows.map(r => [r.sampleId, r.load || "—", r.area || "—", getStrength(r) || "—"]) }] });
   };
 
-  const exportXLSX = async () => {
-    await generateTestExcel({ data: { title: "UCS (Unconfined Compressive Strength)", ...project, tables: [{ headers: ["Sample ID", "Load (kN)", "Area (mm²)", "Strength (MPa)"], rows: rows.map(r => [r.sampleId, r.load || "—", r.area || "—", getStrength(r) || "—"]) }] } });
-  };
-
   return (
-    <TestSection title="UCS (Unconfined Compressive Strength)" onSave={() => {}} onClear={() => setRows([{ sampleId: "", load: "", area: "" }])} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
+    <TestSection title="UCS (Unconfined Compressive Strength)" onSave={() => {}} onClear={() => setRows([{ sampleId: "", load: "", area: "" }])} onExportPDF={exportPDF}>
       {!hasProjectSelected && rows.length === 0 ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">

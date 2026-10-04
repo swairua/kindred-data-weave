@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Plus, X } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
 import { generateTestPDF } from "@/lib/pdfGenerator";
-import { generateTestExcel } from "@/lib/genericExcelExporter";
 import { generateTestCSV } from "@/lib/csvExporter";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
@@ -56,10 +55,6 @@ const ConsolidationTest = ({ testKey }: ConsolidationTestProps) => {
     generateTestPDF({ title: "Consolidation Test", ...project, tables: [{ headers: ["Time (min)", "Settlement (mm)"], rows: rows.map(r => [r.time || "—", r.settlement || "—"]) }], chartImages });
   };
 
-  const exportXLSX = async () => {
-    await generateTestExcel({ data: { title: "Consolidation Test", ...project, tables: [{ headers: ["Time (min)", "Settlement (mm)"], rows: rows.map(r => [r.time || "—", r.settlement || "—"]) }] } });
-  };
-
   const maxSettlement = chartData.length ? Math.max(...chartData.map(d => d.settlement)) : 0;
   const status = filledConsol === 0 ? "No data" : filledConsol < rows.length ? "In progress" : "Complete";
 
@@ -77,7 +72,7 @@ const ConsolidationTest = ({ testKey }: ConsolidationTestProps) => {
   );
 
   return (
-    <TestSection title="Consolidation" testKey={testKey} onSave={() => {}} onClear={() => setRows([{ time: "", settlement: "" }])} onExportPDF={exportPDF} onExportXLSX={exportXLSX}>
+    <TestSection title="Consolidation" testKey={testKey} onSave={() => {}} onClear={() => setRows([{ time: "", settlement: "" }])} onExportPDF={exportPDF}>
       <div className="space-y-4">
         {/* Overview metrics card */}
         <Card className="border bg-muted/20 shadow-none">

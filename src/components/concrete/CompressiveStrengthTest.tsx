@@ -8,7 +8,6 @@ import { Plus, X, Save as SaveIcon, Printer, Loader2, CheckCircle2, GripVertical
 import { useProject } from "@/context/ProjectContext";
 import { useTestData } from "@/context/TestDataContext";
 import { generateCompressiveStrengthPDF } from "@/lib/compressivePdfGenerator";
-import { generateCompressiveStrengthExcel } from "@/lib/compressiveExcelGenerator";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, PieChart, Pie, Cell, Legend, ResponsiveContainer } from "recharts";
 import { Label } from "@/components/ui/label";
@@ -396,26 +395,6 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     });
   };
 
-  /** The same sheet as a workbook, so Excel and the PDF stay in step. */
-  const exportXLSX = async () => {
-    const cubes = exportableCubes();
-    if (cubes.length === 0) {
-      toast.error("Add at least one cube with a load and dimensions before exporting");
-      return;
-    }
-
-    await generateCompressiveStrengthExcel({
-      projectName: project.projectName,
-      clientName: project.clientName,
-      dateReported: project.dateReported,
-      testedBy: testDetails.madeBy,
-      checkedBy: project.checkedBy,
-      labOrganization: project.labOrganization,
-      record: buildRecordView(),
-      rows: cubes,
-    });
-  };
-
   const handlePrint = () => {
     window.print();
   };
@@ -760,7 +739,6 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
       testKey={testKey}
       onClear={() => setRows([emptyCubeRow()])}
       onExportPDF={exportPDF}
-      onExportXLSX={exportXLSX}
     >
       <>
         <div className="flex flex-col gap-6 w-full">
