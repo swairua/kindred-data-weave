@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import MoistureDensityChart from "@/components/soil/MoistureDensityChart";
 import { useProject } from "@/context/ProjectContext";
+import { useGridArrowNavigation } from "@/hooks/useGridArrowNavigation";
 import { useTestData } from "@/context/TestDataContext";
 import {
   airVoidsCurve,
@@ -80,6 +81,9 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  // Arrow keys walk the weighing grid instead of leaving the technician to drag
+  // the pointer across a table this wide.
+  const gridNav = useGridArrowNavigation<HTMLDivElement>();
   const type = record.type;
   const rows = type === "standard" ? record.standardRows : record.modifiedRows;
   const mouldVolume = type === "standard" ? record.standardMouldVolume : record.modifiedMouldVolume;
@@ -373,7 +377,12 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
             <Button variant="outline" size="sm" className="h-7 text-[11px]" onClick={addRow} disabled={rows.length >= MAX_POINTS}>Add point</Button>
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div
+          className="overflow-x-auto"
+          ref={gridNav.ref}
+          onKeyDown={gridNav.onKeyDown}
+          data-testid="proctor-input-grid"
+        >
           <table className="record-table min-w-[900px] table-fixed">
             <thead><tr><th className="w-[190px]" aria-label="Measurement"></th>{rows.map((_, index) => <th key={index} className="text-center">{pointLabel(index)}</th>)}</tr></thead>
             <tbody>

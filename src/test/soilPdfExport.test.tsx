@@ -110,6 +110,36 @@ describe("Proctor PDF export", () => {
     });
   };
 
+  it("moves between the weighing cells with the arrow keys", async () => {
+    render(createElement(MemoryRouter, null, createElement(ProctorTest, { testKey: "proctor" })));
+    expect(await screen.findByText(/Record results/)).toBeInTheDocument();
+
+    const cell = (label: string, point: string) => screen.getByLabelText(`${label}, point ${point}`);
+    const first = "Moisture addition (cc)";
+    const second = "Wt of mould + wet material (g)";
+    const third = "Wt of mould (g)";
+    cell(first, "A").focus();
+
+    // Right moves along the row, which is the series of test points A, B, C...
+    fireEvent.keyDown(cell(first, "A"), { key: "ArrowRight" });
+    expect(document.activeElement).toBe(cell(first, "B"));
+
+    // Down moves to the next measurement on the same point, stepping over the
+    // calculated rows that hold no input.
+    fireEvent.keyDown(cell(first, "B"), { key: "ArrowDown" });
+    expect(document.activeElement).toBe(cell(second, "B"));
+
+    fireEvent.keyDown(cell(second, "B"), { key: "ArrowDown" });
+    expect(document.activeElement).toBe(cell(third, "B"));
+
+    fireEvent.keyDown(cell(third, "B"), { key: "ArrowUp" });
+    expect(document.activeElement).toBe(cell(second, "B"));
+
+    // Left stays on this row and steps back along the points, mirroring Right.
+    fireEvent.keyDown(cell(second, "B"), { key: "ArrowLeft" });
+    expect(document.activeElement).toBe(cell(second, "A"));
+  });
+
   it("captures the curve the export resolves by id and reports who tested it", async () => {
     render(createElement(MemoryRouter, null, createElement(ProctorTest, { testKey: "proctor" })));
     expect(await screen.findByText(/Record results/)).toBeInTheDocument();
