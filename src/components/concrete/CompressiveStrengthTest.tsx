@@ -7,14 +7,12 @@ import CalculatedInput from "@/components/CalculatedInput";
 import { Plus, X, Save as SaveIcon, Printer, Loader2, CheckCircle2, GripVertical } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
 import { useTestData } from "@/context/TestDataContext";
-import { generateTestPDF } from "@/lib/pdfGenerator";
-import { generateTestCSV } from "@/lib/csvExporter";
-import { generateTestExcel } from "@/lib/genericExcelExporter";
+import { generateCompressiveStrengthPDF } from "@/lib/compressivePdfGenerator";
+import { generateCompressiveStrengthExcel } from "@/lib/compressiveExcelGenerator";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, PieChart, Pie, Cell, Legend, ResponsiveContainer } from "recharts";
 import { Label } from "@/components/ui/label";
 import { useTestReport } from "@/hooks/useTestReport";
-import { captureChartAsBase64 } from "@/lib/chartCapture";
 import { saveCompressiveTest, listCompressiveCubes, type CompressiveCubeApiRow } from "@/lib/api";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -66,6 +64,8 @@ interface TestDetails {
   madeBy: string;
   slump: string;
   clientRef: string;
+  /** The laboratory's own sample reference, printed on the results sheet. */
+  labRef: string;
   dateTested: string;
 }
 
@@ -108,6 +108,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     madeBy: "",
     slump: "",
     clientRef: "",
+    labRef: "",
     dateTested: "",
     ...(testData.concreteTestMetadata ?? {})
   }));
@@ -233,6 +234,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
         made_by: testDetails.madeBy,
         slump: testDetails.slump,
         client_ref: testDetails.clientRef,
+        lab_ref: testDetails.labRef,
         status: "submitted",
       };
 
@@ -351,129 +353,66 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   useTestReport("compressive", strengths.length, compResults);
 
   /**
-   * Report-ready summary + per-age-group breakdown, shared by the PDF and XLSX exports.
-   * The per-age rows matter: a single blended "Avg Strength" is not a reportable figure
-   * because it mixes cubes broken at different ages.
+   * The record as the exporters want it. PDF and Excel build from the same
+   * object so the two sheets can never describe different tests.
    */
-  const buildExportTables = () => {
-    const dist = getStrengthDistribution(rows);
-    const classification = {
-      headers: ["Classification", "Count"],
-      rows: [
-        ["Very Low (< 7 MPa)", String(dist.veryLow)],
-        ["Low (7–20 MPa)", String(dist.low)],
-        ["Normal (20–40 MPa)", String(dist.normal)],
-        ["High (> 40 MPa)", String(dist.high)],
-      ],
-    };
+  const buildRecordView = () => ({
+    contractor: testDetails.contractor,
+    county: testDetails.county,
+    concreteClass: testDetails.concreteClass,
+    section: testDetails.section,
+    madeBy: testDetails.madeBy,
+    slump: testDetails.slump,
+    clientRef: testDetails.clientRef,
+    labRef: testDetails.labRef,
+    dateCasted: testDetails.dateTested,
+  });
 
-    const groupRows = ageGroups.bands
-      .filter((group) => group.count > 0)
-      .map((group) => [
-        group.label,
-        String(group.count),
-        group.mean !== null ? group.mean.toFixed(2) : "—",
-        group.min !== null ? group.min.toFixed(2) : "—",
-        group.max !== null ? group.max.toFixed(2) : "—",
-        group.target !== null ? String(group.target) : "—",
-        group.verdict
-          ? (group.verdict.accepted ? "Accept" : (group.verdict.meetsMean ? "Mean OK, low cube" : "Reject"))
-          : "—",
-      ]);
+  /** Cubes that can produce a strength; blank rows are not worth exporting. */
+  const exportableCubes = () => rows.filter((row) => isFiniteNumber(strengthOf(row)));
 
-    if (ageGroups.other.count > 0) {
-      groupRows.push([
-        ageGroups.other.label,
-        String(ageGroups.other.count),
-        ageGroups.other.mean !== null ? ageGroups.other.mean.toFixed(2) : "—",
-        ageGroups.other.min !== null ? ageGroups.other.min.toFixed(2) : "—",
-        ageGroups.other.max !== null ? ageGroups.other.max.toFixed(2) : "—",
-        "—",
-        "Not assessable — outside every reporting window",
-      ]);
-    }
-
-    const ageBreakdown = {
-      headers: ["Age Group", "Cubes", "Mean (MPa)", "Min (MPa)", "Max (MPa)", "Target (MPa)", "Result"],
-      rows: groupRows,
-    };
-
-    const cubeRows = rows.map((r, i) => [
-      String(i + 1),
-      r.mark.trim() || "—",
-      r.dateOfCast || "—",
-      r.dateOfTest || "—",
-      getAge(r.dateOfCast, r.dateOfTest) || "—",
-      // Rendered as one unit rather than "150××" when a dimension was left blank.
-      [r.width, r.height, r.depth].every((part) => part.trim() !== "")
-        ? `${r.width}×${r.height}×${r.depth}`
-        : "—",
-      r.mass || "—",
-      formatDensity(r) || "—",
-      r.load || "—",
-      formatStrength(r) || "—",
-      r.remarks || strengthRemark(r) || "—",
-    ]);
-
-    const summaryFields = [
-      { label: "Avg Strength (all ages)", value: avgStrength ? `${avgStrength} MPa` : "—" },
-      { label: "Cubes Tested", value: strengths.length ? String(strengths.length) : "—" },
-      { label: "Concrete Class", value: testDetails.concreteClass || "—" },
-      { label: "Target (from class)", value: classTargetStrength !== null ? `${classTargetStrength} MPa` : "—" },
-      { label: "Tally Threshold", value: `${effectiveThreshold} MPa${isThresholdOverridden ? " (manual)" : classTargetStrength !== null ? " (from class)" : ""}` },
-      { label: "Pass Count", value: String(passFailData.passCount) },
-      { label: "Fail Count", value: String(passFailData.failCount) },
-      { label: "Pass Rate", value: `${passFailData.passRate.toFixed(0)}%` },
-    ];
-
-    return { summaryFields, tables: [classification, ageBreakdown, { headers: ["#", "Cube Mark", "Date of Cast", "Date of Test", "Age", "Dims", "Mass", "Density", "Load", "Strength", "Remarks"], rows: cubeRows }] };
-  };
-
+  /**
+   * Export the landscape cube sheet. It is drawn natively rather than through the
+   * generic portrait generator so it matches the laboratory's own form, and the
+   * header repeats automatically when a test has more cubes than one page holds.
+   */
   const exportPDF = async () => {
-    let chartImages = {};
-    if (chartData.length >= 1) {
-      const chartBase64 = await captureChartAsBase64("compressive-chart");
-      if (chartBase64) {
-        chartImages = { "Cube Compressive Strengths": chartBase64 };
-      }
+    const cubes = exportableCubes();
+    if (cubes.length === 0) {
+      toast.error("Add at least one cube with a load and dimensions before exporting");
+      return;
     }
 
-    const { summaryFields, tables } = buildExportTables();
-
-    generateTestPDF({
-      title: "Compressive Strength (Cube Test)",
-      standard: "BS EN 206:2013, Table 18 / BS 8500-1:2015",
-      ...project,
-      fields: summaryFields,
-      tables,
-      chartImages
+    await generateCompressiveStrengthPDF({
+      projectName: project.projectName,
+      clientName: project.clientName,
+      dateReported: project.dateReported,
+      // `project` carries no testedBy, so the technician comes from the record.
+      testedBy: testDetails.madeBy,
+      checkedBy: project.checkedBy,
+      labOrganization: project.labOrganization,
+      record: buildRecordView(),
+      rows: cubes,
     });
   };
 
+  /** The same sheet as a workbook, so Excel and the PDF stay in step. */
   const exportXLSX = async () => {
-    let chartImages = {};
-    if (chartData.length >= 1) {
-      const chartBase64 = await captureChartAsBase64("compressive-chart");
-      if (chartBase64) {
-        chartImages = { "Cube Compressive Strengths": chartBase64 };
-      }
+    const cubes = exportableCubes();
+    if (cubes.length === 0) {
+      toast.error("Add at least one cube with a load and dimensions before exporting");
+      return;
     }
 
-    const { summaryFields, tables } = buildExportTables();
-
-    generateTestExcel({
-      data: {
-        title: "Compressive Strength (Cube Test)",
-        fields: summaryFields,
-        tables,
-        chartImages,
-      },
+    await generateCompressiveStrengthExcel({
       projectName: project.projectName,
       clientName: project.clientName,
-      date: project.date,
-      labOrganization: project.labOrganization,
       dateReported: project.dateReported,
+      testedBy: testDetails.madeBy,
       checkedBy: project.checkedBy,
+      labOrganization: project.labOrganization,
+      record: buildRecordView(),
+      rows: cubes,
     });
   };
 
@@ -505,6 +444,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
             { label: "Made By", value: testDetails.madeBy },
             { label: "Slump", value: testDetails.slump },
             { label: "Client Ref", value: testDetails.clientRef },
+            { label: "Lab Ref", value: testDetails.labRef },
             { label: "Date Tested", value: testDetails.dateTested },
           ].map((item) => (
             <div key={item.label} className="flex flex-col">
@@ -815,7 +755,13 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   );
 
   return (
-    <TestSection title="Compressive Strength (Cube Test)" testKey={testKey} onClear={() => setRows([emptyCubeRow()])}>
+    <TestSection
+      title="Compressive Strength (Cube Test)"
+      testKey={testKey}
+      onClear={() => setRows([emptyCubeRow()])}
+      onExportPDF={exportPDF}
+      onExportXLSX={exportXLSX}
+    >
       <>
         <div className="flex flex-col gap-6 w-full">
           <div className="w-full">

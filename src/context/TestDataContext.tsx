@@ -64,6 +64,8 @@ export interface ConcreteTestMetadata {
   madeBy?: string;
   slump?: string;
   clientRef?: string;
+  /** The laboratory's own sample reference, printed on the results sheet. */
+  labRef?: string;
   dateTested?: string;
   sampleId?: string;
 }
