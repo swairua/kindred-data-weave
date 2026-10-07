@@ -122,7 +122,7 @@ const num = (value: number | null | undefined, digits = 1, fallback = BLANK): st
   value === null || value === undefined || !Number.isFinite(value) ? fallback : value.toFixed(digits);
 
 /** Shrink a string until it fits its cell rather than letting it spill over the rule. */
-const fitText = (d: jsPDF, value: string, maxWidth: number, startSize: number, minSize = 4): number => {
+const fitText = (d: jsPDF, value: string, maxWidth: number, startSize: number, minSize = 2.8): number => {
   let size = startSize;
   try {
     while (size > minSize && d.getTextWidth(value) > Math.max(maxWidth, 1)) size -= 0.25;
@@ -212,24 +212,25 @@ const drawCellText = (
 /** Build the identification rows shown above the results table. */
 const buildIdRows = (o: CompressiveStrengthPdfOptions): IdCell[][] => {
   const r = o.record;
-  // Three shared label columns, sized so the three fit the table width exactly.
-  const third = (TABLE_W - 30) / 3;
-  const twoThirds = third * 2;
+  // Cells in each row share the table width exactly: halves, thirds, or quarters.
+  const half = TABLE_W / 2;
+  const third = TABLE_W / 3;
+  const quarter = TABLE_W / 4;
   return [
     [
-      { label: "PROJECT", value: text(o.projectName), w: TABLE_W },
-      { label: "CLIENT", value: text(o.clientName), w: TABLE_W },
+      { label: "PROJECT", value: text(o.projectName), w: half },
+      { label: "CLIENT", value: text(o.clientName), w: half },
     ],
     [
-      { label: "CONTRACTOR", value: text(r.contractor), w: TABLE_W },
-      { label: "COUNTY", value: text(r.county), w: TABLE_W },
-      { label: "CONCRETE CLASS", value: text(r.concreteClass), w: TABLE_W },
+      { label: "CONTRACTOR", value: text(r.contractor), w: third },
+      { label: "COUNTY", value: text(r.county), w: third },
+      { label: "CONCRETE CLASS", value: text(r.concreteClass), w: third },
     ],
     [
-      { label: "SECTION", value: text(r.section), w: third },
-      { label: "MADE BY", value: text(r.madeBy), w: third },
-      { label: "SLUMP", value: text(r.slump), w: third },
-      { label: "LAB REF", value: text(r.labRef), w: TABLE_W - twoThirds },
+      { label: "SECTION", value: text(r.section), w: quarter },
+      { label: "MADE BY", value: text(r.madeBy), w: quarter },
+      { label: "SLUMP", value: text(r.slump), w: quarter },
+      { label: "LAB REF", value: text(r.labRef), w: quarter },
     ],
     [
       { label: "CLIENT REF", value: text(r.clientRef), w: third },
@@ -379,8 +380,11 @@ const drawTerms = (d: jsPDF, y: number): void => {
   });
 };
 
-const drawFooter = (d: jsPDF, o: CompressiveStrengthPdfOptions, images: AdminImages, y: number) => {
-  const stampSpace = images.stamp ? 45 : 0;
+const drawFooter = (d: jsPDF, o: CompressiveStrengthPdfOptions, images: AdminImages, y: number, page: number, pages: number) => {
+  d.setDrawColor(...COLORS.dark);
+  d.setLineWidth(0.5);
+  d.line(TABLE_X, y - 4, TABLE_X + TABLE_W, y - 4);
+  const stampSpace = images.stamp ? 30 : 0;
   const colW = (TABLE_W - stampSpace) / 3;
   d.setFontSize(7.5);
   d.setFont("helvetica", "bold");
@@ -391,8 +395,9 @@ const drawFooter = (d: jsPDF, o: CompressiveStrengthPdfOptions, images: AdminIma
 
   if (images.stamp) {
     try {
+      // Top edge sits on the content boundary so the stamp never climbs into the terms.
       const { base64, format } = imageParts(images.stamp);
-      d.addImage(base64, format, TABLE_X + TABLE_W - 40, y - 10, 38, 24, undefined, "FAST");
+      d.addImage(base64, format, TABLE_X + TABLE_W - 26, y - 6, 22, 22, undefined, "FAST");
     } catch { /* the stamp is optional */ }
   }
 
@@ -401,43 +406,64 @@ const drawFooter = (d: jsPDF, o: CompressiveStrengthPdfOptions, images: AdminIma
   d.text(
     "Specialists In: Non-Destructive Testing, Materials Testing and Inspection, Quality Assurance, Failure Investigations,",
     TABLE_X,
-    y + 13,
+    y + 20,
   );
+  d.setFontSize(7);
+  d.setTextColor(120, 120, 120);
+  d.text(`Page ${page} of ${pages}`, MARGIN + CONTENT_W / 2, 204, { align: "center" });
+  d.text(`Generated: ${new Date().toLocaleDateString()}`, MARGIN, 204);
 };
 
-/** Title, laboratory identity and the blue rule beneath, as on the reference. */
+/** Title, laboratory identity and the rule beneath, as on the reference. */
 const drawTitleBlock = (d: jsPDF, o: CompressiveStrengthPdfOptions, images: AdminImages, y: number): number => {
-  let cy = y;
+  const imgW = 62;
+  const imgH = 20;
+  d.setFontSize(7.5);
+  d.setFont("helvetica", "normal");
+  d.setTextColor(...COLORS.dark);
+  d.text("Compressive Strength of Concrete Cubes Report", MARGIN, y);
   if (images.logo) {
     try {
       const { base64, format } = imageParts(images.logo);
-      d.addImage(base64, format, MARGIN, cy - 4, 30, 14, undefined, "FAST");
+      d.addImage(base64, format, MARGIN, y + 1, imgW, imgH, undefined, "FAST");
     } catch { /* the logo is optional */ }
   }
-  if (o.labOrganization) {
-    d.setFontSize(8);
-    d.setFont("helvetica", "bold");
-    d.setTextColor(...COLORS.dark);
-    d.text(o.labOrganization, MARGIN + CONTENT_W, cy, { align: "right" });
+  if (images.contacts) {
+    try {
+      const { base64, format } = imageParts(images.contacts);
+      d.addImage(base64, format, MARGIN + CONTENT_W - imgW, y + 1, imgW, imgH, undefined, "FAST");
+    } catch { /* the contacts block is optional */ }
   }
-  cy += 11;
+  let cy = y + imgH + 3;
+  d.setDrawColor(...COLORS.dark);
+  d.setLineWidth(0.5);
+  d.line(MARGIN, cy, MARGIN + CONTENT_W, cy);
+  cy += 4;
+  const title = "COMPRESSIVE STRENGTH OF CONCRETE CUBES";
   d.setFontSize(13);
   d.setFont("helvetica", "bold");
   d.setTextColor(...COLORS.dark);
-  d.text("COMPRESSIVE STRENGTH OF CONCRETE CUBES", TABLE_X + TABLE_W / 2, cy, { align: "center" });
+  d.text(title, TABLE_X + TABLE_W / 2, cy, { align: "center" });
+  const titleW = d.getTextWidth(title);
+  d.setLineWidth(0.4);
+  d.line(TABLE_X + TABLE_W / 2 - titleW / 2, cy + 1.2, TABLE_X + TABLE_W / 2 + titleW / 2, cy + 1.2);
   cy += 5;
   d.setFontSize(8.5);
+  d.setFont("helvetica", "normal");
   d.text("BS EN 12390 - 3 : 2002", TABLE_X + TABLE_W / 2, cy, { align: "center" });
-  cy += 2;
-  d.setDrawColor(0, 0, 255);
-  d.setLineWidth(0.5);
-  d.line(MARGIN, cy, MARGIN + CONTENT_W, cy);
+  if (o.labOrganization) {
+    cy += 4;
+    d.setFontSize(8);
+    d.setFont("helvetica", "bold");
+    d.text(o.labOrganization, TABLE_X + TABLE_W / 2, cy, { align: "center" });
+    return cy + 4;
+  }
   return cy + 3;
 };
 
-/** Height of everything on a page that is not a cube row. */
+/** Height of everything on a page that is not a cube row. Title block is ~38mm with images. */
 const furnitureHeight = (d: jsPDF): number =>
-  MARGIN + (11 + 5 + 2 + 3) + 4 * ID_ROW_H + HEADER_H + measureTerms(d) + FOOTER_RESERVE;
+  MARGIN + 38 + 4 * ID_ROW_H + HEADER_H + measureTerms(d) + FOOTER_RESERVE;
 
 export const generateCompressiveStrengthPDF = async (options: CompressiveStrengthPdfOptions) => {
   // Images are optional: a missing logo or stamp must never stop a report being produced.
@@ -478,15 +504,21 @@ export const generateCompressiveStrengthPDF = async (options: CompressiveStrengt
   };
 
   // A test with no results still yields a valid sheet rather than a bare header.
+  const totalPages = Math.max(1, Math.ceil(printable.length / rowsPerPage));
+  let pageNo = 0;
+  const footerY = pageHeight - MARGIN - 14;
+  const finishPage = (bottom: number) => {
+    pageNo += 1;
+    drawTerms(doc, Math.min(bottom + 3, footerY - measureTerms(doc)));
+    drawFooter(doc, o, images, footerY, pageNo, totalPages);
+  };
   let y = printPage(printable.slice(0, rowsPerPage));
   for (let index = rowsPerPage; index < printable.length; index += rowsPerPage) {
+    finishPage(y);
     doc.addPage();
     y = printPage(printable.slice(index, index + rowsPerPage));
   }
-
-  const footerY = pageHeight - MARGIN - 14;
-  drawTerms(doc, Math.min(y + 3, footerY - measureTerms(doc)));
-  drawFooter(doc, o, images, footerY);
+  finishPage(y);
 
   if (!o.skipDownload) {
     const stem = (o.projectName || "Compressive Strength").replace(/[^\w-]+/g, "_");
