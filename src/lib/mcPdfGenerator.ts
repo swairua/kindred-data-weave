@@ -24,10 +24,13 @@ import { calculateProctorPoint, type ProctorRow, type ProctorSummary } from "./p
  * is unavailable.
  */
 
-const MARGIN = 12;
-const CONTENT_W = 186;
-const ROW_H = 5.2;
-const HEADER_H = 7;
+const MARGIN = 10;
+const CONTENT_W = 190;
+const ROW_H = 4.2;
+const HEADER_H = 6;
+const MIN_ROW_H = 3.4;
+const MIN_GRAPH_H = 52;
+const MAX_GRAPH_H = 78;
 
 const COLORS = {
   dark: [0, 0, 0] as [number, number, number],
@@ -97,7 +100,7 @@ const num = (value: number | null | undefined, digits = 1, fallback = BLANK): st
   value === null || value === undefined || !Number.isFinite(value) ? fallback : value.toFixed(digits);
 
 /** Shrink a string until it fits its cell rather than letting it spill over the rule. */
-const fitText = (d: jsPDF, value: string, maxWidth: number, startSize: number, minSize = 4): number => {
+const fitText = (d: jsPDF, value: string, maxWidth: number, startSize: number, minSize = 3.4): number => {
   let size = startSize;
   try {
     while (size > minSize && d.getTextWidth(value) > Math.max(maxWidth, 1)) size -= 0.25;
@@ -136,23 +139,23 @@ const drawCells = (d: jsPDF, x: number, y: number, h: number, cells: Cell[]): nu
 };
 
 /** Client / project / sample identification block, as printed above the tables. */
-const drawHeader = (d: jsPDF, x: number, y: number, o: MoistureDensityPdfOptions): number => {
+const drawHeader = (d: jsPDF, x: number, y: number, o: MoistureDensityPdfOptions, rowH = ROW_H): number => {
   const { record } = o;
   const depth = [record.sampleDepthFrom, record.sampleDepthTo].filter(Boolean).join(" - ");
   let cy = y;
-  cy = drawCells(d, x, cy, ROW_H, [
+  cy = drawCells(d, x, cy, rowH, [
     { w: 28, text: "Client name:", label: true, bold: true },
     { w: 112, text: text(o.clientName) },
     { w: 26, text: "Date submitted:", label: true, bold: true },
     { w: 20, text: text(record.dateSubmitted || o.date) },
   ]);
-  cy = drawCells(d, x, cy, ROW_H, [
+  cy = drawCells(d, x, cy, rowH, [
     { w: 28, text: "Project/Site Name:", label: true, bold: true },
     { w: 112, text: text(o.projectName) },
     { w: 26, text: "Date tested:", label: true, bold: true },
     { w: 20, text: text(record.dateTested || o.dateTested) },
   ]);
-  cy = drawCells(d, x, cy, ROW_H, [
+  cy = drawCells(d, x, cy, rowH, [
     { w: 22, text: "Sample ID:", label: true, bold: true },
     { w: 20, text: text(record.label) },
     { w: 24, text: "Sample depth (M):", label: true, bold: true },
@@ -176,8 +179,8 @@ const tableColumns = (rowCount: number): { caption: number; point: number } => {
 };
 
 /** A table row: bold caption cell followed by one centred cell per point. */
-const dataRow = (d: jsPDF, x: number, y: number, cells: { caption: number; point: number }, captionText: string, values: string[]): number =>
-  drawCells(d, x, y, ROW_H, [
+const dataRow = (d: jsPDF, x: number, y: number, rowH: number, cells: { caption: number; point: number }, captionText: string, values: string[]): number =>
+  drawCells(d, x, y, rowH, [
     { w: cells.caption, text: captionText, bold: true, size: 5.8 },
     ...values.map((value) => ({ w: cells.point, text: value, align: "center" as const })),
   ]);
@@ -186,70 +189,70 @@ const dataRow = (d: jsPDF, x: number, y: number, cells: { caption: number; point
  * Upper table: the mould weighings and the bulk density they give, in the row
  * order of the printed sheet.
  */
-const drawBulkTable = (d: jsPDF, x: number, y: number, o: MoistureDensityPdfOptions): number => {
+const drawBulkTable = (d: jsPDF, x: number, y: number, o: MoistureDensityPdfOptions, rowH = ROW_H, headerH = HEADER_H): number => {
   const rows = o.record.rows;
   const columns = tableColumns(rows.length);
   const perRow = <T,>(getValue: (index: number) => T): T[] => rows.map((_, index) => getValue(index));
   const bulk = perRow((index) => calculateProctorPoint(rows[index], o.record.mouldVolume).bulkDensity);
   const wet = perRow((index) => calculateProctorPoint(rows[index], o.record.mouldVolume).wetMaterialMass);
 
-  let cy = drawCells(d, x, y, HEADER_H, [
+  let cy = drawCells(d, x, y, headerH, [
     { w: columns.caption, text: "Moisture addition", label: true, bold: true },
     ...perRow((index) => POINT_LABELS[index] || String(index + 1)).map((caption) => ({
       w: columns.point, text: caption, label: true, bold: true, align: "center" as const,
     })),
   ]);
-  cy = dataRow(d, x, cy, columns, "Moisture addition (cc)", perRow((index) => text(rows[index]?.moistureAdded)));
-  cy = dataRow(d, x, cy, columns, "Wt of mould + wet material (g)", perRow((index) => text(rows[index]?.mouldWetMass)));
-  cy = dataRow(d, x, cy, columns, "Wt of mould + Base (g)", perRow((index) => text(rows[index]?.mouldTare)));
-  cy = dataRow(d, x, cy, columns, "Wt wet material (g)", wet.map((value) => num(value, 0)));
-  cy = dataRow(d, x, cy, columns, "Volume of mould (cm³)", rows.map(() => num(Number.parseFloat(o.record.mouldVolume), 0)));
-  return dataRow(d, x, cy, columns, "Bulk density (kg/m³)", bulk.map((value) => num(value, 0)));
+  cy = dataRow(d, x, cy, rowH, columns, "Moisture addition (cc)", perRow((index) => text(rows[index]?.moistureAdded)));
+  cy = dataRow(d, x, cy, rowH, columns, "Wt of mould + wet material (g)", perRow((index) => text(rows[index]?.mouldWetMass)));
+  cy = dataRow(d, x, cy, rowH, columns, "Wt of mould + Base (g)", perRow((index) => text(rows[index]?.mouldTare)));
+  cy = dataRow(d, x, cy, rowH, columns, "Wt wet material (g)", wet.map((value) => num(value, 0)));
+  cy = dataRow(d, x, cy, rowH, columns, "Volume of mould (cm³)", rows.map(() => num(Number.parseFloat(o.record.mouldVolume), 0)));
+  return dataRow(d, x, cy, rowH, columns, "Bulk density (kg/m³)", bulk.map((value) => num(value, 0)));
 };
 
 /**
  * Lower table: the moisture content determination and the dry density derived
  * from it, again in the printed row order.
  */
-const drawMoistureTable = (d: jsPDF, x: number, y: number, o: MoistureDensityPdfOptions): number => {
+const drawMoistureTable = (d: jsPDF, x: number, y: number, o: MoistureDensityPdfOptions, rowH = ROW_H, headerH = HEADER_H): number => {
   const rows = o.record.rows;
   const columns = tableColumns(rows.length);
   const perRow = <T,>(getValue: (index: number) => T): T[] => rows.map((_, index) => getValue(index));
   const calculated = perRow((index) => calculateProctorPoint(rows[index], o.record.mouldVolume));
 
-  let cy = drawCells(d, x, y, HEADER_H, [
+  let cy = drawCells(d, x, y, headerH, [
     { w: columns.caption, text: "Container No", label: true, bold: true },
     ...perRow((index) => POINT_LABELS[index] || String(index + 1)).map((caption) => ({
       w: columns.point, text: caption, label: true, bold: true, align: "center" as const,
     })),
   ]);
-  cy = dataRow(d, x, cy, columns, "Wt of container + wet material (g)", perRow((index) => text(rows[index]?.containerWetMass)));
-  cy = dataRow(d, x, cy, columns, "Wt dry material (g)", perRow((index) => text(rows[index]?.containerDryMass)));
-  cy = dataRow(d, x, cy, columns, "Wt of moisture (g)", calculated.map((point) => num(point.waterMass, 2)));
-  cy = dataRow(d, x, cy, columns, "Wt of container (g)", perRow((index) => text(rows[index]?.containerTare)));
-  cy = dataRow(d, x, cy, columns, "Moisture content (%)", calculated.map((point) => num(point.moistureContent, 1)));
-  return dataRow(d, x, cy, columns, "Dry density (kg/m³)", calculated.map((point) => num(point.dryDensity, 0)));
+  cy = dataRow(d, x, cy, rowH, columns, "Wt of container + wet material (g)", perRow((index) => text(rows[index]?.containerWetMass)));
+  cy = dataRow(d, x, cy, rowH, columns, "Wt dry material (g)", perRow((index) => text(rows[index]?.containerDryMass)));
+  cy = dataRow(d, x, cy, rowH, columns, "Wt of moisture (g)", calculated.map((point) => num(point.waterMass, 2)));
+  cy = dataRow(d, x, cy, rowH, columns, "Wt of container (g)", perRow((index) => text(rows[index]?.containerTare)));
+  cy = dataRow(d, x, cy, rowH, columns, "Moisture content (%)", calculated.map((point) => num(point.moistureContent, 1)));
+  return dataRow(d, x, cy, rowH, columns, "Dry density (kg/m³)", calculated.map((point) => num(point.dryDensity, 0)));
 };
 
 /**
  * Height the results block will occupy, so the page-break decision can account for
  * it as well as the graph.
  */
-const resultsBlockHeight = (o: MoistureDensityPdfOptions): number => {
+const resultsBlockHeight = (o: MoistureDensityPdfOptions, rowH = ROW_H): number => {
   const rows = 2 + (o.summary.rSquared !== null ? 1 : 0) + o.summary.warnings.length;
-  return rows * ROW_H;
+  return rows * rowH;
 };
 
 /** Maximum dry density, bulk density and optimum moisture content, as printed below the graph. */
-const drawResults = (d: jsPDF, x: number, y: number, o: MoistureDensityPdfOptions): number => {
+const drawResults = (d: jsPDF, x: number, y: number, o: MoistureDensityPdfOptions, rowH = ROW_H): number => {
   const { summary } = o;
-  let cy = drawCells(d, x, y, ROW_H, [
+  let cy = drawCells(d, x, y, rowH, [
     { w: 40, text: "Maximum Dry Density (kg/m³):", label: true, bold: true, size: 5.8 },
     { w: 26, text: num(summary.mdd, 0), align: "center", bold: true },
     { w: 60, text: "Optimum Moisture Content (%):", label: true, bold: true, size: 5.8, align: "right" },
     { w: 60, text: num(summary.omc, 1), align: "center", bold: true },
   ]);
-  cy = drawCells(d, x, cy, ROW_H, [
+  cy = drawCells(d, x, cy, rowH, [
     { w: 40, text: "Bulk Density (kg/m³):", label: true, bold: true, size: 5.8 },
     { w: 26, text: num(summary.bulkDensity, 0), align: "center", bold: true },
     { w: 60, text: "Determined from:", label: true, bold: true, size: 5.8, align: "right" },
@@ -273,7 +276,7 @@ const drawResults = (d: jsPDF, x: number, y: number, o: MoistureDensityPdfOption
     extra.push({ w: 46, text: "Warning:", label: true, bold: true, size: 5.8 });
     extra.push({ w: 140, text: warning, size: 5.6 });
   });
-  return extra.length === 0 ? cy : drawCells(d, x, cy, ROW_H, extra);
+  return extra.length === 0 ? cy : drawCells(d, x, cy, rowH, extra);
 };
 /**
  * The graph block is authored in the same 384.28-unit space as the on-screen
@@ -303,12 +306,14 @@ const dashedLine = (d: jsPDF, fromX: number, fromY: number, toX: number, toY: nu
  * chart is missing. It reads the same `mcChartGeometry` helpers the SVG uses, so
  * the printed graph matches the screen even when only vectors reach the PDF.
  */
-const drawMcGraphVector = (d: jsPDF, x: number, y: number, w: number, o: MoistureDensityPdfOptions): number => {
+const drawMcGraphVector = (d: jsPDF, x: number, y: number, w: number, o: MoistureDensityPdfOptions, forcedHeight?: number): number => {
   const scale = w / REF_BLOCK_UNITS;
+  const blockH = forcedHeight ?? REF_BLOCK_H_UNITS * scale;
+  const vScale = blockH / (REF_BLOCK_H_UNITS * scale);
   const type = scale / REF_UNIT_MM;
   const px = (units: number) => x + units * scale;
-  const py = (units: number) => y + units * scale;
-  const plot = { x: px(PLOT_UNITS.x), y: py(PLOT_UNITS.y), w: PLOT_UNITS.w * scale, h: PLOT_UNITS.h * scale };
+  const py = (units: number) => y + units * scale * vScale;
+  const plot = { x: px(PLOT_UNITS.x), y: py(PLOT_UNITS.y), w: PLOT_UNITS.w * scale, h: PLOT_UNITS.h * scale * vScale };
   const plotBottom = plot.y + plot.h;
   /** Places text at a position given in chart-block units. */
   const label = (
@@ -406,11 +411,12 @@ const measured = toMcPlotPoints(o.points, PLOT_UNITS.w, PLOT_UNITS.h, scales.x, 
   label("Moisture Content (%)", PLOT_UNITS.x + PLOT_UNITS.w / 2, 190, "center", 7, true);
   label("DRY DENSITY / MOISTURE CONTENT RELATIONSHIP", REF_BLOCK_UNITS / 2, 7, "center", 7.5, true);
 
-  return y + REF_BLOCK_H_UNITS * scale;
+  return y + blockH;
 };
 
-const drawMcGraph = (d: jsPDF, x: number, y: number, w: number, o: MoistureDensityPdfOptions): number => {
-  const h = (REF_BLOCK_H_UNITS * w) / REF_BLOCK_UNITS;
+const drawMcGraph = (d: jsPDF, x: number, y: number, w: number, o: MoistureDensityPdfOptions, forcedHeight?: number): number => {
+  const naturalH = (REF_BLOCK_H_UNITS * w) / REF_BLOCK_UNITS;
+  const h = forcedHeight ? Math.min(forcedHeight, naturalH) : naturalH;
   if (o.chartImage) {
     try {
       const { base64, format } = imageParts(o.chartImage);
@@ -420,7 +426,7 @@ const drawMcGraph = (d: jsPDF, x: number, y: number, w: number, o: MoistureDensi
       console.warn("[Density/Moisture PDF] Chart capture could not be embedded, drawing the vector graph instead:", error);
     }
   }
-  return drawMcGraphVector(d, x, y, w, o);
+  return drawMcGraphVector(d, x, y, w, o, h);
 };
 
 const drawTitleBlock = (
@@ -431,54 +437,68 @@ const drawTitleBlock = (
   o: MoistureDensityPdfOptions,
   images: AdminImages,
 ): number => {
-  let cy = y;
+  const imgW = 62;
+  const imgH = 20;
+  d.setFontSize(7.5);
+  d.setFont("helvetica", "normal");
+  d.setTextColor(...COLORS.dark);
+  d.text("Density/Moisture Content Relationship Report", x, y);
   if (images.logo) {
     try {
       const { base64, format } = imageParts(images.logo);
-      d.addImage(base64, format, x, cy - 2, 22, 12, undefined, "FAST");
+      d.addImage(base64, format, x, y + 1, imgW, imgH, undefined, "FAST");
     } catch { /* the logo is optional */ }
   }
+  if (images.contacts) {
+    try {
+      const { base64, format } = imageParts(images.contacts);
+      d.addImage(base64, format, x + w - imgW, y + 1, imgW, imgH, undefined, "FAST");
+    } catch { /* the contacts block is optional */ }
+  }
+
+  let cy = y + imgH + 3;
+  d.setDrawColor(...COLORS.dark);
+  d.setLineWidth(0.5);
+  d.line(x, cy, x + w, cy);
+  cy += 4;
+  const title = `DENSITY/MOISTURE CONTENT RELATIONSHIP (BS 1377 PART- 4, ${o.method === "standard" ? "3.3" : "3.5"} : 1990)`;
+  const titleSize = fitText(d, title, w, 10.5, 7);
+  d.setFontSize(titleSize);
+  d.setFont("helvetica", "bold");
+  d.setTextColor(...COLORS.dark);
+  d.text(title, x + w / 2, cy, { align: "center" });
+  const titleW = d.getTextWidth(title);
+  d.setLineWidth(0.4);
+  d.line(x + w / 2 - titleW / 2, cy + 1.2, x + w / 2 + titleW / 2, cy + 1.2);
   if (o.labOrganization) {
+    cy += 4;
     d.setFontSize(8);
     d.setFont("helvetica", "bold");
     d.setTextColor(...COLORS.dark);
-    d.text(o.labOrganization, x + w, cy, { align: "right" });
+    d.text(o.labOrganization, x + w / 2, cy, { align: "center" });
+    return cy + 4;
   }
-
-  cy += 14;
-  d.setFontSize(12);
-  d.setFont("helvetica", "bold");
-  d.setTextColor(...COLORS.dark);
-  d.text("DENSITY/MOISTURE CONTENT RELATIONSHIP", x + w / 2, cy, { align: "center" });
-  cy += 5;
-  d.setFontSize(9);
-  d.setFont("helvetica", "normal");
-  d.text(`BS 1377 PART- 4, ${o.method === "standard" ? "3.3" : "3.5"} : 1990`, x + w / 2, cy, { align: "center" });
-  cy += 1.5;
-  d.setDrawColor(...COLORS.dark);
-  d.setLineWidth(0.3);
-  d.line(x, cy, x + w, cy);
-  return cy + 2;
+  return cy + 5;
 };
 
 const drawFooter = (d: jsPDF, o: MoistureDensityPdfOptions, images: AdminImages, y: number): void => {
   d.setDrawColor(...COLORS.dark);
-  d.setLineWidth(0.4);
-  d.line(MARGIN, y, MARGIN + CONTENT_W, y);
-  const signatureY = y + 5;
-  const usable = images.stamp ? CONTENT_W - 22 : CONTENT_W;
+  d.setLineWidth(0.5);
+  d.line(MARGIN, y - 4, MARGIN + CONTENT_W, y - 4);
+  const usable = images.stamp ? CONTENT_W - 30 : CONTENT_W;
   const column = usable / 3;
-  d.setFontSize(7.5);
+  d.setFontSize(8);
   d.setFont("helvetica", "bold");
   d.setTextColor(...COLORS.dark);
-  d.text(`Tested by: ${text(o.testedBy || o.record.sampledSubmittedBy)}`, MARGIN, signatureY);
-  d.text(`Date reported: ${text(o.dateReported)}`, MARGIN + column, signatureY);
-  d.text(`Checked by: ${text(o.checkedBy)}`, MARGIN + column * 2, signatureY);
+  d.text(`Tested by ${text(o.testedBy || o.record.sampledSubmittedBy)}`, MARGIN, y);
+  d.text(`Date reported ${text(o.dateReported)}`, MARGIN + column, y);
+  d.text("Checked by:", MARGIN + column * 2, y);
 
   if (images.stamp) {
     try {
+      const s = 26;
       const { base64, format } = imageParts(images.stamp);
-      d.addImage(base64, format, MARGIN + CONTENT_W - 20, y + 1, 20, 20, undefined, "FAST");
+      d.addImage(base64, format, MARGIN + CONTENT_W - s - 4, y - 18, s, s, undefined, "FAST");
     } catch { /* the stamp is optional */ }
   }
 };
@@ -494,32 +514,55 @@ export const generateMoistureDensityPDF = async (options: MoistureDensityPdfOpti
 
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const pageHeight = doc.internal.pageSize.getHeight();
+  const pageWidth = doc.internal.pageSize.getWidth();
   const x = MARGIN;
+  const topY = 10;
+  // Reserve the footer band first so content can never run into it.
+  const footerY = pageHeight - 20;
+  const contentBottom = footerY - 6;
 
-  let y = drawTitleBlock(doc, x, 14, CONTENT_W, options, images);
-  y = drawHeader(doc, x, y, options) + 2;
-  y = drawBulkTable(doc, x, y, options) + 2;
-  y = drawMoistureTable(doc, x, y, options) + 3;
-
-  const footerY = pageHeight - 14;
-  drawFooter(doc, options, images, footerY);
-
-  // The graph and the results block have to fit together beneath the tables. When
-  // they do not, the results stay with the tables they describe and the graph moves
-  // to its own page, rather than either block being printed over the other.
-  const graphHeight = (CONTENT_W * REF_BLOCK_H_UNITS) / REF_BLOCK_UNITS;
-  const resultsHeight = resultsBlockHeight(options);
-  const fitsUnderneath = y + graphHeight + resultsHeight <= footerY - 4;
-
-  if (fitsUnderneath) {
-    drawMcGraph(doc, x, y, CONTENT_W, options);
-    drawResults(doc, x, y + graphHeight + 3, options);
-  } else {
-    drawResults(doc, x, y, options);
-    doc.addPage();
-    drawMcGraph(doc, x, 14, CONTENT_W, options);
-    drawFooter(doc, options, images, footerY);
+  const graphNaturalH = Math.min((CONTENT_W * REF_BLOCK_H_UNITS) / REF_BLOCK_UNITS, MAX_GRAPH_H);
+  // Fixed overhead above the data tables (title block ~33 + 3 header rows + gaps)
+  // plus the two 7-row tables and the results block, all measured at ROW_H.
+  const resultRows = 2 + (options.summary.rSquared !== null ? 1 : 0) + options.summary.warnings.length;
+  const fixedH = 33 + 3 * ROW_H + 1.5;
+  const tableH = 7 * ROW_H + 2 + 7 * ROW_H;
+  const resultsH = resultRows * ROW_H;
+  let rowH = ROW_H;
+  let graphH = graphNaturalH;
+  // Single-pass fit: rows compress first (4.2 -> 3.4mm), then the graph shrinks
+  // (never below MIN_GRAPH_H — the chart is mandatory). One page only.
+  const need = fixedH + tableH + resultsH + 2 + graphH + 2;
+  const have = contentBottom - topY;
+  if (need > have) {
+    // Solve directly: total = fixedH + 14*rowH + 2 + resultRows*rowH + 2 + graphH.
+    const fittedRowH = (have - fixedH - 2 - 2 - graphNaturalH) / (14 + resultRows);
+    if (fittedRowH >= MIN_ROW_H) {
+      rowH = fittedRowH;
+    } else {
+      rowH = MIN_ROW_H;
+      graphH = Math.max(MIN_GRAPH_H, have - fixedH - 2 - (14 + resultRows) * MIN_ROW_H - 2);
+    }
   }
+
+  const headerH = Math.max(4.5, Math.min(6, rowH * 1.45));
+  let y = drawTitleBlock(doc, x, topY, CONTENT_W, options, images);
+  y = drawHeader(doc, x, y, options, rowH) + 1.5;
+  y = drawBulkTable(doc, x, y, options, rowH, headerH) + 2;
+  y = drawMoistureTable(doc, x, y, options, rowH, headerH) + 2;
+
+  const graphBudget = Math.max(contentBottom - y - resultsBlockHeight(options, rowH) - 2, MIN_GRAPH_H);
+  const fittedGraphH = Math.min(graphH, graphBudget);
+  y = drawMcGraph(doc, x, y, CONTENT_W, options, fittedGraphH) + 2;
+  drawResults(doc, x, y, options, rowH);
+
+  // Footer last, on the reserved band — content above can never overlap it.
+  drawFooter(doc, options, images, footerY);
+  doc.setFontSize(7);
+  doc.setTextColor(120, 120, 120);
+  doc.setFont("helvetica", "normal");
+  doc.text("Page 1 of 1", pageWidth / 2, pageHeight - 6, { align: "center" });
+  doc.text(`Generated: ${new Date().toLocaleDateString()}`, MARGIN, pageHeight - 6);
 
   if (!options.skipDownload) {
     const stem = (options.projectName || "Density Moisture Content").replace(/[^\w-]+/g, "_");
