@@ -145,23 +145,23 @@ const drawHeader = (d: jsPDF, x: number, y: number, o: MoistureDensityPdfOptions
   let cy = y;
   cy = drawCells(d, x, cy, rowH, [
     { w: 28, text: "Client name:", label: true, bold: true },
-    { w: 112, text: text(o.clientName) },
+    { w: 116, text: text(o.clientName) },
     { w: 26, text: "Date submitted:", label: true, bold: true },
     { w: 20, text: text(record.dateSubmitted || o.date) },
   ]);
   cy = drawCells(d, x, cy, rowH, [
     { w: 28, text: "Project/Site Name:", label: true, bold: true },
-    { w: 112, text: text(o.projectName) },
+    { w: 116, text: text(o.projectName) },
     { w: 26, text: "Date tested:", label: true, bold: true },
     { w: 20, text: text(record.dateTested || o.dateTested) },
   ]);
   cy = drawCells(d, x, cy, rowH, [
     { w: 22, text: "Sample ID:", label: true, bold: true },
-    { w: 20, text: text(record.label) },
+    { w: 18, text: text(record.label) },
     { w: 24, text: "Sample depth (M):", label: true, bold: true },
-    { w: 24, text: text(depth) },
+    { w: 22, text: text(depth) },
     { w: 36, text: "Sampled and Submitted by:", label: true, bold: true },
-    { w: 60, text: text(record.sampledSubmittedBy) },
+    { w: 68, text: text(record.sampledSubmittedBy) },
   ]);
   return cy;
 };

@@ -177,13 +177,13 @@ const drawHeader = (d: jsPDF, x: number, y: number, o: ParticleSizeDistributionP
   ]);
   cy = drawCells(d, x, cy, rowH, [
     { w: 22, text: "Sample ID:", label: true, bold: true },
-    { w: 20, text: text(record.label) },
+    { w: 18, text: text(record.label) },
     { w: 20, text: "Sample No.:", label: true, bold: true },
     { w: 18, text: text(record.sampleNumber) },
     { w: 24, text: "Sample depth (M):", label: true, bold: true },
-    { w: 24, text: text(depth) },
+    { w: 22, text: text(depth) },
     { w: 36, text: "Sampled and Submitted by:", label: true, bold: true },
-    { w: 26, text: text(record.sampledSubmittedBy) },
+    { w: 30, text: text(record.sampledSubmittedBy) },
   ]);
   return cy;
 };
@@ -234,14 +234,14 @@ const drawClassification = (d: jsPDF, x: number, y: number, o: ParticleSizeDistr
   const uscs = [o.uscsSymbol, o.uscsDescription].filter(Boolean).join(" - ");
   cy = drawCells(d, x, cy, rowH, [
     { w: 20, text: "GRAVEL (%):", label: true, bold: true },
-    { w: 14, text: num(o.gravelPercentage), align: "right" },
+    { w: 12, text: num(o.gravelPercentage), align: "right" },
     { w: 18, text: "SAND (%):", label: true, bold: true },
-    { w: 14, text: num(o.sandPercentage), align: "right" },
+    { w: 12, text: num(o.sandPercentage), align: "right" },
     { w: 24, text: "CLAY/SILT (%):", label: true, bold: true },
-    { w: 14, text: num(o.finesPercentage), align: "right" },
+    { w: 12, text: num(o.finesPercentage), align: "right" },
     { w: 18, text: "USCS", label: true, bold: true },
-    { w: 38, text: uscs, align: "center" },
-    { w: 20, text: "AASHTO", label: true, bold: true },
+    { w: 36, text: uscs, align: "center" },
+    { w: 18, text: "AASHTO", label: true, bold: true },
     { w: 20, text: o.groupIndex === null ? text(o.aashtoGroup) : `${text(o.aashtoGroup)} (GI ${o.groupIndex})`, align: "center" },
   ]);
   return cy;
