@@ -38,6 +38,7 @@ import {
 } from "@/lib/atterbergCalculations";
 import LiquidLimitFlowChart from "./LiquidLimitFlowChart";
 import AtterbergPrintSheet from "./AtterbergPrintSheet";
+import { useGridArrowNavigation } from "@/hooks/useGridArrowNavigation";
 
 type ComputedRecord = AtterbergRecord & {
   dataPoints: number;
@@ -135,6 +136,10 @@ const AtterbergRecordView = ({
   const chartRef = useRef<HTMLDivElement | null>(null);
   const autoCreatedRef = useRef<Set<AtterbergTestType>>(new Set());
   const project = useProject();
+  // Arrow keys walk the unified A–G trial table so the whole record can be
+  // filled from the keyboard: Left/Right across LL + PL columns, Up/Down
+  // across measurement rows, stepping over auto and "-" cells.
+  const trialsNav = useGridArrowNavigation<HTMLDivElement>();
 
   // Locate primary tests
   const llTest = useMemo(
@@ -290,7 +295,12 @@ const AtterbergRecordView = ({
               Auto rows fill once wet, dry and container masses are entered for a column.
             </p>
           </div>
-          <div className="rounded-lg border overflow-x-auto bg-background">
+          <div
+            className="rounded-lg border overflow-x-auto bg-background"
+            ref={trialsNav.ref}
+            onKeyDown={trialsNav.onKeyDown}
+            data-testid="atterberg-trials-grid"
+          >
             <table className="w-full min-w-[600px] text-xs border-collapse">
               <thead>
                 <tr className="bg-muted/30">

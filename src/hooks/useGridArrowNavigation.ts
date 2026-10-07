@@ -21,8 +21,11 @@ import { useCallback, useRef } from "react";
  * for rows added later without touching every input.
  */
 
-/** Selector for the editable controls we move between. */
-const FIELD_SELECTOR = "input:not([type='hidden']), textarea, select";
+/** Selector for the editable controls we move between. Text-like inputs only: date
+ * pickers, checkboxes and radios keep their native arrow behaviour. Native
+ * inputs (Atterberg cells) are included alongside Radix-wrapped ones. */
+const FIELD_SELECTOR =
+  "input:not([type='hidden']):not([type='date']):not([type='checkbox']):not([type='radio']):not([type='file']):not([type='submit']):not([type='button']), textarea, select";
 
 const isField = (node: Element | null): node is HTMLElement =>
   !!node && node.matches(FIELD_SELECTOR);
@@ -41,15 +44,31 @@ export const useGridArrowNavigation = <T extends HTMLElement>() => {
 
   /**
    * The cell holding `current`, expressed as row and column over the grid's
-   * own rows. Using each field's position within its row (rather than a global
-   * index) is what lets a row with fewer inputs still line up with its
-   * neighbours.
+   * own rows. The column is the count of *cells* (th/td) before the field's
+   * cell, not the field's position among inputs — so a data row with a label
+   * cell lines up with neighbours, and a `-` muted cell still occupies its
+   * column even though it holds no input.
    */
   const cellOf = useCallback((current: HTMLElement) => {
+    const cell = current.closest("td, th");
     const row = current.closest("tr") ?? current.parentElement;
     const rowEl = row as HTMLElement | null;
+    const cells = rowEl ? Array.from(rowEl.children) : [];
+    let column = -1;
+    let seen = 0;
+    for (const child of cells) {
+      if (child === cell) {
+        column = seen;
+        break;
+      }
+      if (child instanceof HTMLElement) {
+        seen += Number.parseInt(child.getAttribute("colspan") ?? "1", 10) || 1;
+      } else {
+        seen += 1;
+      }
+    }
     const inRow = rowEl ? Array.from(rowEl.querySelectorAll<HTMLElement>(FIELD_SELECTOR)) : [];
-    return { rowEl, column: inRow.indexOf(current) };
+    return { rowEl, column, indexInRow: inRow.indexOf(current) };
   }, []);
 
   const onKeyDown = useCallback((event: React.KeyboardEvent<T>) => {
@@ -64,8 +83,22 @@ export const useGridArrowNavigation = <T extends HTMLElement>() => {
     const index = all.indexOf(target);
     if (index === -1) return;
 
-    const { rowEl, column } = cellOf(target);
+    const { rowEl, column, indexInRow } = cellOf(target);
     let next: HTMLElement | null = null;
+
+    /** Visual column of a cell within its row, expanding colSpan. */
+    const cellColumn = (row: HTMLElement, cell: Element): number => {
+      let seen = 0;
+      for (const child of Array.from(row.children)) {
+        if (child === cell) return seen;
+        if (child instanceof HTMLElement) {
+          seen += Number.parseInt(child.getAttribute("colspan") ?? "1", 10) || 1;
+        } else {
+          seen += 1;
+        }
+      }
+      return seen;
+    };
 
     if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
       // Stay on this row: the neighbouring input in reading order.
@@ -75,9 +108,10 @@ export const useGridArrowNavigation = <T extends HTMLElement>() => {
         : [];
       // A row of a single input has no horizontal neighbour, so fall back to
       // flat document order for stacked (non-table) layouts.
-      next = column >= 0 ? rowInputs[column + step] ?? null : all[index + step] ?? null;
+      next = indexInRow >= 0 ? rowInputs[indexInRow + step] ?? null : all[index + step] ?? null;
     } else {
-      // Same column, nearest input in the adjacent row that actually has one.
+      // Same visual column: nearest input in the adjacent row holding that column.
+      // Rows carry a label cell first, so target cells and exclude it from matching.
       const step = event.key === "ArrowDown" ? 1 : -1;
       const table = (rowEl as HTMLElement | null)?.closest("table");
       if (table) {
@@ -87,8 +121,12 @@ export const useGridArrowNavigation = <T extends HTMLElement>() => {
         while (cursor !== -1 && !next) {
           cursor += step;
           if (cursor < 0 || cursor >= rowList.length) break;
-          const candidate = rowList[cursor].querySelectorAll<HTMLElement>(FIELD_SELECTOR);
-          const pick = column >= 0 ? candidate[column] : undefined;
+          const candidateRow = rowList[cursor];
+          const fieldsInRow = Array.from(candidateRow.querySelectorAll<HTMLElement>(FIELD_SELECTOR));
+          const pick = fieldsInRow.find((field) => {
+            const cell = field.closest("td, th");
+            return cell !== null && cellColumn(candidateRow, cell) === column;
+          });
           if (pick && isField(pick)) next = pick;
         }
       }

@@ -34,6 +34,44 @@ const Grid = () => {
   );
 };
 
+/**
+ * A miniature of the Atterberg A–G trial table: a label cell first, a muted
+ * "-" cell holding a column with no input, and an auto row with none at all.
+ */
+const LabelledGrid = () => {
+  const nav = useGridArrowNavigation<HTMLDivElement>();
+  return (
+    <div ref={nav.ref} onKeyDown={nav.onKeyDown}>
+      <table>
+        <tbody>
+          <tr>
+            <td>Container No</td>
+            <td><input aria-label="cn-a" /></td>
+            <td><input aria-label="cn-b" /></td>
+            <td><input aria-label="cn-c" /></td>
+          </tr>
+          <tr>
+            <td>Penetration (mm)</td>
+            <td><input aria-label="pen-a" /></td>
+            <td><input aria-label="pen-b" /></td>
+            <td>-</td>
+          </tr>
+          <tr>
+            <td>Wt of Moisture (g)</td>
+            <td colSpan={3}>auto</td>
+          </tr>
+          <tr>
+            <td>Wt of Container (g)</td>
+            <td><input aria-label="c-a" /></td>
+            <td><input aria-label="c-b" /></td>
+            <td><input aria-label="c-c" /></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
 const press = (label: string, key: string) =>
   fireEvent.keyDown(screen.getByLabelText(label), { key });
 
@@ -93,5 +131,46 @@ describe("useGridArrowNavigation", () => {
     screen.getByLabelText("moisture-1").focus();
     fireEvent.keyDown(screen.getByLabelText("moisture-1"), { key: "Enter" });
     expect(document.activeElement).toBe(screen.getByLabelText("moisture-1"));
+  });
+
+  it("ignores date inputs so pickers keep their native arrow behaviour", () => {
+    const WithDate = () => {
+      const nav = useGridArrowNavigation<HTMLDivElement>();
+      return (
+        <div ref={nav.ref} onKeyDown={nav.onKeyDown}>
+          <input aria-label="text-1" />
+          <input aria-label="date-1" type="date" />
+          <input aria-label="text-2" />
+        </div>
+      );
+    };
+    render(<WithDate />);
+    screen.getByLabelText("text-1").focus();
+    fireEvent.keyDown(screen.getByLabelText("text-1"), { key: "ArrowDown" });
+    // Flat-order fallback skips the date input entirely.
+    expect(document.activeElement).toBe(screen.getByLabelText("text-2"));
+  });
+
+  it("aligns columns past a label cell, skipping muted and auto rows", () => {
+    render(<LabelledGrid />);
+    // Down from column B lands on the same column, not shifted by the label cell.
+    screen.getByLabelText("cn-b").focus();
+    press("cn-b", "ArrowDown");
+    expect(document.activeElement).toBe(screen.getByLabelText("pen-b"));
+
+    // Down again steps over the auto row to the next weighing.
+    press("pen-b", "ArrowDown");
+    expect(document.activeElement).toBe(screen.getByLabelText("c-b"));
+
+    // Column C has a "-" cell below: Down steps over it to the next input.
+    screen.getByLabelText("cn-c").focus();
+    press("cn-c", "ArrowDown");
+    expect(document.activeElement).toBe(screen.getByLabelText("c-c"));
+
+    // Left/Right cross the LL/PL-style columns on the same row.
+    press("c-c", "ArrowLeft");
+    expect(document.activeElement).toBe(screen.getByLabelText("c-b"));
+    press("c-b", "ArrowRight");
+    expect(document.activeElement).toBe(screen.getByLabelText("c-c"));
   });
 });

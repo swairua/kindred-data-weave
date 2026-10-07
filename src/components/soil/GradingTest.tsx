@@ -269,6 +269,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
   const [recordId, setRecordId] = useState<number | null>(null);
   // Arrow keys move between the sieve, hydrometer and readings fields so the
   // whole form can be filled from the keyboard.
+  const prepNav = useGridArrowNavigation<HTMLDivElement>();
   const sieveNav = useGridArrowNavigation<HTMLDivElement>();
   const hydrometerNav = useGridArrowNavigation<HTMLDivElement>();
   const readingsNav = useGridArrowNavigation<HTMLDivElement>();
@@ -649,7 +650,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
 
       <div className="px-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Record results — BS 1377 Part 2</div>
 
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2" ref={prepNav.ref} onKeyDown={prepNav.onKeyDown}>
         <RecordSection title="Sample preparation">
           <div className="grid gap-px overflow-hidden rounded-md border sm:grid-cols-2">
             <RecordField label="Initial air-dried mass (g) *" value={record.samplePreparation.initialDryMass} placeholder="e.g. 669" onChange={(value) => updateNested("samplePreparation", "initialDryMass", value)} />
