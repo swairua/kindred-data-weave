@@ -244,20 +244,20 @@ const SIEVE_COLUMNS = [
   { w: 14, text: "Cumulative passing (%)", label: true, bold: true, size: 5.4, minSize: 4.4 },
 ];
 
-const drawSieveTable = (d: jsPDF, x: number, y: number, w: number, o: ParticleSizeDistributionPdfOptions): number => {
+const drawSieveTable = (d: jsPDF, x: number, y: number, w: number, o: ParticleSizeDistributionPdfOptions, rowH = ROW_H): number => {
   const columns = SIEVE_COLUMNS.map((column) => ({ ...column, w: column.w * (w / 62) }));
   let cy = drawCaption(d, x, y, w, "Wet & Dry Sieve Analysis to BS 1377-2:1990: 9.2/9.3/9.4");
   cy = drawCells(d, x, cy, HEADER_H, columns);
   o.record.sieveRows.forEach((row, index) => {
     const passing = o.grading.cumulativePassing[index];
-    cy = drawCells(d, x, cy, ROW_H, [
+    cy = drawCells(d, x, cy, rowH, [
       { w: columns[0].w, text: row.sieveSize, align: "center", bold: true },
       { w: columns[1].w, text: row.weightRetained, align: "center" },
       { w: columns[2].w, text: num(o.grading.percentageRetained[index]), align: "center" },
       { w: columns[3].w, text: passing === null ? BLANK : num(passing), align: "center" },
     ]);
   });
-  return drawCells(d, x, cy, ROW_H, [
+  return drawCells(d, x, cy, rowH, [
     { w: columns[0].w, text: "TOTAL", align: "center", bold: true },
     { w: columns[1].w, text: num(o.grading.totalWeight), align: "center", bold: true },
     { w: columns[2].w, text: o.grading.totalWeight > 0 ? "100.0" : BLANK, align: "center", bold: true },
@@ -276,7 +276,7 @@ const HYDROMETER_COLUMNS = [
   "% Fines (sample)",
 ];
 
-const drawHydrometerTable = (d: jsPDF, x: number, y: number, w: number, o: ParticleSizeDistributionPdfOptions): number => {
+const drawHydrometerTable = (d: jsPDF, x: number, y: number, w: number, o: ParticleSizeDistributionPdfOptions, rowH = ROW_H): number => {
   const inputs = o.hydrometerInputs;
   let cy = drawCaption(d, x, y, w, "Hydrometer Analysis to BS 1377-2:1990:9.5");
   const half = w / 2;
@@ -286,13 +286,14 @@ const drawHydrometerTable = (d: jsPDF, x: number, y: number, w: number, o: Parti
     { w: 32, text: rightLabel, label: true, bold: true, size: 5.6 },
     { w: half - 32, text: rightValue, align: "right" },
   ];
-  cy = drawCells(d, x, cy, ROW_H, paramRow("Dry weight (gm)", text(inputs.dryWeight), "S.G (Mg/m\u00B3)", num(o.hydrometer.specificGravity, 2)));
-  cy = drawCells(d, x, cy, ROW_H, paramRow("Hydrometer type", text(inputs.hydrometerType), "Suspension vol. (cm\u00B3)", num(o.hydrometer.suspensionVolume, 0)));
-  cy = drawCells(d, x, cy, ROW_H, paramRow("Zero correction (g/L)", text(inputs.zeroCorrection), "Meniscus correction (g/L)", text(inputs.meniscusCorrection)));
-  cy = drawCells(d, x, cy, ROW_H, paramRow("Temperature (\u00B0C)", text(inputs.temperature), "K factor", num(o.hydrometer.stokesConstant, 3)));
+  cy = drawCells(d, x, cy, rowH, paramRow("Dry weight (gm)", text(inputs.dryWeight), "S.G (Mg/m\u00B3)", num(o.hydrometer.specificGravity, 2)));
+  cy = drawCells(d, x, cy, rowH, paramRow("Hydrometer type", text(inputs.hydrometerType), "Suspension vol. (cm\u00B3)", num(o.hydrometer.suspensionVolume, 0)));
+  cy = drawCells(d, x, cy, rowH, paramRow("Zero correction (g/L)", text(inputs.zeroCorrection), "Meniscus correction (g/L)", text(inputs.meniscusCorrection)));
+  cy = drawCells(d, x, cy, rowH, paramRow("Temperature (\u00B0C)", text(inputs.temperature), "K factor", num(o.hydrometer.stokesConstant, 3)));
 
   const columnWidth = w / HYDROMETER_COLUMNS.length;
-  cy = drawCells(d, x, cy, 8, HYDROMETER_COLUMNS.map((caption) => ({
+  const headerH = Math.min(rowH * (8 / ROW_H), 8);
+  cy = drawCells(d, x, cy, headerH, HYDROMETER_COLUMNS.map((caption) => ({
     w: columnWidth,
     text: caption,
     label: true,
@@ -303,7 +304,7 @@ const drawHydrometerTable = (d: jsPDF, x: number, y: number, w: number, o: Parti
   })));
 
   o.hydrometer.results.forEach((result) => {
-    cy = drawCells(d, x, cy, ROW_H, [
+    cy = drawCells(d, x, cy, rowH, [
       num(result.time, 2, BLANK),
       text(o.record.hydrometerRows.find((row) => row.time === String(result.time))?.actualHydrometer),
       num(result.adjustedReading),
@@ -338,19 +339,22 @@ const PLOT_UNITS = { x: 37.72, y: 27.81, w: 334.28, h: 160.86 };
  * SVG uses, so the printed graph matches the screen even when only vectors
  * reach the PDF.
  */
-const drawPsdGraphVector = (d: jsPDF, x: number, y: number, w: number, o: ParticleSizeDistributionPdfOptions): number => {
+const drawPsdGraphVector = (d: jsPDF, x: number, y: number, w: number, o: ParticleSizeDistributionPdfOptions, forcedHeight?: number): number => {
   // One unit of the authoring space is one point of the source sheet, so geometry
   // scales by millimetres per unit, while type scales by the same ratio expressed
   // as a plain multiplier on a point size.
+  const refH = forcedHeight ?? (REF_BLOCK_H_UNITS * w) / REF_BLOCK_UNITS;
   const scale = w / REF_BLOCK_UNITS;
   const type = scale / REF_UNIT_MM;
+  // If forcedHeight differs from natural, apply a vertical scale factor to the units.
+  const vScale = forcedHeight ? refH / (REF_BLOCK_H_UNITS * scale) : 1;
   const px = (units: number) => x + units * scale;
-  const py = (units: number) => y + units * scale;
+  const py = (units: number) => y + units * scale * vScale;
   const plot = {
     x: px(PLOT_UNITS.x),
     y: py(PLOT_UNITS.y),
     w: PLOT_UNITS.w * scale,
-    h: PLOT_UNITS.h * scale,
+    h: PLOT_UNITS.h * scale * vScale,
   };
   const plotBottom = plot.y + plot.h;
   /** Places text at a position given in chart-block units. */
@@ -372,7 +376,7 @@ const drawPsdGraphVector = (d: jsPDF, x: number, y: number, w: number, o: Partic
   d.setFillColor(255, 255, 255);
   d.setDrawColor(...COLORS.dark);
   d.setLineWidth(0.2 * type);
-  d.rect(x, py(14), w, 200 * scale, "FD");
+  d.rect(x, py(14), w, 200 * scale * vScale, "FD");
 
   d.setFillColor(...COLORS.plotBg);
   d.rect(plot.x, plot.y, plot.w, plot.h, "F");
@@ -419,11 +423,11 @@ const drawPsdGraphVector = (d: jsPDF, x: number, y: number, w: number, o: Partic
   label("Particle size (mm)", PLOT_UNITS.x + PLOT_UNITS.w / 2, 219.6, "center", 7, true);
   label("PARTICLE SIZE DISTRIBUTION GRAPH", PLOT_UNITS.x + PLOT_UNITS.w / 2, 9, "center", 7.5, true);
 
-  return y + REF_BLOCK_H_UNITS * scale;
+  return y + refH;
 };
 
-const drawPsdGraph = (d: jsPDF, x: number, y: number, w: number, o: ParticleSizeDistributionPdfOptions): number => {
-  const h = (REF_BLOCK_H_UNITS * w) / REF_BLOCK_UNITS;
+const drawPsdGraph = (d: jsPDF, x: number, y: number, w: number, o: ParticleSizeDistributionPdfOptions, forcedHeight?: number): number => {
+  const h = forcedHeight ?? (REF_BLOCK_H_UNITS * w) / REF_BLOCK_UNITS;
   if (o.chartImage) {
     try {
       const { base64, format } = imageParts(o.chartImage);
@@ -433,7 +437,7 @@ const drawPsdGraph = (d: jsPDF, x: number, y: number, w: number, o: ParticleSize
       console.warn("[PSD PDF] Chart capture could not be embedded, drawing the vector curve instead:", error);
     }
   }
-  return drawPsdGraphVector(d, x, y, w, o);
+  return drawPsdGraphVector(d, x, y, w, o, h);
 };
 const drawTitleBlock = (
   d: jsPDF,
@@ -443,21 +447,23 @@ const drawTitleBlock = (
   o: ParticleSizeDistributionPdfOptions,
   images: AdminImages,
 ): number => {
+  const imgW = 62;
+  const imgH = 20;
   let cy = y;
   if (images.logo) {
     try {
       const { base64, format } = imageParts(images.logo);
-      d.addImage(base64, format, x, cy - 2, 22, 12, undefined, "FAST");
+      d.addImage(base64, format, x, cy, imgW, imgH, undefined, "FAST");
     } catch { /* the logo is optional */ }
   }
-  if (o.labOrganization) {
-    d.setFontSize(8);
-    d.setFont("helvetica", "bold");
-    d.setTextColor(...COLORS.dark);
-    d.text(o.labOrganization, x + w, cy, { align: "right" });
+  if (images.contacts) {
+    try {
+      const { base64, format } = imageParts(images.contacts);
+      d.addImage(base64, format, x + w - imgW, cy, imgW, imgH, undefined, "FAST");
+    } catch { /* the contacts image is optional */ }
   }
 
-  cy += 14;
+  cy += imgH + 1;
   d.setFontSize(12);
   d.setFont("helvetica", "bold");
   d.setTextColor(...COLORS.dark);
@@ -469,7 +475,7 @@ const drawTitleBlock = (
   d.setDrawColor(...COLORS.dark);
   d.setLineWidth(0.3);
   d.line(x, cy, x + w, cy);
-  return cy + 2;
+  return cy + 3;
 };
 
 const drawFooter = (d: jsPDF, o: ParticleSizeDistributionPdfOptions, images: AdminImages, y: number): void => {
@@ -505,36 +511,92 @@ export const generateParticleSizeDistributionPDF = async (options: ParticleSizeD
 
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const pageHeight = doc.internal.pageSize.getHeight();
+  const pageWidth = doc.internal.pageSize.getWidth();
   const x = MARGIN;
+  const footerH = 14;
+  const footerY = pageHeight - footerH;
 
-  let y = drawTitleBlock(doc, x, 14, CONTENT_W, options, images);
+  // Measure content height: title block, header, preparation, classification,
+  // sieve table + hydrometer table (side by side), and the graph.
+  // Total content must fit between top and footerY.
+  // Available height for tables + graph = footerY - topY
+  const topY = 14;
+  const available = footerY - topY - 4; // 4 mm breathing room before footer rule
+
+  let y = drawTitleBlock(doc, x, topY, CONTENT_W, options, images);
   y = drawHeader(doc, x, y, options) + 2;
   y = drawPreparation(doc, x, y, options) + 2;
   y = drawClassification(doc, x, y, options) + 3;
 
-  // The sieve and hydrometer tables sit side by side, as on the laboratory sheet.
+  // The sieve and hydrometer tables sit side by side, scaled to fit available height.
   const sieveWidth = 62;
   const hydrometerWidth = CONTENT_W - sieveWidth - 2;
+
+  // Count table rows to determine if scaling is needed
+  const sieveRowCount = 1 + options.record.sieveRows.length + 1; // header + rows + total
+  const hydrometerRowCount = 4 + 1 + options.hydrometer.results.length; // 4 params + column header + data rows
+
+  // Natural table height
+  const naturalRowH = ROW_H;
+  const sieveNaturalH = sieveRowCount * naturalRowH;
+  const hydrometerNaturalH = hydrometerRowCount * naturalRowH + 4; // hydrometer row height is 8 for header
+  const tableH = Math.max(sieveNaturalH, hydrometerNaturalH);
+
+  // Graph natural height
+  const graphNaturalH = (CONTENT_W * REF_BLOCK_H_UNITS) / REF_BLOCK_UNITS;
+
+  const totalNatural = (y - topY) + tableH + 3 + graphNaturalH;
+
+  // If natural total exceeds available, we need to scale the tables and graph.
+  if (totalNatural > available) {
+    const excess = totalNatural - available;
+    // Shrink tables first (reduce row height), then shrink graph
+    const tableBudget = tableH;
+    const graphBudget = graphNaturalH;
+
+    if (tableBudget + graphBudget > 0) {
+      // Proportionally reduce graph height, then table height
+      const scaleFactor = available / totalNatural;
+      const newGraphH = Math.max(graphNaturalH * scaleFactor * 0.85, 60);
+      const newTableH = Math.max(available - (y - topY) - 3 - newGraphH, tableH * 0.7);
+
+      // Draw the tables with reduced row height
+      const scaledRowH = newTableH / Math.max(sieveRowCount, hydrometerRowCount);
+      const origRowH = ROW_H;
+      const savedRowH = ROW_H;
+
+      // Temporarily override row heights by drawing tables with custom row heights
+      // We need to pass a row height multiplier
+      const sieveBottom = drawSieveTable(doc, x, y, sieveWidth, options, scaledRowH);
+      const hydrometerBottom = drawHydrometerTable(doc, x + sieveWidth + 2, y, hydrometerWidth, options, scaledRowH);
+      void savedRowH;
+
+      const graphHeight = Math.min(newGraphH, (available - (Math.max(sieveBottom, hydrometerBottom) - topY) - 3));
+      const graphTop = Math.max(sieveBottom, hydrometerBottom) + 3;
+
+      drawFooter(doc, options, images, footerY);
+      drawPsdGraph(doc, x, graphTop, CONTENT_W, options, graphHeight);
+
+      if (!options.skipDownload) {
+        const stem = (options.projectName || "Particle Size Distribution").replace(/[^\w-]+/g, "_");
+        doc.save(`${stem}_PSD.pdf`);
+      }
+      return doc;
+    }
+  }
+
+  // Natural layout: tables fit without scaling
   const sieveBottom = drawSieveTable(doc, x, y, sieveWidth, options);
   const hydrometerBottom = drawHydrometerTable(doc, x + sieveWidth + 2, y, hydrometerWidth, options);
 
-  // The graph is drawn at its printed proportions so the curve is never squashed.
-  // Nineteen sieve rows leave roughly 110 mm of table, which does not leave enough
-  // room for the full-width graph underneath them, so when it cannot fit the graph
-  // moves to its own page instead of overlapping the tables.
-  const graphHeight = (CONTENT_W * REF_BLOCK_H_UNITS) / REF_BLOCK_UNITS;
+  const graphHeight = Math.min(graphNaturalH, footerY - Math.max(sieveBottom, hydrometerBottom) - 4 - 3);
   const graphTop = Math.max(sieveBottom, hydrometerBottom) + 3;
-  const footerY = pageHeight - 14;
 
   drawFooter(doc, options, images, footerY);
+  drawPsdGraph(doc, x, graphTop, CONTENT_W, options, graphHeight);
 
-  if (graphTop + graphHeight <= footerY - 4) {
-    drawPsdGraph(doc, x, graphTop, CONTENT_W, options);
-  } else {
-    doc.addPage();
-    drawPsdGraph(doc, x, 14, CONTENT_W, options);
-    drawFooter(doc, options, images, footerY);
-  }
+  void pageWidth;
+  void x;
 
   if (!options.skipDownload) {
     const stem = (options.projectName || "Particle Size Distribution").replace(/[^\w-]+/g, "_");

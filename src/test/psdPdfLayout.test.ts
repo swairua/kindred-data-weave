@@ -83,10 +83,10 @@ describe("Particle Size Distribution PDF page layout", () => {
     expect((await build(THREE_ROWS)).getNumberOfPages()).toBe(1);
   });
 
-  it("moves the graph to its own page rather than overprinting a full sieve table", async () => {
-    // The graph is as tall as 107 mm and a nineteen row sieve table leaves well under
-    // that beneath it, so the graph must start a new page instead of being clamped
-    // back up over the bottom rows of the table.
-    expect((await build(FULL_SIEVE)).getNumberOfPages()).toBe(2);
+  it("fits everything on a single page even with a full sieve table", async () => {
+    // With a nineteen-row sieve table the graph must be scaled down so that
+    // the whole report (tables + graph + footer) fits on one page rather
+    // than spilling onto a second page or overlapping the footer.
+    expect((await build(FULL_SIEVE)).getNumberOfPages()).toBe(1);
   });
 });
