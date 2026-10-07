@@ -496,9 +496,10 @@ const drawFooter = (d: jsPDF, o: MoistureDensityPdfOptions, images: AdminImages,
 
   if (images.stamp) {
     try {
-      const s = 26;
+      // Top edge sits on the content boundary so the stamp never climbs into the graph.
+      const s = 22;
       const { base64, format } = imageParts(images.stamp);
-      d.addImage(base64, format, MARGIN + CONTENT_W - s - 4, y - 18, s, s, undefined, "FAST");
+      d.addImage(base64, format, MARGIN + CONTENT_W - s - 4, y - 6, s, s, undefined, "FAST");
     } catch { /* the stamp is optional */ }
   }
 };

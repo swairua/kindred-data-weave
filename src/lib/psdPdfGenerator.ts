@@ -110,7 +110,7 @@ const num = (value: number | null | undefined, digits = 1, fallback = BLANK): st
   value === null || value === undefined || !Number.isFinite(value) ? fallback : value.toFixed(digits);
 
 /** Shrink a string until it fits its cell rather than letting it spill over the rule. */
-const fitText = (d: jsPDF, value: string, maxWidth: number, startSize: number, minSize = 3.4): number => {
+const fitText = (d: jsPDF, value: string, maxWidth: number, startSize: number, minSize = 2.8): number => {
   let size = startSize;
   try {
     while (size > minSize && d.getTextWidth(value) > Math.max(maxWidth, 1)) size -= 0.25;
@@ -125,7 +125,7 @@ const imageParts = (dataUrl: string): { base64: string; format: "PNG" | "JPEG" }
   return { base64: match[3], format: mime === "jpeg" || mime === "jpg" ? "JPEG" : "PNG" };
 };
 
-/** Draw one row of ruled cells and return the y below it. */
+/** Draw one row of ruled cells and return the y below it. Supports "\n" two-line captions. */
 const drawCells = (d: jsPDF, x: number, y: number, h: number, cells: Cell[]): number => {
   let cx = x;
   d.setDrawColor(...COLORS.dark);
@@ -136,12 +136,19 @@ const drawCells = (d: jsPDF, x: number, y: number, h: number, cells: Cell[]): nu
     d.rect(cx, y, cell.w, h, "FD");
     const value = (cell.text ?? "").trim();
     if (value) {
-      d.setFontSize(fitText(d, value, cell.w - 1.2, cell.size ?? 6.2, cell.minSize));
+      const lines = value.split("\n").map((line) => line.trim()).filter(Boolean);
+      const longest = lines.reduce((a, b) => (a.length >= b.length ? a : b), "");
+      const size = fitText(d, longest, cell.w - 1.2, cell.size ?? 6.2, cell.minSize ?? 2.8);
+      d.setFontSize(size);
       d.setFont("helvetica", cell.bold ? "bold" : "normal");
       d.setTextColor(...COLORS.dark);
       const align = cell.align ?? "left";
       const tx = align === "left" ? cx + 0.8 : align === "right" ? cx + cell.w - 0.8 : cx + cell.w / 2;
-      d.text(value, tx, y + h / 2, { align, baseline: "middle" });
+      const lineH = size * 0.38;
+      const startY = lines.length > 1 ? y + h / 2 - lineH / 2 : y + h / 2;
+      lines.forEach((line, index) => {
+        d.text(line, tx, startY + index * lineH, { align, baseline: "middle" });
+      });
     }
     cx += cell.w;
   }
@@ -158,13 +165,13 @@ const drawHeader = (d: jsPDF, x: number, y: number, o: ParticleSizeDistributionP
   let cy = y;
   cy = drawCells(d, x, cy, rowH, [
     { w: 28, text: "Client:", label: true, bold: true },
-    { w: 112, text: text(o.clientName) },
+    { w: 116, text: text(o.clientName) },
     { w: 26, text: "Date submitted:", label: true, bold: true },
     { w: 20, text: text(record.dateSubmitted || o.date) },
   ]);
   cy = drawCells(d, x, cy, rowH, [
     { w: 28, text: "Project/Site Name:", label: true, bold: true },
-    { w: 112, text: text(o.projectName) },
+    { w: 116, text: text(o.projectName) },
     { w: 26, text: "Date tested:", label: true, bold: true },
     { w: 20, text: text(record.dateTested || o.dateTested) },
   ]);
@@ -172,11 +179,11 @@ const drawHeader = (d: jsPDF, x: number, y: number, o: ParticleSizeDistributionP
     { w: 22, text: "Sample ID:", label: true, bold: true },
     { w: 20, text: text(record.label) },
     { w: 20, text: "Sample No.:", label: true, bold: true },
-    { w: 16, text: text(record.sampleNumber) },
+    { w: 18, text: text(record.sampleNumber) },
     { w: 24, text: "Sample depth (M):", label: true, bold: true },
     { w: 24, text: text(depth) },
     { w: 36, text: "Sampled and Submitted by:", label: true, bold: true },
-    { w: 24, text: text(record.sampledSubmittedBy) },
+    { w: 26, text: text(record.sampledSubmittedBy) },
   ]);
   return cy;
 };
@@ -188,7 +195,7 @@ const parse = (value: string) => {
 
 /** Sample preparation on the left, moisture content at preparation on the right. */
 const drawPreparation = (d: jsPDF, x: number, y: number, o: ParticleSizeDistributionPdfOptions, rowH = ROW_H): number => {
-  const leftW = 92;
+  const leftW = 94;
   const rightW = CONTENT_W - leftW;
   const initial = parse(o.record.samplePreparation.initialDryMass);
   const washed = parse(o.record.samplePreparation.washedOvenDryMass);
@@ -233,18 +240,18 @@ const drawClassification = (d: jsPDF, x: number, y: number, o: ParticleSizeDistr
     { w: 24, text: "CLAY/SILT (%):", label: true, bold: true },
     { w: 14, text: num(o.finesPercentage), align: "right" },
     { w: 18, text: "USCS", label: true, bold: true },
-    { w: 34, text: uscs, align: "center" },
+    { w: 38, text: uscs, align: "center" },
     { w: 20, text: "AASHTO", label: true, bold: true },
     { w: 20, text: o.groupIndex === null ? text(o.aashtoGroup) : `${text(o.aashtoGroup)} (GI ${o.groupIndex})`, align: "center" },
   ]);
   return cy;
 };
 
-const SIEVE_COLUMNS = [
-  { w: 20, text: "Sieve size (mm)", label: true, bold: true },
-  { w: 14, text: "Retained mass (gm)", label: true, bold: true },
-  { w: 14, text: "% Retained (%)", label: true, bold: true },
-  { w: 14, text: "Cumulative passing (%)", label: true, bold: true, size: 5.4, minSize: 4.4 },
+const SIEVE_COLUMNS: Cell[] = [
+  { w: 20, text: "Sieve size\n(mm)", label: true, bold: true, size: 5.6 },
+  { w: 14, text: "Retained\nmass (gm)", label: true, bold: true, size: 5.6 },
+  { w: 14, text: "% Retained\n(%)", label: true, bold: true, size: 5.6 },
+  { w: 14, text: "Cumulative\npassing (%)", label: true, bold: true, size: 5.4, minSize: 2.8 },
 ];
 
 const drawSieveTable = (d: jsPDF, x: number, y: number, w: number, o: ParticleSizeDistributionPdfOptions, rowH = ROW_H, headerH = HEADER_H): number => {
@@ -268,15 +275,15 @@ const drawSieveTable = (d: jsPDF, x: number, y: number, w: number, o: ParticleSi
   ]);
 };
 const HYDROMETER_COLUMNS = [
-  "Time, min",
-  "Actual HR rh",
-  "Adjusted HR (Rh)",
-  "Composite corr.",
-  "Corrected HR",
-  "Eff. depth (cm)",
-  "Diameter; kV(L/T)",
-  "% Fines in susp.",
-  "% Fines (sample)",
+  "Time\n(min)",
+  "Actual HR\n(Rn′)",
+  "Adjusted\n(Rh)",
+  "Composite\ncorr.",
+  "Corrected\nHR",
+  "Eff. depth\n(cm)",
+  "Diameter\n(mm)",
+  "% Fines\n(susp.)",
+  "% Fines\n(sample)",
 ];
 
 const drawHydrometerTable = (d: jsPDF, x: number, y: number, w: number, o: ParticleSizeDistributionPdfOptions, rowH = ROW_H, headerH = HEADER_H): number => {
@@ -284,15 +291,15 @@ const drawHydrometerTable = (d: jsPDF, x: number, y: number, w: number, o: Parti
   let cy = drawCaption(d, x, y, w, "Hydrometer Analysis to BS 1377-2:1990:9.5", rowH);
   const half = w / 2;
   const paramRow = (leftLabel: string, leftValue: string, rightLabel: string, rightValue: string): Cell[] => [
-    { w: 28, text: leftLabel, label: true, bold: true, size: 5.2, minSize: 3.4 },
+    { w: 28, text: leftLabel, label: true, bold: true, size: 5.2, minSize: 2.8 },
     { w: half - 28, text: leftValue, align: "right" },
-    { w: 28, text: rightLabel, label: true, bold: true, size: 5.2, minSize: 3.4 },
+    { w: 28, text: rightLabel, label: true, bold: true, size: 5.2, minSize: 2.8 },
     { w: half - 28, text: rightValue, align: "right" },
   ];
-  cy = drawCells(d, x, cy, rowH, paramRow("Dry weight (gm)", text(inputs.dryWeight), "S.G (Mg/m\u00B3)", num(o.hydrometer.specificGravity, 2)));
-  cy = drawCells(d, x, cy, rowH, paramRow("Hydrometer type", text(inputs.hydrometerType), "Suspension vol. (cm\u00B3)", num(o.hydrometer.suspensionVolume, 0)));
-  cy = drawCells(d, x, cy, rowH, paramRow("Zero correction (g/L)", text(inputs.zeroCorrection), "Meniscus correction (g/L)", text(inputs.meniscusCorrection)));
-  cy = drawCells(d, x, cy, rowH, paramRow("Temperature (\u00B0C)", text(inputs.temperature), "K factor", num(o.hydrometer.stokesConstant, 3)));
+  cy = drawCells(d, x, cy, rowH, paramRow("Dry weight (gm)", text(inputs.dryWeight), "S.G (Mg/m³)", num(o.hydrometer.specificGravity, 2)));
+  cy = drawCells(d, x, cy, rowH, paramRow("Hydro. type", text(inputs.hydrometerType), "Susp. vol. (cm³)", num(o.hydrometer.suspensionVolume, 0)));
+  cy = drawCells(d, x, cy, rowH, paramRow("Zero corr. (g/L)", text(inputs.zeroCorrection), "Meniscus (g/L)", text(inputs.meniscusCorrection)));
+  cy = drawCells(d, x, cy, rowH, paramRow("Temp. (°C)", text(inputs.temperature), "K factor", num(o.hydrometer.stokesConstant, 3)));
 
   const columnWidth = w / HYDROMETER_COLUMNS.length;
   cy = drawCells(d, x, cy, headerH, HYDROMETER_COLUMNS.map((caption) => ({
@@ -301,7 +308,7 @@ const drawHydrometerTable = (d: jsPDF, x: number, y: number, w: number, o: Parti
     label: true,
     bold: true,
     size: 4.6,
-    minSize: 3.4,
+    minSize: 2.8,
     align: "center" as const,
   })));
 
@@ -497,9 +504,10 @@ const drawFooter = (d: jsPDF, o: ParticleSizeDistributionPdfOptions, images: Adm
 
   if (images.stamp) {
     try {
-      const s = 26;
+      // Top edge sits on the content boundary so the stamp never climbs into the graph.
+      const s = 22;
       const { base64, format } = imageParts(images.stamp);
-      d.addImage(base64, format, MARGIN + CONTENT_W - s - 4, y - 18, s, s, undefined, "FAST");
+      d.addImage(base64, format, MARGIN + CONTENT_W - s - 4, y - 6, s, s, undefined, "FAST");
     } catch { /* the stamp is optional */ }
   }
 };
