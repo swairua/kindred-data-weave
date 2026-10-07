@@ -100,7 +100,7 @@ const num = (value: number | null | undefined, digits = 1, fallback = BLANK): st
   value === null || value === undefined || !Number.isFinite(value) ? fallback : value.toFixed(digits);
 
 /** Shrink a string until it fits its cell rather than letting it spill over the rule. */
-const fitText = (d: jsPDF, value: string, maxWidth: number, startSize: number, minSize = 3.4): number => {
+const fitText = (d: jsPDF, value: string, maxWidth: number, startSize: number, minSize = 2.8): number => {
   let size = startSize;
   try {
     while (size > minSize && d.getTextWidth(value) > Math.max(maxWidth, 1)) size -= 0.25;
@@ -115,7 +115,7 @@ const imageParts = (dataUrl: string): { base64: string; format: "PNG" | "JPEG" }
   return { base64: match[3], format: mime === "jpeg" || mime === "jpg" ? "JPEG" : "PNG" };
 };
 
-/** Draw one row of ruled cells and return the y below it. */
+/** Draw one row of ruled cells and return the y below it. Supports "\n" two-line captions. */
 const drawCells = (d: jsPDF, x: number, y: number, h: number, cells: Cell[]): number => {
   let cx = x;
   d.setDrawColor(...COLORS.dark);
@@ -126,12 +126,19 @@ const drawCells = (d: jsPDF, x: number, y: number, h: number, cells: Cell[]): nu
     d.rect(cx, y, cell.w, h, "FD");
     const value = (cell.text ?? "").trim();
     if (value) {
-      d.setFontSize(fitText(d, value, cell.w - 1.2, cell.size ?? 6.2, cell.minSize));
+      const lines = value.split("\n").map((line) => line.trim()).filter(Boolean);
+      const longest = lines.reduce((a, b) => (a.length >= b.length ? a : b), "");
+      const size = fitText(d, longest, cell.w - 1.2, cell.size ?? 6.2, cell.minSize ?? 2.8);
+      d.setFontSize(size);
       d.setFont("helvetica", cell.bold ? "bold" : "normal");
       d.setTextColor(...COLORS.dark);
       const align = cell.align ?? "left";
       const tx = align === "left" ? cx + 0.8 : align === "right" ? cx + cell.w - 0.8 : cx + cell.w / 2;
-      d.text(value, tx, y + h / 2, { align, baseline: "middle" });
+      const lineH = size * 0.38;
+      const startY = lines.length > 1 ? y + h / 2 - lineH / 2 : y + h / 2;
+      lines.forEach((line, index) => {
+        d.text(line, tx, startY + index * lineH, { align, baseline: "middle" });
+      });
     }
     cx += cell.w;
   }
@@ -203,10 +210,10 @@ const drawBulkTable = (d: jsPDF, x: number, y: number, o: MoistureDensityPdfOpti
     })),
   ]);
   cy = dataRow(d, x, cy, rowH, columns, "Moisture addition (cc)", perRow((index) => text(rows[index]?.moistureAdded)));
-  cy = dataRow(d, x, cy, rowH, columns, "Wt of mould + wet material (g)", perRow((index) => text(rows[index]?.mouldWetMass)));
-  cy = dataRow(d, x, cy, rowH, columns, "Wt of mould + Base (g)", perRow((index) => text(rows[index]?.mouldTare)));
+  cy = dataRow(d, x, cy, rowH, columns, "Wt mould + wet mat. (g)", perRow((index) => text(rows[index]?.mouldWetMass)));
+  cy = dataRow(d, x, cy, rowH, columns, "Wt mould + base (g)", perRow((index) => text(rows[index]?.mouldTare)));
   cy = dataRow(d, x, cy, rowH, columns, "Wt wet material (g)", wet.map((value) => num(value, 0)));
-  cy = dataRow(d, x, cy, rowH, columns, "Volume of mould (cm³)", rows.map(() => num(Number.parseFloat(o.record.mouldVolume), 0)));
+  cy = dataRow(d, x, cy, rowH, columns, "Volume mould (cm³)", rows.map(() => num(Number.parseFloat(o.record.mouldVolume), 0)));
   return dataRow(d, x, cy, rowH, columns, "Bulk density (kg/m³)", bulk.map((value) => num(value, 0)));
 };
 
@@ -226,7 +233,7 @@ const drawMoistureTable = (d: jsPDF, x: number, y: number, o: MoistureDensityPdf
       w: columns.point, text: caption, label: true, bold: true, align: "center" as const,
     })),
   ]);
-  cy = dataRow(d, x, cy, rowH, columns, "Wt of container + wet material (g)", perRow((index) => text(rows[index]?.containerWetMass)));
+  cy = dataRow(d, x, cy, rowH, columns, "Container + wet (g)", perRow((index) => text(rows[index]?.containerWetMass)));
   cy = dataRow(d, x, cy, rowH, columns, "Wt dry material (g)", perRow((index) => text(rows[index]?.containerDryMass)));
   cy = dataRow(d, x, cy, rowH, columns, "Wt of moisture (g)", calculated.map((point) => num(point.waterMass, 2)));
   cy = dataRow(d, x, cy, rowH, columns, "Wt of container (g)", perRow((index) => text(rows[index]?.containerTare)));
@@ -247,13 +254,13 @@ const resultsBlockHeight = (o: MoistureDensityPdfOptions, rowH = ROW_H): number 
 const drawResults = (d: jsPDF, x: number, y: number, o: MoistureDensityPdfOptions, rowH = ROW_H): number => {
   const { summary } = o;
   let cy = drawCells(d, x, y, rowH, [
-    { w: 40, text: "Maximum Dry Density (kg/m³):", label: true, bold: true, size: 5.8 },
+    { w: 44, text: "Maximum Dry Density (kg/m³):", label: true, bold: true, size: 5.8 },
     { w: 26, text: num(summary.mdd, 0), align: "center", bold: true },
     { w: 60, text: "Optimum Moisture Content (%):", label: true, bold: true, size: 5.8, align: "right" },
     { w: 60, text: num(summary.omc, 1), align: "center", bold: true },
   ]);
   cy = drawCells(d, x, cy, rowH, [
-    { w: 40, text: "Bulk Density (kg/m³):", label: true, bold: true, size: 5.8 },
+    { w: 44, text: "Bulk Density (kg/m³):", label: true, bold: true, size: 5.8 },
     { w: 26, text: num(summary.bulkDensity, 0), align: "center", bold: true },
     { w: 60, text: "Determined from:", label: true, bold: true, size: 5.8, align: "right" },
     {
@@ -267,14 +274,14 @@ const drawResults = (d: jsPDF, x: number, y: number, o: MoistureDensityPdfOption
 
   const extra: Cell[] = [];
   if (summary.rSquared !== null) {
-    extra.push({ w: 40, text: "Curve R²:", label: true, bold: true, size: 5.8 });
+    extra.push({ w: 44, text: "Curve R²:", label: true, bold: true, size: 5.8 });
     extra.push({ w: 26, text: summary.rSquared.toFixed(4), align: "center" });
     extra.push({ w: 60, text: "Particle density (Gs):", label: true, bold: true, size: 5.8, align: "right" });
     extra.push({ w: 60, text: num(Number.parseFloat(o.record.specificGravity), 2), align: "center" });
   }
   summary.warnings.forEach((warning) => {
     extra.push({ w: 46, text: "Warning:", label: true, bold: true, size: 5.8 });
-    extra.push({ w: 140, text: warning, size: 5.6 });
+    extra.push({ w: 144, text: warning, size: 5.6 });
   });
   return extra.length === 0 ? cy : drawCells(d, x, cy, rowH, extra);
 };
