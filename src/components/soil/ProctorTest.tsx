@@ -91,7 +91,10 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
   const setVolumeKey = type === "standard" ? "standardMouldVolume" : "modifiedMouldVolume";
 
   useEffect(() => {
-    if (!projectId) {
+    // A record started from an existing project (?newRecord=1) opens blank with no row id,
+    // so the first save creates a fresh row instead of overwriting the stored record.
+    const isNewRecordLaunch = new URLSearchParams(location.search).get("newRecord") === "1";
+    if (!projectId || isNewRecordLaunch) {
       setRecord(emptyProctorRecord(metadata));
       setRecordId(null);
       setError(null);
@@ -116,7 +119,7 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
       })
       .finally(() => active && setIsLoading(false));
     return () => { active = false; };
-  }, [projectId, metadataKey, metadata]);
+  }, [projectId, location.search, metadataKey, metadata]);
 
   const pointCalculations = useMemo(() => rows.map((row) => calculateProctorPoint(row, mouldVolume)), [rows, mouldVolume]);
   const optimum = useMemo(() => calculateProctor(rows, mouldVolume), [rows, mouldVolume]);

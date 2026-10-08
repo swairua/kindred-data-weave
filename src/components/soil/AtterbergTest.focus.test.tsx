@@ -120,3 +120,60 @@ describe("Atterberg single-sample editing", () => {
     expect(screen.getByText("Sample 3 of 3")).toBeInTheDocument();
   });
 });
+
+describe("Atterberg new-record launch", () => {
+  it("keeps the project's samples as options but opens them with blank data", async () => {
+    atterbergMocks.listRecords.mockResolvedValue({
+      data: [
+        {
+          ...sampleRow(2, "record-a", "BH01", 0),
+          payload_json: {
+            project: {
+              title: "KIKUYU",
+              projectName: "KIKUYU",
+              clientName: "AHP",
+              date: "2026-06-12",
+              records: [{
+                id: "record-a",
+                title: "Record 1",
+                label: "BH01",
+                isExpanded: false,
+                note: "Old note",
+                dateTested: "2026-06-01",
+                testedBy: "Old technician",
+                results: { liquidLimit: 26 },
+                tests: [{
+                  id: "test-ll-1",
+                  title: "Liquid Limit 1",
+                  type: "liquidLimit",
+                  isExpanded: true,
+                  trials: [
+                    { id: "trial-1", trialNo: "1", penetration: "7", containerNo: "201", containerWetMass: "45.50", containerDryMass: "39.20", containerMass: "12.00", moisture: "18.6" },
+                  ],
+                  result: { liquidLimit: 26 },
+                }],
+              }],
+            },
+          },
+        },
+        sampleRow(3, "record-b", "BH02", 1),
+      ],
+    });
+
+    const { container } = renderAtterberg("/tests?newRecord=1&fromProject=19&sourceProjectId=19#atterberg");
+
+    fireEvent.click(await screen.findByText("Atterberg Limits Testing"));
+
+    // Both samples stay listed as the options to choose from...
+    await waitFor(() => expect(screen.getByTestId("atterberg-sample-record-a")).toBeInTheDocument());
+    expect(screen.getByTestId("atterberg-sample-record-b")).toBeInTheDocument();
+
+    // ...and opening one shows the trial grid with none of the saved report data.
+    fireEvent.click(screen.getByTestId("atterberg-sample-record-a"));
+    await waitFor(() => expect(visibleRecordIds(container)).toEqual(["record-a"]));
+    expect(container.querySelector("[data-testid='atterberg-trials-grid'] input")).not.toBeNull();
+    expect(screen.queryByDisplayValue("45.50")).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("39.20")).not.toBeInTheDocument();
+    expect(screen.queryByText("Old technician")).not.toBeInTheDocument();
+  });
+});

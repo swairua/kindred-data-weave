@@ -404,6 +404,26 @@ describe("Proctor record page", () => {
     expect(screen.getByLabelText("Moisture addition (cc), point A")).toHaveValue(55);
   });
 
+  it("opens blank when started as a new record from an existing project and saves a new row", async () => {
+    // A stored record already exists for this project.
+    apiState.rows.push({ id: 7, project_id: 10, test_key: "proctor", payload_json: createPayload("BH-04") });
+    const storedPayload = JSON.parse(JSON.stringify(apiState.rows[0].payload_json));
+
+    render(createElement(MemoryRouter, { initialEntries: ["/tests?newRecord=1&fromProject=10&sourceProjectId=10#proctor"] }, createElement(ProctorTest, { testKey: "proctor" })));
+    expect(await screen.findByText(/Record results/)).toBeInTheDocument();
+
+    // The stored measurements are not repopulated...
+    expect(screen.getByLabelText("Moisture addition (cc), point A")).toHaveValue(null);
+
+    // ...so filling and saving writes a new row and leaves the stored one untouched.
+    fireEvent.change(screen.getByLabelText("Moisture addition (cc), point A"), { target: { value: "55" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(apiState.rows).toHaveLength(2));
+    expect(apiState.rows[0].id).toBe(7);
+    expect(apiState.rows[0].payload_json).toEqual(storedPayload);
+  });
+
   it("saves and reloads the expanded payload", async () => {
     render(createElement(MemoryRouter, null, createElement(ProctorTest, { testKey: "proctor" })));
     expect(await screen.findByText(/Record results/)).toBeInTheDocument();

@@ -71,6 +71,25 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("GradingTest selected record", () => {
+  it("opens blank when a new record is started from an existing project", async () => {
+    render(
+      <MemoryRouter initialEntries={["/tests?newRecord=1&fromProject=44&sourceProjectId=42#grading"]}>
+        <ProjectContext.Provider value={{ projectName: "Cloned project", clientName: "Client", date: "2026-06-12", currentProjectId: 44 }}>
+          <GradingTest testKey="grading" />
+        </ProjectContext.Provider>
+      </MemoryRouter>,
+    );
+
+    // The form renders, but the source project's saved measurements are never copied in...
+    expect(await screen.findByText("Record results — BS 1377 Part 2")).toBeInTheDocument();
+    expect(screen.queryByDisplayValue("123")).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("999")).not.toBeInTheDocument();
+    expect(screen.queryByText("Selected sample")).not.toBeInTheDocument();
+    // ...and no stored row id is loaded, so the first save creates a new row instead of
+    // updating the original project's record.
+    expect(gradingMocks.listRecords).not.toHaveBeenCalled();
+  });
+
   it("loads the saved result ID from the project overview", async () => {
     const { container } = render(
       <MemoryRouter initialEntries={["/tests?projectId=42&resultId=88#grading"]}>

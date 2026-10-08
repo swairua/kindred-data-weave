@@ -35,6 +35,12 @@ const MATERIAL_PRESENTATION: Record<Material, { label: string; Icon: LucideIcon 
   special: { label: "Special", Icon: FlaskConical },
 };
 
+// Tests that clone the selected project into a brand-new project when the wizard starts
+// a record from an existing one. The clone opens blank, so saving the new record can
+// never overwrite the project it was started from.
+const isTemplateCloneTestKey = (testKey: string | null): boolean =>
+  testKey === "grading" || testKey === "proctor" || testKey === "atterberg";
+
 const getSteps = (testKey: string | null): WizardStep[] => {
   const isCompressiveStrengthTest = testKey === "compressive";
 
@@ -192,7 +198,7 @@ const RecordTestWizard = () => {
         setState((prev) => ({
           ...prev,
           projectId: fullProject.id,
-          templateProjectId: prev.testKey === "grading" ? fullProject.id : null,
+          templateProjectId: isTemplateCloneTestKey(prev.testKey) ? fullProject.id : null,
           projectName: fullProject.name,
           clientName: fullProject.client_name || "",
           projectDate: fullProject.project_date || prev.projectDate,
@@ -316,6 +322,7 @@ const RecordTestWizard = () => {
   const isCompressiveStrengthTest = state.testKey === "compressive";
   const isGradingTest = state.testKey === "grading";
   const isProctorTest = state.testKey === "proctor";
+  const isAtterbergTest = state.testKey === "atterberg";
   const steps = useMemo(() => getSteps(state.testKey), [state.testKey]);
   const projectLoadKey = `${state.material ?? ""}:${state.testKey ?? ""}:${projectsReloadKey}`;
 
@@ -330,14 +337,18 @@ const RecordTestWizard = () => {
           && state.contractor.trim().length > 0
           && state.county.trim().length > 0;
       case "project":
-        if (isGradingTest) {
-          return state.projectId !== null
-            && (state.templateProjectId === null || (
-              state.projectName.trim().length > 0
-              && state.clientName.trim().length > 0
-              && state.contractor.trim().length > 0
+        if (isGradingTest || isProctorTest || isAtterbergTest) {
+          // Starting from an existing project opens a new project from it: the template's
+          // name and client seed the copy. Grading reports also need the contractor and
+          // county that appear on their project rows.
+          const cloneDetailsComplete = state.projectName.trim().length > 0
+            && state.clientName.trim().length > 0
+            && (!isGradingTest || (
+              state.contractor.trim().length > 0
               && state.county.trim().length > 0
             ));
+          return state.projectId !== null
+            && (state.templateProjectId === null || cloneDetailsComplete);
         }
         if (isCompressiveStrengthTest) {
           return state.projectId !== null && state.contractor.trim().length > 0 && state.county.trim().length > 0;
@@ -361,7 +372,7 @@ const RecordTestWizard = () => {
       case "entry": return true;
       default: return false;
     }
-  }, [step, steps, state, tests, isCompressiveStrengthTest, isGradingTest, isProctorTest, selectedExistingTestId]);
+  }, [step, steps, state, tests, isCompressiveStrengthTest, isGradingTest, isProctorTest, isAtterbergTest, selectedExistingTestId]);
 
   // Load projects when reaching the project step.
   useEffect(() => {
@@ -527,13 +538,13 @@ const RecordTestWizard = () => {
     let finalProjectId = state.projectId;
     let sourceProjectId: number | null = null;
 
-    if (isGradingTest && state.templateProjectId !== null) {
+    if (isTemplateCloneTestKey(state.testKey) && state.templateProjectId !== null) {
       try {
         const createResponse = await createRecord<{ id: number }>("projects", {
           name: state.projectName.trim(),
           client_name: state.clientName.trim(),
           project_date: state.projectDate || null,
-          test_type: "grading",
+          test_type: getExpectedTestType(state.testKey),
           contractor: state.contractor.trim(),
           county: state.county.trim(),
           submitted_by: state.submittedBy.trim(),
@@ -732,7 +743,7 @@ const RecordTestWizard = () => {
     setState((prev) => ({
       ...prev,
       projectId: p.id,
-      templateProjectId: isGradingTest ? p.id : null,
+      templateProjectId: isTemplateCloneTestKey(state.testKey) ? p.id : null,
       projectName: p.name,
       clientName: p.client_name || "",
       projectDate: p.project_date || prev.projectDate,
@@ -1066,7 +1077,7 @@ const RecordTestWizard = () => {
                   <div className="space-y-1">
                     <p className="text-sm text-muted-foreground">Step {step + 1} of {steps.length}</p>
                     <h2 className="text-2xl font-semibold tracking-tight">Which project is this for?</h2>
-                    <p className="text-sm text-muted-foreground">{isGradingTest ? "Use an existing project as a template or create a new one." : "Pick an existing project or create a new one."}</p>
+                    <p className="text-sm text-muted-foreground">{(isGradingTest || isProctorTest || isAtterbergTest) ? "Use an existing project as a template or create a new one." : "Pick an existing project or create a new one."}</p>
                   </div>
 
                   <div className="space-y-2">
@@ -1119,7 +1130,7 @@ const RecordTestWizard = () => {
                     )}
                   </div>
 
-                  {isGradingTest && state.templateProjectId !== null && (
+                  {(isGradingTest || isProctorTest || isAtterbergTest) && state.templateProjectId !== null && (
                     <div className="space-y-3 rounded-lg border bg-muted/20 p-3">
                       <p className="text-sm font-medium">New project details</p>
                       <div className="space-y-2">

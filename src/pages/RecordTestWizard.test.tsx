@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import RecordTestWizard from "@/pages/RecordTestWizard";
 
 const wizardMocks = vi.hoisted(() => ({
@@ -54,6 +54,12 @@ const renderWizard = (initialEntry = "/record?material=soil&test=proctor") => re
     <RecordTestWizard />
   </MemoryRouter>,
 );
+
+/** Mirrors the URL the wizard lands on so navigation assertions can read it. */
+const LocationProbe = () => {
+  const location = useLocation();
+  return <div data-testid="current-location">{location.pathname}{location.search}{location.hash}</div>;
+};
 
 afterEach(cleanup);
 
@@ -483,5 +489,54 @@ describe("RecordTestWizard project loading", () => {
       project_date: "2026-06-18",
       test_type: "grading",
     })));
+  });
+});
+
+describe("RecordTestWizard existing-project clone", () => {
+  it("clones an existing Proctor project so the record starts as a new project", async () => {
+    wizardMocks.listRecords.mockResolvedValue({
+      data: [{ id: 42, name: "Existing project", client_name: "Client", project_date: null, test_type: "proctor" }],
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/record?material=soil&test=proctor"]}>
+        <RecordTestWizard />
+        <LocationProbe />
+      </MemoryRouter>,
+    );
+
+    const selector = await screen.findByRole("combobox", { name: "Project" });
+    await waitFor(() => expect(selector).toBeEnabled());
+    fireEvent.click(selector);
+    fireEvent.click(await screen.findByRole("option", { name: /Existing project/ }));
+
+    // Selecting an existing project opens the template flow, not a direct reuse of it:
+    // the wizard asks for the copy's details before continuing.
+    expect(await screen.findByText("New project details")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: /Continue/ })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+
+    expect(await screen.findByRole("heading", { name: "Proctor — sample details" })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Sample ID *"), { target: { value: "BH04" } });
+    fireEvent.change(screen.getByLabelText("Sample No. *"), { target: { value: "4" } });
+    fireEvent.change(screen.getByLabelText("Sample Depth From (m) *"), { target: { value: "1.0" } });
+    fireEvent.change(screen.getByLabelText("Sample Depth To (m) *"), { target: { value: "2.0" } });
+    fireEvent.change(screen.getByLabelText("Sampled & Submitted by *"), { target: { value: "J. Doe" } });
+    fireEvent.change(screen.getByLabelText("Date Submitted *"), { target: { value: "2026-06-10" } });
+    fireEvent.change(screen.getByLabelText("Date Tested *"), { target: { value: "2026-06-11" } });
+    fireEvent.click(screen.getByRole("button", { name: /Next/ }));
+
+    expect(await screen.findByRole("heading", { name: "Ready to record" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Start recording/ }));
+
+    // A new project row is created from the template...
+    await waitFor(() => expect(wizardMocks.createRecord).toHaveBeenCalledWith(
+      "projects",
+      expect.objectContaining({ name: "Existing project", client_name: "Client", test_type: "proctor" }),
+    ));
+    // ...and the record opens against the clone, carrying the original as the structure source.
+    await waitFor(() => expect(screen.getByTestId("current-location")).toHaveTextContent(
+      "/tests?newRecord=1&fromProject=43&sourceProjectId=42#proctor",
+    ));
   });
 });

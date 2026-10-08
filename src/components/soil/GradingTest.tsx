@@ -258,8 +258,6 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const isNewRecord = searchParams.get("newRecord") === "1";
-  const sourceProjectIdValue = Number.parseInt(searchParams.get("sourceProjectId") || "", 10);
-  const sourceProjectId = Number.isInteger(sourceProjectIdValue) && sourceProjectIdValue > 0 ? sourceProjectIdValue : null;
   const resultIdValue = Number.parseInt(searchParams.get("resultId") || "", 10);
   const selectedResultId = Number.isInteger(resultIdValue) && resultIdValue > 0 ? resultIdValue : null;
   const projectId = project.currentProjectId ?? null;
@@ -273,7 +271,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
   const sieveNav = useGridArrowNavigation<HTMLDivElement>();
   const hydrometerNav = useGridArrowNavigation<HTMLDivElement>();
   const readingsNav = useGridArrowNavigation<HTMLDivElement>();
-  const [isLoading, setIsLoading] = useState(Boolean(projectId) && (!isNewRecord || sourceProjectId !== null));
+  const [isLoading, setIsLoading] = useState(Boolean(projectId) && !isNewRecord);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -373,15 +371,17 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       setIsLoading(false);
       return;
     }
-    if (isNewRecord && sourceProjectId === null) {
+    if (isNewRecord) {
+      // A record started from an existing project opens blank: the wizard supplies the
+      // sample metadata, and the source project's measurements are deliberately not
+      // copied, so the original record stays untouched when this one is saved.
       setRecord(emptyRecord(metadata));
       setRecordId(null);
       setIsLoading(false);
       return;
     }
 
-    const loadProjectId = isNewRecord ? sourceProjectId : projectId;
-    if (loadProjectId === null) return;
+    if (projectId === null) return;
 
     let active = true;
     setIsLoading(true);
@@ -389,21 +389,10 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
     listRecords<ApiTestResultRow>("test_results", { limit: 5000, orderBy: "updated_at", direction: "DESC" })
       .then((response) => {
         if (!active) return;
-        const result = (response.data || []).find((row) => Number(row.project_id) === loadProjectId && row.test_key === "grading" && (!selectedResultId || Number(row.id) === selectedResultId) && row.payload_json);
+        const result = (response.data || []).find((row) => Number(row.project_id) === projectId && row.test_key === "grading" && (!selectedResultId || Number(row.id) === selectedResultId) && row.payload_json);
         const loadedRecord = getPayloadRecord(result?.payload_json, metadata);
-        setRecordId(isNewRecord ? null : result?.id ?? null);
-        setRecord(isNewRecord ? {
-          ...loadedRecord,
-          label: metadata.sampleId || loadedRecord.label,
-          sampleNumber: metadata.sampleNumber || loadedRecord.sampleNumber,
-          sampleDepthFrom: metadata.sampleDepthFrom || loadedRecord.sampleDepthFrom,
-          sampleDepthTo: metadata.sampleDepthTo || loadedRecord.sampleDepthTo,
-          sampledSubmittedBy: metadata.sampledSubmittedBy || loadedRecord.sampledSubmittedBy,
-          testedBy: metadata.testedBy || loadedRecord.testedBy,
-          dateSubmitted: metadata.dateSubmitted || loadedRecord.dateSubmitted,
-          dateTested: metadata.dateTested || loadedRecord.dateTested,
-          sampleNotes: metadata.sampleNotes || loadedRecord.sampleNotes,
-        } : loadedRecord);
+        setRecordId(result?.id ?? null);
+        setRecord(loadedRecord);
       })
       .catch((loadError) => {
         if (!active) return;
@@ -411,7 +400,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       })
       .finally(() => active && setIsLoading(false));
     return () => { active = false; };
-  }, [projectId, isNewRecord, sourceProjectId, selectedResultId, metadataKey, metadata]);
+  }, [projectId, isNewRecord, selectedResultId, metadataKey, metadata]);
 
   const updateRecordField = <K extends keyof GradingRecord>(field: K, value: GradingRecord[K]) => {
     setRecord((current) => ({ ...current, [field]: value }));

@@ -266,6 +266,35 @@ const collapseAllOnLoad = (state: AtterbergProjectState, expandRecordId?: string
   })),
 });
 
+/**
+ * Structure only: keeps each sample's identity (id, title, label, sample number, submission
+ * date) and the tests it holds, but clears every measured value, result and report field.
+ * Used when the wizard re-opens an existing project as a new record (?newRecord=1) so its
+ * samples stay selectable without repopulating the saved report data.
+ */
+const blankAtterbergState = (state: AtterbergProjectState): AtterbergProjectState => ({
+  ...state,
+  records: state.records.map((record) => ({
+    ...record,
+    note: "",
+    dateTested: "",
+    testedBy: "",
+    passing425um: "",
+    isExpanded: false,
+    results: {},
+    tests: record.tests.map((test): AtterbergTest => {
+      switch (test.type) {
+        case "liquidLimit":
+          return { ...test, isExpanded: false, trials: createTrialsForType("liquidLimit") as LiquidLimitTrial[], result: {} };
+        case "plasticLimit":
+          return { ...test, isExpanded: false, trials: createTrialsForType("plasticLimit") as PlasticLimitTrial[], result: {} };
+        case "shrinkageLimit":
+          return { ...test, isExpanded: false, trials: createTrialsForType("shrinkageLimit") as ShrinkageLimitTrial[], result: {} };
+      }
+    }),
+  })),
+});
+
 const buildPersistedState = (records: ComputedRecord[]): AtterbergProjectState => ({
   records: records.map(({ dataPoints, completedTests, ...record }) => record),
 });
@@ -802,15 +831,26 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
             return;
           }
 
+          const params = new URLSearchParams(location.search);
+          // Wizard launch from an existing project (?newRecord=1): keep the project's sample
+          // structure so its tests stay selectable, but blank every measurement and result.
+          const isNewRecordLaunch = params.get("newRecord") === "1";
+          const sourceRaw = Number.parseInt(params.get("sourceProjectId") || "", 10);
+          const sourceProjectId = Number.isInteger(sourceRaw) && sourceRaw > 0 ? sourceRaw : null;
+
           try {
-            const params = new URLSearchParams(location.search);
             const focusRaw = params.get("resultId");
             const focusValue = Number.parseInt(focusRaw || "", 10);
-            const focusResultId = Number.isInteger(focusValue) && focusValue > 0 ? focusValue : null;
-            const focusSampleKey = params.get("sampleKey")?.trim() || null;
+            const focusResultId = !isNewRecordLaunch && Number.isInteger(focusValue) && focusValue > 0 ? focusValue : null;
+            const focusSampleKey = isNewRecordLaunch ? null : params.get("sampleKey")?.trim() || null;
+            // Structure comes from the project the record was started from; the record itself
+            // saves under the current (cloned) project, so the original stays untouched.
+            const structureProjectId = isNewRecordLaunch
+              ? sourceProjectId ?? project.currentProjectId
+              : project.currentProjectId;
             const remote = await loadAtterbergProjectFromApi(
               effectiveProjectLookup,
-              project.currentProjectId,
+              structureProjectId,
               focusResultId,
               focusSampleKey,
             );
@@ -818,9 +858,14 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
 
             if (remote) {
               skipNextPersistRef.current = true;
-              setProjectState(collapseAllOnLoad(remote.state, remote.focusRecordId));
-              // Open the sample the user clicked rather than the first one of the project.
-              pendingFocusRecordIdRef.current = remote.focusRecordId;
+              if (isNewRecordLaunch) {
+                setProjectState(blankAtterbergState(remote.state));
+                pendingFocusRecordIdRef.current = null;
+              } else {
+                setProjectState(collapseAllOnLoad(remote.state, remote.focusRecordId));
+                // Open the sample the user clicked rather than the first one of the project.
+                pendingFocusRecordIdRef.current = remote.focusRecordId;
+              }
               hydratedRef.current = true;
               return;
             }
@@ -835,6 +880,17 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
           }
 
           if (cancelled) return;
+
+          if (isNewRecordLaunch) {
+            // Never fall back to localStorage on a new-record launch: it holds the previous
+            // project's populated state and would repopulate this blank record. If the
+            // structure could not be loaded, the auto-first-record effect adds one blank
+            // sample once hydration is marked complete.
+            skipNextPersistRef.current = true;
+            setProjectState({ records: [] });
+            hydratedRef.current = true;
+            return;
+          }
 
           // Defensive check: verify localStorage data matches current project context
           // If localStorage was cleared by the project identity change detection effect,
@@ -1091,22 +1147,23 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
     setActiveRecordId(newRecordId);
   }, []);
 
-  // When wizard launched against an existing project (?newRecord=1), force a fresh record.
+  // Wizard launch from an existing project (?newRecord=1): the hydration effect above loads
+  // that project's structure with every measurement blanked, so no extra record is appended
+  // here — only the launch params are stripped so a refresh doesn't re-run the launch.
   const newRecordHandledRef = useRef(false);
   useEffect(() => {
     if (newRecordHandledRef.current) return;
     const params = new URLSearchParams(location.search);
     if (params.get("newRecord") === "1") {
       newRecordHandledRef.current = true;
-      addRecord();
-      // Strip the query param so refresh doesn't keep adding records
       params.delete("newRecord");
       params.delete("fromProject");
+      params.delete("sourceProjectId");
       const qs = params.toString();
       const next = `${location.pathname}${qs ? `?${qs}` : ""}${location.hash}`;
       window.history.replaceState({}, "", next);
     }
-  }, [location.search, location.pathname, location.hash, addRecord]);
+  }, [location.search, location.pathname, location.hash]);
 
   // Auto-create the first record once a project is active so the editable
   // input forms appear immediately (no need to click "Add Record").
