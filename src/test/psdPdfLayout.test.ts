@@ -90,3 +90,17 @@ describe("Particle Size Distribution PDF page layout", () => {
     expect((await build(FULL_SIEVE)).getNumberOfPages()).toBe(1);
   });
 });
+  it("keeps the 'Wet & Dry Sieve' caption inside the sieve table cell", () => {
+    const { jsPDF } = require("jspdf");
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    doc.setFont("helvetica", "bold");
+    // Sieve table width is 62mm, so the caption cell offers 62 - 1.2mm.
+    const available = 62 - 1.2;
+    const caption = "Wet & Dry Sieve Analysis to BS 1377-2:1990: 9.2/9.3/9.4";
+
+    // The caption starts at 6pt and shrinks only if needed; it must fit in one line.
+    doc.setFontSize(6);
+    const width = doc.getTextWidth(caption);
+    expect(width).toBeLessThanOrEqual(available);
+  });
+

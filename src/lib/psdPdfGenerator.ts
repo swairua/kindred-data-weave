@@ -157,7 +157,7 @@ const drawCells = (d: jsPDF, x: number, y: number, h: number, cells: Cell[]): nu
 
 /** A section caption spanning the full content width. */
 const drawCaption = (d: jsPDF, x: number, y: number, w: number, caption: string, rowH = ROW_H): number =>
-  drawCells(d, x, y, rowH, [{ w, text: caption, align: "center", bold: true, size: 7 }]);
+  drawCells(d, x, y, rowH, [{ w, text: caption, align: "center", bold: true, size: 6 }]);
 /** Client / project / sample identification block. */
 const drawHeader = (d: jsPDF, x: number, y: number, o: ParticleSizeDistributionPdfOptions, rowH = ROW_H): number => {
   const { record } = o;
