@@ -38,7 +38,6 @@ import {
   type ShrinkageLimitTrial,
 } from "@/context/TestDataContext";
 import { generateAtterbergPDF } from "@/lib/atterbergPdfGenerator";
-import { generateFormulasReferencePDF } from "@/lib/formulasReferencePdfGenerator";
 import {
   buildAtterbergSummaryFields,
   calculateLiquidLimit,
@@ -1875,11 +1874,6 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
 
   const exportTables = useMemo(() => buildTablesForExport(computedRecords), [computedRecords]);
 
-  /** The shared calculations & formulas reference; identical from every section. */
-  const handleExportFormulas = useCallback(async () => {
-    await generateFormulasReferencePDF({ labOrganization: project.labOrganization });
-  }, [project.labOrganization]);
-
   const handleExportPDF = useCallback(async () => {
     if (computedRecords.length === 0) {
       toast.error("No records to export");
@@ -2198,7 +2192,6 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
         title="Atterberg Limits Testing"
         testKey={testKey}
         onClear={handleClearRequest}
-        onExportFormulas={handleExportFormulas}
         saveStatus={saveStatus}
         lastSavedAt={lastSavedAt}
         lastSaveError={lastSaveError}

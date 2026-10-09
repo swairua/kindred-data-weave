@@ -1,7 +1,7 @@
 import { ReactNode, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, CheckCircle2, ChevronDown, ChevronRight, FileDown, FlaskConical, Loader2, Plus, Save, Sheet, Sigma, Trash2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, ChevronDown, ChevronRight, FileDown, FlaskConical, Loader2, Plus, Save, Sheet, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import ProjectHeader from "@/components/ProjectHeader";
@@ -28,7 +28,6 @@ interface TestSectionProps {
   onClear?: () => void;
   onExportPDF?: () => boolean | void | Promise<boolean | void>;
   onExportXLSX?: () => boolean | void | Promise<boolean | void>;
-  onExportFormulas?: () => boolean | void | Promise<boolean | void>;
   onExportSmokeCheck?: () => boolean | void | Promise<boolean | void>;
   exportSmokeCheckDisabled?: boolean;
   smokeCheckStatus?: SmokeCheckStatus | null;
@@ -39,7 +38,7 @@ interface TestSectionProps {
   onRecordClick?: () => void;
 }
 
-const TestSection = ({ title, testKey, tooltip, children, onSave, onFinalSave, onClear, onExportPDF, onExportXLSX, onExportFormulas, onExportSmokeCheck, exportSmokeCheckDisabled, smokeCheckStatus, saveStatus = "idle", lastSavedAt, lastSaveError, recordButtonLabel, onRecordClick }: TestSectionProps) => {
+const TestSection = ({ title, testKey, tooltip, children, onSave, onFinalSave, onClear, onExportPDF, onExportXLSX, onExportSmokeCheck, exportSmokeCheckDisabled, smokeCheckStatus, saveStatus = "idle", lastSavedAt, lastSaveError, recordButtonLabel, onRecordClick }: TestSectionProps) => {
   const [localOpen, setLocalOpen] = useState(false);
   const accordion = useTestAccordion();
 
@@ -152,29 +151,6 @@ const TestSection = ({ title, testKey, tooltip, children, onSave, onFinalSave, o
                 </TooltipTrigger>
                 <TooltipContent side="top">
                   Export test data as PDF document
-                </TooltipContent>
-              </Tooltip>
-            )}
-            {onExportFormulas && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={async () => {
-                      try {
-                        const exported = await onExportFormulas();
-                        if (exported !== false) toast.success("Formulas reference PDF downloaded");
-                      } catch {
-                        toast.error("Formulas reference PDF download failed");
-                      }
-                    }}
-                  >
-                    <Sigma className="h-3.5 w-3.5 mr-1" /> Formulas
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  Download the calculations and formulas reference PDF
                 </TooltipContent>
               </Tooltip>
             )}

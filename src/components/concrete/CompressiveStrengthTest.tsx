@@ -8,7 +8,6 @@ import { Plus, X, Save as SaveIcon, Printer, Loader2, CheckCircle2, GripVertical
 import { useProject } from "@/context/ProjectContext";
 import { useTestData } from "@/context/TestDataContext";
 import { generateCompressiveStrengthPDF } from "@/lib/compressivePdfGenerator";
-import { generateFormulasReferencePDF } from "@/lib/formulasReferencePdfGenerator";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, PieChart, Pie, Cell, Legend, ResponsiveContainer } from "recharts";
 import { Label } from "@/components/ui/label";
@@ -405,11 +404,6 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     window.print();
   };
 
-  /** The shared calculations & formulas reference; identical from every section. */
-  const exportFormulas = async () => {
-    await generateFormulasReferencePDF({ labOrganization: project.labOrganization });
-  };
-
   const handleChartClick = (index: number) => {
     setHighlightedRowIndex(highlightedRowIndex === index ? null : index);
   };
@@ -756,7 +750,6 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
       testKey={testKey}
       onClear={() => setRows([emptyCubeRow()])}
       onExportPDF={exportPDF}
-      onExportFormulas={exportFormulas}
     >
       <>
         <div className="flex flex-col gap-6 w-full">

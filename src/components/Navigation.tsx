@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { LayoutDashboard, FlaskConical, FileText, Hammer, LogOut, Layers, ChevronRight, Users, Settings as SettingsIcon } from "lucide-react";
+import { LayoutDashboard, FlaskConical, FileText, Hammer, LogOut, Layers, ChevronRight, Sigma, Users, Settings as SettingsIcon } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -12,6 +12,9 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
+import { useProject } from "@/context/ProjectContext";
+import { generateFormulasReferencePDF } from "@/lib/formulasReferencePdfGenerator";
+import { toast } from "sonner";
 
 interface NavigationProps {
   currentView: "dashboard" | "tests" | "results" | "projects" | "admin" | "users" | "settings";
@@ -30,10 +33,22 @@ const Navigation = ({
 }: NavigationProps) => {
   const navigate = useNavigate();
   const { setOpenMobile, isMobile } = useSidebar();
+  const project = useProject();
 
   const handleNavigation = (view: NavigationProps["currentView"], path: string) => {
     onViewChange(view);
     navigate(path);
+    if (isMobile) setOpenMobile(false);
+  };
+
+  /** The single entry point for the calculations & formulas reference PDF. */
+  const handleFormulasDownload = async () => {
+    try {
+      await generateFormulasReferencePDF({ labOrganization: project.labOrganization });
+      toast.success("Formulas reference PDF downloaded");
+    } catch {
+      toast.error("Formulas reference PDF download failed");
+    }
     if (isMobile) setOpenMobile(false);
   };
 
@@ -118,6 +133,20 @@ const Navigation = ({
             Lab
           </div>
           {renderItems(labItems)}
+          <SidebarMenu className="space-y-1">
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => void handleFormulasDownload()}
+                tooltip="Formulas reference"
+                className="relative h-10 rounded-full px-3 transition-colors text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              >
+                <Sigma className="h-[18px] w-[18px] flex-shrink-0" />
+                <span className="text-sm font-medium group-data-[collapsible=icon]:hidden">
+                  Formulas reference
+                </span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
         </div>
 
         <div>
