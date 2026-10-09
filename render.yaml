@@ -13,6 +13,7 @@ services:
     runtime: static
     buildCommand: npm ci && npm run build
     staticPublishPath: ./dist
+    autoDeploy: true
     routes:
       - type: rewrite
         source: /*
