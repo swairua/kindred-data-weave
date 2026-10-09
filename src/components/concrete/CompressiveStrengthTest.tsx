@@ -8,6 +8,7 @@ import { Plus, X, Save as SaveIcon, Printer, Loader2, CheckCircle2, GripVertical
 import { useProject } from "@/context/ProjectContext";
 import { useTestData } from "@/context/TestDataContext";
 import { generateCompressiveStrengthPDF } from "@/lib/compressivePdfGenerator";
+import { generateFormulasReferencePDF } from "@/lib/formulasReferencePdfGenerator";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, PieChart, Pie, Cell, Legend, ResponsiveContainer } from "recharts";
 import { Label } from "@/components/ui/label";
@@ -29,6 +30,7 @@ import {
   parseNumber,
   strengthOf,
   densityOf,
+  mostCommonCastDate,
   strengthRemark,
   toInputValue,
   type CompressiveCubeInput,
@@ -354,6 +356,10 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   /**
    * The record as the exporters want it. PDF and Excel build from the same
    * object so the two sheets can never describe different tests.
+   *
+   * DATE CASTED is derived from the cubes themselves (the date most of them
+   * share) rather than echoed from Date Tested: the old mapping printed the
+   * test date on the "DATE CASTED" line of the report.
    */
   const buildRecordView = () => ({
     contractor: testDetails.contractor,
@@ -364,7 +370,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     slump: testDetails.slump,
     clientRef: testDetails.clientRef,
     labRef: testDetails.labRef,
-    dateCasted: testDetails.dateTested,
+    dateCasted: mostCommonCastDate(rows) ?? "",
   });
 
   /** Cubes that can produce a strength; blank rows are not worth exporting. */
@@ -399,6 +405,11 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     window.print();
   };
 
+  /** The shared calculations & formulas reference; identical from every section. */
+  const exportFormulas = async () => {
+    await generateFormulasReferencePDF({ labOrganization: project.labOrganization });
+  };
+
   const handleChartClick = (index: number) => {
     setHighlightedRowIndex(highlightedRowIndex === index ? null : index);
   };
@@ -411,41 +422,47 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     <div className="flex flex-col gap-4">
       <div className="mb-6 p-4 bg-gradient-to-r from-amber-50 to-amber-100 rounded-lg border border-amber-200">
         <h3 className="text-sm font-semibold text-gray-800 mb-3">Test Details</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-          {[
-            { label: "Cement", value: testDetails.cement },
-            { label: "Fine Aggregate", value: testDetails.fineAggregate },
-            { label: "Coarse Aggregate", value: testDetails.coarseAggregate },
-            { label: "Contractor", value: testDetails.contractor },
-            { label: "County", value: testDetails.county },
-            { label: "Concrete Class", value: testDetails.concreteClass },
-            { label: "Section", value: testDetails.section },
-            { label: "Made By", value: testDetails.madeBy },
-            { label: "Slump", value: testDetails.slump },
-            { label: "Client Ref", value: testDetails.clientRef },
-            { label: "Lab Ref", value: testDetails.labRef },
-            { label: "Date Tested", value: testDetails.dateTested },
-          ].map((item) => (
-            <div key={item.label} className="flex flex-col">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          {([
+            { label: "Cement", field: "cement", placeholder: "e.g. CEM I 42.5R" },
+            { label: "Fine Aggregate", field: "fineAggregate", placeholder: "e.g. River sand" },
+            { label: "Coarse Aggregate", field: "coarseAggregate", placeholder: "e.g. 20 mm crushed" },
+            { label: "Contractor", field: "contractor", placeholder: "—" },
+            { label: "County", field: "county", placeholder: "—" },
+            { label: "Concrete Class", field: "concreteClass", placeholder: "e.g. C25/30" },
+            { label: "Section", field: "section", placeholder: "—" },
+            { label: "Made By", field: "madeBy", placeholder: "Technician" },
+            { label: "Slump (mm)", field: "slump", inputType: "number", placeholder: "e.g. 75" },
+            { label: "Client Ref", field: "clientRef", placeholder: "—" },
+            { label: "Lab Ref", field: "labRef", placeholder: "—" },
+            { label: "Date Tested", field: "dateTested", inputType: "date" },
+          ] as { label: string; field: keyof TestDetails; inputType?: string; placeholder?: string }[]).map((item) => (
+            <div key={item.field} className="flex flex-col gap-1">
               <span className="text-xs text-gray-600 font-medium">{item.label}</span>
-              <span className="text-sm font-semibold text-gray-900">{item.value || "—"}</span>
+              <Input
+                type={item.inputType ?? "text"}
+                value={testDetails[item.field]}
+                onChange={(e) => updateTestDetail(item.field, e.target.value)}
+                className="h-8 text-sm"
+                placeholder={item.placeholder ?? "—"}
+              />
             </div>
           ))}
         </div>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-sm border border-border rounded-lg">
+        <table className="w-full min-w-[1180px] text-sm border border-border rounded-lg">
           <thead className="bg-muted/50">
             <tr>
               <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">#</th>
               <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Cube Mark</th>
-              <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs hidden md:table-cell">Date of Cast</th>
-              <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs hidden md:table-cell">Date of Test</th>
+              <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Date of Cast</th>
+              <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Date of Test</th>
               <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Age (days)</th>
-              <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs hidden md:table-cell">Cube Dim (mm)<br/>L × W × H</th>
-              <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs hidden md:table-cell">Mass (g)</th>
-              <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs hidden md:table-cell">Density (kg/m³)</th>
+              <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Cube Dim (mm)<br/>L × W × H</th>
+              <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Mass (g)</th>
+              <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Density (kg/m³)</th>
               <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Max Load (kN)</th>
               <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Strength (N/mm²)</th>
               <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Remarks</th>
@@ -458,26 +475,26 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
               const isHighlighted = highlightedRowIndex === i;
               return (
                 <tr
-                  key={i}
+                  key={row.id ?? `pending-${i}`}
                   className={`border-b border-border/50 cursor-pointer transition-colors ${isHighlighted ? "bg-blue-100" : isDensityAbnormal ? "bg-red-50" : "hover:bg-muted/30"}`}
                   onClick={() => handleRowClick(i)}
                 >
                   <td className="py-1.5 px-2 text-muted-foreground">{i + 1}</td>
                   <td className="py-1.5 px-2"><Input value={row.mark} onChange={(e) => update(i, "mark", e.target.value)} className="h-8 text-sm" placeholder="—" /></td>
-                  <td className="py-1.5 px-2 hidden md:table-cell"><Input type="date" value={row.dateOfCast} onChange={(e) => update(i, "dateOfCast", e.target.value)} className="h-8 text-sm" /></td>
-                  <td className="py-1.5 px-2 hidden md:table-cell"><Input type="date" value={row.dateOfTest} onChange={(e) => update(i, "dateOfTest", e.target.value)} className="h-8 text-sm" /></td>
+                  <td className="py-1.5 px-2"><Input type="date" value={row.dateOfCast} onChange={(e) => update(i, "dateOfCast", e.target.value)} className="h-8 min-w-[132px] text-sm" /></td>
+                  <td className="py-1.5 px-2"><Input type="date" value={row.dateOfTest} onChange={(e) => update(i, "dateOfTest", e.target.value)} className="h-8 min-w-[132px] text-sm" /></td>
                   <td className="py-1.5 px-2"><CalculatedInput value={getAge(row.dateOfCast, row.dateOfTest)} /></td>
-                  <td className="py-1.5 px-2 hidden md:table-cell">
+                  <td className="py-1.5 px-2">
                     <div className="flex gap-1 text-xs">
-                      <Input type="number" value={row.width} onChange={(e) => update(i, "width", e.target.value)} className="h-8 w-14" placeholder="L" />
+                      <Input type="number" value={row.width} onChange={(e) => update(i, "width", e.target.value)} className="h-8 w-20" placeholder="L" />
                       <span className="text-muted-foreground">×</span>
-                      <Input type="number" value={row.height} onChange={(e) => update(i, "height", e.target.value)} className="h-8 w-14" placeholder="W" />
+                      <Input type="number" value={row.height} onChange={(e) => update(i, "height", e.target.value)} className="h-8 w-20" placeholder="W" />
                       <span className="text-muted-foreground">×</span>
-                      <Input type="number" value={row.depth} onChange={(e) => update(i, "depth", e.target.value)} className="h-8 w-14" placeholder="H" />
+                      <Input type="number" value={row.depth} onChange={(e) => update(i, "depth", e.target.value)} className="h-8 w-20" placeholder="H" />
                     </div>
                   </td>
-                  <td className="py-1.5 px-2 hidden md:table-cell"><Input type="number" value={row.mass} onChange={(e) => update(i, "mass", e.target.value)} className="h-8 text-sm" placeholder="—" /></td>
-                  <td className={`py-1.5 px-2 hidden md:table-cell ${isDensityAbnormal ? "text-red-600 font-semibold" : ""}`}><CalculatedInput value={formatDensity(row)} /></td>
+                  <td className="py-1.5 px-2"><Input type="number" value={row.mass} onChange={(e) => update(i, "mass", e.target.value)} className="h-8 min-w-[96px] text-sm" placeholder="—" /></td>
+                  <td className={`py-1.5 px-2 ${isDensityAbnormal ? "text-red-600 font-semibold" : ""}`}><CalculatedInput value={formatDensity(row)} /></td>
                   <td className="py-1.5 px-2"><Input type="number" value={row.load} onChange={(e) => update(i, "load", e.target.value)} className="h-8 text-sm" placeholder="0" /></td>
                   <td className="py-1.5 px-2"><CalculatedInput value={formatStrength(row)} /></td>
                   <td className="py-1.5 px-2">
@@ -489,7 +506,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
                     ) : (
                       <div className="flex gap-1 items-center group">
                         <CalculatedInput value={row.remarks || strengthRemark(row)} />
-                        <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100" onClick={() => setEditingRemarksIndex(i)}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 opacity-50 hover:opacity-100 focus-visible:opacity-100" aria-label="Edit remarks" onClick={() => setEditingRemarksIndex(i)}>
                           <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                         </Button>
                       </div>
@@ -739,6 +756,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
       testKey={testKey}
       onClear={() => setRows([emptyCubeRow()])}
       onExportPDF={exportPDF}
+      onExportFormulas={exportFormulas}
     >
       <>
         <div className="flex flex-col gap-6 w-full">

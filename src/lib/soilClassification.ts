@@ -218,18 +218,64 @@ const classifyGravel = (
 
 /**
  * AASHTO Classification
+ *
+ * Implements the AASHTO M 145 / ASTM D3282 groups from the laboratory's
+ * classification note ("AASHTO SOIL CLASSIFICATION SYSTEM — Developer Logic &
+ * Classification Rules", reference Table 5.1):
+ *
+ * - Granular vs silt-clay split on P200 (No. 200 passing) at 35%.
+ * - A-1-a: P10 ≤ 50, P40 ≤ 30, P200 ≤ 15, PI ≤ 6 (LL plays no role).
+ * - A-1-b: P40 ≤ 50, P200 ≤ 25, PI ≤ 6 (LL plays no role).
+ * - A-3: P40 ≥ 51, P200 ≤ 10, non-plastic (fine sand).
+ * - A-2-4…A-2-7: P200 ≤ 35 with the LL ≤/> 40 × PI ≤/> 10 splits.
+ * - A-4…A-7-6: P200 > 35 with the same LL/PI splits; A-7-5 iff PI ≤ LL − 30.
+ *
  * With proper A-7 subgrouping: PI ≤ LL-30 → A-7-5; PI > LL-30 → A-7-6
+ *
+ * The sieve evidence (P10/P40) is optional so existing callers without sieve
+ * data keep working: when P40 is missing and the soil sits in the PI ≤ 6 /
+ * LL ≤ 40 zone, the previous approximation is returned and
+ * getAashtoEvidenceWarnings() flags it as unverified.
  */
+export interface AashtoSieveEvidence {
+  /** % passing the No. 10 (2.00 mm) sieve. Null/undefined when not measured. */
+  p10?: number | null;
+  /** % passing the No. 40 (0.425 mm) sieve. Null/undefined when not measured. */
+  p40?: number | null;
+  /** Explicit non-plastic flag (A-3 requires NP; otherwise PI < 0.5 counts). */
+  nonPlastic?: boolean;
+}
+
+const toFiniteOrNull = (value: number | null | undefined): number | null =>
+  typeof value === "number" && Number.isFinite(value) ? value : null;
+
 export const classifySoilAASHTO = (
   grainSize: GrainSizeDistribution,
   atterberg: CalculatedResults,
+  sieves: AashtoSieveEvidence = {},
 ): string => {
   const { fines } = grainSize;
   const { liquidLimit = 0, plasticityIndex = 0 } = atterberg;
+  const p10 = toFiniteOrNull(sieves.p10);
+  const p40 = toFiniteOrNull(sieves.p40);
+  const isNP = sieves.nonPlastic === true || plasticityIndex < 0.5;
 
   // Granular materials (≤35% passing No. 200)
   if (fines <= 35) {
-    if (plasticityIndex <= 6) {
+    // A-1-a: P10 ≤ 50, P40 ≤ 30, P200 ≤ 15, PI ≤ 6
+    if (p10 !== null && p10 <= 50 && p40 !== null && p40 <= 30 && fines <= 15 && plasticityIndex <= 6) {
+      return "A-1-a";
+    }
+    // A-1-b: P40 ≤ 50, P200 ≤ 25, PI ≤ 6
+    if (p40 !== null && p40 <= 50 && fines <= 25 && plasticityIndex <= 6) {
+      return "A-1-b";
+    }
+    // A-3: P40 ≥ 51, P200 ≤ 10, non-plastic (fine sand)
+    if (p40 !== null && p40 >= 51 && fines <= 10 && isNP) {
+      return "A-3";
+    }
+    // No P40 evidence: legacy approximation (flagged by getAashtoEvidenceWarnings).
+    if (p40 === null && plasticityIndex <= 6) {
       return liquidLimit <= 40 ? "A-1-a" : "A-1-b";
     }
     if (plasticityIndex <= 10) {
@@ -249,6 +295,59 @@ export const classifySoilAASHTO = (
 
   // A-7 subgroup: PI ≤ LL - 30 → A-7-5; PI > LL - 30 → A-7-6
   return plasticityIndex <= (liquidLimit - 30) ? "A-7-5" : "A-7-6";
+};
+
+export interface AashtoEvidenceInput {
+  /** % passing the No. 10 (2.00 mm) sieve. Null/undefined when not measured. */
+  p10?: number | null;
+  /** % passing the No. 40 (0.425 mm) sieve. Null/undefined when not measured. */
+  p40?: number | null;
+  /** % passing the No. 200 (0.075 mm) sieve — the primary split. */
+  p200?: number | null;
+  plasticityIndex?: number | null;
+  nonPlastic?: boolean;
+}
+
+/**
+ * Evidence warnings for the AASHTO granular groups ("warn + approximate"
+ * policy from the classification note's CRITICAL NOTE: all three sieve
+ * values are required for correct classification of granular soils).
+ *
+ * Returns an empty array when the evidence is complete or when the soil is
+ * silt-clay (P200 > 35), where P10/P40 play no role. Otherwise each entry
+ * names the missing sieve and the groups that cannot be verified, so the UI
+ * can show the classifier output as an approximation.
+ */
+export const getAashtoEvidenceWarnings = ({
+  p10,
+  p40,
+  p200,
+  plasticityIndex,
+  nonPlastic,
+}: AashtoEvidenceInput): string[] => {
+  const fines = toFiniteOrNull(p200);
+  if (fines === null) {
+    return ["No. 200 passing value is missing — AASHTO classification cannot be determined."];
+  }
+  if (fines > 35) return [];
+  const pi = toFiniteOrNull(plasticityIndex);
+  const isNP = nonPlastic === true || (pi !== null && pi < 0.5);
+  // Only the PI ≤ 6 / NP zone can be an A-1 or A-3 soil; A-2 groups need no
+  // P10/P40 evidence, so there is nothing to warn about outside this zone.
+  if (pi !== null && pi > 6 && !isNP) return [];
+  const passing40 = toFiniteOrNull(p40);
+  if (passing40 === null) {
+    return [
+      "No. 40 sieve (0.425 mm) passing value is missing — A-1-a, A-1-b and A-3 cannot be verified.",
+    ];
+  }
+  const passing10 = toFiniteOrNull(p10);
+  if (passing10 === null && passing40 <= 30 && fines <= 15) {
+    return [
+      "No. 10 sieve (2.00 mm) passing value is missing — A-1-a cannot be fully verified.",
+    ];
+  }
+  return [];
 };
 
 export interface AashtoGroupIndexInput {

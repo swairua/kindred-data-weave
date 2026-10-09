@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 
 import {
+  ageOf,
   buildAgeGroups,
   cubeStrengthFromClass,
   densityOf,
@@ -10,6 +11,7 @@ import {
   getPassFailResults,
   getStrengthDistribution,
   groupVerdict,
+  mostCommonCastDate,
   parseNumber,
   strengthOf,
   type CompressiveCubeInput,
@@ -219,5 +221,52 @@ describe("cubeStrengthFromClass", () => {
   it("returns null when there is no usable number", () => {
     expect(cubeStrengthFromClass("")).toBeNull();
     expect(cubeStrengthFromClass("C")).toBeNull();
+  });
+});
+
+describe("ageOf", () => {
+  it("counts whole days between cast and test dates", () => {
+    expect(ageOf("2026-01-01", "2026-01-29")).toBe(28);
+    expect(ageOf("2026-01-01", "2026-01-01")).toBe(0);
+  });
+
+  it("returns null when a date is missing or the test predates the cast", () => {
+    expect(ageOf("", "2026-01-29")).toBeNull();
+    expect(ageOf("2026-01-01", "")).toBeNull();
+    expect(ageOf("2026-01-29", "2026-01-01")).toBeNull();
+  });
+});
+
+describe("auto-field guards", () => {
+  it("rejects non-positive dimensions instead of dividing by them", () => {
+    expect(strengthOf(cube({ load: "500", width: "0", height: "150" }))).toBeNull();
+    expect(strengthOf(cube({ load: "500", width: "-150", height: "150" }))).toBeNull();
+    expect(densityOf(cube({ mass: "8100", width: "150", height: "150", depth: "0" }))).toBeNull();
+  });
+
+  it("rejects a negative load instead of reporting negative strength", () => {
+    expect(strengthOf(cube({ load: "-5", width: "150", height: "150" }))).toBeNull();
+  });
+
+  it("renders blanks for uncomputable auto fields rather than NaN or 0", () => {
+    expect(formatStrength(cube({ load: "", width: "150", height: "150" }))).toBe("");
+    expect(formatDensity(cube({ mass: "", width: "150", height: "150", depth: "150" }))).toBe("");
+  });
+});
+
+describe("mostCommonCastDate", () => {
+  it("returns the cast date most cubes share", () => {
+    const rows = [
+      cube({ dateOfCast: "2026-01-01" }),
+      cube({ dateOfCast: "2026-01-02" }),
+      cube({ dateOfCast: "2026-01-01" }),
+    ];
+    expect(mostCommonCastDate(rows)).toBe("2026-01-01");
+  });
+
+  it("ignores blank entries and resolves ties to the earliest date", () => {
+    expect(mostCommonCastDate([cube({ dateOfCast: "" }), cube()])).toBeNull();
+    const tied = [cube({ dateOfCast: "2026-01-02" }), cube({ dateOfCast: "2026-01-01" })];
+    expect(mostCommonCastDate(tied)).toBe("2026-01-01");
   });
 });

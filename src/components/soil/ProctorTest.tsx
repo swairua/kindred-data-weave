@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Check, ChevronDown, Download, FileDown, Loader2, Save, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Download, FileDown, Loader2, Save, Sigma, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -40,6 +40,7 @@ import { clearProctorResults, loadProctorResult, saveProctorResult } from "@/lib
 import { toast } from "sonner";
 import { useTestReport } from "@/hooks/useTestReport";
 import { generateMoistureDensityPDF } from "@/lib/mcPdfGenerator";
+import { generateFormulasReferencePDF } from "@/lib/formulasReferencePdfGenerator";
 import { captureChartAsBase64 } from "@/lib/chartCapture";
 
 interface ProctorTestProps {
@@ -324,6 +325,11 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
     });
   };
 
+  /** The shared calculations & formulas reference; identical from every section. */
+  const exportFormulas = async () => {
+    await generateFormulasReferencePDF({ labOrganization: project.labOrganization });
+  };
+
   if (isLoading) {
     return <div className="flex min-h-[360px] items-center justify-center text-sm text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" />Loading Proctor record...</div>;
   }
@@ -460,6 +466,7 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
             <DropdownMenuContent align="end">
               {/* This report is issued as the printed sheet only; no spreadsheet formats. */}
               <DropdownMenuItem onSelect={() => void exportPDF()}><FileDown className="mr-2 h-4 w-4" />PDF</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => void exportFormulas()}><Sigma className="mr-2 h-4 w-4" />Formulas & calculations</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <Button size="sm" className="min-w-20" onClick={handleSave} disabled={saveStatus === "saving" || isLoading}>

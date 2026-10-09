@@ -64,8 +64,7 @@ export const toInputValue = (
  * Days between two YYYY-MM-DD dates, or null if either is missing or the test
  * predates the cast. Both dates are built at local midnight and the result is
  * floored, so a daylight-saving shift across the interval cannot lose a day.
- */
-export const ageOf = (dateOfCast: string, dateOfTest: string): number | null => {
+ */export const ageOf = (dateOfCast: string, dateOfTest: string): number | null => {
   if (!dateOfCast || !dateOfTest) return null;
   const [castYear, castMonth, castDay] = dateOfCast.split("-").map(Number);
   const [testYear, testMonth, testDay] = dateOfTest.split("-").map(Number);
@@ -76,6 +75,28 @@ export const ageOf = (dateOfCast: string, dateOfTest: string): number | null => 
   const test = new Date(testYear, testMonth - 1, testDay, 0, 0, 0, 0);
   const days = Math.floor((test.getTime() - cast.getTime()) / (1000 * 60 * 60 * 24));
   return days >= 0 ? days : null;
+};
+
+/**
+ * The cast date shared by most cubes in the set, for the report's single
+ * "DATE CASTED" line. Blank entries are ignored and ties resolve to the
+ * earliest date so the choice is deterministic. Null when no cube has one.
+ */
+export const mostCommonCastDate = (rows: CompressiveCubeInput[]): string | null => {
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const date = row.dateOfCast.trim();
+    if (date) counts.set(date, (counts.get(date) ?? 0) + 1);
+  }
+  let best: string | null = null;
+  let bestCount = 0;
+  for (const [date, count] of counts) {
+    if (count > bestCount || (count === bestCount && (best === null || date < best))) {
+      best = date;
+      bestCount = count;
+    }
+  }
+  return best;
 };
 
 /**

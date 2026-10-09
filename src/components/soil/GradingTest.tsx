@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Check, ChevronDown, FileDown, HelpCircle, Loader2, Save, Trash2 } from "lucide-react";
+import { Check, ChevronDown, FileDown, HelpCircle, Loader2, Save, Sigma, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,8 @@ import { generateTestExcel } from "@/lib/genericExcelExporter";
 import { generateParticleSizeDistributionPDF } from "@/lib/psdPdfGenerator";
 import { calculateGrading, calculateHydrometer, calculateMoisture, type GradingRow } from "@/lib/gradingCalculations";
 import { mergePsdSeries } from "@/lib/psdChartGeometry";
-import { calculateAashtoGroupIndex, classifySoilAASHTO, classifySoilUSCS } from "@/lib/soilClassification";
+import { calculateAashtoGroupIndex, classifySoilAASHTO, classifySoilUSCS, getAashtoEvidenceWarnings } from "@/lib/soilClassification";
+import { generateFormulasReferencePDF } from "@/lib/formulasReferencePdfGenerator";
 import { toast } from "sonner";
 
 interface GradingTestProps {
@@ -314,12 +315,18 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
     };
     const gravelPassing = passingAt((size) => Number.parseFloat(size) === 4.75 || size.includes("No. 4"));
     const finesPassing = passingAt((size) => Number.parseFloat(size) === 0.075 || size.includes("0.075"));
+    // AASHTO M 145 evidence: % passing No. 10 (2.00 mm) and No. 40 (0.425 mm),
+    // read off the sieve rows the same way as the No. 4 / No. 200 values.
+    const p10Passing = passingAt((size) => Number.parseFloat(size) === 2 || size.includes("No. 10"));
+    const p40Passing = passingAt((size) => Number.parseFloat(size) === 0.425 || size.includes("No. 40"));
     const liquidLimit = parseNumber(record.classification.liquidLimit);
     const plasticLimit = parseNumber(record.classification.plasticLimit);
     return {
       gravel: gravelPassing === null ? null : 100 - gravelPassing,
       sand: gravelPassing !== null && finesPassing !== null ? gravelPassing - finesPassing : null,
       fines: finesPassing,
+      p10: p10Passing,
+      p40: p40Passing,
       plasticityIndex: liquidLimit !== null && plasticLimit !== null ? liquidLimit - plasticLimit : null,
     };
   }, [record.sieveRows, record.classification.liquidLimit, record.classification.plasticLimit, calculations.cumulativePassing]);
@@ -336,14 +343,33 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       plasticityIndex: plasticityIndex ?? undefined,
     };
     const uscs = classifySoilUSCS({ gravel, sand, fines }, atterberg);
-    const aashto = classifySoilAASHTO({ gravel, sand, fines }, atterberg);
+    // AASHTO M 145 granular groups need the No. 10 / No. 40 passing values;
+    // without them the classifier falls back to a flagged approximation.
+    const aashto = classifySoilAASHTO({ gravel, sand, fines }, atterberg, {
+      p10: classificationValues.p10,
+      p40: classificationValues.p40,
+      nonPlastic: record.classification.nonPlastic,
+    });
     return {
       uscsSymbol: uscs.uscsSymbol,
       uscsDescription: uscs.uscsDescription,
       uscsGroup: uscs.uscsGroup,
       aashtoGroup: aashto,
     };
-  }, [classificationValues, record.classification.liquidLimit, record.classification.plasticLimit]);
+  }, [classificationValues, record.classification.liquidLimit, record.classification.plasticLimit, record.classification.nonPlastic]);
+
+  /**
+   * Missing-sieve evidence warnings for the granular AASHTO groups. When the
+   * No. 10 / No. 40 rows are empty the group above is an approximation, so
+   * the banner below says exactly which verdicts cannot be verified.
+   */
+  const aashtoWarnings = useMemo(() => getAashtoEvidenceWarnings({
+    p10: classificationValues.p10,
+    p40: classificationValues.p40,
+    p200: classificationValues.fines,
+    plasticityIndex: classificationValues.plasticityIndex,
+    nonPlastic: record.classification.nonPlastic,
+  }), [classificationValues, record.classification.nonPlastic]);
 
   /**
    * AASHTO M 145 (2008) 6.4 group index. F is the percentage passing the 75 µm
@@ -617,6 +643,11 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
     }
   };
 
+  /** The shared calculations & formulas reference; identical from every section. */
+  const exportFormulas = async () => {
+    await generateFormulasReferencePDF({ labOrganization: project.labOrganization });
+  };
+
   if (isLoading) {
     return <div className="flex min-h-[360px] items-center justify-center text-sm text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" />Loading particle size distribution record...</div>;
   }
@@ -665,6 +696,10 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
           <EditableCell label="Fines (%)" value={formatValue(classificationValues.fines, 1)} calculated />
         </div>
         <div className="mt-px grid gap-px overflow-hidden rounded-md border sm:grid-cols-2">
+          <EditableCell label="No. 10 passing P10 (%)" value={formatValue(classificationValues.p10, 1)} calculated />
+          <EditableCell label="No. 40 passing P40 (%)" value={formatValue(classificationValues.p40, 1)} calculated />
+        </div>
+        <div className="mt-px grid gap-px overflow-hidden rounded-md border sm:grid-cols-2">
           <EditableCell label="USCS (auto)" value={autoClassification ? `${autoClassification.uscsSymbol} — ${autoClassification.uscsDescription}` : "auto"} calculated />
           <EditableCell label="USCS override" value={record.classification.uscs} onChange={(value) => updateNested("classification", "uscs", value)} />
         </div>
@@ -683,7 +718,11 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
           </div>
         </div>
         <div className="mt-2 grid gap-2 border-t pt-2 text-[11px] sm:grid-cols-3"><label className="flex items-center gap-2"><Checkbox checked={record.classification.nonPlastic} onCheckedChange={(checked) => updateNested("classification", "nonPlastic", checked === true)} />Non-plastic (NP)</label><label className="flex items-center gap-2"><Checkbox checked={record.classification.suspectedOrganic} onCheckedChange={(checked) => updateNested("classification", "suspectedOrganic", checked === true)} />Suspected organic soil</label><div><span className="text-muted-foreground">Oven-dried Liquid Limit</span><div className="mt-1 rounded border bg-muted/40 px-2 py-1">{record.classification.ovenDriedLiquidLimit}</div></div></div>
-        <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] text-amber-800">USCS: USCS requires measured No. 4 and No. 200 passing values. AASHTO: AASHTO requires measured No. 10, No. 40, and No. 200 passing values.</div>
+        {aashtoWarnings.length > 0 ? (
+          <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] text-amber-800"><span className="font-semibold">AASHTO evidence: </span>{aashtoWarnings.join(" ")} The group shown is an approximation.</div>
+        ) : (
+          <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] text-amber-800">USCS: USCS requires measured No. 4 and No. 200 passing values. AASHTO: AASHTO requires measured No. 10, No. 40, and No. 200 passing values.</div>
+        )}
       </RecordSection>
 
       <div className="grid gap-3 md:grid-cols-[3fr_5fr]">
@@ -715,7 +754,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       </RecordSection>
 
       <section className="record-card flex flex-col gap-3 px-4 py-3 text-[10px] sm:flex-row sm:items-center sm:justify-between"><div><span className="text-muted-foreground">TESTED BY</span><div className="font-semibold uppercase">{record.testedBy || "—"}</div></div><div><span className="text-muted-foreground">DATE REPORTED</span><div className="font-semibold">{project.dateReported || "—"}</div></div></section>
-      <div className="flex flex-wrap items-center justify-between gap-2 print:hidden"><Button variant="outline" size="sm" className="border-destructive/20 text-destructive hover:bg-destructive/10" onClick={handleClear}><Trash2 className="mr-1.5 h-3.5 w-3.5" />Delete</Button><div className="flex flex-wrap gap-0"><Button size="sm" className="rounded-r-none bg-primary" onClick={handleSave} disabled={saveStatus === "saving"}>{saveStatus === "saving" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : saveStatus === "saved" ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}{saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved" : "Save"}</Button><DropdownMenu><DropdownMenuTrigger asChild><Button size="sm" aria-label="Export options" className="rounded-l-none border-l border-primary-foreground/30 bg-primary px-2 text-primary-foreground hover:bg-primary/90"><ChevronDown className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => void exportFiles("pdf")}><FileDown className="mr-2 h-4 w-4" />PDF</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div></div>
+      <div className="flex flex-wrap items-center justify-between gap-2 print:hidden"><Button variant="outline" size="sm" className="border-destructive/20 text-destructive hover:bg-destructive/10" onClick={handleClear}><Trash2 className="mr-1.5 h-3.5 w-3.5" />Delete</Button><div className="flex flex-wrap gap-0"><Button size="sm" className="rounded-r-none bg-primary" onClick={handleSave} disabled={saveStatus === "saving"}>{saveStatus === "saving" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : saveStatus === "saved" ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}{saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved" : "Save"}</Button><DropdownMenu><DropdownMenuTrigger asChild><Button size="sm" aria-label="Export options" className="rounded-l-none border-l border-primary-foreground/30 bg-primary px-2 text-primary-foreground hover:bg-primary/90"><ChevronDown className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => void exportFiles("pdf")}><FileDown className="mr-2 h-4 w-4" />PDF</DropdownMenuItem><DropdownMenuItem onSelect={() => void exportFormulas()}><Sigma className="mr-2 h-4 w-4" />Formulas & calculations</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div></div>
     </div>
   );
 };

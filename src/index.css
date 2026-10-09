@@ -507,6 +507,10 @@
     @apply bg-calculated text-calculated-foreground;
   }
 
+  .calculated-field {
+    @apply bg-calculated text-calculated-foreground font-mono;
+  }
+
   .record-identity strong {
     @apply font-medium;
   }
