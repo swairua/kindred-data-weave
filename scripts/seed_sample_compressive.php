@@ -232,6 +232,36 @@ foreach ($cubes as $cube) {
     }
 }
 
+// 4. Create or update a test_results record so the project appears in the Projects list
+//    (the Projects page filters by test_results count for each project)
+$trList = apiGet($apiUrl, $token, ['action' => 'list', 'table' => 'test_results', 'limit' => 1000]);
+$existingResultId = null;
+foreach ($trList['data'] ?? [] as $r) {
+    if ((int) $r['project_id'] === $projectId && ($r['test_key'] ?? '') === 'compressive') {
+        $existingResultId = $r['id'];
+        break;
+    }
+}
+
+$testResultData = [
+    'project_id'    => $projectId,
+    'test_key'      => 'compressive',
+    'name'          => 'Compressive Strength Test',
+    'category'      => 'concrete',
+    'status'        => 'submitted',
+    'data_points'   => count($cubes),
+    'payload_json'  => json_encode(['test_id' => $testId]),
+];
+
+if ($existingResultId !== null) {
+    $res = apiPostJson($apiUrl, $token, 'update', 'test_results', $testResultData, (int) $existingResultId);
+    echo "Updated test_results record (id={$existingResultId})\n";
+} else {
+    $res = apiPostJson($apiUrl, $token, 'create', 'test_results', $testResultData);
+    $resultId = (int) ($res['data']['data']['id'] ?? $res['data']['id'] ?? 0);
+    echo "Created test_results record (id={$resultId})\n";
+}
+
 echo PHP_EOL . "COMPRESSIVE SAMPLE SEEDED: YES" . PHP_EOL;
 echo "Project: $projectName (id=$projectId)" . PHP_EOL;
 echo "Compressive test: id=$testId" . PHP_EOL;
