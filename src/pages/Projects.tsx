@@ -51,6 +51,22 @@ const hasResumableGradingPayload = (payload: unknown) => {
   return typeof firstRecord === "object" && firstRecord !== null && !Array.isArray(firstRecord);
 };
 
+const TEST_TYPE_LABELS: Record<string, string> = {
+  grading: "Grading",
+  proctor: "Proctor",
+  compressive: "Compressive",
+  concrete: "Concrete",
+  atterberg: "Atterberg",
+  rock: "Rock",
+  soil: "Soil",
+  special: "Special",
+};
+
+const formatTestType = (testType: string | null | undefined): string => {
+  if (!testType) return "-";
+  return TEST_TYPE_LABELS[testType] ?? testType;
+};
+
 const Projects = () => {
   const navigate = useNavigate();
   const { user, logout } = useSession();
@@ -102,14 +118,17 @@ const Projects = () => {
   // Map API data to display format
   const projects = useMemo(() => {
     if (apiProjects.length > 0) {
-      return apiProjects.map((p) => ({
-        id: p.id,
-        name: p.name,
-        client_name: p.client_name || undefined,
-        created_at: p.project_date || new Date().toISOString(),
-        test_type: p.test_type,
-        samples: p.sample_count || 0,
-      }));
+      return apiProjects
+        .filter((p) => (p.sample_count ?? 0) > 0)
+        .map((p) => ({
+          id: p.id,
+          name: p.name,
+          client_name: p.client_name || undefined,
+          created_at: p.project_date || new Date().toISOString(),
+          test_type: p.test_type,
+          testTypeLabel: formatTestType(p.test_type),
+          samples: p.sample_count || 0,
+        }));
     }
     return [];
   }, [apiProjects]);
@@ -276,6 +295,7 @@ const Projects = () => {
                             <TableRow className="bg-muted/40 hover:bg-muted/40">
                               <TableHead className="h-8 px-2 text-[10px] font-semibold tracking-wide text-muted-foreground">PROJECT</TableHead>
                               <TableHead className="hidden h-8 px-2 text-[10px] font-semibold tracking-wide text-muted-foreground sm:table-cell">DATE CREATED</TableHead>
+                              <TableHead className="hidden h-8 px-2 text-center text-[10px] font-semibold tracking-wide text-muted-foreground sm:table-cell">CLASS</TableHead>
                               <TableHead className="hidden h-8 px-2 text-center text-[10px] font-semibold tracking-wide text-muted-foreground sm:table-cell">SAMPLES</TableHead>
                               <TableHead className="h-8 px-2 text-right text-[10px] font-semibold tracking-wide text-muted-foreground">ACTION</TableHead>
                             </TableRow>
@@ -293,18 +313,23 @@ const Projects = () => {
                                       {project.client_name || "No client"}
                                     </p>
                                     <p className="text-[10px] leading-3 text-muted-foreground sm:hidden">
-                                      {formatDate(project.created_at)}
+                                      {formatDate(project.created_at)} · <span className="capitalize">{project.test_type || "unknown"}</span>
                                     </p>
                                   </div>
                                 </TableCell>
-                                <TableCell className="hidden px-2 py-1.5 text-xs sm:table-cell">
-                                  {formatDate(project.created_at)}
-                                </TableCell>
-                                <TableCell className="hidden px-2 py-1.5 text-center font-medium sm:table-cell">
-                                  <span className="inline-flex min-w-5 justify-center rounded-sm bg-muted px-1 py-0.5 text-[10px] leading-none">
-                                    {project.samples || "0"}
-                                  </span>
-                                </TableCell>
+                                  <TableCell className="hidden px-2 py-1.5 text-xs sm:table-cell">
+                                    {formatDate(project.created_at)}
+                                  </TableCell>
+                                  <TableCell className="hidden px-2 py-1.5 text-center text-xs font-medium sm:table-cell">
+                                    <span className="inline-flex min-w-5 justify-center rounded-sm bg-muted px-1.5 py-0.5 text-[10px] leading-none">
+                                      {project.testTypeLabel}
+                                    </span>
+                                  </TableCell>
+                                  <TableCell className="hidden px-2 py-1.5 text-center font-medium sm:table-cell">
+                                    <span className="inline-flex min-w-5 justify-center rounded-sm bg-muted px-1 py-0.5 text-[10px] leading-none">
+                                      {project.samples || "0"}
+                                    </span>
+                                  </TableCell>
                                 <TableCell className="px-2 py-1.5 text-right">
                                   <div className="flex items-center justify-end gap-2">
                                     <Button

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState } from "react";
+import { setDynamicFavicon } from "@/lib/favicon";
 
 export type WizardStep = "material" | "testType" | "project" | "sample" | "dataEntry";
 export type MaterialType = "soil" | "rock" | "concrete";
@@ -58,6 +59,7 @@ export const WizardProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const setProject = (projectId: number, projectName: string) => {
     setState((prev) => ({ ...prev, projectId, projectName }));
+    setDynamicFavicon(projectName);
   };
 
   const setSample = (sampleId: string, depthFrom: string, depthTo: string) => {

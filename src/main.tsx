@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { initDynamicFavicon } from "./lib/favicon";
 
 // Debug utilities for development
 import "./lib/debugImageLoading";
@@ -18,6 +19,8 @@ window.addEventListener('error', (event) => {
 window.addEventListener('unhandledrejection', (event) => {
   console.error('[MAIN] Unhandled promise rejection:', event.reason);
 });
+
+initDynamicFavicon();
 
 try {
   console.log('[MAIN] Starting app render...');

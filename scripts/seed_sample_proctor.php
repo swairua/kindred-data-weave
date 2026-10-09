@@ -59,7 +59,7 @@ $sampledBy   = 'Cransfield';
 $testedBy    = 'JILLO';
 $dateSub     = '2026-06-09';
 $dateTest    = '2026-06-11';
-$sampleNotes = 'BS 1377-4:1990 3.3 (standard Proctor, 2.5 kg rammer)';
+$sampleNotes = 'BS 1377-4:1990 3.3 (Standard Proctor, 2.5 kg rammer). 1 L mould. 6 points at ~8,10,12,14,16,18% moisture. Gs=2.70. 5% air voids line.';
 
 // Proctor parameters
 $mouldVolume    = '1000';   // cm³, 1 L compaction mould (BS 1377-4 3.3.2.1)
@@ -71,18 +71,23 @@ $mouldTare    = '2500';
 $containerTare = '50';
 
 /**
- * Six standard Proctor points bracketing the peak. Each entry is
- * [moistureAdded(cc), containerNo, drySoilMass(g), waterMass(g)].
- * The mould and container masses are derived so the computed
- * moisture content and dry density land on the intended curve.
+ * Six standard Proctor points per BS 1377-4:1990 3.3.
+ * Clause 3.3.2: "At least five moisture contents shall be used... the range
+ * shall include the optimum moisture content."
+ * 
+ * Typical Class 25/20 subgrade soil (well-graded granular):
+ * - Target OMC ≈ 12-13%, MDD ≈ 1900-1950 kg/m³
+ * - Points at ~8%, 10%, 12%, 14%, 16%, 18% moisture to bracket the peak
+ * Each entry: [moistureAdded(cc), containerNo, drySoilMass(g), waterMass(g)]
+ * Mould/containers masses derived so computed (w, ρd) land on intended curve.
  *
  * Intended (moisture %, dry density kg/m³):
- *   A  8.0  1750
- *   B 10.0  1850
- *   C 12.0  1920
- *   D 14.0  1900
- *   E 16.0  1830
- *   F 18.0  1750
+ *   A  8.0   1750  (dry of optimum)
+ *   B 10.0   1850
+ *   C 12.0   1925  (near peak)
+ *   D 14.0   1905  (wet of optimum)
+ *   E 16.0   1830
+ *   F 18.0   1750
  */
 $points = [
     ['moistureAdded' => '0',   'containerNo' => 'C1', 'drySoilMass' => '100', 'waterMass' => '8'],
