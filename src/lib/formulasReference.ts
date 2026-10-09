@@ -18,7 +18,9 @@ export type FormulaSourceModule =
   | "atterbergCalculations"
   | "gradingCalculations"
   | "proctorRecords"
-  | "compressiveCalculations";
+  | "compressiveCalculations"
+  | "soilClassification"
+  | "compressivePdfGenerator";
 
 export interface FormulaVariable {
   symbol: string;
@@ -42,7 +44,7 @@ export interface FormulaSection {
   entries: FormulaEntry[];
 }
 
-export const FORMULAS_REFERENCE_VERSION = "1.0.0";
+export const FORMULAS_REFERENCE_VERSION = "1.1.0";
 
 export const FORMULAS_REFERENCE_TITLE = "Calculations and Formulas Reference";
 
@@ -66,6 +68,7 @@ export const FORMULA_SECTIONS: FormulaSection[] = [
         notes: [
           "The pan row (<0.063) contributes its mass to the total but reports no passing value.",
           "With no weighed material every percentage reads as auto, never 0%.",
+          "Worked (lab sheet KIRIAINI AHP): 40.22 g retained on No. 4 of 176.4 g total -> 22.8% retained, 77.2% passing.",
         ],
         sourceModule: "gradingCalculations",
         sourceFunctions: ["calculateGrading"],
@@ -126,9 +129,28 @@ export const FORMULA_SECTIONS: FormulaSection[] = [
         notes: [
           "BS 1377-2:1990 9.5.7.2: the 1990 edition carries no temperature-correction term; a manual value is accepted for correction-based instruments.",
           "The (Gs - 1) divisor converts the density excess on the hydrometer scale into mass of soil in suspension, so K% needs Gs > 1.",
+          "Sheet columns map to code fields: Rn' -> observed reading, Rd -> adjusted reading, Rh -> corrected reading, H -> effective depth, D -> particle diameter, K% sample/whole -> fines in suspension / by hydrometer.",
         ],
         sourceModule: "gradingCalculations",
         sourceFunctions: ["calculateHydrometer"],
+      },
+      {
+        heading: "Worked example - Group Index (AASHTO M 145 6.4)",
+        formulas: [
+          "GI = (F - 35) * (0.2 + 0.005 * (LL - 40)) + 0.01 * (F - 15) * (PI - 10)",
+          "F = 82, LL = 38, PI = 21:",
+          "GI = (82 - 35) * (0.2 + 0.005 * (38 - 40)) + 0.01 * (82 - 15) * (21 - 10)",
+          "GI = 8.9 + 7.4 = 16.3 -> reported as the whole number 16",
+        ],
+        variables: [
+          { symbol: "F", meaning: "% passing the No. 200 (0.075 mm) sieve" },
+        ],
+        notes: [
+          "The standard's own worked example; negative results are reported as zero.",
+          "A-2-6 and A-2-7 use the plasticity term alone.",
+        ],
+        sourceModule: "soilClassification",
+        sourceFunctions: ["calculateAashtoGroupIndex"],
       },
     ],
   },
@@ -195,6 +217,19 @@ export const FORMULA_SECTIONS: FormulaSection[] = [
         sourceFunctions: ["calculateLinearShrinkage", "LS_MIN_VALID_TRIALS"],
       },
       {
+        heading: "Non-plastic soils (NP)",
+        formulas: [
+          "PI = LL - PL = 0 (PL entered equal to LL, or the Non-plastic box ticked)",
+          "-> code NP: BS/USCS classification is skipped, soil reported as Non-plastic",
+        ],
+        variables: [],
+        notes: [
+          "Per lab note: when shrinkage reads 0.00 and PI is zero with no plastic-limit entries, display Non-plastic rather than classifying.",
+        ],
+        sourceModule: "atterbergCalculations",
+        sourceFunctions: ["classifyAtterberg"],
+      },
+      {
         heading: "Plasticity Index and related indices",
         formulas: [
           "PI = LL - PL  (withheld when PL exceeds LL: physically invalid)",
@@ -211,6 +246,94 @@ export const FORMULA_SECTIONS: FormulaSection[] = [
         ],
         sourceModule: "atterbergCalculations",
         sourceFunctions: ["calculatePlasticityIndex", "calculateModulusOfPlasticity", "getALinePI", "getULinePI", "classifyAtterberg"],
+      },
+      {
+        heading: "Worked example - classification (programmer's guide)",
+        formulas: [
+          "LL = 48, PL = 22 -> PI = 48 - 22 = 26",
+          "A-line value = 0.73 * (48 - 20) = 20.44; PI 26 >= 20.44 -> Clay (C)",
+          "LL 48 in [35, 50) -> Intermediate (I); BS code = C + I = CI",
+          "USCS: LL < 50 and above A-line -> CL",
+          "Description: Clay of Intermediate Plasticity; note: Moderate volume change potential",
+        ],
+        variables: [],
+        notes: [
+          "The guide's own example; PI is always derived, never entered directly.",
+        ],
+        sourceModule: "atterbergCalculations",
+        sourceFunctions: ["classifyAtterberg", "getALinePI"],
+      },
+    ],
+  },
+  {
+    testKey: "classification",
+    title: "Soil Classification (BS, USCS, AASHTO)",
+    standard: "BS 1377 / ASTM D2487 (USCS) / AASHTO M 145 - ASTM D3282",
+    entries: [
+      {
+        heading: "BS 1377 and USCS decision rules (from LL and PL)",
+        formulas: [
+          "PI = LL - PL (always derived, never entered directly)",
+          "A-line value = 0.73 * (LL - 20): PI >= A-line -> Clay (C), else Silt (M); ties go to Clay",
+          "BS second letter: LL < 35 L (Low) / < 50 I (Intermediate) / < 70 H (High) / < 90 V (Very High) / >= 90 E (Extremely High); a boundary belongs to the higher band",
+          "BS code = first + second letter (e.g. C + I = CI, Clay of Intermediate Plasticity)",
+          "USCS: LL < 50 -> CL / ML, LL >= 50 -> CH / MH on the same A-line split",
+          "Hatched zone LL < 50, 4 <= PI <= 7, at/above A-line -> dual symbol CL-ML",
+          "Guards: PL > LL invalid; PI = 0 -> NP (skip); PI < 4 borderline; PI > U-line 0.9 * (LL - 8) suspect (withhold)",
+        ],
+        variables: [
+          { symbol: "LL", meaning: "liquid limit (%)" },
+          { symbol: "PL", meaning: "plastic limit (%)" },
+          { symbol: "PI", meaning: "plasticity index (%)" },
+        ],
+        notes: [
+          "Engineering notes by band: Low / Moderate / High / Very high volume change potential.",
+          "Per the programmer's guide the whole classification is two comparisons and a string join.",
+        ],
+        sourceModule: "atterbergCalculations",
+        sourceFunctions: ["classifyAtterberg", "getALinePI", "getULinePI"],
+      },
+      {
+        heading: "USCS grain-size route (ASTM D2487 flow charts)",
+        formulas: [
+          "fines = % passing No. 200 (0.075 mm)",
+          "gravel = 100 - % passing No. 4 (4.75 mm)",
+          "sand = % passing No. 4 - % passing No. 200",
+          "fines >= 50% -> fine-grained (A-line route above); else sand family if sand > gravel, gravel family otherwise",
+          "clean (fines <= 12%): SP/SW or GP/GW; fines > 12%: the A-line decides silty (M) vs clayey (C)",
+        ],
+        variables: [],
+        notes: [
+          "Gravel + sand + fines must total 100%; otherwise classification is withheld as invalid data.",
+        ],
+        sourceModule: "soilClassification",
+        sourceFunctions: ["classifySoilUSCS", "validateClassificationData"],
+      },
+      {
+        heading: "AASHTO M 145 groups (12 groups, lab classification note)",
+        formulas: [
+          "P200 <= 35% -> granular soils, else silt-clay soils",
+          "A-1-a: P10 <= 50, P40 <= 30, P200 <= 15, PI <= 6 (stone fragments, gravel, sand)",
+          "A-1-b: P40 <= 50, P200 <= 25, PI <= 6 (stone fragments, gravel, sand)",
+          "A-3: P40 >= 51, P200 <= 10, non-plastic (fine sand)",
+          "A-2-4: P200 <= 35, LL <= 40, PI <= 10 / A-2-5: LL > 40, PI <= 10",
+          "A-2-6: P200 <= 35, LL <= 40, PI > 10 / A-2-7: LL > 40, PI > 10",
+          "A-4: P200 > 35, LL <= 40, PI <= 10 / A-5: LL > 40, PI <= 10 / A-6: LL <= 40, PI > 10",
+          "A-7-5: P200 > 35, LL > 40, PI <= LL - 30 / A-7-6: PI > LL - 30",
+          "GI = (F - 35) * (0.2 + 0.005 * (LL - 40)) + 0.01 * (F - 15) * (PI - 10)",
+        ],
+        variables: [
+          { symbol: "P10 / P40 / P200", meaning: "% passing No. 10 (2.00 mm) / No. 40 (0.425 mm) / No. 200 (0.075 mm)" },
+          { symbol: "F", meaning: "% passing No. 200 for the Group Index" },
+          { symbol: "GI", meaning: "group index, whole number >= 0 (A-2-6/A-2-7 use the plasticity term alone)" },
+        ],
+        notes: [
+          "LL and PI are measured on the fraction passing No. 40; LL plays no role in A-1-a, A-1-b or A-3.",
+          "Ratings: A-1/A-2/A-3 Excellent-Good (GI 0-4); A-4..A-7 Fair-Poor (GI up to 8/12/16/20).",
+          "Critical note: all three sieve values are required for granular soils; without P10/P40 the app shows a best-effort group flagged as unverified.",
+        ],
+        sourceModule: "soilClassification",
+        sourceFunctions: ["classifySoilAASHTO", "calculateAashtoGroupIndex", "getAashtoEvidenceWarnings"],
       },
     ],
   },
@@ -269,6 +392,7 @@ export const FORMULA_SECTIONS: FormulaSection[] = [
         ],
         notes: [
           "The fitted compaction curve must stay below the ZAV line; the air-voids line always sits below ZAV by construction.",
+          "Report sheets draw the 0%, 5% and 10% voids lines beside the fitted curve for the same check.",
         ],
         sourceModule: "proctorRecords",
         sourceFunctions: ["zeroAirVoidsDensity", "airVoidsDensity"],
@@ -340,6 +464,33 @@ export const FORMULA_SECTIONS: FormulaSection[] = [
         ],
         sourceModule: "compressiveCalculations",
         sourceFunctions: ["groupVerdict", "getPassFailResults", "strengthCategory", "ACCEPTANCE_MARGIN_MPA"],
+      },
+      {
+        heading: "Report percentages and remarks (lab cube sheet)",
+        formulas: [
+          "% of class = strength / class target * 100 (whole number)",
+          "Satisfactory when strength >= 65% of the class target (7-day expectation per BS EN 206)",
+        ],
+        variables: [],
+        notes: [
+          "Lab sheet VENUS: 25.1 MPa of C30 -> 84% Satisfactory; 21.5 MPa -> 72% Satisfactory.",
+        ],
+        sourceModule: "compressivePdfGenerator",
+        sourceFunctions: ["percentOfClass", "isSatisfactory"],
+      },
+      {
+        heading: "Worked example - 150 mm cube",
+        formulas: [
+          "load 564.1 kN on 150 x 150 mm: strength = 564.1 * 1000 / (150 * 150) = 25.07 MPa (lab sheet rounds to 25.1)",
+          "mass 7927 g: density = (7927 / 1000) / ((150 * 150 * 150) / 10^9) = 2349 kg/m3",
+          "cast 19-Sep, tested 26-Sep -> age 7 days -> 7-day band (7 +/- 1)",
+        ],
+        variables: [],
+        notes: [
+          "The lab sheet's own readings; recompute them to verify any result row.",
+        ],
+        sourceModule: "compressiveCalculations",
+        sourceFunctions: ["strengthOf", "densityOf", "ageOf"],
       },
     ],
   },

@@ -15,6 +15,8 @@ const MODULE_LOADERS: Record<FormulaSourceModule, () => Promise<Record<string, u
   gradingCalculations: () => import("@/lib/gradingCalculations"),
   proctorRecords: () => import("@/lib/proctorRecords"),
   compressiveCalculations: () => import("@/lib/compressiveCalculations"),
+  soilClassification: () => import("@/lib/soilClassification"),
+  compressivePdfGenerator: () => import("@/lib/compressivePdfGenerator"),
 };
 
 const collectStrings = (value: unknown): string[] => {
@@ -25,10 +27,11 @@ const collectStrings = (value: unknown): string[] => {
 };
 
 describe("formulas reference content", () => {
-  it("covers grading, atterberg, proctor and compressive sections", () => {
+  it("covers grading, atterberg, classification, proctor and compressive sections", () => {
     expect(FORMULA_SECTIONS.map((section) => section.testKey)).toEqual([
       "grading",
       "atterberg",
+      "classification",
       "proctor",
       "compressive",
     ]);
@@ -91,5 +94,24 @@ describe("formulas reference PDF", () => {
     expect(FORMULAS_REFERENCE_TITLE.trim()).not.toBe("");
     expect(FORMULAS_REFERENCE_VERSION).toMatch(/^\d+\.\d+\.\d+$/);
     expect(FORMULAS_REFERENCE_FILENAME).toBe("Calculations_and_Formulas_Reference.pdf");
+  });
+
+  it("worked examples reproduce the implementation", async () => {
+    const atterberg = await import("@/lib/atterbergCalculations");
+    const classified = atterberg.classifyAtterberg(48, 22);
+    expect(classified.plasticityIndex).toBe(26);
+    expect(atterberg.getALinePI(48)).toBeCloseTo(20.44, 2);
+    expect(classified.BS_classification).toBe("CI");
+    expect(classified.USCS_classification).toBe("CL");
+
+    const soil = await import("@/lib/soilClassification");
+    expect(
+      soil.calculateAashtoGroupIndex({ passingNo200: 82, liquidLimit: 38, plasticityIndex: 21, aashtoGroup: "A-7-6" }),
+    ).toBe(16);
+
+    const compressive = await import("@/lib/compressiveCalculations");
+    const cube = { mark: "", dateOfCast: "", dateOfTest: "", load: "564.1", width: "150", height: "150", depth: "150", mass: "", remarks: "" };
+    expect(compressive.strengthOf(cube)).toBeCloseTo(25.07, 2);
+    expect(compressive.formatStrength(cube)).toBe("25.07");
   });
 });
