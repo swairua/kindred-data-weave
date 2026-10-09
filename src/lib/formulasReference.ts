@@ -44,7 +44,7 @@ export interface FormulaSection {
   entries: FormulaEntry[];
 }
 
-export const FORMULAS_REFERENCE_VERSION = "1.1.0";
+export const FORMULAS_REFERENCE_VERSION = "1.2.0";
 
 export const FORMULAS_REFERENCE_TITLE = "Calculations and Formulas Reference";
 
@@ -439,20 +439,40 @@ export const FORMULA_SECTIONS: FormulaSection[] = [
         heading: "Target strength and age groups",
         formulas: [
           "class target: C25/30 -> 30 (the cube figure); single-figure classes use that figure",
-          "7-day band: 7 +/- 1 days;  28-day band: 28 +/- 3 days",
+          "bands: 1 day exact, 3 days exact, 7 +/- 1, 14 +/- 2, 28 +/- 3 days",
+          "band targets follow the class through the gain table (C30 -> 4.8 / 12 / 19.5 / 27 / 29.7 MPa) until typed over",
         ],
         variables: [],
         notes: [
-          "Each band is judged on its own mean: a 7-day and a 28-day cube are never averaged together.",
+          "Each band is judged on its own mean: cubes of different ages are never averaged together.",
           "Cubes outside every band are reported under Other ages, never dropped.",
+          "Early/late breaks off the nominal day fall into Other ages; confirm wider windows with the lab if needed.",
         ],
         sourceModule: "compressiveCalculations",
-        sourceFunctions: ["cubeStrengthFromClass", "buildAgeGroups"],
+        sourceFunctions: ["cubeStrengthFromClass", "buildAgeGroups", "classBandTargets", "STRENGTH_GAIN_TABLE"],
+      },
+      {
+        heading: "Strength gain with age (lab reference table)",
+        formulas: [
+          "1 day -> 16% of 28-day strength",
+          "3 days -> 40% of 28-day strength",
+          "7 days -> 65% of 28-day strength",
+          "14 days -> 90% of 28-day strength",
+          "28 days -> 99% of 28-day strength",
+          "expected MPa = class target * percent / 100",
+        ],
+        variables: [],
+        notes: [
+          "Percentages are of the characteristic (28-day) strength, e.g. C30 at 7 days is expected to reach 19.5 MPa.",
+        ],
+        sourceModule: "compressiveCalculations",
+        sourceFunctions: ["expectedPercentAtAge", "expectedStrength"],
       },
       {
         heading: "Acceptance",
         formulas: [
           "group accepted when mean >= target AND lowest cube >= target - 4",
+          "per cube: Satisfactory when strength reaches the age expectation (e.g. >= 65% of class at 7 days, >= 99% at 28 days); unknown age falls back to >= 65%",
           "pass tally: cubes with strength >= threshold (a real 0 MPa counts as a failure)",
         ],
         variables: [
@@ -463,13 +483,13 @@ export const FORMULA_SECTIONS: FormulaSection[] = [
           "Strength bands: < 7 very low, 7-20 low, 20-40 normal structural, > 40 high.",
         ],
         sourceModule: "compressiveCalculations",
-        sourceFunctions: ["groupVerdict", "getPassFailResults", "strengthCategory", "ACCEPTANCE_MARGIN_MPA"],
+        sourceFunctions: ["groupVerdict", "getPassFailResults", "strengthCategory", "gainSummary", "ACCEPTANCE_MARGIN_MPA"],
       },
       {
         heading: "Report percentages and remarks (lab cube sheet)",
         formulas: [
           "% of class = strength / class target * 100 (whole number)",
-          "Satisfactory when strength >= 65% of the class target (7-day expectation per BS EN 206)",
+          "Satisfactory when strength reaches the age expectation from the gain table (65% at 7 days, 99% at 28 days)",
         ],
         variables: [],
         notes: [

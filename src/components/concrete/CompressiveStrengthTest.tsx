@@ -19,10 +19,12 @@ import {
   ACCEPTANCE_MARGIN_MPA,
   ageOf,
   buildAgeGroups,
+  classBandTargets,
   cubeStrengthFromClass,
   emptyCubeRow,
   formatDensity,
   formatStrength,
+  gainSummary,
   getPassFailResults,
   getStrengthDistribution,
   isFiniteNumber,
@@ -33,6 +35,7 @@ import {
   strengthRemark,
   toInputValue,
   type CompressiveCubeInput,
+  type MultiStandardTargets,
 } from "@/lib/compressiveCalculations";
 
 type Row = CompressiveCubeInput;
@@ -93,10 +96,13 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   const [isThresholdOverridden, setIsThresholdOverridden] = useState(false);
   const [passFailMode, setPassFailMode] = useState<"simple" | "multi">("simple");
   const [multiStandardTargets, setMultiStandardTargets] = useState({
+    oneDay: 4,
+    threeDay: 10,
     sevenDay: 17,
+    fourteenDay: 22.5,
     twentyEightDay: 25,
-    custom: 30,
   });
+  const [isMultiOverridden, setIsMultiOverridden] = useState(false);
   const [testDetails, setTestDetails] = useState<TestDetails>(() => ({
     cement: "",
     fineAggregate: "",
@@ -327,6 +333,18 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   );
 
   /**
+   * Band targets follow the concrete class through the gain table (C30 ->
+   * 4.8/12/19.5/27/29.7 MPa) until the technician types in a box, which
+   * takes over just like the simple threshold override.
+   */
+  const effectiveMultiTargets: MultiStandardTargets = useMemo(
+    () => (!isMultiOverridden && classTargetStrength !== null)
+      ? classBandTargets(classTargetStrength)
+      : multiStandardTargets,
+    [isMultiOverridden, classTargetStrength, multiStandardTargets],
+  );
+
+  /**
    * Cubes grouped by the age they were actually tested at.
    *
    * Cube acceptance is judged on the mean of a group broken at one age, so averaging a 7-day
@@ -335,8 +353,8 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
    * than being dropped on the floor.
    */
   const ageGroups = useMemo(
-    () => buildAgeGroups(rows, multiStandardTargets),
-    [rows, multiStandardTargets],
+    () => buildAgeGroups(rows, effectiveMultiTargets),
+    [rows, effectiveMultiTargets],
   );
 
   const chartConfig = { strength: { label: "Strength (MPa)", color: "hsl(var(--primary))" } };
@@ -467,6 +485,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
             {rows.map((row, i) => {
               const isDensityAbnormal = isAbnormalDensity(row);
               const isHighlighted = highlightedRowIndex === i;
+              const gain = gainSummary(row, classTargetStrength);
               return (
                 <tr
                   key={row.id ?? `pending-${i}`}
@@ -490,7 +509,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
                   <td className="py-1.5 px-2"><Input type="number" value={row.mass} onChange={(e) => update(i, "mass", e.target.value)} className="h-8 min-w-[96px] text-sm" placeholder="—" /></td>
                   <td className={`py-1.5 px-2 ${isDensityAbnormal ? "text-red-600 font-semibold" : ""}`}><CalculatedInput value={formatDensity(row)} /></td>
                   <td className="py-1.5 px-2"><Input type="number" value={row.load} onChange={(e) => update(i, "load", e.target.value)} className="h-8 text-sm" placeholder="0" /></td>
-                  <td className="py-1.5 px-2"><CalculatedInput value={formatStrength(row)} /></td>
+                  <td className="py-1.5 px-2"><CalculatedInput value={formatStrength(row)} />{gain !== "" && (<div className="mt-0.5 text-[11px] leading-tight text-muted-foreground">{gain}</div>)}</td>
                   <td className="py-1.5 px-2">
                     {editingRemarksIndex === i ? (
                       <div className="flex gap-1">
@@ -648,33 +667,42 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
 
           <TabsContent value="multi" className="space-y-3 mt-0">
             <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Label className="text-xs w-20">7-Day (MPa):</Label>
-                <Input
-                  type="number"
-                  value={multiStandardTargets.sevenDay}
-                  onChange={(e) => setMultiStandardTargets(prev => ({ ...prev, sevenDay: parseFloat(e.target.value) || 17 }))}
-                  className="h-8 flex-1 text-sm"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <Label className="text-xs w-20">28-Day (MPa):</Label>
-                <Input
-                  type="number"
-                  value={multiStandardTargets.twentyEightDay}
-                  onChange={(e) => setMultiStandardTargets(prev => ({ ...prev, twentyEightDay: parseFloat(e.target.value) || 25 }))}
-                  className="h-8 flex-1 text-sm"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <Label className="text-xs w-20">Custom (MPa):</Label>
-                <Input
-                  type="number"
-                  value={multiStandardTargets.custom}
-                  onChange={(e) => setMultiStandardTargets(prev => ({ ...prev, custom: parseFloat(e.target.value) || 30 }))}
-                  className="h-8 flex-1 text-sm"
-                />
-              </div>
+              {([
+                { label: "1-Day (MPa):", field: "oneDay", fallback: 4 },
+                { label: "3-Day (MPa):", field: "threeDay", fallback: 10 },
+                { label: "7-Day (MPa):", field: "sevenDay", fallback: 17 },
+                { label: "14-Day (MPa):", field: "fourteenDay", fallback: 22.5 },
+                { label: "28-Day (MPa):", field: "twentyEightDay", fallback: 25 },
+              ] as { label: string; field: keyof MultiStandardTargets; fallback: number }[]).map((item) => (
+                <div className="flex items-center gap-2" key={item.field}>
+                  <Label className="text-xs w-20">{item.label}</Label>
+                  <Input
+                    type="number"
+                    value={effectiveMultiTargets[item.field]}
+                    onChange={(e) => {
+                      setMultiStandardTargets(prev => ({ ...prev, [item.field]: parseFloat(e.target.value) || item.fallback }));
+                      setIsMultiOverridden(true);
+                    }}
+                    className="h-8 flex-1 text-sm"
+                  />
+                </div>
+              ))}
+              <span className="text-[11px] text-muted-foreground">
+                {classTargetStrength !== null && !isMultiOverridden
+                  ? `Using class ${testDetails.concreteClass} targets via the gain table`
+                  : isMultiOverridden
+                    ? "Manual override"
+                    : "No concrete class set — using default targets"}
+              </span>
+              {isMultiOverridden && classTargetStrength !== null && (
+                <button
+                  type="button"
+                  className="text-[11px] text-primary underline underline-offset-2"
+                  onClick={() => setIsMultiOverridden(false)}
+                >
+                  Use class targets
+                </button>
+              )}
             </div>
             {ageGroups.bands.map((group) => (
               <div

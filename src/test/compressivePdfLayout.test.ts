@@ -84,6 +84,21 @@ describe("isSatisfactory", () => {
     expect(isSatisfactory(12, 30)).toBe(false);
   });
 
+  it("judges each cube against its own age expectation", () => {
+    // A 28-day cube at 70% is far below its 99% expectation.
+    expect(isSatisfactory(21, 30, 28)).toBe(false);
+    // A 3-day cube at 45% beats its 40% expectation.
+    expect(isSatisfactory(13.5, 30, 3)).toBe(true);
+    // The reference 7-day cubes still pass at their 65% expectation.
+    expect(isSatisfactory(25.1, 30, 7)).toBe(true);
+    expect(isSatisfactory(21.5, 30, 7)).toBe(true);
+  });
+
+  it("falls back to the flat 65% line when the age is unknown", () => {
+    expect(isSatisfactory(21.5, 30, null)).toBe(true);
+    expect(isSatisfactory(12, 30, null)).toBe(false);
+  });
+
   it("gives no verdict without a class or a measured strength", () => {
     expect(isSatisfactory(25.1, null)).toBe(false);
     expect(isSatisfactory(null, 30)).toBe(false);

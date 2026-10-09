@@ -3,17 +3,22 @@ import { describe, it, expect } from "vitest";
 import {
   ageOf,
   buildAgeGroups,
+  classBandTargets,
   cubeStrengthFromClass,
   densityOf,
   emptyCubeRow,
+  expectedPercentAtAge,
+  expectedStrength,
   formatDensity,
   formatStrength,
+  gainSummary,
   getPassFailResults,
   getStrengthDistribution,
   groupVerdict,
   mostCommonCastDate,
   parseNumber,
   strengthOf,
+  STRENGTH_GAIN_TABLE,
   type CompressiveCubeInput,
 } from "@/lib/compressiveCalculations";
 
@@ -123,7 +128,7 @@ describe("groupVerdict", () => {
 });
 
 describe("buildAgeGroups", () => {
-  const targets = { sevenDay: 17, twentyEightDay: 25, custom: 30 };
+  const targets = { oneDay: 4, threeDay: 10, sevenDay: 17, fourteenDay: 22.5, twentyEightDay: 25 };
 
   const atAge = (days: number, load: string) => {
     const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -144,10 +149,27 @@ describe("buildAgeGroups", () => {
     expect(twentyEight.mean).toBeCloseTo(35.11, 1);
   });
 
-  it("does not treat a 3-day cube as a 7-day cube", () => {
+  it("routes a 3-day cube to its own band, judged against the 3-day target", () => {
     // Regression: the old bucket was `age <= 7`, so a 3-day cube was judged against 17 MPa.
     const groups = buildAgeGroups([atAge(3, "384")], targets);
     expect(groups.bands.find((g) => g.key === "sevenDay")!.count).toBe(0);
+    const three = groups.bands.find((g) => g.key === "threeDay")!;
+    expect(three.count).toBe(1);
+    expect(three.target).toBe(10);
+    expect(groups.other.count).toBe(0);
+  });
+
+  it("groups 1-day and 14-day cubes in their own bands", () => {
+    const groups = buildAgeGroups([atAge(1, "100"), atAge(14, "600")], targets);
+    expect(groups.bands.find((g) => g.key === "oneDay")!.count).toBe(1);
+    expect(groups.bands.find((g) => g.key === "fourteenDay")!.count).toBe(1);
+    expect(groups.other.count).toBe(0);
+  });
+
+  it("keeps off-nominal early ages under 'other'", () => {
+    // 1-day and 3-day bands take exact days only, so a 2-day cube matches nothing.
+    const groups = buildAgeGroups([atAge(2, "200")], targets);
+    expect(groups.bands.every((g) => g.count === 0)).toBe(true);
     expect(groups.other.count).toBe(1);
   });
 
@@ -251,6 +273,56 @@ describe("auto-field guards", () => {
   it("renders blanks for uncomputable auto fields rather than NaN or 0", () => {
     expect(formatStrength(cube({ load: "", width: "150", height: "150" }))).toBe("");
     expect(formatDensity(cube({ mass: "", width: "150", height: "150", depth: "150" }))).toBe("");
+  });
+});
+
+describe("strength gain table", () => {
+  it("holds the lab reference percentages for every reporting age", () => {
+    expect(STRENGTH_GAIN_TABLE.map((row) => [row.days, row.percent])).toEqual([
+      [1, 16],
+      [3, 40],
+      [7, 65],
+      [14, 90],
+      [28, 99],
+    ]);
+  });
+
+  it("returns the expectation at exact reporting ages only", () => {
+    expect(expectedPercentAtAge(7)).toBe(65);
+    expect(expectedPercentAtAge(28)).toBe(99);
+    expect(expectedPercentAtAge(2)).toBeNull();
+    expect(expectedPercentAtAge(null)).toBeNull();
+  });
+
+  it("converts a class target into MPa at an age", () => {
+    expect(expectedStrength(30, 7)).toBeCloseTo(19.5, 10);
+    expect(expectedStrength(30, 2)).toBeNull();
+    expect(expectedStrength(null, 7)).toBeNull();
+  });
+
+  it("derives all five band targets from a concrete class", () => {
+    expect(classBandTargets(30)).toEqual({
+      oneDay: 4.8,
+      threeDay: 12,
+      sevenDay: 19.5,
+      fourteenDay: 27,
+      twentyEightDay: 29.7,
+    });
+  });
+});
+
+describe("gainSummary", () => {
+  it("shows achieved versus expected share of the class target", () => {
+    const row = cube({ dateOfCast: "2026-01-01", dateOfTest: "2026-01-08", load: "667", width: "150", height: "150" });
+    expect(gainSummary(row, 30)).toBe("99% (expected 65%)");
+  });
+
+  it("stays blank unless strength, age, expectation and target are all known", () => {
+    const row = cube({ dateOfCast: "2026-01-01", dateOfTest: "2026-01-08", load: "667", width: "150", height: "150" });
+    expect(gainSummary(row, null)).toBe("");
+    expect(gainSummary(cube({ load: "", width: "150", height: "150" }), 30)).toBe("");
+    // Age 2 is off the gain table, so there is no expectation to show.
+    expect(gainSummary(cube({ dateOfCast: "2026-01-01", dateOfTest: "2026-01-03", load: "200", width: "150", height: "150" }), 30)).toBe("");
   });
 });
 

@@ -17,6 +17,7 @@ import {
   ageOf,
   cubeStrengthFromClass,
   densityOf,
+  expectedPercentAtAge,
   parseNumber,
   strengthOf,
   type CompressiveCubeInput,
@@ -160,15 +161,24 @@ export const percentOfClass = (strength: number | null, classTarget: number | nu
 
 /**
  * Whether a cube is acceptable, as a fraction of the class characteristic
- * strength.
+ * strength at the age it was broken.
  *
  * A bare comparison against the class figure would condemn every early cube:
  * the reference's own 7-day cube reached 84% of a C30 class and was reported
- * "Satisfactory". BS EN 206 treats roughly two thirds of the characteristic
- * strength as the expected 7-day proportion, so that is the line used here.
+ * "Satisfactory". Each age is judged against the strength-gain table (1d 16%,
+ * 3d 40%, 7d 65%, 14d 90%, 28d 99%), so a 28-day cube at 70% is below its
+ * 99% expectation while a 3-day cube at 45% beats its 40% one. Without a
+ * known age the long-standing flat 65% line is kept as the fallback.
  */
-export const isSatisfactory = (strength: number | null, classTarget: number | null): boolean =>
-  strength !== null && classTarget !== null && classTarget > 0 && strength >= classTarget * 0.65;
+export const isSatisfactory = (
+  strength: number | null,
+  classTarget: number | null,
+  ageDays: number | null = null,
+): boolean => {
+  if (strength === null || classTarget === null || classTarget <= 0) return false;
+  const expected = ageDays === null ? 65 : expectedPercentAtAge(ageDays) ?? 65;
+  return strength >= (classTarget * expected) / 100;
+};
 
 /** A cube counts as printable only once it can produce a strength. */
 const isPopulated = (row: CompressiveCubeInput): boolean => strengthOf(row) !== null;
@@ -316,10 +326,10 @@ const cubeSheetValues = (row: CompressiveCubeInput, classTarget: number | null):
   const strength = strengthOf(row);
   const density = densityOf(row);
   const age = ageOf(row.dateOfCast, row.dateOfTest);
-  // A technician's own remark always wins; otherwise show the verdict.
+  // A technician's own remark always wins; otherwise show the age-aware verdict.
   const verdict = strength === null || classTarget === null
     ? ""
-    : isSatisfactory(strength, classTarget) ? "Satisfactory" : "Below target";
+    : isSatisfactory(strength, classTarget, age) ? "Satisfactory" : "Below target";
   return [
     row.mark.trim() || "None",
     formatReportDate(row.dateOfCast) || BLANK,

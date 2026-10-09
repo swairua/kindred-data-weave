@@ -173,12 +173,49 @@ export const cubeStrengthFromClass = (concreteClass: string): number | null => {
 
 
 /**
+ * Expected strength gain as a percentage of the 28-day characteristic
+ * strength (lab reference table: 1d 16%, 3d 40%, 7d 65%, 14d 90%, 28d 99%).
+ */
+export const STRENGTH_GAIN_TABLE = [
+  { days: 1, percent: 16 },
+  { days: 3, percent: 40 },
+  { days: 7, percent: 65 },
+  { days: 14, percent: 90 },
+  { days: 28, percent: 99 },
+] as const;
+
+/** Expected percentage at an exact reporting age; null for off-nominal ages. */
+export const expectedPercentAtAge = (ageDays: number | null): number | null => {
+  if (ageDays === null) return null;
+  return STRENGTH_GAIN_TABLE.find((row) => row.days === ageDays)?.percent ?? null;
+};
+
+/** Expected MPa for a class target at an age; null when indeterminable. */
+export const expectedStrength = (
+  classTarget: number | null,
+  ageDays: number | null,
+): number | null => {
+  const percent = ageDays === null ? null : expectedPercentAtAge(ageDays);
+  if (classTarget === null || !Number.isFinite(classTarget) || classTarget <= 0 || percent === null) {
+    return null;
+  }
+  return (classTarget * percent) / 100;
+};
+
+/**
  * Reporting ages, each with the tolerance it may deviate by.
  * The original buckets were `age <= 7` and `25..31`, which counted a 3-day cube
  * as a 7-day cube and silently dropped everything aged 8-24 days.
+ * The 1-day and 3-day bands take exact days only (tolerance 0) so the windows
+ * stay disjoint; anything off-nominal is reported under "other" rather than
+ * forced into a band. CONFIRM with the lab if early/late breaks deserve wider
+ * windows than the nominal day.
  */
 export const AGE_BANDS = [
+  { key: "oneDay" as const, label: "1-Day", nominalDays: 1, toleranceDays: 0 },
+  { key: "threeDay" as const, label: "3-Day", nominalDays: 3, toleranceDays: 0 },
   { key: "sevenDay" as const, label: "7-Day", nominalDays: 7, toleranceDays: 1 },
+  { key: "fourteenDay" as const, label: "14-Day", nominalDays: 14, toleranceDays: 2 },
   { key: "twentyEightDay" as const, label: "28-Day", nominalDays: 28, toleranceDays: 3 },
 ];
 
@@ -216,10 +253,50 @@ export interface AgeGroup {
 }
 
 export interface MultiStandardTargets {
+  oneDay: number;
+  threeDay: number;
   sevenDay: number;
+  fourteenDay: number;
   twentyEightDay: number;
-  custom: number;
 }
+
+/**
+ * Band targets derived from a concrete class via the gain table
+ * (C30 -> 4.8 / 12 / 19.5 / 27 / 29.7 MPa), rounded to one decimal.
+ */
+export const classBandTargets = (classTarget: number): MultiStandardTargets => {
+  const round1 = (value: number) => Math.round(value * 10) / 10;
+  const at = (days: number): number => {
+    const percent = STRENGTH_GAIN_TABLE.find((row) => row.days === days)?.percent ?? 0;
+    return round1((classTarget * percent) / 100);
+  };
+  return {
+    oneDay: at(1),
+    threeDay: at(3),
+    sevenDay: at(7),
+    fourteenDay: at(14),
+    twentyEightDay: at(28),
+  };
+};
+
+/**
+ * Compact per-cube gain readout, e.g. "84% (expected 65%)": the achieved
+ * share of the class target against the age expectation. Empty unless the
+ * cube has a strength, an age on the gain table, and a class target.
+ */
+export const gainSummary = (
+  row: CompressiveCubeInput,
+  classTarget: number | null,
+): string => {
+  const strength = strengthOf(row);
+  const age = ageOf(row.dateOfCast, row.dateOfTest);
+  const expected = age === null ? null : expectedPercentAtAge(age);
+  if (strength === null || classTarget === null || !Number.isFinite(classTarget) || classTarget <= 0 || expected === null) {
+    return "";
+  }
+  const achieved = Math.round((strength / classTarget) * 100);
+  return `${achieved}% (expected ${expected}%)`;
+};
 
 export interface AgeGroupBreakdown {
   bands: AgeGroup[];
@@ -268,13 +345,28 @@ export const buildAgeGroups = (
       .map(strengthOf)
       .filter(isFiniteNumber);
 
+  const targetFor = (key: string): number => {
+    switch (key) {
+      case "oneDay": return targets.oneDay;
+      case "threeDay": return targets.threeDay;
+      case "fourteenDay": return targets.fourteenDay;
+      case "twentyEightDay": return targets.twentyEightDay;
+      default: return targets.sevenDay;
+    }
+  };
+
+  const bandLabel = (band: (typeof AGE_BANDS)[number]): string =>
+    band.toleranceDays === 0
+      ? `${band.label} (${band.nominalDays} day${band.nominalDays === 1 ? "" : "s"})`
+      : `${band.label} (${band.nominalDays - band.toleranceDays}–${band.nominalDays + band.toleranceDays} days)`;
+
   const bands = AGE_BANDS.map((band) => {
-    const target = band.nominalDays === 7 ? targets.sevenDay : targets.twentyEightDay;
+    const target = targetFor(band.key);
     const strengths = collect((age) => Math.abs(age - band.nominalDays) <= band.toleranceDays);
     return summarise(
       strengths,
       band.key,
-      `${band.label} (${band.nominalDays - band.toleranceDays}–${band.nominalDays + band.toleranceDays} days)`,
+      bandLabel(band),
       band.nominalDays,
       target,
     );
