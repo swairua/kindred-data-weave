@@ -280,8 +280,26 @@ const ProjectOverview = () => {
       (b.updated_at || b.created_at || "").localeCompare(a.updated_at || a.created_at || ""),
     );
   })();
-  const addTestKey = project?.test_type === "grading" ? "grading" : "atterberg";
-  const addTestLabel = project?.test_type === "grading" ? "Add Grading" : "Add Atterberg";
+  const addTestKey = (() => {
+    if (!project) return "atterberg";
+    const keyMap: Record<string, string> = {
+      grading: "grading",
+      proctor: "proctor",
+      compressive: "compressive",
+      atterberg: "atterberg",
+    };
+    return keyMap[project.test_type ?? ""] ?? "atterberg";
+  })();
+  const addTestLabel = (() => {
+    if (!project) return "Add Atterberg";
+    const labelMap: Record<string, string> = {
+      grading: "Add Grading",
+      proctor: "Add Proctor",
+      compressive: "Add Compressive",
+      atterberg: "Add Atterberg",
+    };
+    return labelMap[project.test_type ?? ""] ?? "Add Atterberg";
+  })();
 
   return (
     <SidebarProvider>
@@ -446,7 +464,7 @@ const ProjectOverview = () => {
                           <FlaskConical className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
                           <p className="font-medium">No tests recorded yet</p>
                           <p className="mt-1 text-sm text-muted-foreground">
-                            Add a {project.test_type === "grading" ? "grading" : "Atterberg"} test or choose a saved test from the project list.
+                            Add a {project.test_type === "grading" ? "grading" : project.test_type === "proctor" ? "Proctor" : project.test_type === "compressive" ? "compressive" : "Atterberg"} test or choose a saved test from the project list.
                           </p>
                         </div>
                       ) : (
