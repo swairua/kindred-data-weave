@@ -313,24 +313,24 @@ const Projects = () => {
                                       {project.client_name || "No client"}
                                     </p>
                                     <p className="text-[10px] leading-3 text-muted-foreground sm:hidden">
-                                      {formatDate(project.created_at)} · <span className="capitalize">{project.test_type || "unknown"}</span>
+                                      {formatDate(project.created_at)} · <span className="capitalize">{project.testTypeLabel}</span>
                                     </p>
                                   </div>
-                                </TableCell>
-                                  <TableCell className="hidden px-2 py-1.5 text-xs sm:table-cell">
-                                    {formatDate(project.created_at)}
-                                  </TableCell>
-                                  <TableCell className="hidden px-2 py-1.5 text-center text-xs font-medium sm:table-cell">
-                                    <span className="inline-flex min-w-5 justify-center rounded-sm bg-muted px-1.5 py-0.5 text-[10px] leading-none">
-                                      {project.testTypeLabel}
-                                    </span>
-                                  </TableCell>
-                                  <TableCell className="hidden px-2 py-1.5 text-center font-medium sm:table-cell">
-                                    <span className="inline-flex min-w-5 justify-center rounded-sm bg-muted px-1 py-0.5 text-[10px] leading-none">
-                                      {project.samples || "0"}
-                                    </span>
-                                  </TableCell>
-                                <TableCell className="px-2 py-1.5 text-right">
+                                 </TableCell>
+                                 <TableCell className="hidden px-2 py-1.5 text-xs sm:table-cell">
+                                   {formatDate(project.created_at)}
+                                 </TableCell>
+                                 <TableCell className="hidden px-2 py-1.5 text-center text-xs font-medium sm:table-cell">
+                                   <span className="inline-flex min-w-5 justify-center rounded-sm bg-muted px-1.5 py-0.5 text-[10px] leading-none">
+                                     {project.testTypeLabel}
+                                   </span>
+                                 </TableCell>
+                                 <TableCell className="hidden px-2 py-1.5 text-center font-medium sm:table-cell">
+                                   <span className="inline-flex min-w-5 justify-center rounded-sm bg-muted px-1 py-0.5 text-[10px] leading-none">
+                                     {project.samples || "0"}
+                                   </span>
+                                 </TableCell>
+                                 <TableCell className="px-2 py-1.5 text-right">
                                   <div className="flex items-center justify-end gap-2">
                                     <Button
                                       variant="outline"
