@@ -1,0 +1,35 @@
+59: /** A results-table column. `group` marks the columns sharing a merged heading. */
+60: interface Col {
+61:   label: string;
+62:   w: number;
+63:   group?: string;
+64: }
+65: 
+66: /**
+67:  * The columns of the results table, in millimetres, summing to TABLE_W.
+68:  *
+69:  * The widths are the reference sheet's own column edges converted to mm, so the
+70:  * printed rules line up with the laboratory's original. The percentage and the
+71:  * comment share one merged "Remarks/Comments" heading; the final column is the
+72:  * reference's narrow trailing spacer.
+73:  */
+74: const COLS: Col[] = [
+75:   { label: "CUBE MARK", w: 24.0 },
+76:   { label: "DATE OF\nCAST", w: 18.0 },
+77:   { label: "DATE OF\nTEST", w: 19.7 },
+78:   { label: "AGE\n(DAYS)", w: 16.3 },
+79:   { label: "L", w: 16.2, group: "CUBE DIMM\n(mm)" },
+80:   { label: "W", w: 15.9, group: "CUBE DIMM\n(mm)" },
+81:   { label: "H", w: 16.2, group: "CUBE DIMM\n(mm)" },
+82:   { label: "MASS OF\nCUBE(g)", w: 16.2 },
+83:   { label: "DENSITY\n(Kg/m3)", w: 16.3 },
+84:   { label: "MAX LOAD\nAT\nFAILURE (KN)", w: 22.2 },
+85:   { label: "COMPRESSIVE\nSTRENGTH\n(N/mm2)", w: 23.3 },
+86:   { label: "", w: 15.8, group: "Remarks/Comments" },
+87:   { label: "", w: 42.5, group: "Remarks/Comments" },
+88: ];
+89: 
+90: /** Index of the column printed in bold, matching the reference's emphasised result. */
+91: const BOLD_COLUMN = 10;
+92: 
+93: export interface CompressiveRecordView {

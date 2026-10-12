@@ -46,8 +46,12 @@ const FOOTER_RESERVE = 20;
 const COLORS = {
   dark: [0, 0, 0] as [number, number, number],
   grid: [120, 120, 120] as [number, number, number],
-  labelBg: [232, 232, 232] as [number, number, number],
-  headerBg: [217, 217, 217] as [number, number, number],
+  /** Brand blue used for the page frame and the rule beneath the header. */
+  blue: [0, 0, 255] as [number, number, number],
+  /** Peach label cells, matching the reference identification block. */
+  labelBg: [252, 228, 214] as [number, number, number],
+  /** Light-grey table-header cells. */
+  headerBg: [212, 212, 212] as [number, number, number],
 } as const;
 
 const BLANK = "__________";
@@ -64,24 +68,23 @@ interface Col {
  *
  * The widths are the reference sheet's own column edges converted to mm, so the
  * printed rules line up with the laboratory's original. The percentage and the
- * comment share one merged "Remarks/Comments" heading; the final column is the
- * reference's narrow trailing spacer.
+ * comment share one merged "Remarks/Comments" heading, which fills the sheet
+ * to the right-hand edge.
  */
 const COLS: Col[] = [
-  { label: "Cube Mark", w: 24.0 },
-  { label: "Date of Cast", w: 18.0 },
-  { label: "Date of Test", w: 19.7 },
-  { label: "Age (Days)", w: 16.3 },
-  { label: "L", w: 16.2, group: "Cube Dimensions (mm)" },
-  { label: "W", w: 15.9, group: "Cube Dimensions (mm)" },
-  { label: "H", w: 16.2, group: "Cube Dimensions (mm)" },
-  { label: "Mass of Cube (g)", w: 16.2 },
-  { label: "Density (Kg/m3)", w: 16.3 },
-  { label: "Max Load at Failure (KN)", w: 22.2 },
-  { label: "Compressive Strength (N/mm2)", w: 23.3 },
-  { label: "%", w: 15.8, group: "Remarks/Comments" },
-  { label: "", w: 25.4, group: "Remarks/Comments" },
-  { label: "", w: 17.1 },
+  { label: "CUBE MARK", w: 24.0 },
+  { label: "DATE OF\nCAST", w: 18.0 },
+  { label: "DATE OF\nTEST", w: 19.7 },
+  { label: "AGE\n(DAYS)", w: 16.3 },
+  { label: "L", w: 16.2, group: "CUBE DIMM\n(mm)" },
+  { label: "W", w: 15.9, group: "CUBE DIMM\n(mm)" },
+  { label: "H", w: 16.2, group: "CUBE DIMM\n(mm)" },
+  { label: "MASS OF\nCUBE(g)", w: 16.2 },
+  { label: "DENSITY\n(Kg/m3)", w: 16.3 },
+  { label: "MAX LOAD\nAT\nFAILURE (KN)", w: 22.2 },
+  { label: "COMPRESSIVE\nSTRENGTH\n(N/mm2)", w: 23.3 },
+  { label: "", w: 15.8, group: "Remarks/Comments" },
+  { label: "", w: 42.5, group: "Remarks/Comments" },
 ];
 
 /** Index of the column printed in bold, matching the reference's emphasised result. */
@@ -167,7 +170,9 @@ export const percentOfClass = (strength: number | null, classTarget: number | nu
  * the reference's own 7-day cube reached 84% of a C30 class and was reported
  * "Satisfactory". Each age is judged against the strength-gain table (1d 16%,
  * 3d 40%, 7d 65%, 14d 90%, 28d 99%), so a 28-day cube at 70% is below its
- * 99% expectation while a 3-day cube at 45% beats its 40% one. Without a
+ * 99% expectation while a 3-day cube at 45% beats its 40% one. Past 28 days
+ * the concrete is judged against the 28-day line, so a 55-day cube at 78%
+ * reads "Unsatisfactory". Without a
  * known age the long-standing flat 65% line is kept as the fallback.
  */
 export const isSatisfactory = (
@@ -176,12 +181,16 @@ export const isSatisfactory = (
   ageDays: number | null = null,
 ): boolean => {
   if (strength === null || classTarget === null || classTarget <= 0) return false;
-  const expected = ageDays === null ? 65 : expectedPercentAtAge(ageDays) ?? 65;
+  // The strength-gain table stops at 28 days; older cubes hold the 28-day line.
+  const cappedAge = ageDays === null ? null : Math.min(ageDays, 28);
+  const expected = cappedAge === null ? 65 : expectedPercentAtAge(cappedAge) ?? 65;
   return strength >= (classTarget * expected) / 100;
 };
 
 /** A cube counts as printable only once it can produce a strength. */
 const isPopulated = (row: CompressiveCubeInput): boolean => strengthOf(row) !== null;
+const TERMS_INTRO =
+  "Reports and Certificates by Cransfield Labs are issued subject to the below terms and conditions:";
 const TERMS = [
   "Results herein is a true representation of the cubes submitted to our lab to the best of our knowledge.",
   "Any correction or addition to these test results will make this report invalid.",
@@ -189,7 +198,7 @@ const TERMS = [
   "This report should not be reproduced or published in full or part without prior written approval from our lab.",
   "All photocopies of test reports produced and not signed by our Technical Director should be considered invalid.",
   "All the results released to the client from our lab are treated as strictly confidential and would only be released to other parties with written instruction from the client.",
-  "A legal contract between the client and the lab will deem to have constituted upon receipt of the test results by the client sent via any electronic transmission media or collected by client's representative.",
+  "A legal contract between the client and Cransfield Lab will deem to have constituted upon receipt of the test results by the client sent via any electronic transmission media or collected by client's representative.",
 ];
 
 /** One cell of the identification block: a label box plus a value. */
@@ -210,42 +219,61 @@ const drawCellText = (
   size: number,
   bold = false,
 ) => {
-  const fitted = fitText(d, value, w - 1.6, size);
+  // Labels like "DATE OF\nCAST" and two-line "CM/5552\nCM/5553" lab refs sit on
+  // a vertical stack of centred lines; a single line keeps the old placement.
+  const lines = value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  if (lines.length <= 1) {
+    const fitted = fitText(d, value, w - 1.6, size);
+    d.setFontSize(fitted);
+    d.setFont("helvetica", bold ? "bold" : "normal");
+    d.setTextColor(...COLORS.dark);
+    // jsPDF anchors on the text baseline, so offset by a third of the cap height
+    // to sit the text on the vertical centre of the cell.
+    d.text(value, x + w / 2, y + h / 2 + fitted * 0.35, { align: "center" });
+    return;
+  }
+  const longest = lines.reduce((a, b) => (a.length >= b.length ? a : b), "");
+  const fitted = fitText(d, longest, w - 1.6, size);
   d.setFontSize(fitted);
   d.setFont("helvetica", bold ? "bold" : "normal");
   d.setTextColor(...COLORS.dark);
-  // jsPDF anchors on the text baseline, so offset by a third of the cap height
-  // to sit the text on the vertical centre of the cell.
-  d.text(value, x + w / 2, y + h / 2 + fitted * 0.35, { align: "center" });
+  const lineH = fitted * 0.42;
+  let cy = y + h / 2 - ((lines.length - 1) * lineH) / 2;
+  for (const line of lines) {
+    d.text(line, x + w / 2, cy + fitted * 0.35, { align: "center" });
+    cy += lineH;
+  }
 };
 
 /** Build the identification rows shown above the results table. */
 const buildIdRows = (o: CompressiveStrengthPdfOptions): IdCell[][] => {
   const r = o.record;
-  // Cells in each row share the table width exactly: halves, thirds, or quarters.
+  // Cells in each row share the table width exactly: full width, halves,
+  // thirds, or quarters. DATE REPORTED lives in the footer, not the block.
   const half = TABLE_W / 2;
   const third = TABLE_W / 3;
   const quarter = TABLE_W / 4;
   return [
+    [{ label: "PROJECT", value: text(o.projectName), w: TABLE_W }],
+    [{ label: "CLIENT", value: text(o.clientName), w: TABLE_W }],
     [
-      { label: "PROJECT", value: text(o.projectName), w: half },
-      { label: "CLIENT", value: text(o.clientName), w: half },
+      { label: "COUNTY", value: text(r.county), w: third },
+      { label: "CONCRETE CLASS", value: text(r.concreteClass), w: third },
+      { label: "DATE CASTED", value: formatReportDate(r.dateCasted) || BLANK, w: third },
     ],
     [
       { label: "CONTRACTOR", value: text(r.contractor), w: third },
-      { label: "COUNTY", value: text(r.county), w: third },
-      { label: "CONCRETE CLASS", value: text(r.concreteClass), w: third },
+      { label: "SECTION", value: text(r.section), w: third },
+      // A two-line lab reference ("CM/5552\nCM/5553") stacks inside one cell.
+      { label: "LAB REF", value: text(r.labRef), w: third },
     ],
     [
-      { label: "SECTION", value: text(r.section), w: quarter },
-      { label: "MADE BY", value: text(r.madeBy), w: quarter },
-      { label: "SLUMP", value: text(r.slump), w: quarter },
-      { label: "LAB REF", value: text(r.labRef), w: quarter },
-    ],
-    [
+      { label: "MADE BY", value: text(r.madeBy), w: third },
       { label: "CLIENT REF", value: text(r.clientRef), w: third },
-      { label: "DATE CASTED", value: formatReportDate(r.dateCasted) || BLANK, w: third },
-      { label: "DATE REPORTED", value: formatReportDate(o.dateReported ?? "") || BLANK, w: third },
+      { label: "SLUMP", value: text(r.slump), w: third },
     ],
   ];
 };
@@ -276,44 +304,45 @@ const drawIdentification = (d: jsPDF, o: CompressiveStrengthPdfOptions, y: numbe
 };
 
 /**
- * Draw the two-line table heading. "Cube Dimensions (mm)" spans the three
- * L/W/H columns, so those cells carry their letter on the second line.
+ * Draw the three-band table heading. Ungrouped columns stack their "\n"
+ * label lines across the full height; "CUBE DIMM\n(mm)" spans L/W/H with
+ * the letters on the bottom band while "Remarks/Comments" merges across
+ * its two columns as one centred heading.
  */
 const drawTableHeader = (d: jsPDF, y: number): number => {
-  const halfH = HEADER_H / 2;
+  const bandH = HEADER_H / 3;
   let x = TABLE_X;
   let i = 0;
   while (i < COLS.length) {
     const col = COLS[i];
-    // A grouped heading consumes every following column that shares its group.
+    // Only a real group name merges columns: without the guard two plain
+    // columns would match as `undefined === undefined` and collapse the header.
+    const grouped = col.group !== undefined;
     let span = 1;
-    while (i + span < COLS.length && (COLS[i + span] as { group?: string }).group === col.group) span += 1;
+    while (i + span < COLS.length && grouped && (COLS[i + span] as { group?: string }).group === col.group) span += 1;
     const width = COLS.slice(i, i + span).reduce((sum, c) => sum + c.w, 0);
-    const isGroup = Boolean((col as { group?: string }).group);
-    const topH = isGroup ? halfH : HEADER_H;
+    const hasSubLabels = grouped && COLS.slice(i, i + span).some((c) => c.label.trim() !== "");
 
     d.setFillColor(...COLORS.headerBg);
-    d.rect(x, y, width, topH, "F");
     d.setDrawColor(...COLORS.grid);
     d.setLineWidth(0.2);
-    d.rect(x, y, width, topH);
-    const heading = col.group ?? col.label;
-    d.setFontSize(fitText(d, heading, width - 2, 6.5, 4));
-    d.setFont("helvetica", "bold");
-    d.setTextColor(...COLORS.dark);
-    d.text(heading, x + width / 2, y + topH / 2 + 2, { align: "center" });
-
-    // Second line: only the grouped dimension columns have a sub-label.
-    if (isGroup) {
+    if (!grouped) {
+      d.rect(x, y, col.w, HEADER_H, "FD");
+      drawCellText(d, col.label, x, y, col.w, HEADER_H, 6.5, true);
+    } else if (hasSubLabels) {
+      // Two-line group name over the top two bands, letters on the bottom band.
+      d.rect(x, y, width, bandH * 2, "FD");
+      drawCellText(d, col.group as string, x, y, width, bandH * 2, 6.5, true);
       for (let k = 0; k < span; k += 1) {
         const sub = COLS[i + k];
         const sx = x + COLS.slice(i, i + k).reduce((sum, c) => sum + c.w, 0);
-        d.setFillColor(...COLORS.headerBg);
-        d.rect(sx, y + halfH, sub.w, halfH, "F");
-        d.setDrawColor(...COLORS.grid);
-        d.rect(sx, y + halfH, sub.w, halfH);
-        drawCellText(d, sub.label, sx, y + halfH, sub.w, halfH, 6.5, true);
+        d.rect(sx, y + bandH * 2, sub.w, bandH, "FD");
+        drawCellText(d, sub.label, sx, y + bandH * 2, sub.w, bandH, 6.5, true);
       }
+    } else {
+      // Merged heading with no sub-labels (Remarks/Comments).
+      d.rect(x, y, width, HEADER_H, "FD");
+      drawCellText(d, col.group as string, x, y, width, HEADER_H, 6.5, true);
     }
     x += width;
     i += span;
@@ -329,12 +358,13 @@ const cubeSheetValues = (row: CompressiveCubeInput, classTarget: number | null):
   // A technician's own remark always wins; otherwise show the age-aware verdict.
   const verdict = strength === null || classTarget === null
     ? ""
-    : isSatisfactory(strength, classTarget, age) ? "Satisfactory" : "Below target";
+    : isSatisfactory(strength, classTarget, age) ? "Satisfactory" : "Unsatisfactory";
   return [
     row.mark.trim() || "None",
     formatReportDate(row.dateOfCast) || BLANK,
     formatReportDate(row.dateOfTest) || BLANK,
-    age === null ? BLANK : String(age),
+    // Past 28 days the sheet prints "Above 28", matching the reference.
+    age === null ? BLANK : age > 28 ? "Above 28" : String(age),
     text(row.width, "150"),
     text(row.height, "150"),
     text(row.depth, "150"),
@@ -344,8 +374,6 @@ const cubeSheetValues = (row: CompressiveCubeInput, classTarget: number | null):
     num(strength, 1),
     percentOfClass(strength, classTarget),
     row.remarks.trim() || verdict || BLANK,
-    // Trailing spacer column, present on the reference sheet.
-    "",
   ];
 };
 
@@ -368,6 +396,8 @@ const drawRow = (d: jsPDF, values: string[], y: number, rowH: number) => {
 /** Measure the terms block so the row band can be sized around it. */
 const measureTerms = (d: jsPDF): number => {
   let h = 0;
+  const intro = d.splitTextToSize(TERMS_INTRO, TABLE_W - 8) as string[];
+  h += intro.length * 3.4 + 1.2;
   TERMS.forEach((term, index) => {
     const lines = d.splitTextToSize(`${index + 1}.  ${term}`, TABLE_W - 8) as string[];
     h += lines.length * 3.4 + 0.6;
@@ -377,6 +407,14 @@ const measureTerms = (d: jsPDF): number => {
 
 const drawTerms = (d: jsPDF, y: number): void => {
   let cy = y;
+  d.setFont("helvetica", "bold");
+  d.setFontSize(6.5);
+  d.setTextColor(...COLORS.dark);
+  (d.splitTextToSize(TERMS_INTRO, TABLE_W - 8) as string[]).forEach((line) => {
+    d.text(line, TABLE_X + 4, cy);
+    cy += 3.4;
+  });
+  cy += 1.2;
   d.setFont("helvetica", "normal");
   d.setFontSize(6.5);
   d.setTextColor(...COLORS.dark);

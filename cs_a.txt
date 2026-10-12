@@ -1,0 +1,111 @@
+360:     const col = COLS[index];
+361:     d.setDrawColor(...COLORS.grid);
+362:     d.setLineWidth(0.2);
+363:     d.rect(x, y, col.w, rowH);
+364:     const size = fitText(d, value, col.w - 1.6, rowH >= 4 ? 7.5 : 6.5, 4);
+365:     d.setFontSize(size);
+366:     d.setFont("helvetica", index === BOLD_COLUMN ? "bold" : "normal");
+367:     d.setTextColor(...COLORS.dark);
+368:     d.text(value, x + col.w / 2, y + rowH / 2 + size * 0.35, { align: "center" });
+369:     x += col.w;
+370:   });
+371: };
+372: 
+373: /** Measure the terms block so the row band can be sized around it. */
+374: const measureTerms = (d: jsPDF): number => {
+375:   let h = 0;
+376:   TERMS.forEach((term, index) => {
+377:     const lines = d.splitTextToSize(`${index + 1}.  ${term}`, TABLE_W - 8) as string[];
+378:     h += lines.length * 3.4 + 0.6;
+379:   });
+380:   return h + 2;
+381: };
+382: 
+383: const drawTerms = (d: jsPDF, y: number): void => {
+384:   let cy = y;
+385:   d.setFont("helvetica", "normal");
+386:   d.setFontSize(6.5);
+387:   d.setTextColor(...COLORS.dark);
+388:   TERMS.forEach((term, index) => {
+389:     const lines = d.splitTextToSize(`${index + 1}.  ${term}`, TABLE_W - 8) as string[];
+390:     lines.forEach((line) => {
+391:       d.text(line, TABLE_X + 4, cy);
+392:       cy += 3.4;
+393:     });
+394:     cy += 0.6;
+395:   });
+396: };
+397: 
+398: const drawFooter = (d: jsPDF, o: CompressiveStrengthPdfOptions, images: AdminImages, y: number, page: number, pages: number) => {
+399:   d.setDrawColor(...COLORS.dark);
+400:   d.setLineWidth(0.5);
+401:   d.line(TABLE_X, y - 4, TABLE_X + TABLE_W, y - 4);
+402:   const stampSpace = images.stamp ? 30 : 0;
+403:   const colW = (TABLE_W - stampSpace) / 3;
+404:   d.setFontSize(7.5);
+405:   d.setFont("helvetica", "bold");
+406:   d.setTextColor(...COLORS.dark);
+407:   d.text(`TESTED BY:  ${text(o.testedBy)}`, TABLE_X, y);
+408:   d.text(`REPORTED ON:  ${formatReportDate(o.dateReported ?? "") || BLANK}`, TABLE_X + colW, y);
+409:   d.text(`CHECKED BY:  ${text(o.checkedBy)}`, TABLE_X + colW * 2, y);
+410: 
+411:   if (images.stamp) {
+412:     try {
+413:       // Top edge sits on the content boundary so the stamp never climbs into the terms.
+414:       const { base64, format } = imageParts(images.stamp);
+415:       d.addImage(base64, format, TABLE_X + TABLE_W - 26, y - 6, 22, 22, undefined, "FAST");
+416:     } catch { /* the stamp is optional */ }
+417:   }
+418: 
+419:   d.setFont("helvetica", "normal");
+420:   d.setFontSize(7);
+421:   d.text(
+422:     "Specialists In: Non-Destructive Testing, Materials Testing and Inspection, Quality Assurance, Failure Investigations,",
+423:     TABLE_X,
+424:     y + 20,
+425:   );
+426:   d.setFontSize(7);
+427:   d.setTextColor(120, 120, 120);
+428:   d.text(`Page ${page} of ${pages}`, MARGIN + CONTENT_W / 2, 204, { align: "center" });
+429:   d.text(`Generated: ${new Date().toLocaleDateString()}`, MARGIN, 204);
+430: };
+431: 
+432: /** Title, laboratory identity and the rule beneath, as on the reference. */
+433: const drawTitleBlock = (d: jsPDF, o: CompressiveStrengthPdfOptions, images: AdminImages, y: number): number => {
+434:   const imgW = 62;
+435:   const imgH = 20;
+436:   d.setFontSize(7.5);
+437:   d.setFont("helvetica", "normal");
+438:   d.setTextColor(...COLORS.dark);
+439:   d.text("Compressive Strength of Concrete Cubes Report", MARGIN, y);
+440:   if (images.logo) {
+441:     try {
+442:       const { base64, format } = imageParts(images.logo);
+443:       d.addImage(base64, format, MARGIN, y + 1, imgW, imgH, undefined, "FAST");
+444:     } catch { /* the logo is optional */ }
+445:   }
+446:   if (images.contacts) {
+447:     try {
+448:       const { base64, format } = imageParts(images.contacts);
+449:       d.addImage(base64, format, MARGIN + CONTENT_W - imgW, y + 1, imgW, imgH, undefined, "FAST");
+450:     } catch { /* the contacts block is optional */ }
+451:   }
+452:   let cy = y + imgH + 3;
+453:   d.setDrawColor(...COLORS.dark);
+454:   d.setLineWidth(0.5);
+455:   d.line(MARGIN, cy, MARGIN + CONTENT_W, cy);
+456:   cy += 4;
+457:   const title = "COMPRESSIVE STRENGTH OF CONCRETE CUBES";
+458:   d.setFontSize(13);
+459:   d.setFont("helvetica", "bold");
+460:   d.setTextColor(...COLORS.dark);
+461:   d.text(title, TABLE_X + TABLE_W / 2, cy, { align: "center" });
+462:   const titleW = d.getTextWidth(title);
+463:   d.setLineWidth(0.4);
+464:   d.line(TABLE_X + TABLE_W / 2 - titleW / 2, cy + 1.2, TABLE_X + TABLE_W / 2 + titleW / 2, cy + 1.2);
+465:   cy += 5;
+466:   d.setFontSize(8.5);
+467:   d.setFont("helvetica", "normal");
+468:   d.text("BS EN 12390 - 3 : 2002", TABLE_X + TABLE_W / 2, cy, { align: "center" });
+469:   if (o.labOrganization) {
+470:     cy += 4;

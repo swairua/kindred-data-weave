@@ -1,0 +1,116 @@
+400:     d.line(plot.x, gy, plot.x + plot.w, gy);
+401:   });
+402: 
+403:   d.setLineWidth(1.24 * type);
+404:   d.line(plot.x, plot.y, plot.x, plotBottom);
+405:   d.line(plot.x, plotBottom, plot.x + plot.w, plotBottom);
+406: 
+407:   const samples = psdCurveSamples(o.series, plot.w, plot.h);
+408:   if (samples.length > 1) {
+409:     d.setDrawColor(...COLORS.curve);
+410:     d.setLineWidth(0.74 * type);
+411:     for (let index = 1; index < samples.length; index += 1) {
+412:       d.line(plot.x + samples[index - 1].x, plot.y + samples[index - 1].y, plot.x + samples[index].x, plot.y + samples[index].y);
+413:     }
+414:   }
+415: 
+416:   PASSING_VALUES.forEach((value) => label(value.toFixed(1), PLOT_UNITS.x - 2, PLOT_UNITS.y + psdY(value, PLOT_UNITS.h), "right", 6));
+417:   label("Passing (%)", 20, PLOT_UNITS.y + PLOT_UNITS.h / 2, "center", 7.5, true, 90);
+418:   PSD_DECADE_TICKS.forEach((size) => label(size.toFixed(3), PLOT_UNITS.x + psdX(size, PLOT_UNITS.w), 192.4, "center", 6));
+419:   PSD_SUB_LABELS.forEach((band) => label(band.label, PLOT_UNITS.x + psdX(band.from, PLOT_UNITS.w), 198.6, "center", 5.2));
+420:   // Each fraction caption is centred on the geometric mean of its own band. The
+421:   // source sheet anchors them to the band boundary, which collides with the
+422:   // left-hand "FRACTION" caption because the silt band starts almost on the axis.
+423:   PSD_FRACTIONS.forEach((band) => {
+424:     const at = PLOT_UNITS.x + psdX(Math.sqrt(band.from * band.to), PLOT_UNITS.w);
+425:     label(band.label, at, band.label === "CLAY" ? 205.6 : 210.8, "center", 5.2);
+426:   });
+427:   label("FRACTION", PLOT_UNITS.x, 210.8, "left", 5.2);
+428: 
+429:   d.setDrawColor(...COLORS.dark);
+430:   d.setLineWidth(0.37 * type);
+431:   d.line(plot.x, py(213.6), plot.x + plot.w, py(213.6));
+432:   label("Particle size (mm)", PLOT_UNITS.x + PLOT_UNITS.w / 2, 219.6, "center", 7, true);
+433:   label("PARTICLE SIZE DISTRIBUTION GRAPH", PLOT_UNITS.x + PLOT_UNITS.w / 2, 9, "center", 7.5, true);
+434: 
+435:   return y + refH;
+436: };
+437: 
+438: const drawPsdGraph = (d: jsPDF, x: number, y: number, w: number, o: ParticleSizeDistributionPdfOptions, forcedHeight?: number): number => {
+439:   const h = forcedHeight ?? (REF_BLOCK_H_UNITS * w) / REF_BLOCK_UNITS;
+440:   if (o.chartImage) {
+441:     try {
+442:       const { base64, format } = imageParts(o.chartImage);
+443:       d.addImage(base64, format, x, y, w, h, undefined, "FAST");
+444:       return y + h;
+445:     } catch (error) {
+446:       console.warn("[PSD PDF] Chart capture could not be embedded, drawing the vector curve instead:", error);
+447:     }
+448:   }
+449:   return drawPsdGraphVector(d, x, y, w, o, h);
+450: };
+451: const drawTitleBlock = (
+452:   d: jsPDF,
+453:   x: number,
+454:   y: number,
+455:   w: number,
+456:   o: ParticleSizeDistributionPdfOptions,
+457:   images: AdminImages,
+458: ): number => {
+459:   const imgW = 62;
+460:   const imgH = 20;
+461:   let cy = y;
+462:   if (images.logo) {
+463:     try {
+464:       const { base64, format } = imageParts(images.logo);
+465:       d.addImage(base64, format, x, cy, imgW, imgH, undefined, "FAST");
+466:     } catch { /* the logo is optional */ }
+467:   }
+468:   if (images.contacts) {
+469:     try {
+470:       const { base64, format } = imageParts(images.contacts);
+471:       d.addImage(base64, format, x + w - imgW, cy, imgW, imgH, undefined, "FAST");
+472:     } catch { /* the contacts image is optional */ }
+473:   }
+474: 
+475:   cy += imgH + 1;
+476:   d.setDrawColor(...COLORS.dark);
+477:   d.setLineWidth(0.5);
+478:   d.line(x, cy, x + w, cy);
+479:   cy += 4;
+480:   const title = "PARTICLE SIZE DISTRIBUTION (BS 1377-2:1990: 9.2/9.3/9.4 & 9.5)";
+481:   const titleSize = fitText(d, title, w, 10.5, 7);
+482:   d.setFontSize(titleSize);
+483:   d.setFont("helvetica", "bold");
+484:   d.setTextColor(...COLORS.dark);
+485:   d.text(title, x + w / 2, cy, { align: "center" });
+486:   const titleW = d.getTextWidth(title);
+487:   d.setLineWidth(0.4);
+488:   d.line(x + w / 2 - titleW / 2, cy + 1.2, x + w / 2 + titleW / 2, cy + 1.2);
+489:   return cy + 5;
+490: };
+491: 
+492: const drawFooter = (d: jsPDF, o: ParticleSizeDistributionPdfOptions, images: AdminImages, y: number): void => {
+493:   d.setDrawColor(...COLORS.dark);
+494:   d.setLineWidth(0.5);
+495:   d.line(MARGIN, y - 4, MARGIN + CONTENT_W, y - 4);
+496:   const usable = images.stamp ? CONTENT_W - 30 : CONTENT_W;
+497:   const column = usable / 3;
+498:   d.setFontSize(8);
+499:   d.setFont("helvetica", "bold");
+500:   d.setTextColor(...COLORS.dark);
+501:   d.text(`Tested by ${text(o.testedBy || o.record.testedBy)}`, MARGIN, y);
+502:   d.text(`Date reported ${text(o.dateReported)}`, MARGIN + column, y);
+503:   d.text(`Checked by: ${text(o.checkedBy)}`, MARGIN + column * 2, y);
+504: 
+505:   if (images.stamp) {
+506:     try {
+507:       // Top edge sits on the content boundary so the stamp never climbs into the graph.
+508:       const s = 22;
+509:       const { base64, format } = imageParts(images.stamp);
+510:       d.addImage(base64, format, MARGIN + CONTENT_W - s - 4, y - 6, s, s, undefined, "FAST");
+511:     } catch { /* the stamp is optional */ }
+512:   }
+513: };
+514: 
+515: export const generateParticleSizeDistributionPDF = async (options: ParticleSizeDistributionPdfOptions) => {

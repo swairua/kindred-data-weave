@@ -1,0 +1,91 @@
+200:   "All the results released to the client from our lab are treated as strictly confidential and would only be released to other parties with written instruction from the client.",
+201:   "A legal contract between the client and Cransfield Lab will deem to have constituted upon receipt of the test results by the client sent via any electronic transmission media or collected by client's representative.",
+202: ];
+203: 
+204: /** One cell of the identification block: a label box plus a value. */
+205: interface IdCell {
+206:   label: string;
+207:   value: string;
+208:   /** Total width of the pair, label box included. */
+209:   w: number;
+210: }
+211: 
+212: const drawCellText = (
+213:   d: jsPDF,
+214:   value: string,
+215:   x: number,
+216:   y: number,
+217:   w: number,
+218:   h: number,
+219:   size: number,
+220:   bold = false,
+221: ) => {
+222:   // Labels like "DATE OF\nCAST" and two-line "CM/5552\nCM/5553" lab refs sit on
+223:   // a vertical stack of centred lines; a single line keeps the old placement.
+224:   const lines = value
+225:     .split("\n")
+226:     .map((line) => line.trim())
+227:     .filter((line) => line.length > 0);
+228:   if (lines.length <= 1) {
+229:     const fitted = fitText(d, value, w - 1.6, size);
+230:     d.setFontSize(fitted);
+231:     d.setFont("helvetica", bold ? "bold" : "normal");
+232:     d.setTextColor(...COLORS.dark);
+233:     // jsPDF anchors on the text baseline, so offset by a third of the cap height
+234:     // to sit the text on the vertical centre of the cell.
+235:     d.text(value, x + w / 2, y + h / 2 + fitted * 0.35, { align: "center" });
+236:     return;
+237:   }
+238:   const longest = lines.reduce((a, b) => (a.length >= b.length ? a : b), "");
+239:   const fitted = fitText(d, longest, w - 1.6, size);
+240:   d.setFontSize(fitted);
+241:   d.setFont("helvetica", bold ? "bold" : "normal");
+242:   d.setTextColor(...COLORS.dark);
+243:   const lineH = fitted * 0.42;
+244:   let cy = y + h / 2 - ((lines.length - 1) * lineH) / 2;
+245:   for (const line of lines) {
+246:     d.text(line, x + w / 2, cy + fitted * 0.35, { align: "center" });
+247:     cy += lineH;
+248:   }
+249: };
+250: 
+251: /** Build the identification rows shown above the results table. */
+252: const buildIdRows = (o: CompressiveStrengthPdfOptions): IdCell[][] => {
+253:   const r = o.record;
+254:   // Cells in each row share the table width exactly: full width, halves,
+255:   // thirds, or quarters. DATE REPORTED lives in the footer, not the block.
+256:   const half = TABLE_W / 2;
+257:   const third = TABLE_W / 3;
+258:   const quarter = TABLE_W / 4;
+259:   return [
+260:     [{ label: "PROJECT", value: text(o.projectName), w: TABLE_W }],
+261:     [{ label: "CLIENT", value: text(o.clientName), w: TABLE_W }],
+262:     [
+263:       { label: "COUNTY", value: text(r.county), w: third },
+264:       { label: "CONCRETE CLASS", value: text(r.concreteClass), w: third },
+265:       { label: "DATE CASTED", value: formatReportDate(r.dateCasted) || BLANK, w: third },
+266:     ],
+267:     [
+268:       { label: "CONTRACTOR", value: text(r.contractor), w: third },
+269:       { label: "SECTION", value: text(r.section), w: third },
+270:       // A two-line lab reference ("CM/5552\nCM/5553") stacks inside one cell.
+271:       { label: "LAB REF", value: text(r.labRef), w: third },
+272:     ],
+273:     [
+274:       { label: "MADE BY", value: text(r.madeBy), w: third },
+275:       { label: "CLIENT REF", value: text(r.clientRef), w: third },
+276:       { label: "SLUMP", value: text(r.slump), w: third },
+277:     ],
+278:   ];
+279: };
+280: 
+281: /**
+282:  * Draw the identification block. Each label sits in a tinted box on the left of
+283:  * its cell and the value fills the remainder, as on the reference sheet.
+284:  */
+285: const drawIdentification = (d: jsPDF, o: CompressiveStrengthPdfOptions, y: number): number => {
+286:   let cy = y;
+287:   for (const row of buildIdRows(o)) {
+288:     let cx = TABLE_X;
+289:     for (const cell of row) {
+290:       const labelW = Math.min(cell.w * 0.34, 34);

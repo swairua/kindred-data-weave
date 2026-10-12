@@ -1,0 +1,181 @@
+220:     { w: 40, text: label, bold: true, size: 6 },
+221:     { w: 16, text: caption },
+222:     { w: rightW - 56, text: value, align: "right" },
+223:   ];
+224:   right = drawCells(d, x + leftW, right, rowH, rightPair("(gm)", "Wet weight of sample", text(o.record.moisture.wetMass)));
+225:   right = drawCells(d, x + leftW, right, rowH, rightPair("(gm)", "Dry weight of sample", text(o.record.moisture.dryMass)));
+226:   right = drawCells(d, x + leftW, right, rowH, rightPair("(gm)", "Wet weight of water", num(moisture.waterWeight)));
+227:   drawCells(d, x + leftW, right, rowH, rightPair("(%)", "Moisture content", num(moisture.moistureContent)));
+228: 
+229:   return y + rowH * 5;
+230: };
+231: 
+232: const drawClassification = (d: jsPDF, x: number, y: number, o: ParticleSizeDistributionPdfOptions, rowH = ROW_H): number => {
+233:   let cy = drawCaption(d, x, y, CONTENT_W, "Soil Classification", rowH);
+234:   const uscs = [o.uscsSymbol, o.uscsDescription].filter(Boolean).join(" - ");
+235:   cy = drawCells(d, x, cy, rowH, [
+236:     { w: 20, text: "GRAVEL (%):", label: true, bold: true },
+237:     { w: 12, text: num(o.gravelPercentage), align: "right" },
+238:     { w: 18, text: "SAND (%):", label: true, bold: true },
+239:     { w: 12, text: num(o.sandPercentage), align: "right" },
+240:     { w: 24, text: "CLAY/SILT (%):", label: true, bold: true },
+241:     { w: 12, text: num(o.finesPercentage), align: "right" },
+242:     { w: 18, text: "USCS", label: true, bold: true },
+243:     { w: 36, text: uscs, align: "center" },
+244:     { w: 18, text: "AASHTO", label: true, bold: true },
+245:     { w: 20, text: o.groupIndex === null ? text(o.aashtoGroup) : `${text(o.aashtoGroup)} (GI ${o.groupIndex})`, align: "center" },
+246:   ]);
+247:   return cy;
+248: };
+249: 
+250: const SIEVE_COLUMNS: Cell[] = [
+251:   { w: 20, text: "Sieve size\n(mm)", label: true, bold: true, size: 5.6 },
+252:   { w: 14, text: "Retained\nmass (gm)", label: true, bold: true, size: 5.6 },
+253:   { w: 14, text: "% Retained\n(%)", label: true, bold: true, size: 5.6 },
+254:   { w: 14, text: "Cumulative\npassing (%)", label: true, bold: true, size: 5.4, minSize: 2.8 },
+255: ];
+256: 
+257: const drawSieveTable = (d: jsPDF, x: number, y: number, w: number, o: ParticleSizeDistributionPdfOptions, rowH = ROW_H, headerH = HEADER_H): number => {
+258:   const columns = SIEVE_COLUMNS.map((column) => ({ ...column, w: column.w * (w / 62) }));
+259:   let cy = drawCaption(d, x, y, w, "Wet & Dry Sieve Analysis to BS 1377-2:1990: 9.2/9.3/9.4", rowH);
+260:   cy = drawCells(d, x, cy, headerH, columns);
+261:   o.record.sieveRows.forEach((row, index) => {
+262:     const passing = o.grading.cumulativePassing[index];
+263:     cy = drawCells(d, x, cy, rowH, [
+264:       { w: columns[0].w, text: row.sieveSize, align: "center", bold: true },
+265:       { w: columns[1].w, text: row.weightRetained, align: "center" },
+266:       { w: columns[2].w, text: num(o.grading.percentageRetained[index]), align: "center" },
+267:       { w: columns[3].w, text: passing === null ? BLANK : num(passing), align: "center" },
+268:     ]);
+269:   });
+270:   return drawCells(d, x, cy, rowH, [
+271:     { w: columns[0].w, text: "TOTAL", align: "center", bold: true },
+272:     { w: columns[1].w, text: num(o.grading.totalWeight), align: "center", bold: true },
+273:     { w: columns[2].w, text: o.grading.totalWeight > 0 ? "100.0" : BLANK, align: "center", bold: true },
+274:     { w: columns[3].w, text: "", align: "center" },
+275:   ]);
+276: };
+277: const HYDROMETER_COLUMNS = [
+278:   "Time\n(min)",
+279:   "Actual HR\n(Rn′)",
+280:   "Adjusted\n(Rh)",
+281:   "Composite\ncorr.",
+282:   "Corrected\nHR",
+283:   "Eff. depth\n(cm)",
+284:   "Diameter\n(mm)",
+285:   "% Fines\n(susp.)",
+286:   "% Fines\n(sample)",
+287: ];
+288: 
+289: const drawHydrometerTable = (d: jsPDF, x: number, y: number, w: number, o: ParticleSizeDistributionPdfOptions, rowH = ROW_H, headerH = HEADER_H): number => {
+290:   const inputs = o.hydrometerInputs;
+291:   let cy = drawCaption(d, x, y, w, "Hydrometer Analysis to BS 1377-2:1990:9.5", rowH);
+292:   const half = w / 2;
+293:   const paramRow = (leftLabel: string, leftValue: string, rightLabel: string, rightValue: string): Cell[] => [
+294:     { w: 28, text: leftLabel, label: true, bold: true, size: 5.2, minSize: 2.8 },
+295:     { w: half - 28, text: leftValue, align: "right" },
+296:     { w: 28, text: rightLabel, label: true, bold: true, size: 5.2, minSize: 2.8 },
+297:     { w: half - 28, text: rightValue, align: "right" },
+298:   ];
+299:   cy = drawCells(d, x, cy, rowH, paramRow("Dry weight (gm)", text(inputs.dryWeight), "S.G (Mg/m³)", num(o.hydrometer.specificGravity, 2)));
+300:   cy = drawCells(d, x, cy, rowH, paramRow("Hydro. type", text(inputs.hydrometerType), "Susp. vol. (cm³)", num(o.hydrometer.suspensionVolume, 0)));
+301:   cy = drawCells(d, x, cy, rowH, paramRow("Zero corr. (g/L)", text(inputs.zeroCorrection), "Meniscus (g/L)", text(inputs.meniscusCorrection)));
+302:   cy = drawCells(d, x, cy, rowH, paramRow("Temp. (°C)", text(inputs.temperature), "K factor", num(o.hydrometer.stokesConstant, 3)));
+303: 
+304:   const columnWidth = w / HYDROMETER_COLUMNS.length;
+305:   cy = drawCells(d, x, cy, headerH, HYDROMETER_COLUMNS.map((caption) => ({
+306:     w: columnWidth,
+307:     text: caption,
+308:     label: true,
+309:     bold: true,
+310:     size: 4.6,
+311:     minSize: 2.8,
+312:     align: "center" as const,
+313:   })));
+314: 
+315:   o.hydrometer.results.forEach((result) => {
+316:     cy = drawCells(d, x, cy, rowH, [
+317:       num(result.time, 2, BLANK),
+318:       text(o.record.hydrometerRows.find((row) => row.time === String(result.time))?.actualHydrometer),
+319:       num(result.adjustedReading),
+320:       num(result.compositeCorrection, 2),
+321:       num(result.correctedReading),
+322:       num(result.effectiveDepth, 2),
+323:       num(result.particleDiameter, 4),
+324:       num(result.finesInSuspension),
+325:       num(result.finesByHydrometer),
+326:     ].map((value) => ({ w: columnWidth, text: value, align: "center" as const })));
+327:   });
+328:   return cy;
+329: };
+330: 
+331: /** Percentage axis values: 0 to 100 in steps of 10. */
+332: const PASSING_VALUES = Array.from({ length: 11 }, (_, step) => step * 10);
+333: 
+334: /**
+335:  * The chart block is authored in the same 384.28-unit space as the on-screen
+336:  * SVG. That space came off an A4 page in points, so one unit is 0.352778 mm and
+337:  * everything, line weights and type sizes included, scales together.
+338:  */
+339: const REF_UNIT_MM = 0.352778;
+340: const REF_BLOCK_UNITS = 384.28;
+341: const REF_BLOCK_H_UNITS = 222;
+342: /** Plot rectangle inside the chart block, in the same units as the on-screen SVG. */
+343: const PLOT_UNITS = { x: 37.72, y: 27.81, w: 334.28, h: 160.86 };
+344: 
+345: /**
+346:  * Native vector grading curve, used whenever the html2canvas capture of the
+347:  * on-screen chart is missing. It reads the same `psdChartGeometry` helpers the
+348:  * SVG uses, so the printed graph matches the screen even when only vectors
+349:  * reach the PDF.
+350:  */
+351: const drawPsdGraphVector = (d: jsPDF, x: number, y: number, w: number, o: ParticleSizeDistributionPdfOptions, forcedHeight?: number): number => {
+352:   // One unit of the authoring space is one point of the source sheet, so geometry
+353:   // scales by millimetres per unit, while type scales by the same ratio expressed
+354:   // as a plain multiplier on a point size.
+355:   const refH = forcedHeight ?? (REF_BLOCK_H_UNITS * w) / REF_BLOCK_UNITS;
+356:   const scale = w / REF_BLOCK_UNITS;
+357:   const type = scale / REF_UNIT_MM;
+358:   // If forcedHeight differs from natural, apply a vertical scale factor to the units.
+359:   const vScale = forcedHeight ? refH / (REF_BLOCK_H_UNITS * scale) : 1;
+360:   const px = (units: number) => x + units * scale;
+361:   const py = (units: number) => y + units * scale * vScale;
+362:   const plot = {
+363:     x: px(PLOT_UNITS.x),
+364:     y: py(PLOT_UNITS.y),
+365:     w: PLOT_UNITS.w * scale,
+366:     h: PLOT_UNITS.h * scale * vScale,
+367:   };
+368:   const plotBottom = plot.y + plot.h;
+369:   /** Places text at a position given in chart-block units. */
+370:   const label = (
+371:     value: string,
+372:     atX: number,
+373:     atY: number,
+374:     align: "left" | "center" | "right",
+375:     size: number,
+376:     bold = false,
+377:     angle = 0,
+378:   ) => {
+379:     d.setFontSize(Math.max(size * type, 3.5));
+380:     d.setFont("helvetica", bold ? "bold" : "normal");
+381:     d.setTextColor(...COLORS.dark);
+382:     d.text(value, px(atX), py(atY), { align, baseline: "middle", angle });
+383:   };
+384: 
+385:   d.setFillColor(255, 255, 255);
+386:   d.setDrawColor(...COLORS.dark);
+387:   d.setLineWidth(0.2 * type);
+388:   d.rect(x, py(14), w, 200 * scale * vScale, "FD");
+389: 
+390:   d.setFillColor(...COLORS.plotBg);
+391:   d.rect(plot.x, plot.y, plot.w, plot.h, "F");
+392: 
+393:   d.setLineWidth(0.14 * type);
+394:   [...PSD_MINOR_TICKS, ...PSD_DECADE_LINES].forEach((size) => {
+395:     const gx = px(PLOT_UNITS.x + psdX(size, PLOT_UNITS.w));
+396:     d.line(gx, plot.y, gx, plotBottom);
+397:   });
+398:   PASSING_VALUES.forEach((value) => {
+399:     const gy = py(PLOT_UNITS.y + psdY(value, PLOT_UNITS.h));
+400:     d.line(plot.x, gy, plot.x + plot.w, gy);

@@ -116,16 +116,30 @@ export const isPlotablePsdPoint = (point: PsdPoint | null | undefined): point is
  * A particle size measured by both methods keeps the sieve value when both are
  * present: the sieve is the coarser, more repeatable measurement. Sizes
  * repeated inside one group keep the first occurrence.
+ *
+ * The first group is the sieve series and it already spans down to its own
+ * finest size. Later groups (the hydrometer) only refine the sub-sieve range,
+ * so any hydrometer point coarser than the finest sieve point would interleave
+ * between sieve points and bend the curve back on itself (a non-monotonic
+ * zig-zag). Those points are dropped: the sieve already covers that range.
  */
 export const mergePsdSeries = (...groups: ReadonlyArray<ReadonlyArray<PsdPoint | null | undefined>>): PsdPoint[] => {
   const points = new Map<number, number>();
-  for (const group of groups) {
+  let finestFirst = Number.POSITIVE_INFINITY;
+  if (groups.length > 0) {
+    for (const point of groups[0]) {
+      if (isPlotablePsdPoint(point)) finestFirst = Math.min(finestFirst, point.size);
+    }
+  }
+  groups.forEach((group, groupIndex) => {
+    const laterGroup = groupIndex > 0;
     for (const point of group) {
       if (!isPlotablePsdPoint(point)) continue;
+      if (laterGroup && point.size > finestFirst) continue;
       const key = Number(point.size.toPrecision(6));
       if (!points.has(key)) points.set(key, point.passing);
     }
-  }
+  });
   return [...points.entries()]
     .map(([size, passing]) => ({ size, passing }))
     .sort((a, b) => a.size - b.size);

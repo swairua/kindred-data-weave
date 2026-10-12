@@ -1,0 +1,112 @@
+1: import { jsPDF } from "jspdf";
+2: import {
+3:   calculateMoisture,
+4:   type GradingCalculations,
+5:   type GradingRow,
+6:   type HydrometerCalculations,
+7:   type HydrometerInputs,
+8: } from "./gradingCalculations";
+9: import { fetchAdminImagesAsBase64, type AdminImages } from "./imageUtils";
+10: import {
+11:   PSD_DECADE_LINES,
+12:   PSD_DECADE_TICKS,
+13:   PSD_FRACTIONS,
+14:   PSD_MINOR_TICKS,
+15:   PSD_SUB_LABELS,
+16:   psdCurveSamples,
+17:   psdX,
+18:   psdY,
+19:   type PsdPoint,
+20: } from "./psdChartGeometry";
+21: 
+22: /**
+23:  * Particle size distribution report laid out like the BS 1377-2:1990
+24:  * 9.2/9.3/9.4 and 9.5 sheet issued by the testing laboratory.
+25:  *
+26:  * The grading curve prefers the html2canvas capture of the on-screen chart so
+27:  * the printed graph is pixel-identical to the screen, and falls back to a
+28:  * natively drawn vector curve built from the same `psdChartGeometry` helpers
+29:  * when that capture is unavailable.
+30:  */
+31: 
+32: const MARGIN = 10;
+33: const CONTENT_W = 190;
+34: const ROW_H = 4.2;
+35: const HEADER_H = 6;
+36: const MIN_ROW_H = 3.4;
+37: const MIN_GRAPH_H = 52;
+38: const MAX_GRAPH_H = 78;
+39: 
+40: const COLORS = {
+41:   dark: [0, 0, 0] as [number, number, number],
+42:   labelBg: [214, 214, 214] as [number, number, number],
+43:   plotBg: [242, 220, 219] as [number, number, number],
+44:   curve: [192, 0, 0] as [number, number, number],
+45: };
+46: 
+47: const BLANK = "__________";
+48: 
+49: interface Cell {
+50:   /** Width in millimetres. */
+51:   w: number;
+52:   text: string;
+53:   align?: "left" | "center" | "right";
+54:   bold?: boolean;
+55:   size?: number;
+56:   /** Lower bound for the automatic shrink, for cells holding long captions. */
+57:   minSize?: number;
+58:   label?: boolean;
+59: }
+60: 
+61: export interface PsdRecordView {
+62:   label: string;
+63:   sampleNumber: string;
+64:   sampleDepthFrom: string;
+65:   sampleDepthTo: string;
+66:   sampledSubmittedBy: string;
+67:   testedBy: string;
+68:   dateSubmitted: string;
+69:   dateTested: string;
+70:   samplePreparation: { initialDryMass: string; washedOvenDryMass: string };
+71:   moisture: { wetMass: string; dryMass: string };
+72:   sieveRows: GradingRow[];
+73:   hydrometerRows: { time: string; actualHydrometer: string }[];
+74: }
+75: 
+76: export interface ParticleSizeDistributionPdfOptions {
+77:   projectName?: string;
+78:   clientName?: string;
+79:   date?: string;
+80:   dateTested?: string;
+81:   dateReported?: string;
+82:   testedBy?: string;
+83:   checkedBy?: string;
+84:   labOrganization?: string;
+85:   record: PsdRecordView;
+86:   grading: GradingCalculations;
+87:   hydrometer: HydrometerCalculations;
+88:   hydrometerInputs: HydrometerInputs;
+89:   /** Merged sieve + hydrometer grading series in millimetres and per cent passing. */
+90:   series: PsdPoint[];
+91:   /** html2canvas capture of the on-screen chart, when one was produced. */
+92:   chartImage: string | null;
+93:   gravelPercentage: number | null;
+94:   sandPercentage: number | null;
+95:   finesPercentage: number | null;
+96:   uscsSymbol: string;
+97:   uscsDescription: string | null;
+98:   aashtoGroup: string;
+99:   groupIndex: number | null;
+100:   skipDownload?: boolean;
+101: }
+102: 
+103: const text = (value: string | number | null | undefined, fallback = BLANK): string => {
+104:   if (value === null || value === undefined) return fallback;
+105:   const trimmed = String(value).trim();
+106:   return trimmed === "" || trimmed === "auto" ? fallback : trimmed;
+107: };
+108: 
+109: const num = (value: number | null | undefined, digits = 1, fallback = BLANK): string =>
+110:   value === null || value === undefined || !Number.isFinite(value) ? fallback : value.toFixed(digits);
+111: 
+112: /** Shrink a string until it fits its cell rather than letting it spill over the rule. */

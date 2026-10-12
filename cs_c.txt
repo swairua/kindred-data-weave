@@ -1,0 +1,108 @@
+93: export interface CompressiveRecordView {
+94:   contractor: string;
+95:   county: string;
+96:   concreteClass: string;
+97:   section: string;
+98:   madeBy: string;
+99:   slump: string;
+100:   clientRef: string;
+101:   labRef: string;
+102:   /** Date the cubes were cast, ISO `YYYY-MM-DD`. */
+103:   dateCasted: string;
+104: }
+105: 
+106: export interface CompressiveStrengthPdfOptions {
+107:   projectName?: string;
+108:   clientName?: string;
+109:   dateReported?: string;
+110:   testedBy?: string;
+111:   checkedBy?: string;
+112:   labOrganization?: string;
+113:   record: CompressiveRecordView;
+114:   /** Every cube row. Blank rows are dropped so empty grid lines are not printed. */
+115:   rows: CompressiveCubeInput[];
+116:   skipDownload?: boolean;
+117: }
+118: 
+119: const text = (value: string | number | null | undefined, fallback = BLANK): string => {
+120:   if (value === null || value === undefined) return fallback;
+121:   const trimmed = String(value).trim();
+122:   return trimmed === "" || trimmed === "auto" ? fallback : trimmed;
+123: };
+124: 
+125: const num = (value: number | null | undefined, digits = 1, fallback = BLANK): string =>
+126:   value === null || value === undefined || !Number.isFinite(value) ? fallback : value.toFixed(digits);
+127: 
+128: /** Shrink a string until it fits its cell rather than letting it spill over the rule. */
+129: const fitText = (d: jsPDF, value: string, maxWidth: number, startSize: number, minSize = 2.8): number => {
+130:   let size = startSize;
+131:   try {
+132:     while (size > minSize && d.getTextWidth(value) > Math.max(maxWidth, 1)) size -= 0.25;
+133:   } catch { /* jsPDF text metrics are unavailable in some environments */ }
+134:   return size;
+135: };
+136: 
+137: const imageParts = (dataUrl: string): { base64: string; format: "PNG" | "JPEG" } => {
+138:   const match = /^(data:image\/(\w+);base64,)(.+)$/.exec(dataUrl);
+139:   if (!match) return { base64: dataUrl, format: "PNG" };
+140:   const format = match[2].toUpperCase() === "JPG" ? "JPEG" : match[2].toUpperCase();
+141:   return { base64: match[3], format: format as "PNG" | "JPEG" };
+142: };
+143: 
+144: /** `YYYY-MM-DD` -> `19-Sep-26`, matching the reference sheet's date style. */
+145: export const formatReportDate = (value: string): string => {
+146:   if (!value) return "";
+147:   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
+148:   if (!match) return value.trim();
+149:   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+150:   const monthIndex = Number(match[2]) - 1;
+151:   if (monthIndex < 0 || monthIndex > 11) return value.trim();
+152:   return `${Number(match[3])}-${months[monthIndex]}-${match[1].slice(2)}`;
+153: };
+154: 
+155: /**
+156:  * Percentage of the class characteristic cube strength, rounded to a whole
+157:  * number. The reference prints 25.1 MPa as 84% and 21.5 MPa as 72% for a C30
+158:  * mix, so the divisor is the class target — not the mean of the cubes.
+159:  */
+160: export const percentOfClass = (strength: number | null, classTarget: number | null): string => {
+161:   if (strength === null || classTarget === null || classTarget <= 0) return "";
+162:   return `${Math.round((strength / classTarget) * 100)}%`;
+163: };
+164: 
+165: /**
+166:  * Whether a cube is acceptable, as a fraction of the class characteristic
+167:  * strength at the age it was broken.
+168:  *
+169:  * A bare comparison against the class figure would condemn every early cube:
+170:  * the reference's own 7-day cube reached 84% of a C30 class and was reported
+171:  * "Satisfactory". Each age is judged against the strength-gain table (1d 16%,
+172:  * 3d 40%, 7d 65%, 14d 90%, 28d 99%), so a 28-day cube at 70% is below its
+173:  * 99% expectation while a 3-day cube at 45% beats its 40% one. Without a
+174:  * known age the long-standing flat 65% line is kept as the fallback.
+175:  */
+176: export const isSatisfactory = (
+177:   strength: number | null,
+178:   classTarget: number | null,
+179:   ageDays: number | null = null,
+180: ): boolean => {
+181:   if (strength === null || classTarget === null || classTarget <= 0) return false;
+182:   const expected = ageDays === null ? 65 : expectedPercentAtAge(ageDays) ?? 65;
+183:   return strength >= (classTarget * expected) / 100;
+184: };
+185: 
+186: /** A cube counts as printable only once it can produce a strength. */
+187: const isPopulated = (row: CompressiveCubeInput): boolean => strengthOf(row) !== null;
+188: const TERMS_INTRO =
+189:   "Reports and Certificates by Cransfield Labs are issued subject to the below terms and conditions:";
+190: const TERMS = [
+191:   "Results herein is a true representation of the cubes submitted to our lab to the best of our knowledge.",
+192:   "Any correction or addition to these test results will make this report invalid.",
+193:   "Once report is transmitted or released it is final and no corrections pertaining to incorrect information submitted by the client will be accepted or considered.",
+194:   "This report should not be reproduced or published in full or part without prior written approval from our lab.",
+195:   "All photocopies of test reports produced and not signed by our Technical Director should be considered invalid.",
+196:   "All the results released to the client from our lab are treated as strictly confidential and would only be released to other parties with written instruction from the client.",
+197:   "A legal contract between the client and Cransfield Lab will deem to have constituted upon receipt of the test results by the client sent via any electronic transmission media or collected by client's representative.",
+198: ];
+199: 
+200: /** One cell of the identification block: a label box plus a value. */

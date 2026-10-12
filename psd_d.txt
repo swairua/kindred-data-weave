@@ -1,0 +1,74 @@
+515: export const generateParticleSizeDistributionPDF = async (options: ParticleSizeDistributionPdfOptions) => {
+516:   // Images are optional: a missing logo or stamp must never stop a report being produced.
+517:   let images: AdminImages = {};
+518:   try {
+519:     images = await fetchAdminImagesAsBase64();
+520:   } catch (error) {
+521:     console.warn("[PSD PDF] Could not load header/footer images, exporting without them:", error);
+522:   }
+523: 
+524:   const doc = new jsPDF({ unit: "mm", format: "a4" });
+525:   const pageHeight = doc.internal.pageSize.getHeight();
+526:   const pageWidth = doc.internal.pageSize.getWidth();
+527:   const x = MARGIN;
+528:   const topY = 10;
+529:   // Reserve the footer band first so content can never run into it.
+530:   const footerY = pageHeight - 20;
+531:   const contentBottom = footerY - 6;
+532: 
+533:   const sieveWidth = 62;
+534:   const hydrometerWidth = CONTENT_W - sieveWidth - 2;
+535:   const sieveRows = 2 + options.record.sieveRows.length + 1; // caption + header + rows + total
+536:   const hydroRows = 1 + 4 + 1 + options.hydrometer.results.length; // caption + 4 params + header + readings
+537:   const tableRows = Math.max(sieveRows, hydroRows);
+538:   const graphNaturalH = Math.min((CONTENT_W * REF_BLOCK_H_UNITS) / REF_BLOCK_UNITS, MAX_GRAPH_H);
+539: 
+540:   // Fixed overhead above the side-by-side tables: title block (~33) + 3 header
+541:   // rows + preparation/classification blocks + gaps. Measured at ROW_H so the
+542:   // row-height scale below stays proportional.
+543:   const fixedH = 33 + 3 * ROW_H + 2 + 5 * ROW_H + 2 + 2 * ROW_H + 3;
+544:   let rowH = ROW_H;
+545:   let graphH = graphNaturalH;
+546:   // Single-pass fit: shrink rows first, then the graph (never below MIN_GRAPH_H,
+547:   // the chart is mandatory). One page only — no addPage in this generator.
+548:   const need = fixedH + tableRows * rowH + 3 + graphH;
+549:   const have = contentBottom - topY;
+550:   if (need > have) {
+551:     // Rows absorb overflow first; the graph keeps its natural height when possible.
+552:     const rowHForNaturalGraph = (have - fixedH - 3 - graphNaturalH) / tableRows;
+553:     if (rowHForNaturalGraph >= MIN_ROW_H) {
+554:       rowH = rowHForNaturalGraph;
+555:     } else {
+556:       // Dense data (e.g. full KIRIAINI stack): rows at floor, graph takes the rest.
+557:       rowH = MIN_ROW_H;
+558:       graphH = Math.max(MIN_GRAPH_H, have - fixedH - 3 - tableRows * MIN_ROW_H);
+559:     }
+560:   }
+561: 
+562:   const headerH = Math.max(4.5, Math.min(6, rowH * 1.45));
+563:   let y = drawTitleBlock(doc, x, topY, CONTENT_W, options, images);
+564:   y = drawHeader(doc, x, y, options, rowH) + 1.5;
+565:   y = drawPreparation(doc, x, y, options, rowH) + 1.5;
+566:   y = drawClassification(doc, x, y, options, rowH) + 2;
+567: 
+568:   const sieveBottom = drawSieveTable(doc, x, y, sieveWidth, options, rowH, headerH);
+569:   const hydrometerBottom = drawHydrometerTable(doc, x + sieveWidth + 2, y, hydrometerWidth, options, rowH, headerH);
+570:   const graphTop = Math.max(sieveBottom, hydrometerBottom) + 2;
+571:   const graphBudget = Math.max(contentBottom - graphTop, MIN_GRAPH_H);
+572:   const fittedGraphH = Math.min(graphH, graphBudget);
+573:   drawPsdGraph(doc, x, graphTop, CONTENT_W, options, fittedGraphH);
+574: 
+575:   // Footer last, on the reserved band — content above can never overlap it.
+576:   drawFooter(doc, options, images, footerY);
+577:   doc.setFontSize(7);
+578:   doc.setTextColor(120, 120, 120);
+579:   doc.setFont("helvetica", "normal");
+580:   doc.text("Page 1 of 1", pageWidth / 2, pageHeight - 6, { align: "center" });
+581:   doc.text(`Generated: ${new Date().toLocaleDateString()}`, MARGIN, pageHeight - 6);
+582: 
+583:   if (!options.skipDownload) {
+584:     const stem = (options.projectName || "Particle Size Distribution").replace(/[^\w-]+/g, "_");
+585:     doc.save(`${stem}_PSD.pdf`);
+586:   }
+587:   return doc;
+588: };

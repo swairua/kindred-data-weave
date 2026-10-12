@@ -1,0 +1,66 @@
+375:     row.remarks.trim() || verdict || BLANK,
+376:     // Trailing spacer column, present on the reference sheet.
+377:     "",
+378:   ];
+379: };
+380: 
+381: const drawRow = (d: jsPDF, values: string[], y: number, rowH: number) => {
+382:   let x = TABLE_X;
+383:   values.forEach((value, index) => {
+384:     const col = COLS[index];
+385:     d.setDrawColor(...COLORS.grid);
+386:     d.setLineWidth(0.2);
+387:     d.rect(x, y, col.w, rowH);
+388:     const size = fitText(d, value, col.w - 1.6, rowH >= 4 ? 7.5 : 6.5, 4);
+389:     d.setFontSize(size);
+390:     d.setFont("helvetica", index === BOLD_COLUMN ? "bold" : "normal");
+391:     d.setTextColor(...COLORS.dark);
+392:     d.text(value, x + col.w / 2, y + rowH / 2 + size * 0.35, { align: "center" });
+393:     x += col.w;
+394:   });
+395: };
+396: 
+397: /** Measure the terms block so the row band can be sized around it. */
+398: const measureTerms = (d: jsPDF): number => {
+399:   let h = 0;
+400:   TERMS.forEach((term, index) => {
+401:     const lines = d.splitTextToSize(`${index + 1}.  ${term}`, TABLE_W - 8) as string[];
+402:     h += lines.length * 3.4 + 0.6;
+403:   });
+404:   return h + 2;
+405: };
+406: 
+407: const drawTerms = (d: jsPDF, y: number): void => {
+408:   let cy = y;
+409:   d.setFont("helvetica", "normal");
+410:   d.setFontSize(6.5);
+411:   d.setTextColor(...COLORS.dark);
+412:   TERMS.forEach((term, index) => {
+413:     const lines = d.splitTextToSize(`${index + 1}.  ${term}`, TABLE_W - 8) as string[];
+414:     lines.forEach((line) => {
+415:       d.text(line, TABLE_X + 4, cy);
+416:       cy += 3.4;
+417:     });
+418:     cy += 0.6;
+419:   });
+420: };
+421: 
+422: const drawFooter = (d: jsPDF, o: CompressiveStrengthPdfOptions, images: AdminImages, y: number, page: number, pages: number) => {
+423:   d.setDrawColor(...COLORS.dark);
+424:   d.setLineWidth(0.5);
+425:   d.line(TABLE_X, y - 4, TABLE_X + TABLE_W, y - 4);
+426:   const stampSpace = images.stamp ? 30 : 0;
+427:   const colW = (TABLE_W - stampSpace) / 3;
+428:   d.setFontSize(7.5);
+429:   d.setFont("helvetica", "bold");
+430:   d.setTextColor(...COLORS.dark);
+431:   d.text(`TESTED BY:  ${text(o.testedBy)}`, TABLE_X, y);
+432:   d.text(`REPORTED ON:  ${formatReportDate(o.dateReported ?? "") || BLANK}`, TABLE_X + colW, y);
+433:   d.text(`CHECKED BY:  ${text(o.checkedBy)}`, TABLE_X + colW * 2, y);
+434: 
+435:   if (images.stamp) {
+436:     try {
+437:       // Top edge sits on the content boundary so the stamp never climbs into the terms.
+438:       const { base64, format } = imageParts(images.stamp);
+439:       d.addImage(base64, format, TABLE_X + TABLE_W - 26, y - 6, 22, 22, undefined, "FAST");
+440:     } catch { /* the stamp is optional */ }

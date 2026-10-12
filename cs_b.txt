@@ -1,0 +1,74 @@
+470:     cy += 4;
+471:     d.setFontSize(8);
+472:     d.setFont("helvetica", "bold");
+473:     d.text(o.labOrganization, TABLE_X + TABLE_W / 2, cy, { align: "center" });
+474:     return cy + 4;
+475:   }
+476:   return cy + 3;
+477: };
+478: 
+479: /** Height of everything on a page that is not a cube row. Title block is ~38mm with images. */
+480: const furnitureHeight = (d: jsPDF): number =>
+481:   MARGIN + 38 + 4 * ID_ROW_H + HEADER_H + measureTerms(d) + FOOTER_RESERVE;
+482: 
+483: export const generateCompressiveStrengthPDF = async (options: CompressiveStrengthPdfOptions) => {
+484:   // Images are optional: a missing logo or stamp must never stop a report being produced.
+485:   let images: AdminImages = {};
+486:   try {
+487:     images = await fetchAdminImagesAsBase64();
+488:   } catch (error) {
+489:     console.warn("[Compressive PDF] Could not load header images, exporting without them:", error);
+490:   }
+491: 
+492:   const o = options;
+493:   const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "landscape" });
+494:   const pageHeight = doc.internal.pageSize.getHeight();
+495: 
+496:   // Only cubes that can produce a strength are printed; a blank grid line would
+497:   // otherwise read as a cube that failed to break.
+498:   const printable = o.rows.filter(isPopulated);
+499:   const classTarget = cubeStrengthFromClass(o.record.concreteClass);
+500: 
+501:   const usable = pageHeight - furnitureHeight(doc);
+502: 
+503:   // Rows keep the reference height until the sheet gets crowded, then shrink
+504:   // toward the readable floor; past that the sheet paginates.
+505:   const rowH = printable.length === 0
+506:     ? REF_ROW_H
+507:     : Math.max(MIN_ROW_H, Math.min(REF_ROW_H, usable / printable.length));
+508:   const rowsPerPage = Math.max(1, Math.floor(usable / rowH));
+509: 
+510:   const printPage = (page: CompressiveCubeInput[]): number => {
+511:     let y = drawTitleBlock(doc, o, images, MARGIN);
+512:     y = drawIdentification(doc, o, y);
+513:     y = drawTableHeader(doc, y);
+514:     for (const row of page) {
+515:       drawRow(doc, cubeSheetValues(row, classTarget), y, rowH);
+516:       y += rowH;
+517:     }
+518:     return y;
+519:   };
+520: 
+521:   // A test with no results still yields a valid sheet rather than a bare header.
+522:   const totalPages = Math.max(1, Math.ceil(printable.length / rowsPerPage));
+523:   let pageNo = 0;
+524:   const footerY = pageHeight - MARGIN - 14;
+525:   const finishPage = (bottom: number) => {
+526:     pageNo += 1;
+527:     drawTerms(doc, Math.min(bottom + 3, footerY - measureTerms(doc)));
+528:     drawFooter(doc, o, images, footerY, pageNo, totalPages);
+529:   };
+530:   let y = printPage(printable.slice(0, rowsPerPage));
+531:   for (let index = rowsPerPage; index < printable.length; index += rowsPerPage) {
+532:     finishPage(y);
+533:     doc.addPage();
+534:     y = printPage(printable.slice(index, index + rowsPerPage));
+535:   }
+536:   finishPage(y);
+537: 
+538:   if (!o.skipDownload) {
+539:     const stem = (o.projectName || "Compressive Strength").replace(/[^\w-]+/g, "_");
+540:     doc.save(`${stem}_Cubes.pdf`);
+541:   }
+542:   return doc;
+543: };

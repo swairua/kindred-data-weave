@@ -1,0 +1,27 @@
+354: const cubeSheetValues = (row: CompressiveCubeInput, classTarget: number | null): string[] => {
+355:   const strength = strengthOf(row);
+356:   const density = densityOf(row);
+357:   const age = ageOf(row.dateOfCast, row.dateOfTest);
+358:   // A technician's own remark always wins; otherwise show the age-aware verdict.
+359:   const verdict = strength === null || classTarget === null
+360:     ? ""
+361:     : isSatisfactory(strength, classTarget, age) ? "Satisfactory" : "Below target";
+362:   return [
+363:     row.mark.trim() || "None",
+364:     formatReportDate(row.dateOfCast) || BLANK,
+365:     formatReportDate(row.dateOfTest) || BLANK,
+366:     age === null ? BLANK : String(age),
+367:     text(row.width, "150"),
+368:     text(row.height, "150"),
+369:     text(row.depth, "150"),
+370:     num(parseNumber(row.mass), 1),
+371:     density === null ? BLANK : Math.round(density).toLocaleString("en-US"),
+372:     num(parseNumber(row.load), 1),
+373:     num(strength, 1),
+374:     percentOfClass(strength, classTarget),
+375:     row.remarks.trim() || verdict || BLANK,
+376:     // Trailing spacer column, present on the reference sheet.
+377:     "",
+378:   ];
+379: };
+380: 

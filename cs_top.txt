@@ -1,0 +1,28 @@
+93: export interface CompressiveRecordView {
+94:   contractor: string;
+95:   county: string;
+96:   concreteClass: string;
+97:   section: string;
+98:   madeBy: string;
+99:   slump: string;
+100:   clientRef: string;
+101:   labRef: string;
+102:   /** Date the cubes were cast, ISO `YYYY-MM-DD`. */
+103:   dateCasted: string;
+104: }
+105: 
+106: export interface CompressiveStrengthPdfOptions {
+107:   projectName?: string;
+108:   clientName?: string;
+109:   dateReported?: string;
+110:   testedBy?: string;
+111:   checkedBy?: string;
+112:   labOrganization?: string;
+113:   record: CompressiveRecordView;
+114:   /** Every cube row. Blank rows are dropped so empty grid lines are not printed. */
+115:   rows: CompressiveCubeInput[];
+116:   skipDownload?: boolean;
+117: }
+118: 
+119: const text = (value: string | number | null | undefined, fallback = BLANK): string => {
+120:   if (value === null || value === undefined) return fallback;

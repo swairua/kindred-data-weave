@@ -1,0 +1,74 @@
+287:   for (const row of buildIdRows(o)) {
+288:     let cx = TABLE_X;
+289:     for (const cell of row) {
+290:       const labelW = Math.min(cell.w * 0.34, 34);
+291:       const valueW = cell.w - labelW;
+292:       d.setFillColor(...COLORS.labelBg);
+293:       d.rect(cx, cy, labelW, ID_ROW_H, "F");
+294:       d.setDrawColor(...COLORS.grid);
+295:       d.setLineWidth(0.2);
+296:       d.rect(cx, cy, cell.w, ID_ROW_H);
+297:       drawCellText(d, cell.label, cx, cy, labelW, ID_ROW_H, 6.5, true);
+298:       drawCellText(d, cell.value, cx + labelW, cy, valueW, ID_ROW_H, 7.5);
+299:       cx += cell.w;
+300:     }
+301:     cy += ID_ROW_H;
+302:   }
+303:   return cy;
+304: };
+305: 
+306: /**
+307:  * Draw the two-line table heading. "Cube Dimensions (mm)" spans the three
+308:  * L/W/H columns, so those cells carry their letter on the second line.
+309:  */
+310: const drawTableHeader = (d: jsPDF, y: number): number => {
+311:   const halfH = HEADER_H / 2;
+312:   let x = TABLE_X;
+313:   let i = 0;
+314:   while (i < COLS.length) {
+315:     const col = COLS[i];
+316:     // A grouped heading consumes every following column that shares its group.
+317:     let span = 1;
+318:     while (i + span < COLS.length && (COLS[i + span] as { group?: string }).group === col.group) span += 1;
+319:     const width = COLS.slice(i, i + span).reduce((sum, c) => sum + c.w, 0);
+320:     const isGroup = Boolean((col as { group?: string }).group);
+321:     const topH = isGroup ? halfH : HEADER_H;
+322: 
+323:     d.setFillColor(...COLORS.headerBg);
+324:     d.rect(x, y, width, topH, "F");
+325:     d.setDrawColor(...COLORS.grid);
+326:     d.setLineWidth(0.2);
+327:     d.rect(x, y, width, topH);
+328:     const heading = col.group ?? col.label;
+329:     d.setFontSize(fitText(d, heading, width - 2, 6.5, 4));
+330:     d.setFont("helvetica", "bold");
+331:     d.setTextColor(...COLORS.dark);
+332:     d.text(heading, x + width / 2, y + topH / 2 + 2, { align: "center" });
+333: 
+334:     // Second line: only the grouped dimension columns have a sub-label.
+335:     if (isGroup) {
+336:       for (let k = 0; k < span; k += 1) {
+337:         const sub = COLS[i + k];
+338:         const sx = x + COLS.slice(i, i + k).reduce((sum, c) => sum + c.w, 0);
+339:         d.setFillColor(...COLORS.headerBg);
+340:         d.rect(sx, y + halfH, sub.w, halfH, "F");
+341:         d.setDrawColor(...COLORS.grid);
+342:         d.rect(sx, y + halfH, sub.w, halfH);
+343:         drawCellText(d, sub.label, sx, y + halfH, sub.w, halfH, 6.5, true);
+344:       }
+345:     }
+346:     x += width;
+347:     i += span;
+348:   }
+349:   return y + HEADER_H;
+350: };
+351: 
+352: /** Values for one cube, in column order, already formatted for print. */
+353: const cubeSheetValues = (row: CompressiveCubeInput, classTarget: number | null): string[] => {
+354:   const strength = strengthOf(row);
+355:   const density = densityOf(row);
+356:   const age = ageOf(row.dateOfCast, row.dateOfTest);
+357:   // A technician's own remark always wins; otherwise show the age-aware verdict.
+358:   const verdict = strength === null || classTarget === null
+359:     ? ""
+360:     : isSatisfactory(strength, classTarget, age) ? "Satisfactory" : "Below target";

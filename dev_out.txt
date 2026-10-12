@@ -1,0 +1,421 @@
+Re-optimizing dependencies because lockfile has changed
+
+  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m1725[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5182[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://172.30.64.1:[1m5182[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.100.87:[1m5182[22m/[39m
+[2m[32m  ➜[39m[22m[2m  press [22m[1mh + enter[22m[2m to show help[22m
+[2m12:17:04[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/LiquidLimitFlowChart.tsx, /src/index.css[22m
+[2m12:33:59[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/AtterbergTest.tsx, /src/index.css[22m
+[2m12:33:59[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/AtterbergTest.tsx, /src/index.css[22m
+[2m12:34:14[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/AtterbergTest.tsx, /src/index.css[22m
+[2m12:34:15[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/AtterbergTest.tsx, /src/index.css[22m
+[2m12:34:16[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/AtterbergTest.tsx, /src/index.css[22m
+[2m12:34:47[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/AtterbergPrintSheet.tsx, /src/index.css[22m
+[2m12:34:47[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/AtterbergPrintSheet.tsx, /src/index.css[22m
+[2m12:35:06[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/AtterbergPrintSheet.tsx, /src/index.css[22m
+[2m12:35:18[22m [36m[1m[vite][22m[39m [33mhmr invalidate [39m[2m/src/components/soil/AtterbergTest.tsx[22m Could not Fast Refresh ("persistAtterbergProjectToApi" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react-swc#consistent-components-exports
+[2m12:35:18[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Index.tsx, /src/index.css[22m
+[2m12:35:27[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/AtterbergPrintSheet.tsx, /src/index.css[22m
+[2m12:36:05[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/AtterbergRecordView.tsx, /src/index.css[22m
+[2m12:36:21[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/AtterbergRecordView.tsx, /src/index.css[22m
+[2m12:36:47[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/AtterbergRecordView.tsx, /src/index.css[22m
+[2m12:36:48[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/AtterbergRecordView.tsx, /src/index.css[22m
+[2m12:37:45[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/AtterbergRecordView.tsx, /src/index.css[22m
+[2m13:13:22[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/GradingTest.tsx, /src/index.css[22m
+[2m13:13:23[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/GradingTest.tsx, /src/index.css[22m
+[2m13:14:27[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/GradingTest.tsx, /src/index.css[22m
+[2m13:15:28[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/GradingTest.tsx, /src/index.css[22m
+[2m13:16:03[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/GradingTest.tsx, /src/index.css[22m
+[2m13:17:57[22m [31m[1m[vite][22m[39m Pre-transform error: Failed to resolve import "@/lib/psdPdfGenerator" from "src/components/soil/GradingTest.tsx". Does the file exist?
+[2m13:17:58[22m [31m[1m[vite][22m[39m Pre-transform error:   x Expected ';', '}' or <eof>
+     ,-[C:/xampp/htdocs/kindred/src/components/soil/ParticleSizeDistributionChart.tsx:208:1]
+ 205 |             })}
+ 206 |     
+ 207 |             {/* Left and bottom axes carry the weight of the frame. */}
+ 208 | ,->         <line x1={PLOT.x} y1={PLOT.y} x2={PLOT.x} y2={PLOT.y + PLOT.h} stroke="#000000" strokeWidth={AXIS_WIDTH} />
+ 209 | |->         <line x1={PLOT.x} y1={PLOT.y + PLOT.h} x2={PLOT.x + PLOT.w} y2={PLOT.y + PLOT.h} stroke="#000000" strokeWidth={AXIS_WIDTH} />
+     : `---              ^^
+     : `---- This is the expression part of an expression statement
+ 210 |     
+ 211 |             {curve && (
+ 211 |               <path d={curve} fill="none" stroke={CURVE_COLOR} strokeWidth={0.74} transform={`translate(${PLOT.x} ${PLOT.y})`} />
+     `----
+
+
+Caused by:
+    Syntax Error
+[2m13:17:58[22m [31m[1m[vite][22m[39m Pre-transform error:   x 'import', and 'export' cannot be used outside of module code
+     ,-[C:/xampp/htdocs/kindred/src/lib/psdChartGeometry.ts:107:1]
+ 104 |  * repeated inside one group keep the first occurrence, which is the sieve row
+ 105 |  * entered before its hydrometer twin.
+ 106 |  */
+ 107 | export const mergePsdSeries = (...groups: ReadonlyArray<ReadonlyArray<PsdPoint | null | undefined>>): PsdPoint[] => {
+     : ^^^^^^
+ 108 |   const points = new Map<number, number>();
+ 109 |   for (const group of groups) {
+ 109 |     for (const point of group) {
+     `----
+
+
+Caused by:
+    Syntax Error
+[2m13:17:58[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "@/lib/psdPdfGenerator" from "src/components/soil/GradingTest.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mC:/xampp/htdocs/kindred/src/components/soil/GradingTest.tsx[39m:15:52
+[33m  34 |  import { generateTestCSV } from "@/lib/csvExporter";
+  35 |  import { generateTestExcel } from "@/lib/genericExcelExporter";
+  36 |  import { generateParticleSizeDistributionPDF } from "@/lib/psdPdfGenerator";
+     |                                                       ^
+  37 |  import { calculateGrading, calculateHydrometer, calculateMoisture } from "@/lib/gradingCalculations";
+  38 |  import { mergePsdSeries } from "@/lib/psdChartGeometry";[39m
+      at TransformPluginContext._formatError (file:///C:/xampp/htdocs/kindred/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49258:41)
+      at TransformPluginContext.error (file:///C:/xampp/htdocs/kindred/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49253:16)
+      at normalizeUrl (file:///C:/xampp/htdocs/kindred/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64307:23)
+      at async file:///C:/xampp/htdocs/kindred/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64439:39
+      at async Promise.all (index 17)
+      at async TransformPluginContext.transform (file:///C:/xampp/htdocs/kindred/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64366:7)
+      at async PluginContainer.transform (file:///C:/xampp/htdocs/kindred/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49099:18)
+      at async loadAndTransform (file:///C:/xampp/htdocs/kindred/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:27)
+      at async viteTransformMiddleware (file:///C:/xampp/htdocs/kindred/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:62106:24)
+[2m13:17:58[22m [31m[1m[vite][22m[39m Pre-transform error:   x 'import', and 'export' cannot be used outside of module code
+     ,-[C:/xampp/htdocs/kindred/src/lib/psdChartGeometry.ts:107:1]
+ 104 |  * repeated inside one group keep the first occurrence, which is the sieve row
+ 105 |  * entered before its hydrometer twin.
+ 106 |  */
+ 107 | export const mergePsdSeries = (...groups: ReadonlyArray<ReadonlyArray<PsdPoint | null | undefined>>): PsdPoint[] => {
+     : ^^^^^^
+ 108 |   const points = new Map<number, number>();
+ 109 |   for (const group of groups) {
+ 109 |     for (const point of group) {
+     `----
+
+
+Caused by:
+    Syntax Error
+[2m13:17:58[22m [31m[1m[vite][22m[39m Pre-transform error:   x Expected ';', '}' or <eof>
+     ,-[C:/xampp/htdocs/kindred/src/components/soil/ParticleSizeDistributionChart.tsx:208:1]
+ 205 |             })}
+ 206 |     
+ 207 |             {/* Left and bottom axes carry the weight of the frame. */}
+ 208 | ,->         <line x1={PLOT.x} y1={PLOT.y} x2={PLOT.x} y2={PLOT.y + PLOT.h} stroke="#000000" strokeWidth={AXIS_WIDTH} />
+ 209 | |->         <line x1={PLOT.x} y1={PLOT.y + PLOT.h} x2={PLOT.x + PLOT.w} y2={PLOT.y + PLOT.h} stroke="#000000" strokeWidth={AXIS_WIDTH} />
+     : `---              ^^
+     : `---- This is the expression part of an expression statement
+ 210 |     
+ 211 |             {curve && (
+ 211 |               <path d={curve} fill="none" stroke={CURVE_COLOR} strokeWidth={0.74} transform={`translate(${PLOT.x} ${PLOT.y})`} />
+     `----
+
+
+Caused by:
+    Syntax Error
+[2m13:20:59[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Index.tsx, /src/index.css[22m
+[2m13:21:04[22m [31m[1m[vite][22m[39m Pre-transform error: Failed to resolve import "@/lib/psdPdfGenerator" from "src/components/soil/GradingTest.tsx". Does the file exist?
+[2m13:21:04[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Index.tsx, /src/index.css[22m
+[2m13:21:04[22m [31m[1m[vite][22m[39m Pre-transform error:   x Expected ';', '}' or <eof>
+     ,-[C:/xampp/htdocs/kindred/src/components/soil/ParticleSizeDistributionChart.tsx:208:1]
+ 205 |             })}
+ 206 |     
+ 207 |             {/* Left and bottom axes carry the weight of the frame. */}
+ 208 | ,->         <line x1={PLOT.x} y1={PLOT.y} x2={PLOT.x} y2={PLOT.y + PLOT.h} stroke="#000000" strokeWidth={AXIS_WIDTH} />
+ 209 | |->         <line x1={PLOT.x} y1={PLOT.y + PLOT.h} x2={PLOT.x + PLOT.w} y2={PLOT.y + PLOT.h} stroke="#000000" strokeWidth={AXIS_WIDTH} />
+     : `---              ^^
+     : `---- This is the expression part of an expression statement
+ 210 |     
+ 211 |             {curve && (
+ 211 |               <path d={curve} fill="none" stroke={CURVE_COLOR} strokeWidth={0.74} transform={`translate(${PLOT.x} ${PLOT.y})`} />
+     `----
+
+
+Caused by:
+    Syntax Error
+[2m13:21:05[22m [31m[1m[vite][22m[39m Pre-transform error: Failed to resolve import "@/lib/psdPdfGenerator" from "src/components/soil/GradingTest.tsx". Does the file exist?
+[2m13:21:05[22m [31m[1m[vite][22m[39m Pre-transform error:   x Expected ';', '}' or <eof>
+     ,-[C:/xampp/htdocs/kindred/src/components/soil/ParticleSizeDistributionChart.tsx:208:1]
+ 205 |             })}
+ 206 |     
+ 207 |             {/* Left and bottom axes carry the weight of the frame. */}
+ 208 | ,->         <line x1={PLOT.x} y1={PLOT.y} x2={PLOT.x} y2={PLOT.y + PLOT.h} stroke="#000000" strokeWidth={AXIS_WIDTH} />
+ 209 | |->         <line x1={PLOT.x} y1={PLOT.y + PLOT.h} x2={PLOT.x + PLOT.w} y2={PLOT.y + PLOT.h} stroke="#000000" strokeWidth={AXIS_WIDTH} />
+     : `---              ^^
+     : `---- This is the expression part of an expression statement
+ 210 |     
+ 211 |             {curve && (
+ 211 |               <path d={curve} fill="none" stroke={CURVE_COLOR} strokeWidth={0.74} transform={`translate(${PLOT.x} ${PLOT.y})`} />
+     `----
+
+
+Caused by:
+    Syntax Error
+[2m13:21:06[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "@/lib/psdPdfGenerator" from "src/components/soil/GradingTest.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mC:/xampp/htdocs/kindred/src/components/soil/GradingTest.tsx[39m:15:52
+[33m  34 |  import { generateTestCSV } from "@/lib/csvExporter";
+  35 |  import { generateTestExcel } from "@/lib/genericExcelExporter";
+  36 |  import { generateParticleSizeDistributionPDF } from "@/lib/psdPdfGenerator";
+     |                                                       ^
+  37 |  import { calculateGrading, calculateHydrometer, calculateMoisture } from "@/lib/gradingCalculations";
+  38 |  import { mergePsdSeries } from "@/lib/psdChartGeometry";[39m
+      at TransformPluginContext._formatError (file:///C:/xampp/htdocs/kindred/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49258:41)
+      at TransformPluginContext.error (file:///C:/xampp/htdocs/kindred/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49253:16)
+      at normalizeUrl (file:///C:/xampp/htdocs/kindred/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64307:23)
+      at async file:///C:/xampp/htdocs/kindred/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64439:39
+      at async Promise.all (index 17)
+      at async TransformPluginContext.transform (file:///C:/xampp/htdocs/kindred/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64366:7)
+      at async PluginContainer.transform (file:///C:/xampp/htdocs/kindred/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49099:18)
+      at async loadAndTransform (file:///C:/xampp/htdocs/kindred/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:27)
+      at async viteTransformMiddleware (file:///C:/xampp/htdocs/kindred/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:62106:24)
+[2m13:21:06[22m [31m[1m[vite][22m[39m Pre-transform error:   x Expected ';', '}' or <eof>
+     ,-[C:/xampp/htdocs/kindred/src/components/soil/ParticleSizeDistributionChart.tsx:208:1]
+ 205 |             })}
+ 206 |     
+ 207 |             {/* Left and bottom axes carry the weight of the frame. */}
+ 208 | ,->         <line x1={PLOT.x} y1={PLOT.y} x2={PLOT.x} y2={PLOT.y + PLOT.h} stroke="#000000" strokeWidth={AXIS_WIDTH} />
+ 209 | |->         <line x1={PLOT.x} y1={PLOT.y + PLOT.h} x2={PLOT.x + PLOT.w} y2={PLOT.y + PLOT.h} stroke="#000000" strokeWidth={AXIS_WIDTH} />
+     : `---              ^^
+     : `---- This is the expression part of an expression statement
+ 210 |     
+ 211 |             {curve && (
+ 211 |               <path d={curve} fill="none" stroke={CURVE_COLOR} strokeWidth={0.74} transform={`translate(${PLOT.x} ${PLOT.y})`} />
+     `----
+
+
+Caused by:
+    Syntax Error
+[2m13:21:55[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "@/lib/psdPdfGenerator" from "src/components/soil/GradingTest.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mC:/xampp/htdocs/kindred/src/components/soil/GradingTest.tsx[39m:15:52
+[33m  34 |  import { generateTestCSV } from "@/lib/csvExporter";
+  35 |  import { generateTestExcel } from "@/lib/genericExcelExporter";
+  36 |  import { generateParticleSizeDistributionPDF } from "@/lib/psdPdfGenerator";
+     |                                                       ^
+  37 |  import { calculateGrading, calculateHydrometer, calculateMoisture } from "@/lib/gradingCalculations";
+  38 |  import { mergePsdSeries } from "@/lib/psdChartGeometry";[39m
+      at TransformPluginContext._formatError (file:///C:/xampp/htdocs/kindred/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49258:41)
+      at TransformPluginContext.error (file:///C:/xampp/htdocs/kindred/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49253:16)
+      at normalizeUrl (file:///C:/xampp/htdocs/kindred/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64307:23)
+      at async file:///C:/xampp/htdocs/kindred/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64439:39
+      at async Promise.all (index 17)
+      at async TransformPluginContext.transform (file:///C:/xampp/htdocs/kindred/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64366:7)
+      at async PluginContainer.transform (file:///C:/xampp/htdocs/kindred/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49099:18)
+      at async loadAndTransform (file:///C:/xampp/htdocs/kindred/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:27)
+      at async viteTransformMiddleware (file:///C:/xampp/htdocs/kindred/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:62106:24)
+[2m13:21:55[22m [31m[1m[vite][22m[39m Pre-transform error:   x Expected ';', '}' or <eof>
+     ,-[C:/xampp/htdocs/kindred/src/components/soil/ParticleSizeDistributionChart.tsx:208:1]
+ 205 |             })}
+ 206 |     
+ 207 |             {/* Left and bottom axes carry the weight of the frame. */}
+ 208 | ,->         <line x1={PLOT.x} y1={PLOT.y} x2={PLOT.x} y2={PLOT.y + PLOT.h} stroke="#000000" strokeWidth={AXIS_WIDTH} />
+ 209 | |->         <line x1={PLOT.x} y1={PLOT.y + PLOT.h} x2={PLOT.x + PLOT.w} y2={PLOT.y + PLOT.h} stroke="#000000" strokeWidth={AXIS_WIDTH} />
+     : `---              ^^
+     : `---- This is the expression part of an expression statement
+ 210 |     
+ 211 |             {curve && (
+ 211 |               <path d={curve} fill="none" stroke={CURVE_COLOR} strokeWidth={0.74} transform={`translate(${PLOT.x} ${PLOT.y})`} />
+     `----
+
+
+Caused by:
+    Syntax Error
+[2m13:25:54[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Index.tsx, /src/index.css[22m
+[2m13:26:57[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m13:28:30[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m13:29:22[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m13:29:31[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m13:29:31[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m13:32:14[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m13:32:14[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m13:34:03[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m13:34:52[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/GradingTest.tsx, /src/index.css[22m
+[2m13:37:57[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m13:38:03[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m13:38:12[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m13:41:58[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m13:45:31[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/components/soil/GradingTest.test.tsx[22m
+[2m13:45:31[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/components/soil/GradingTest.test.tsx[22m
+[2m13:46:15[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/test/soilPdfExport.test.tsx[22m
+[2m13:46:16[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/test/soilPdfExport.test.tsx[22m
+[2m13:46:37[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/test/soilPdfExport.test.tsx[22m
+[2m13:46:37[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/test/soilPdfExport.test.tsx[22m
+[2m13:46:52[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/test/soilPdfExport.test.tsx[22m
+[2m13:46:53[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/test/soilPdfExport.test.tsx[22m
+[2m13:47:43[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/test/soilPdfExport.test.tsx[22m
+[2m13:52:20[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/test/psdChartGeometry.test.ts[22m
+[2m13:52:28[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/test/soilPdfExport.test.tsx[22m
+[2m13:52:28[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/test/soilPdfExport.test.tsx[22m
+[2m13:52:42[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/components/soil/GradingTest.test.tsx[22m
+[2m13:55:48[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/test/soilPdfExport.test.tsx[22m
+[2m13:55:48[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/test/soilPdfExport.test.tsx[22m
+[2m14:08:34[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m14:08:34[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m14:08:48[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m14:08:49[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m14:08:49[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m14:08:56[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m14:09:05[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m14:09:20[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m14:09:38[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/test/psdPreviewScratch.test.ts[22m
+[2m14:09:38[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/test/psdPreviewScratch.test.ts[22m
+[2m14:11:13[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m14:11:24[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m14:11:24[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m14:11:31[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m14:11:38[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m14:11:51[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m14:11:53[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m14:14:04[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m14:14:04[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m14:14:13[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m14:14:13[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m14:14:23[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m14:14:33[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m14:14:33[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m14:17:22[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m14:17:22[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m14:18:10[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m14:18:18[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx[22m
+[2m14:19:51[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/test/psdPreviewScratch.test.ts[22m
+[2m14:26:23[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/ParticleSizeDistributionChart.tsx, /src/index.css[22m
+[2m14:33:13[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/GradingTest.tsx, /src/index.css[22m
+[2m14:33:13[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/GradingTest.tsx, /src/index.css[22m
+[2m14:33:29[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/GradingTest.tsx, /src/index.css[22m
+[2m14:35:26[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/components/soil/GradingTest.test.tsx[22m
+[2m14:57:26[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx, /src/components/soil/ParticleSizeDistributionChart.tsx[22m
+[2m14:57:26[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx, /src/components/soil/ParticleSizeDistributionChart.tsx[22m
+[2m14:57:57[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/GradingTest.tsx, /src/components/soil/ParticleSizeDistributionChart.tsx[22m
+[2m15:06:48[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/ProctorTest.tsx, /src/index.css[22m
+[2m15:06:48[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/ProctorTest.tsx, /src/index.css[22m
+[2m15:07:09[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/ProctorTest.tsx, /src/index.css[22m
+[2m15:07:31[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/ProctorTest.tsx, /src/index.css[22m
+[2m15:08:24[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/ProctorTest.tsx, /src/index.css[22m
+[2m15:08:53[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/ProctorTest.tsx, /src/index.css[22m
+[2m15:08:53[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/ProctorTest.tsx, /src/index.css[22m
+[2m15:09:16[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/ProctorTest.tsx, /src/index.css[22m
+[2m15:18:37[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/test/soilPdfExport.test.tsx[22m
+[2m15:18:37[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/test/soilPdfExport.test.tsx[22m
+[2m15:19:08[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/test/soilPdfExport.test.tsx[22m
+[2m15:19:09[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/test/soilPdfExport.test.tsx[22m
+[2m15:19:29[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/test/soilPdfExport.test.tsx[22m
+[2m15:19:53[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/test/soilPdfExport.test.tsx[22m
+[2m15:24:34[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/test/soilPdfExport.test.tsx[22m
+[2m15:24:34[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/test/soilPdfExport.test.tsx[22m
+[2m17:09:08[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/CompressiveStrengthTest.tsx, /src/index.css[22m
+[2m17:09:08[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/CompressiveStrengthTest.tsx, /src/index.css[22m
+[2m17:09:29[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/CompressiveStrengthTest.tsx, /src/index.css[22m
+[2m17:09:29[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/CompressiveStrengthTest.tsx, /src/index.css[22m
+[2m17:09:56[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/CompressiveStrengthTest.tsx, /src/index.css[22m
+[2m17:10:19[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/CompressiveStrengthTest.tsx, /src/index.css[22m
+[2m17:10:45[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/context/TestDataContext.tsx, /src/index.css[22m
+[2m17:10:45[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/context/TestDataContext.tsx, /src/index.css[22m
+[2m17:11:22[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/CompressiveStrengthTest.tsx, /src/index.css[22m
+[2m17:11:23[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/CompressiveStrengthTest.tsx, /src/index.css[22m
+[2m17:11:49[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/CompressiveStrengthTest.tsx, /src/index.css[22m
+[2m17:12:14[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/CompressiveStrengthTest.tsx, /src/index.css[22m
+[2m17:14:37[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/CompressiveStrengthTest.tsx, /src/index.css[22m
+[2m20:57:46[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/CompressiveStrengthTest.tsx, /src/index.css[22m
+[2m21:00:49[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/CompressiveStrengthTest.tsx, /src/index.css[22m
+[2m21:01:14[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/CompressiveStrengthTest.tsx, /src/index.css[22m
+[2m21:01:14[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/CompressiveStrengthTest.tsx, /src/index.css[22m
+[2m21:04:15[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/CompressiveStrengthTest.tsx, /src/index.css[22m
+[2m21:04:35[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/CompressiveStrengthTest.tsx, /src/index.css[22m
+[2m21:04:54[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/CompressiveStrengthTest.tsx, /src/index.css[22m
+[2m21:04:54[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/CompressiveStrengthTest.tsx, /src/index.css[22m
+[2m21:05:14[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/CompressiveStrengthTest.tsx, /src/index.css[22m
+[2m21:21:00[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/CompressiveStrengthTest.tsx, /src/index.css[22m
+[2m21:21:00[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/CompressiveStrengthTest.tsx, /src/index.css[22m
+[2m21:32:55[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/CompressiveStrengthTest.tsx, /src/index.css[22m
+[2m21:32:55[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/ConcreteCubesTest.tsx, /src/index.css[22m
+[2m21:32:55[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/CoringTest.tsx, /src/index.css[22m
+[2m21:32:55[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/SchmidtHammerTest.tsx, /src/index.css[22m
+[2m21:32:55[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/SlumpTest.tsx, /src/index.css[22m
+[2m21:32:56[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/UPVTTest.tsx, /src/index.css[22m
+[2m21:32:56[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/rock/PointLoadTest.tsx, /src/index.css[22m
+[2m21:32:56[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/rock/PorosityTest.tsx, /src/index.css[22m
+[2m21:32:56[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/rock/UCSTest.tsx, /src/index.css[22m
+[2m21:32:56[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/CBRTest.tsx, /src/index.css[22m
+[2m21:32:56[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/ConsolidationTest.tsx, /src/index.css[22m
+[2m21:32:56[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/ShearTest.tsx, /src/index.css[22m
+[2m21:32:56[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/special/DCPTest.tsx, /src/index.css[22m
+[2m21:32:56[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/special/SPTTest.tsx, /src/index.css[22m
+[2m21:34:35[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/CompressiveStrengthTest.tsx, /src/index.css[22m
+[2m21:34:35[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/ConcreteCubesTest.tsx, /src/index.css[22m
+[2m21:34:35[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/CoringTest.tsx, /src/index.css[22m
+[2m21:34:35[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/SchmidtHammerTest.tsx, /src/index.css[22m
+[2m21:34:35[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/SlumpTest.tsx, /src/index.css[22m
+[2m21:34:35[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/UPVTTest.tsx, /src/index.css[22m
+[2m21:34:35[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/rock/PointLoadTest.tsx, /src/index.css[22m
+[2m21:34:35[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/rock/PorosityTest.tsx, /src/index.css[22m
+[2m21:34:35[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/rock/UCSTest.tsx, /src/index.css[22m
+[2m21:34:35[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/CBRTest.tsx, /src/index.css[22m
+[2m21:34:35[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/ConsolidationTest.tsx, /src/index.css[22m
+[2m21:34:35[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/ShearTest.tsx, /src/index.css[22m
+[2m21:34:35[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/special/DCPTest.tsx, /src/index.css[22m
+[2m21:34:35[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/special/SPTTest.tsx, /src/index.css[22m
+[2m21:40:20[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/ConcreteCubesTest.tsx, /src/index.css[22m
+[2m21:40:20[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/CoringTest.tsx, /src/index.css[22m
+[2m21:40:20[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/ConcreteCubesTest.tsx, /src/index.css[22m
+[2m21:40:20[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/rock/PointLoadTest.tsx, /src/index.css[22m
+[2m21:40:20[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/CBRTest.tsx, /src/index.css[22m
+[2m21:40:20[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/special/DCPTest.tsx, /src/index.css[22m
+[2m21:40:20[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/SchmidtHammerTest.tsx, /src/index.css[22m
+[2m21:40:20[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/SlumpTest.tsx, /src/index.css[22m
+[2m21:40:20[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/UPVTTest.tsx, /src/index.css[22m
+[2m21:40:20[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/rock/PointLoadTest.tsx, /src/index.css[22m
+[2m21:40:20[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/rock/PorosityTest.tsx, /src/index.css[22m
+[2m21:40:20[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/rock/UCSTest.tsx, /src/index.css[22m
+[2m21:40:20[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/CBRTest.tsx, /src/index.css[22m
+[2m21:40:20[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/ConsolidationTest.tsx, /src/index.css[22m
+[2m21:40:20[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/ShearTest.tsx, /src/index.css[22m
+[2m21:40:20[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/special/SPTTest.tsx, /src/index.css[22m
+[2m21:41:24[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/CompressiveStrengthTest.tsx, /src/index.css[22m
+[2m21:41:24[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/CompressiveStrengthTest.tsx, /src/index.css[22m
+[2m21:42:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/concrete/CompressiveStrengthTest.tsx[22m
+[2m21:42:07[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/test/compressiveExcelLayout.test.ts[22m
+[2m21:43:06[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/concrete/CompressiveStrengthTest.tsx, /src/index.css[22m
+[2m23:06:21[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/ProctorTest.tsx, /src/index.css[22m
+[2m23:06:38[22m [31m[1m[vite][22m[39m [31mInternal server error:   x Expected '</', got 'jsx text'
+     ,-[C:/xampp/htdocs/kindred/src/components/soil/ProctorTest.tsx:400:1]
+ 397 |                   <CalculatedRow label="Moisture content (%)" values={pointCalculations.map((point) => point.moistureContent)} precision={1} />
+ 398 |                   <CalculatedRow label="Dry density (kg/m³)" values={pointCalculations.map((point) => point.dryDensity)} precision={0} />
+ 399 |                 </tbody>
+ 400 | ,->           </table>
+ 401 | `->         </div>
+ 402 |           </section>
+ 403 |     
+ 403 |           <section className="record-card p-3">
+     `----
+
+
+Caused by:
+    Syntax Error[39m
+  Plugin: [35mvite:react-swc[39m
+  File: [36mC:/xampp/htdocs/kindred/src/components/soil/ProctorTest.tsx[39m
+  
+[2m23:06:56[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/ProctorTest.tsx, /src/index.css[22m
+[2m23:06:56[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/ProctorTest.tsx, /src/index.css[22m
+[2m23:07:55[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/ProctorTest.tsx, /src/index.css[22m
+[2m23:08:45[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/ProctorTest.tsx, /src/index.css[22m
+[2m23:11:06[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/GradingTest.tsx, /src/index.css[22m
+[2m23:11:06[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/GradingTest.tsx, /src/index.css[22m
+[2m23:12:27[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/GradingTest.tsx, /src/index.css[22m
+[2m23:13:45[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/GradingTest.tsx, /src/index.css[22m
+[2m23:14:42[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/GradingTest.tsx, /src/index.css[22m
+[2m23:14:43[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/GradingTest.tsx, /src/index.css[22m
+[2m23:16:17[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/GradingTest.tsx, /src/index.css[22m
+[2m23:16:17[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Index.tsx, /src/index.css[22m
+[2m23:16:28[22m [36m[1m[vite][22m[39m [33mhmr invalidate [39m[2m/src/components/soil/GradingTest.tsx[22m Could not Fast Refresh (export removed)
+[2m23:16:28[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Index.tsx, /src/index.css[22m
+[2m23:17:24[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/GradingTest.tsx, /src/index.css[22m
+[2m23:17:25[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/soil/GradingTest.tsx, /src/index.css[22m
+[2m23:21:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/ProctorTest.tsx, /src/components/soil/GradingTest.tsx[22m
+[2m23:21:08[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/ProctorTest.tsx, /src/components/soil/GradingTest.tsx[22m
+[2m23:25:40[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/ProctorTest.tsx, /src/components/soil/GradingTest.tsx[22m
+[2m23:25:40[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/soil/ProctorTest.tsx, /src/components/soil/GradingTest.tsx[22m
+[2m23:35:33[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/test/soilPdfExport.test.tsx[22m
+[2m23:38:44[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/test/soilPdfExport.test.tsx[22m
+[2m23:38:47[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/test/soilPdfExport.test.tsx[22m
+[2m23:38:48[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/test/soilPdfExport.test.tsx[22m
+[2m23:44:27[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/test/soilPdfExport.test.tsx[22m
+[2m23:44:27[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/test/soilPdfExport.test.tsx[22m

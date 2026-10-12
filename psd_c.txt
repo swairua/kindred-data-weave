@@ -1,0 +1,109 @@
+112: /** Shrink a string until it fits its cell rather than letting it spill over the rule. */
+113: const fitText = (d: jsPDF, value: string, maxWidth: number, startSize: number, minSize = 2.8): number => {
+114:   let size = startSize;
+115:   try {
+116:     while (size > minSize && d.getTextWidth(value) > Math.max(maxWidth, 1)) size -= 0.25;
+117:   } catch { /* jsPDF text metrics are unavailable in some environments */ }
+118:   return size;
+119: };
+120: 
+121: const imageParts = (dataUrl: string): { base64: string; format: "PNG" | "JPEG" } => {
+122:   const match = /^(data:image\/(\w+);base64,)(.+)$/.exec(dataUrl);
+123:   if (!match) return { base64: dataUrl, format: "PNG" };
+124:   const mime = match[2].toLowerCase();
+125:   return { base64: match[3], format: mime === "jpeg" || mime === "jpg" ? "JPEG" : "PNG" };
+126: };
+127: 
+128: /** Draw one row of ruled cells and return the y below it. Supports "\n" two-line captions. */
+129: const drawCells = (d: jsPDF, x: number, y: number, h: number, cells: Cell[]): number => {
+130:   let cx = x;
+131:   d.setDrawColor(...COLORS.dark);
+132:   d.setLineWidth(0.2);
+133:   for (const cell of cells) {
+134:     const shade = cell.label ? COLORS.labelBg : ([255, 255, 255] as [number, number, number]);
+135:     d.setFillColor(shade[0], shade[1], shade[2]);
+136:     d.rect(cx, y, cell.w, h, "FD");
+137:     const value = (cell.text ?? "").trim();
+138:     if (value) {
+139:       const lines = value.split("\n").map((line) => line.trim()).filter(Boolean);
+140:       const longest = lines.reduce((a, b) => (a.length >= b.length ? a : b), "");
+141:       const size = fitText(d, longest, cell.w - 1.2, cell.size ?? 6.2, cell.minSize ?? 2.8);
+142:       d.setFontSize(size);
+143:       d.setFont("helvetica", cell.bold ? "bold" : "normal");
+144:       d.setTextColor(...COLORS.dark);
+145:       const align = cell.align ?? "left";
+146:       const tx = align === "left" ? cx + 0.8 : align === "right" ? cx + cell.w - 0.8 : cx + cell.w / 2;
+147:       const lineH = size * 0.38;
+148:       const startY = lines.length > 1 ? y + h / 2 - lineH / 2 : y + h / 2;
+149:       lines.forEach((line, index) => {
+150:         d.text(line, tx, startY + index * lineH, { align, baseline: "middle" });
+151:       });
+152:     }
+153:     cx += cell.w;
+154:   }
+155:   return y + h;
+156: };
+157: 
+158: /** A section caption spanning the full content width. */
+159: const drawCaption = (d: jsPDF, x: number, y: number, w: number, caption: string, rowH = ROW_H): number =>
+160:   drawCells(d, x, y, rowH, [{ w, text: caption, align: "center", bold: true, size: 6 }]);
+161: /** Client / project / sample identification block. */
+162: const drawHeader = (d: jsPDF, x: number, y: number, o: ParticleSizeDistributionPdfOptions, rowH = ROW_H): number => {
+163:   const { record } = o;
+164:   const depth = [record.sampleDepthFrom, record.sampleDepthTo].filter(Boolean).join(" - ");
+165:   let cy = y;
+166:   cy = drawCells(d, x, cy, rowH, [
+167:     { w: 28, text: "Client:", label: true, bold: true },
+168:     { w: 116, text: text(o.clientName) },
+169:     { w: 26, text: "Date submitted:", label: true, bold: true },
+170:     { w: 20, text: text(record.dateSubmitted || o.date) },
+171:   ]);
+172:   cy = drawCells(d, x, cy, rowH, [
+173:     { w: 28, text: "Project/Site Name:", label: true, bold: true },
+174:     { w: 116, text: text(o.projectName) },
+175:     { w: 26, text: "Date tested:", label: true, bold: true },
+176:     { w: 20, text: text(record.dateTested || o.dateTested) },
+177:   ]);
+178:   cy = drawCells(d, x, cy, rowH, [
+179:     { w: 22, text: "Sample ID:", label: true, bold: true },
+180:     { w: 18, text: text(record.label) },
+181:     { w: 20, text: "Sample No.:", label: true, bold: true },
+182:     { w: 18, text: text(record.sampleNumber) },
+183:     { w: 24, text: "Sample depth (M):", label: true, bold: true },
+184:     { w: 22, text: text(depth) },
+185:     { w: 36, text: "Sampled and Submitted by:", label: true, bold: true },
+186:     { w: 30, text: text(record.sampledSubmittedBy) },
+187:   ]);
+188:   return cy;
+189: };
+190: 
+191: const parse = (value: string) => {
+192:   const parsed = Number.parseFloat(value);
+193:   return Number.isFinite(parsed) ? parsed : null;
+194: };
+195: 
+196: /** Sample preparation on the left, moisture content at preparation on the right. */
+197: const drawPreparation = (d: jsPDF, x: number, y: number, o: ParticleSizeDistributionPdfOptions, rowH = ROW_H): number => {
+198:   const leftW = 94;
+199:   const rightW = CONTENT_W - leftW;
+200:   const initial = parse(o.record.samplePreparation.initialDryMass);
+201:   const washed = parse(o.record.samplePreparation.washedOvenDryMass);
+202:   const fineMass = initial !== null && washed !== null ? Math.max(initial - washed, 0) : null;
+203:   const finesPercent = initial && fineMass !== null ? (fineMass / initial) * 100 : null;
+204:   const moisture = calculateMoisture(o.record.moisture.wetMass, o.record.moisture.dryMass);
+205: 
+206:   const pair = (caption: string, label: string, value: string): Cell[] => [
+207:     { w: 34, text: label, bold: true, size: 6 },
+208:     { w: 16, text: caption },
+209:     { w: leftW - 50, text: value, align: "right" },
+210:   ];
+211: 
+212:   let left = drawCells(d, x, y, rowH, [{ w: leftW, text: "Sample preparation details", align: "center", bold: true, size: 6.5 }]);
+213:   left = drawCells(d, x, left, rowH, pair("(gm)", "Initial quartered and air dried mass", text(initial)));
+214:   left = drawCells(d, x, left, rowH, pair("(gm)", "Washed and oven dried mass", text(washed)));
+215:   left = drawCells(d, x, left, rowH, pair("(gm)", "Fine mass", num(fineMass)));
+216:   drawCells(d, x, left, rowH, pair("(%)", "Fines percent", num(finesPercent)));
+217: 
+218:   let right = drawCells(d, x + leftW, y, rowH, [{ w: rightW, text: "Moisture content at sample preparations", align: "center", bold: true, size: 6.5 }]);
+219:   const rightPair = (caption: string, label: string, value: string): Cell[] => [
+220:     { w: 40, text: label, bold: true, size: 6 },
