@@ -113,5 +113,7 @@ describe("formulas reference PDF", () => {
     const cube = { mark: "", dateOfCast: "", dateOfTest: "", load: "564.1", width: "150", height: "150", depth: "150", mass: "", remarks: "" };
     expect(compressive.strengthOf(cube)).toBeCloseTo(25.07, 2);
     expect(compressive.formatStrength(cube)).toBe("25.07");
+    expect(compressive.expectedPercentAtAge(10)).toBeCloseTo(75.71, 1);
+    expect(compressive.formatReportAge(55)).toBe("Above 28");
   });
 });

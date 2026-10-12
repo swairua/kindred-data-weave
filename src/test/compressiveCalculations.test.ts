@@ -10,6 +10,7 @@ import {
   expectedPercentAtAge,
   expectedStrength,
   formatDensity,
+  formatReportAge,
   formatStrength,
   gainSummary,
   getPassFailResults,
@@ -287,16 +288,23 @@ describe("strength gain table", () => {
     ]);
   });
 
-  it("returns the expectation at exact reporting ages only", () => {
+  it("returns the table expectation at reporting ages", () => {
     expect(expectedPercentAtAge(7)).toBe(65);
     expect(expectedPercentAtAge(28)).toBe(99);
-    expect(expectedPercentAtAge(2)).toBeNull();
     expect(expectedPercentAtAge(null)).toBeNull();
+  });
+
+  it("interpolates between table points and holds 99% past 28 days", () => {
+    expect(expectedPercentAtAge(10)).toBeCloseTo(75.71, 1);
+    expect(expectedPercentAtAge(2)).toBe(28);
+    expect(expectedPercentAtAge(55)).toBe(99);
+    expect(expectedPercentAtAge(0)).toBeNull();
   });
 
   it("converts a class target into MPa at an age", () => {
     expect(expectedStrength(30, 7)).toBeCloseTo(19.5, 10);
-    expect(expectedStrength(30, 2)).toBeNull();
+    expect(expectedStrength(30, 2)).toBeCloseTo(8.4, 10);
+    expect(expectedStrength(30, 55)).toBeCloseTo(29.7, 10);
     expect(expectedStrength(null, 7)).toBeNull();
   });
 
@@ -321,8 +329,25 @@ describe("gainSummary", () => {
     const row = cube({ dateOfCast: "2026-01-01", dateOfTest: "2026-01-08", load: "667", width: "150", height: "150" });
     expect(gainSummary(row, null)).toBe("");
     expect(gainSummary(cube({ load: "", width: "150", height: "150" }), 30)).toBe("");
-    // Age 2 is off the gain table, so there is no expectation to show.
-    expect(gainSummary(cube({ dateOfCast: "2026-01-01", dateOfTest: "2026-01-03", load: "200", width: "150", height: "150" }), 30)).toBe("");
+    // A same-day cube has no expectation to show.
+    expect(gainSummary(cube({ dateOfCast: "2026-01-01", dateOfTest: "2026-01-01", load: "200", width: "150", height: "150" }), 30)).toBe("");
+  });
+
+  it("shows interpolated expectations for off-nominal ages", () => {
+    // 200 kN on 150 mm = 8.89 MPa, 30% of C30 against 28% expected at 2 days.
+    const row = cube({ dateOfCast: "2026-01-01", dateOfTest: "2026-01-03", load: "200", width: "150", height: "150" });
+    expect(gainSummary(row, 30)).toBe("30% (expected 28%)");
+  });
+});
+
+describe("formatReportAge", () => {
+  it("prints exact days inside the 28-day window and Above 28 past it", () => {
+    expect(formatReportAge(null)).toBe("");
+    expect(formatReportAge(7)).toBe("7");
+    expect(formatReportAge(28)).toBe("28");
+    expect(formatReportAge(31)).toBe("31");
+    expect(formatReportAge(32)).toBe("Above 28");
+    expect(formatReportAge(55)).toBe("Above 28");
   });
 });
 

@@ -18,6 +18,7 @@ import {
   cubeStrengthFromClass,
   densityOf,
   expectedPercentAtAge,
+  formatReportAge,
   parseNumber,
   strengthOf,
   type CompressiveCubeInput,
@@ -110,6 +111,11 @@ export interface CompressiveStrengthPdfOptions {
   testedBy?: string;
   checkedBy?: string;
   labOrganization?: string;
+  /** Letterhead address lines, printed as text when no header images are configured. */
+  labAddressLines?: string[];
+  /** Signed on paper after issue; blank when not yet received. */
+  receivedBy?: string;
+  receivedDate?: string;
   record: CompressiveRecordView;
   /** Every cube row. Blank rows are dropped so empty grid lines are not printed. */
   rows: CompressiveCubeInput[];
@@ -169,11 +175,10 @@ export const percentOfClass = (strength: number | null, classTarget: number | nu
  * A bare comparison against the class figure would condemn every early cube:
  * the reference's own 7-day cube reached 84% of a C30 class and was reported
  * "Satisfactory". Each age is judged against the strength-gain table (1d 16%,
- * 3d 40%, 7d 65%, 14d 90%, 28d 99%), so a 28-day cube at 70% is below its
- * 99% expectation while a 3-day cube at 45% beats its 40% one. Past 28 days
- * the concrete is judged against the 28-day line, so a 55-day cube at 78%
- * reads "Unsatisfactory". Without a
- * known age the long-standing flat 65% line is kept as the fallback.
+ * 3d 40%, 7d 65%, 14d 90%, 28d 99%), interpolating between the points and
+ * holding 99% past 28 days, so a 55-day cube at 78% is below expectation
+ * while a 3-day cube at 45% beats its 40% one. Without a known age the
+ * long-standing flat 65% line is kept as the fallback.
  */
 export const isSatisfactory = (
   strength: number | null,
@@ -363,8 +368,8 @@ const cubeSheetValues = (row: CompressiveCubeInput, classTarget: number | null):
     row.mark.trim() || "None",
     formatReportDate(row.dateOfCast) || BLANK,
     formatReportDate(row.dateOfTest) || BLANK,
-    // Past 28 days the sheet prints "Above 28", matching the reference.
-    age === null ? BLANK : age > 28 ? "Above 28" : String(age),
+    // Past the 28-day tolerance window the sheet prints "Above 28".
+    formatReportAge(age) || BLANK,
     text(row.width, "150"),
     text(row.height, "150"),
     text(row.depth, "150"),
@@ -440,6 +445,8 @@ const drawFooter = (d: jsPDF, o: CompressiveStrengthPdfOptions, images: AdminIma
   d.text(`TESTED BY:  ${text(o.testedBy)}`, TABLE_X, y);
   d.text(`REPORTED ON:  ${formatReportDate(o.dateReported ?? "") || BLANK}`, TABLE_X + colW, y);
   d.text(`CHECKED BY:  ${text(o.checkedBy)}`, TABLE_X + colW * 2, y);
+  d.text(`RECEIVED BY:  ${text(o.receivedBy)}`, TABLE_X, y + 6);
+  d.text(`DATE:  ${formatReportDate(o.receivedDate ?? "") || BLANK}`, TABLE_X + colW, y + 6);
 
   if (images.stamp) {
     try {
@@ -482,7 +489,24 @@ const drawTitleBlock = (d: jsPDF, o: CompressiveStrengthPdfOptions, images: Admi
       d.addImage(base64, format, MARGIN + CONTENT_W - imgW, y + 1, imgW, imgH, undefined, "FAST");
     } catch { /* the contacts block is optional */ }
   }
-  let cy = y + imgH + 3;
+  let cy = y;
+  const hasImages = !!(images.logo || images.contacts);
+  if (hasImages) cy += imgH + 3;
+  const addressLines = (o.labAddressLines ?? []).filter((line) => line.trim() !== "").slice(0, 3);
+  if (!hasImages && addressLines.length > 0) {
+    // No letterhead images configured: print the address as text instead of
+    // leaving an empty band, so the sheet always carries the lab identity.
+    d.setFontSize(7.5);
+    d.setFont("helvetica", "normal");
+    d.setTextColor(...COLORS.dark);
+    for (const line of addressLines) {
+      cy += 3.6;
+      d.text(line, MARGIN + CONTENT_W / 2, cy, { align: "center" });
+    }
+    cy += 3;
+  } else if (!hasImages) {
+    cy += 3;
+  }
   d.setDrawColor(...COLORS.dark);
   d.setLineWidth(0.5);
   d.line(MARGIN, cy, MARGIN + CONTENT_W, cy);

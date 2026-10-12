@@ -99,6 +99,15 @@ describe("isSatisfactory", () => {
     expect(isSatisfactory(12, 30, null)).toBe(false);
   });
 
+  it("judges over-28 cubes at ~99% as on the desired sheet", () => {
+    // Correct-design sheet, C40 at 55 days: 78% and 60% Unsatisfactory.
+    expect(isSatisfactory(31.1, 40, 55)).toBe(false);
+    expect(isSatisfactory(24, 40, 55)).toBe(false);
+    // Same sheet, C25 at 55 days: 99% and 111% Satisfactory.
+    expect(isSatisfactory(24.8, 25, 55)).toBe(true);
+    expect(isSatisfactory(27.8, 25, 55)).toBe(true);
+  });
+
   it("gives no verdict without a class or a measured strength", () => {
     expect(isSatisfactory(25.1, null)).toBe(false);
     expect(isSatisfactory(null, 30)).toBe(false);

@@ -184,10 +184,33 @@ export const STRENGTH_GAIN_TABLE = [
   { days: 28, percent: 99 },
 ] as const;
 
-/** Expected percentage at an exact reporting age; null for off-nominal ages. */
+/** Expected percentage at an age, interpolating linearly between the table
+ * points from 1 to 28 days and holding 99% past 28 days (the desired lab
+ * sheet judges over-28 cubes at ~99%: 78% Unsatisfactory, 99%+ Satisfactory).
+ * Null below 1 day or when the age is unknown. */
 export const expectedPercentAtAge = (ageDays: number | null): number | null => {
-  if (ageDays === null) return null;
-  return STRENGTH_GAIN_TABLE.find((row) => row.days === ageDays)?.percent ?? null;
+  if (ageDays === null || ageDays < 1) return null;
+  const points = STRENGTH_GAIN_TABLE;
+  if (ageDays <= points[0].days) return points[0].percent;
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const lower = points[index];
+    const upper = points[index + 1];
+    if (ageDays <= upper.days) {
+      const ratio = (ageDays - lower.days) / (upper.days - lower.days);
+      return lower.percent + ratio * (upper.percent - lower.percent);
+    }
+  }
+  return points[points.length - 1].percent;
+};
+
+/**
+ * Report age as the lab sheet prints it: exact days inside the 28-day
+ * tolerance window (25-31 days), "Above 28" past it. Empty when unknown.
+ * The entry grid keeps exact days; only the report caps the display.
+ */
+export const formatReportAge = (ageDays: number | null): string => {
+  if (ageDays === null) return "";
+  return ageDays > 28 + 3 ? "Above 28" : String(ageDays);
 };
 
 /** Expected MPa for a class target at an age; null when indeterminable. */
@@ -281,8 +304,9 @@ export const classBandTargets = (classTarget: number): MultiStandardTargets => {
 
 /**
  * Compact per-cube gain readout, e.g. "84% (expected 65%)": the achieved
- * share of the class target against the age expectation. Empty unless the
- * cube has a strength, an age on the gain table, and a class target.
+ * share of the class target against the (possibly interpolated) age
+ * expectation. Empty unless the cube has a strength, a known age of at
+ * least a day, and a class target.
  */
 export const gainSummary = (
   row: CompressiveCubeInput,

@@ -44,7 +44,7 @@ export interface FormulaSection {
   entries: FormulaEntry[];
 }
 
-export const FORMULAS_REFERENCE_VERSION = "1.2.0";
+export const FORMULAS_REFERENCE_VERSION = "1.3.0";
 
 export const FORMULAS_REFERENCE_TITLE = "Calculations and Formulas Reference";
 
@@ -460,13 +460,15 @@ export const FORMULA_SECTIONS: FormulaSection[] = [
           "14 days -> 90% of 28-day strength",
           "28 days -> 99% of 28-day strength",
           "expected MPa = class target * percent / 100",
+          "between table ages the expectation interpolates linearly (10 days -> 75.7%); past 28 days it holds 99%; below 1 day there is none",
         ],
         variables: [],
         notes: [
           "Percentages are of the characteristic (28-day) strength, e.g. C30 at 7 days is expected to reach 19.5 MPa.",
+          "Report sheets print ages past 31 days as Above 28 instead of the exact day count.",
         ],
         sourceModule: "compressiveCalculations",
-        sourceFunctions: ["expectedPercentAtAge", "expectedStrength"],
+        sourceFunctions: ["expectedPercentAtAge", "expectedStrength", "formatReportAge"],
       },
       {
         heading: "Acceptance",
