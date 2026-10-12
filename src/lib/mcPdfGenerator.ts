@@ -539,19 +539,33 @@ export const generateMoistureDensityPDF = async (options: MoistureDensityPdfOpti
   let rowH = ROW_H;
   let graphH = graphNaturalH;
   // Single-pass fit: rows compress first (4.2 -> 3.4mm), then the graph shrinks
-  // (never below MIN_GRAPH_H — the chart is mandatory). One page only.
+  // (never below MIN_GRAPH_H — the chart is mandatory). Anything that still
+  // cannot fit moves the graph to its own second page rather than squeezing
+  // the results block or the graph past the footer.
   const need = fixedH + tableH + resultsH + 2 + graphH + 2;
   const have = contentBottom - topY;
+  // Solve directly: total = fixedH + 14*rowH + 2 + resultRows*rowH + 2 + graphH.
+  const fittedRowH = (have - fixedH - 2 - 2 - graphNaturalH) / (14 + resultRows);
+  let paginateGraph = false;
   if (need > have) {
-    // Solve directly: total = fixedH + 14*rowH + 2 + resultRows*rowH + 2 + graphH.
-    const fittedRowH = (have - fixedH - 2 - 2 - graphNaturalH) / (14 + resultRows);
     if (fittedRowH >= MIN_ROW_H) {
       rowH = fittedRowH;
     } else {
+      paginateGraph = true;
       rowH = MIN_ROW_H;
-      graphH = Math.max(MIN_GRAPH_H, have - fixedH - 2 - (14 + resultRows) * MIN_ROW_H - 2);
+      graphH = graphNaturalH;
     }
   }
+
+  const finishPage = (label: string): void => {
+    // Footer last, on the reserved band — content above can never overlap it.
+    drawFooter(doc, options, images, footerY);
+    doc.setFontSize(7);
+    doc.setTextColor(120, 120, 120);
+    doc.setFont("helvetica", "normal");
+    doc.text(label, pageWidth / 2, pageHeight - 6, { align: "center" });
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, MARGIN, pageHeight - 6);
+  };
 
   const headerH = Math.max(4.5, Math.min(6, rowH * 1.45));
   let y = drawTitleBlock(doc, x, topY, CONTENT_W, options, images);
@@ -559,18 +573,19 @@ export const generateMoistureDensityPDF = async (options: MoistureDensityPdfOpti
   y = drawBulkTable(doc, x, y, options, rowH, headerH) + 2;
   y = drawMoistureTable(doc, x, y, options, rowH, headerH) + 2;
 
-  const graphBudget = Math.max(contentBottom - y - resultsBlockHeight(options, rowH) - 2, MIN_GRAPH_H);
-  const fittedGraphH = Math.min(graphH, graphBudget);
-  y = drawMcGraph(doc, x, y, CONTENT_W, options, fittedGraphH) + 2;
-  drawResults(doc, x, y, options, rowH);
-
-  // Footer last, on the reserved band — content above can never overlap it.
-  drawFooter(doc, options, images, footerY);
-  doc.setFontSize(7);
-  doc.setTextColor(120, 120, 120);
-  doc.setFont("helvetica", "normal");
-  doc.text("Page 1 of 1", pageWidth / 2, pageHeight - 6, { align: "center" });
-  doc.text(`Generated: ${new Date().toLocaleDateString()}`, MARGIN, pageHeight - 6);
+  if (!paginateGraph) {
+    const graphBudget = Math.max(contentBottom - y - resultsBlockHeight(options, rowH) - 2, MIN_GRAPH_H);
+    const fittedGraphH = Math.min(graphH, graphBudget);
+    y = drawMcGraph(doc, x, y, CONTENT_W, options, fittedGraphH) + 2;
+    drawResults(doc, x, y, options, rowH);
+    finishPage("Page 1 of 1");
+  } else {
+    drawResults(doc, x, y, options, rowH);
+    finishPage("Page 1 of 2");
+    doc.addPage();
+    drawMcGraph(doc, x, topY, CONTENT_W, options, graphH);
+    finishPage("Page 2 of 2");
+  }
 
   if (!options.skipDownload) {
     const stem = (options.projectName || "Density Moisture Content").replace(/[^\w-]+/g, "_");

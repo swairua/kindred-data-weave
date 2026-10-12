@@ -74,7 +74,14 @@ beforeEach(() => {
 
 describe("ProjectOverview", () => {
   it("opens a selected project from the main list into its overview", async () => {
-    overviewMocks.listRecords.mockImplementation((table: string) => Promise.resolve({ data: table === "projects" ? [project] : [] }));
+    // The projects list only shows projects that have at least one saved
+    // test result, so the mock has to include one for project 42 — otherwise
+    // the row (and its Open button) is filtered out and there is nothing to click.
+    overviewMocks.listRecords.mockImplementation((table: string) => Promise.resolve({
+      data: table === "projects" ? [project] : [
+        { id: 88, project_id: 42, test_key: "atterberg", name: "Atterberg Limits", updated_at: "2026-06-12 10:00:00" },
+      ],
+    }));
     renderOverview("/projects");
 
     fireEvent.click(await screen.findByRole("button", { name: /Open/ }));
@@ -141,6 +148,10 @@ describe("ProjectOverview", () => {
     overviewMocks.updateRecord.mockResolvedValue({ data: { ...project, name: "Updated grading project" } });
     renderOverview();
 
+    // Waiting on the mock (no DOM traversal) lets React flush the loaded
+    // project through act() before the first DOM query runs, which keeps
+    // this page-suite test inside its timeout on slow machines.
+    await waitFor(() => expect(overviewMocks.fetchFullProject).toHaveBeenCalledWith(42));
     fireEvent.click(await screen.findByRole("button", { name: "Edit project" }));
     fireEvent.change(screen.getByLabelText("Project name"), { target: { value: "Updated grading project" } });
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
@@ -161,6 +172,8 @@ describe("ProjectOverview", () => {
     overviewMocks.updateRecord.mockRejectedValue(new Error("Save failed"));
     renderOverview();
 
+    // Same mock-first wait as above: flush the loaded project before querying the DOM.
+    await waitFor(() => expect(overviewMocks.fetchFullProject).toHaveBeenCalledWith(42));
     fireEvent.click(await screen.findByRole("button", { name: "Edit project" }));
     fireEvent.change(screen.getByLabelText("Project name"), { target: { value: "Unsaved name" } });
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
