@@ -10,6 +10,7 @@ import {
   classifySoilUSCS,
   classifySoilAASHTO,
   calculatePlasticityChart,
+  getAashtoEvidenceWarnings,
   validateClassificationData,
   type GrainSizeDistribution,
 } from "@/lib/soilClassification";
@@ -65,6 +66,20 @@ const SoilClassificationSection = ({
     if (!grainSize) return null;
     return classifySoilAASHTO(grainSize, atterbergResults);
   }, [grainSize, atterbergResults]);
+
+  /**
+   * This section types gravel/sand/fines by hand, so the No. 10 / No. 40
+   * evidence behind granular AASHTO groups is never present here: any A-1
+   * verdict is an approximation. The Grading section reads those sieves
+   * directly and flags exactly what cannot be verified.
+   */
+  const aashtoWarnings = useMemo(() => {
+    if (!grainSize) return [];
+    return getAashtoEvidenceWarnings({
+      p200: grainSize.fines,
+      plasticityIndex: atterbergResults.plasticityIndex,
+    });
+  }, [grainSize, atterbergResults.plasticityIndex]);
 
   const plasticityInfo = useMemo(
     () => calculatePlasticityChart(atterbergResults.liquidLimit, atterbergResults.plasticityIndex),
@@ -188,6 +203,9 @@ const SoilClassificationSection = ({
                   <Label className="text-xs font-medium text-muted-foreground">AASHTO Classification</Label>
                   <p className="text-sm font-bold text-green-600 dark:text-green-400 mt-1">{aashtoGroup}</p>
                   <p className="text-xs text-foreground mt-1">{classification.aashtoDescription}</p>
+                  {aashtoWarnings.length > 0 && (
+                    <p className="text-xs text-amber-600 mt-1">{aashtoWarnings.join(" ")} Verify against the Grading section, which reads the No. 10 / No. 40 sieves directly.</p>
+                  )}
                 </div>
               </div>
 

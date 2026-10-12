@@ -51,7 +51,9 @@ export const classifySoilUSCS = (
   grainSize: GrainSizeDistribution,
   atterberg: CalculatedResults,
 ): ClassificationResults => {
-  const { gravel, sand, fines } = grainSize;
+  const gravel = snapSieve(grainSize.gravel);
+  const sand = snapSieve(grainSize.sand);
+  const fines = snapSieve(grainSize.fines);
   const { liquidLimit, plasticLimit, plasticityIndex } = atterberg;
 
   // ≥50% passing No. 200 → Fine-grained
@@ -249,15 +251,28 @@ export interface AashtoSieveEvidence {
 const toFiniteOrNull = (value: number | null | undefined): number | null =>
   typeof value === "number" && Number.isFinite(value) ? value : null;
 
+/**
+ * Snap a sieve percentage to remove binary float noise before threshold
+ * comparisons: (1 - 70/100) * 100 is 30.000000000000004, which fails an
+ * exact P40 <= 30 boundary. Three decimals is far finer than the 0.1 the
+ * app displays, so only noise is removed, never real data.
+ */
+const snapSieve = (value: number): number => Math.round(value * 1000) / 1000;
+
+const snappedOrNull = (value: number | null | undefined): number | null => {
+  const finite = toFiniteOrNull(value);
+  return finite === null ? null : snapSieve(finite);
+};
+
 export const classifySoilAASHTO = (
   grainSize: GrainSizeDistribution,
   atterberg: CalculatedResults,
   sieves: AashtoSieveEvidence = {},
 ): string => {
-  const { fines } = grainSize;
+  const fines = snapSieve(grainSize.fines);
   const { liquidLimit = 0, plasticityIndex = 0 } = atterberg;
-  const p10 = toFiniteOrNull(sieves.p10);
-  const p40 = toFiniteOrNull(sieves.p40);
+  const p10 = snappedOrNull(sieves.p10);
+  const p40 = snappedOrNull(sieves.p40);
   const isNP = sieves.nonPlastic === true || plasticityIndex < 0.5;
 
   // Granular materials (≤35% passing No. 200)
@@ -325,7 +340,7 @@ export const getAashtoEvidenceWarnings = ({
   plasticityIndex,
   nonPlastic,
 }: AashtoEvidenceInput): string[] => {
-  const fines = toFiniteOrNull(p200);
+  const fines = snappedOrNull(p200);
   if (fines === null) {
     return ["No. 200 passing value is missing — AASHTO classification cannot be determined."];
   }
@@ -335,13 +350,13 @@ export const getAashtoEvidenceWarnings = ({
   // Only the PI ≤ 6 / NP zone can be an A-1 or A-3 soil; A-2 groups need no
   // P10/P40 evidence, so there is nothing to warn about outside this zone.
   if (pi !== null && pi > 6 && !isNP) return [];
-  const passing40 = toFiniteOrNull(p40);
+  const passing40 = snappedOrNull(p40);
   if (passing40 === null) {
     return [
       "No. 40 sieve (0.425 mm) passing value is missing — A-1-a, A-1-b and A-3 cannot be verified.",
     ];
   }
-  const passing10 = toFiniteOrNull(p10);
+  const passing10 = snappedOrNull(p10);
   if (passing10 === null && passing40 <= 30 && fines <= 15) {
     return [
       "No. 10 sieve (2.00 mm) passing value is missing — A-1-a cannot be fully verified.",

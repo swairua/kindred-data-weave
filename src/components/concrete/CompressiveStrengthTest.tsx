@@ -7,12 +7,13 @@ import CalculatedInput from "@/components/CalculatedInput";
 import { Plus, X, Save as SaveIcon, Printer, Loader2, CheckCircle2, GripVertical } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
 import { useTestData } from "@/context/TestDataContext";
-import { generateCompressiveStrengthPDF } from "@/lib/compressivePdfGenerator";
+import { generateCompressiveStrengthPDF, isSatisfactory, percentOfClass } from "@/lib/compressivePdfGenerator";
+import { generateTestExcel } from "@/lib/genericExcelExporter";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, PieChart, Pie, Cell, Legend, ResponsiveContainer } from "recharts";
 import { Label } from "@/components/ui/label";
 import { useTestReport } from "@/hooks/useTestReport";
-import { saveCompressiveTest, listCompressiveCubes, type CompressiveCubeApiRow } from "@/lib/api";
+import { saveCompressiveTest, listCompressiveCubes, getCompressiveTest, type CompressiveCubeApiRow } from "@/lib/api";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -23,6 +24,7 @@ import {
   cubeStrengthFromClass,
   emptyCubeRow,
   formatDensity,
+  formatReportAge,
   formatStrength,
   gainSummary,
   getPassFailResults,
@@ -56,6 +58,35 @@ const cubeFromApi = (cube: CompressiveCubeApiRow): Row => ({
   remarks: cube.remarks ? String(cube.remarks) : "",
 });
 
+const asText = (value: unknown): string => {
+  if (value === null || value === undefined) return "";
+  const text = String(value).trim();
+  return text;
+};
+
+/** ISO date (or datetime) straight from the API back into a date input. */
+const asDateInput = (value: unknown): string => {
+  const text = asText(value);
+  const match = /^(\d{4}-\d{2}-\d{2})/.exec(text);
+  return match ? match[1] : "";
+};
+
+/** Map a stored test row back into the editable Test Details form. */
+const detailsFromApi = (row: Record<string, unknown>): TestDetails => ({
+  cement: asText(row.cement),
+  fineAggregate: asText(row.fine_aggregate),
+  coarseAggregate: asText(row.coarse_aggregate),
+  contractor: asText(row.contractor),
+  county: asText(row.county),
+  concreteClass: asText(row.concrete_class),
+  section: asText(row.section),
+  madeBy: asText(row.made_by),
+  slump: asText(row.slump),
+  clientRef: asText(row.client_ref),
+  labRef: asText(row.lab_ref),
+  dateTested: asDateInput(row.date_tested),
+});
+
 interface TestDetails {
   cement: string;
   fineAggregate: string;
@@ -82,6 +113,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   const location = useLocation();
   const [rows, setRows] = useState<Row[]>(() => [emptyCubeRow()]);
   const [isLoadingCubes, setIsLoadingCubes] = useState(false);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
   // The wizard passes the id of the test being edited through the URL, the same way GradingTest
   // reads ?resultId. Without this the form always starts from one blank cube, and because the
@@ -121,17 +153,25 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   const hasProjectSelected = !!project.currentProjectId;
 
   useEffect(() => {
+    // Project metadata only fills blanks: values loaded from a saved test
+    // (or typed by the technician) must never be clobbered when the project
+    // context arrives late.
     if (testData.projectMetadata?.contractor) {
-      setTestDetails(prev => ({ ...prev, contractor: testData.projectMetadata.contractor || "" }));
+      const fallback = testData.projectMetadata.contractor || "";
+      setTestDetails(prev => (prev.contractor ? prev : { ...prev, contractor: fallback }));
     }
     if (testData.projectMetadata?.county) {
-      setTestDetails(prev => ({ ...prev, county: testData.projectMetadata.county || "" }));
+      const fallback = testData.projectMetadata.county || "";
+      setTestDetails(prev => (prev.county ? prev : { ...prev, county: fallback }));
     }
   }, [testData.projectMetadata?.contractor, testData.projectMetadata?.county]);
 
-  // Load the cubes of the test being edited. This is what makes an existing test editable:
-  // previously the grid always rendered one blank row, so a technician re-opening a saved
-  // test saw no results at all and saving from that view dropped every stored cube.
+  // Load the cubes and the test details of the test being edited. This is what
+  // makes an existing test editable: previously the grid always rendered one
+  // blank row, so a technician re-opening a saved test saw no results at all
+  // and saving from that view dropped every stored cube — and the details
+  // (cement, class, slump, refs) came from possibly-stale context, so a
+  // reopen showed whatever the context happened to hold instead of the truth.
   const cubesLoadStartedRef = useRef<number | null>(null);
   useEffect(() => {
     if (existingTestId === null) return;
@@ -140,6 +180,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
 
     let active = true;
     setIsLoadingCubes(true);
+    setIsLoadingDetails(true);
     listCompressiveCubes(existingTestId)
       .then((response) => {
         if (!active) return;
@@ -154,6 +195,23 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
       })
       .finally(() => {
         if (active) setIsLoadingCubes(false);
+      });
+    getCompressiveTest(existingTestId)
+      .then((response) => {
+        if (!active) return;
+        const row = (response as { data?: unknown }).data;
+        if (row && typeof row === "object") {
+          setTestDetails(detailsFromApi(row as Record<string, unknown>));
+        }
+      })
+      .catch((error) => {
+        if (!active) return;
+        const message = error instanceof Error ? error.message : String(error);
+        console.error("[CompressiveStrengthTest] Failed to load saved test details:", message);
+        toast.error("Couldn't load the saved test details — don't save over them blindly");
+      })
+      .finally(() => {
+        if (active) setIsLoadingDetails(false);
       });
 
     return () => {
@@ -187,7 +245,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
       toast.error("No project selected");
       return;
     }
-    if (isLoadingCubes) {
+    if (isLoadingCubes || isLoadingDetails) {
       toast.error("Still loading the saved results — please wait a moment");
       return;
     }
@@ -235,6 +293,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
         fine_aggregate: testDetails.fineAggregate,
         coarse_aggregate: testDetails.coarseAggregate,
         contractor: testDetails.contractor,
+        county: testDetails.county,
         concrete_class: testDetails.concreteClass,
         section: testDetails.section,
         made_by: testDetails.madeBy,
@@ -267,13 +326,16 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
 
       toast.success("Compressive strength test saved successfully");
       setSaveCompleted(true);
+      // Keep the shared context in step with what was just persisted, so a
+      // reopen (or another view) reads the saved details instead of stale ones.
+      testData.updateConcreteTestMetadata({ ...testDetails });
     } catch (error) {
       console.error("Failed to save test:", error);
       toast.error(error instanceof Error ? error.message : "Failed to save test");
     } finally {
       setIsSaving(false);
     }
-  }, [project.currentProjectId, rows, testDetails, isLoadingCubes, existingTestId]);
+  }, [project.currentProjectId, rows, testDetails, isLoadingCubes, isLoadingDetails, existingTestId, testData.updateConcreteTestMetadata]);
 
   const chartData = useMemo(() =>
     rows
@@ -422,6 +484,68 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     window.print();
   };
 
+  /**
+   * Excel twin of the PDF sheet: same record object, same row helpers, so
+   * the two exports can never disagree on a single number.
+   */
+  const exportExcel = async () => {
+    const cubes = exportableCubes();
+    if (cubes.length === 0) {
+      toast.error("Add at least one cube with a load and dimensions before exporting");
+      return;
+    }
+    const record = buildRecordView();
+    const classTarget = cubeStrengthFromClass(record.concreteClass);
+    await generateTestExcel({
+      data: {
+        title: "Compressive Strength (Cube Test)",
+        fields: [
+          { label: "Contractor", value: record.contractor || "—" },
+          { label: "County", value: record.county || "—" },
+          { label: "Concrete Class", value: record.concreteClass || "—" },
+          { label: "Section", value: record.section || "—" },
+          { label: "Made By", value: record.madeBy || "—" },
+          { label: "Slump", value: record.slump || "—" },
+          { label: "Client Ref", value: record.clientRef || "—" },
+          { label: "Lab Ref", value: record.labRef || "—" },
+          { label: "Date Casted", value: record.dateCasted || "—" },
+        ],
+        tables: [{
+          title: "Cube results",
+          headers: ["Cube Mark", "Date of Cast", "Date of Test", "Age (days)", "L (mm)", "W (mm)", "H (mm)", "Mass (g)", "Density (kg/m3)", "Max Load (kN)", "Strength (N/mm2)", "% of class", "Remarks"],
+          rows: cubes.map((row) => {
+            const strength = strengthOf(row);
+            const density = densityOf(row);
+            const age = ageOf(row.dateOfCast, row.dateOfTest);
+            const verdict = strength === null || classTarget === null
+              ? ""
+              : isSatisfactory(strength, classTarget, age) ? "Satisfactory" : "Below target";
+            return [
+              row.mark.trim() || "None",
+              row.dateOfCast || "—",
+              row.dateOfTest || "—",
+              formatReportAge(age) || "—",
+              row.width || "150",
+              row.height || "150",
+              row.depth || "150",
+              row.mass || "—",
+              density === null ? "—" : density.toFixed(0),
+              row.load || "—",
+              strength === null ? "—" : strength.toFixed(2),
+              percentOfClass(strength, classTarget) || "—",
+              row.remarks.trim() || verdict || "—",
+            ];
+          }),
+        }],
+      },
+      projectName: project.projectName,
+      clientName: project.clientName,
+      dateReported: project.dateReported,
+      labOrganization: project.labOrganization,
+      checkedBy: project.checkedBy,
+    });
+  };
+
   const handleChartClick = (index: number) => {
     setHighlightedRowIndex(highlightedRowIndex === index ? null : index);
   };
@@ -525,7 +649,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
                       </div>
                     )}
                   </td>
-                  <td className="py-1.5 px-1"><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setRows(rows.filter((_, j) => j !== i))}><X className="h-3.5 w-3.5" /></Button></td>
+                  <td className="py-1.5 px-1"><Button variant="ghost" size="icon" aria-label="Remove row" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); setRows(rows.filter((_, j) => j !== i)); }}><X className="h-3.5 w-3.5" /></Button></td>
                 </tr>
               );
             })}
@@ -645,6 +769,15 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
                 onClick={() => setIsThresholdOverridden(true)}
               >
                 Override the class-derived target
+              </button>
+            )}
+            {classTargetStrength !== null && isThresholdOverridden && (
+              <button
+                type="button"
+                className="text-[11px] text-primary underline underline-offset-2"
+                onClick={() => setIsThresholdOverridden(false)}
+              >
+                Use class target
               </button>
             )}
             <div className="grid grid-cols-3 gap-2">
@@ -778,6 +911,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
       testKey={testKey}
       onClear={() => setRows([emptyCubeRow()])}
       onExportPDF={exportPDF}
+      onExportXLSX={exportExcel}
     >
       <>
         <div className="flex flex-col gap-6 w-full">

@@ -84,6 +84,20 @@ describe("AASHTO granular classification (M 145 note)", () => {
     expect(classifySoilAASHTO(high.grainSize, high.atterberg)).toBe("A-1-b");
   });
 
+  it("treats float-noise boundaries as exact values", () => {
+    // (1 - 70/100) * 100 is 30.000000000000004 in binary floating point;
+    // a measured 30% passing must still satisfy P40 <= 30.
+    const noisy = (1 - 70 / 100) * 100;
+    expect(noisy).not.toBe(30);
+    const { grainSize, atterberg } = granular(15, 30, 4);
+    expect(classifySoilAASHTO(grainSize, atterberg, { p10: 50, p40: noisy })).toBe("A-1-a");
+    expect(
+      getAashtoEvidenceWarnings({ p10: null, p40: noisy, p200: 15, plasticityIndex: 4 }),
+    ).toEqual([
+      "No. 10 sieve (2.00 mm) passing value is missing — A-1-a cannot be fully verified.",
+    ]);
+  });
+
   it("keeps the silt-clay routing untouched", () => {
     const a4 = granular(50, 30, 8);
     expect(classifySoilAASHTO(a4.grainSize, a4.atterberg, { p10: 100, p40: 100 })).toBe("A-4");

@@ -54,6 +54,47 @@ const savedResults = [
       },
     },
   },
+  {
+    // Granular soil (20% passing No. 200, PI 4) with no No. 10 / No. 40 rows:
+    // the A-1 verdict is an approximation and the banner must say so.
+    id: "91",
+    project_id: "42",
+    test_key: "grading",
+    payload_json: {
+      project: {
+        records: [{
+          sampleNumber: "Granular evidence sample",
+          classification: { liquidLimit: "30", plasticLimit: "26" },
+          sieveRows: [
+            { sieveSize: "4.75 (No. 4)", weightRetained: "60" },
+            { sieveSize: "0.075", weightRetained: "20" },
+            { sieveSize: "<0.063", weightRetained: "20" },
+          ],
+        }],
+      },
+    },
+  },
+  {
+    // P40 measured at 30% but no No. 10 row: A-1-b is verifiable while A-1-a
+    // cannot be ruled in or out, so only the No. 10 warning may show.
+    id: "92",
+    project_id: "42",
+    test_key: "grading",
+    payload_json: {
+      project: {
+        records: [{
+          sampleNumber: "Partial evidence sample",
+          classification: { liquidLimit: "30", plasticLimit: "26" },
+          sieveRows: [
+            { sieveSize: "4.75 (No. 4)", weightRetained: "10" },
+            { sieveSize: "0.425", weightRetained: "60" },
+            { sieveSize: "0.075", weightRetained: "15" },
+            { sieveSize: "<0.063", weightRetained: "15" },
+          ],
+        }],
+      },
+    },
+  },
 ];
 
 beforeAll(() => {
@@ -158,5 +199,43 @@ describe("GradingTest selected record", () => {
     // 45% passing No. 200 with LL 30 and PI 11 gives (10)(0.15) + 0.01(30)(1) = 1.8 → 2.
     // The 85% passing No. 40 of the same sample would have reported 8.
     expect(screen.getByText("Group Index").closest("label")).toHaveTextContent("Group Index2");
+  });
+
+  it("flags unverifiable granular groups when the No. 10 / No. 40 sieves are missing", async () => {
+    render(
+      <MemoryRouter initialEntries={["/tests?projectId=42&resultId=91#grading"]}>
+        <ProjectContext.Provider value={{ projectName: "Grading project", clientName: "Client", date: "2026-06-12", currentProjectId: 42 }}>
+          <GradingTest testKey="grading" />
+        </ProjectContext.Provider>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Granular evidence sample")).toBeInTheDocument();
+    // 20% fines with PI 4 can only be an approximate A-1-a without P10/P40.
+    expect(screen.getByText("AASHTO group (auto)").closest("label")).toHaveTextContent("A-1-a");
+    expect(screen.getByText("AASHTO evidence:")).toBeInTheDocument();
+    expect(screen.getByText(/A-1-a, A-1-b and A-3 cannot be verified/)).toBeInTheDocument();
+    expect(screen.getByText(/The group shown is an approximation/)).toBeInTheDocument();
+    // P10/P40 read as auto while gravel/sand/fines compute from the table.
+    expect(screen.getByText("No. 10 passing P10 (%)").closest("label")).toHaveTextContent("auto");
+    expect(screen.getByText("No. 40 passing P40 (%)").closest("label")).toHaveTextContent("auto");
+    expect(screen.getByText("Fines (%)").closest("label")).toHaveTextContent("20.0");
+  });
+
+  it("verifies A-1-b from P40 while flagging only the missing No. 10", async () => {
+    render(
+      <MemoryRouter initialEntries={["/tests?projectId=42&resultId=92#grading"]}>
+        <ProjectContext.Provider value={{ projectName: "Grading project", clientName: "Client", date: "2026-06-12", currentProjectId: 42 }}>
+          <GradingTest testKey="grading" />
+        </ProjectContext.Provider>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Partial evidence sample")).toBeInTheDocument();
+    // P40 30% with 15% fines and PI 4 satisfies A-1-b outright.
+    expect(screen.getByText("AASHTO group (auto)").closest("label")).toHaveTextContent("A-1-b");
+    expect(screen.getByText(/A-1-a cannot be fully verified/)).toBeInTheDocument();
+    expect(screen.queryByText(/A-1-a, A-1-b and A-3 cannot be verified/)).not.toBeInTheDocument();
+    expect(screen.getByText("No. 40 passing P40 (%)").closest("label")).toHaveTextContent("30.0");
   });
 });

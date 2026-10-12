@@ -14,9 +14,12 @@ export interface GradingCalculations {
   cc: number | null;
 }
 
+/** Blank or non-numeric reads as 0. A negative retained mass is not physical
+ * (it would push percentages negative and passing above 100), so it reads
+ * as 0; the input itself is floored at zero in the sieve table. */
 const numeric = (value: string) => {
   const parsed = Number.parseFloat(value);
-  return Number.isFinite(parsed) ? parsed : 0;
+  return Number.isFinite(parsed) ? Math.max(parsed, 0) : 0;
 };
 
 /** The bottom row of the sieve stack is the pan, so no percentage passes it. Its mass still counts towards the sample total. */

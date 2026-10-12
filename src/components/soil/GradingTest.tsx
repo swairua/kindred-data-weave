@@ -472,6 +472,9 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
   const status = calculations.totalWeight === 0 ? "not-started" : calculations.percentageRetained.some((value) => value > 0) ? "in-progress" : "not-started";
   const save = useCallback(async () => {
     if (!projectId) throw new Error("Select a project before saving this record");
+    if (record.sieveRows.every((row) => row.weightRetained.trim() === "")) {
+      throw new Error("Enter at least one sieve retained mass before saving this record");
+    }
     setSaveStatus("saving");
     setError(null);
     const data = {
@@ -565,7 +568,8 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
   const exportFiles = async (type: "pdf" | "xlsx" | "csv") => {
     const tables = [{
       headers: ["Sieve size (mm)", "Retained mass (g)", "% retained", "Cumulative passing (%)"],
-      rows: record.sieveRows.map((row, index) => [row.sieveSize, row.weightRetained || "—", calculations.percentageRetained[index]?.toFixed(1) || "—", calculations.cumulativePassing[index]?.toFixed(1) || "—"]),
+      // Empty tables read as "auto", exactly as on screen — never 0.0%.
+      rows: record.sieveRows.map((row, index) => [row.sieveSize, row.weightRetained || "—", calculations.totalWeight > 0 ? calculations.percentageRetained[index]?.toFixed(1) || "—" : "auto", calculations.cumulativePassing[index]?.toFixed(1) || "—"]),
     }, {
       // Column order follows the calculation chain in calculateHydrometer: the observed
       // reading, the reading reduced to the dispersant baseline (Rd), the correction, then
@@ -721,7 +725,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
 
       <div className="grid gap-3 md:grid-cols-[3fr_5fr]">
         <RecordSection title="Wet & dry sieve analysis to BS 1377-2:1990:9.2/9.3">
-          <div className="overflow-x-auto" ref={sieveNav.ref} onKeyDown={sieveNav.onKeyDown}><table className="record-table grading-sieve-table w-full table-fixed"><thead><tr><th>Sieve size (mm)</th><th>Retained mass (g)</th><th>% retained</th><th>Cumulative passing (%)</th></tr></thead><tbody>{record.sieveRows.map((row, index) => <tr key={`${row.sieveSize}-${index}`}><td className="font-semibold">{row.sieveSize}</td><td><Input type="number" value={row.weightRetained} onChange={(event) => updateSieve(index, event.target.value)} className="record-input h-7 min-w-0 w-full px-1 text-center" /></td><td className="calculated-cell">{calculations.totalWeight > 0 ? calculations.percentageRetained[index].toFixed(1) : "auto"}</td><td className="calculated-cell">{calculations.cumulativePassing[index] === null ? "auto" : calculations.cumulativePassing[index]?.toFixed(1)}</td></tr>)}<tr className="font-semibold"><td>TOTAL</td><td className="calculated-cell">{calculations.totalWeight ? calculations.totalWeight.toFixed(1) : "auto"}</td><td className="calculated-cell">{calculations.totalWeight ? "100.0" : "auto"}</td><td className="calculated-cell">—</td></tr></tbody></table></div>
+          <div className="overflow-x-auto" ref={sieveNav.ref} onKeyDown={sieveNav.onKeyDown}><table className="record-table grading-sieve-table w-full table-fixed"><thead><tr><th>Sieve size (mm)</th><th>Retained mass (g)</th><th>% retained</th><th>Cumulative passing (%)</th></tr></thead><tbody>{record.sieveRows.map((row, index) => <tr key={`${row.sieveSize}-${index}`}><td className="font-semibold">{row.sieveSize}</td><td><Input type="number" min="0" value={row.weightRetained} onChange={(event) => updateSieve(index, event.target.value)} className="record-input h-7 min-w-0 w-full px-1 text-center" /></td><td className="calculated-cell">{calculations.totalWeight > 0 ? calculations.percentageRetained[index].toFixed(1) : "auto"}</td><td className="calculated-cell">{calculations.cumulativePassing[index] === null ? "auto" : calculations.cumulativePassing[index]?.toFixed(1)}</td></tr>)}<tr className="font-semibold"><td>TOTAL</td><td className="calculated-cell">{calculations.totalWeight ? calculations.totalWeight.toFixed(1) : "auto"}</td><td className="calculated-cell">{calculations.totalWeight ? "100.0" : "auto"}</td><td className="calculated-cell">—</td></tr></tbody></table></div>
         </RecordSection>
 
         <RecordSection title="Hydrometer analysis to BS 1377-2:1990:9.5">
