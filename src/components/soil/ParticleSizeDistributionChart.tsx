@@ -19,15 +19,21 @@ import {
 const VIEW_W = 384.28;
 const VIEW_H = 222;
 
-const FRAME = { x: 0, y: 14, w: 384.28, h: 200 };
+const FRAME = { x: 0, y: 14, w: 384.28, h: 206.5 };
 const PLOT = { x: 37.72, y: 27.81, w: 334.28, h: 160.86 };
+const PLOT_BOTTOM = PLOT.y + PLOT.h;
 
 /** Baseline rows below the plot, top to bottom. */
-const DECADE_LABEL_Y = 192.4;
+const DECADE_LABEL_Y = 194.9;
+const DECADE_RULE_Y = 195.3;
+const DECADE_RULE_LEFT = 27.0;
+const DECADE_RULE_RIGHT = 376.9;
 const SUB_LABEL_Y = 198.6;
-const FRACTION_LABEL_Y = 205.6;
-const FRACTION_SUB_LABEL_Y = 210.8;
-const FRACTION_RULE_Y = 213.6;
+const BAND_TOP_Y = 205.6;
+const BAND_BOTTOM_Y = 211.9;
+const FRACTION_ROW_Y = 210.7;
+const BAND_RULE_LEFT = 27.7;
+const BAND_RULE_RIGHT = 381.3;
 const AXIS_TITLE_Y = 219.6;
 
 const FONT = "Helvetica, Arial, sans-serif";
@@ -122,7 +128,7 @@ export default function ParticleSizeDistributionChart({ points, id, className }:
             x={PLOT.x + psdX(size, PLOT.w)}
             y={DECADE_LABEL_Y}
             fontFamily={FONT}
-            fontSize={6}
+            fontSize={5.4}
             fill="#000000"
             textAnchor="middle"
           >
@@ -130,14 +136,15 @@ export default function ParticleSizeDistributionChart({ points, id, className }:
           </text>
         ))}
 
-        {/* CLAY / Fine / Medium / Coarse row, centred on each sub-fraction. */}
+        {/* CLAY FRACTION / Fine / Medium / Coarse / BOULDERS row, each label
+            centred on the geometric mean of its own band. */}
         {PSD_SUB_LABELS.map((band, index) => (
           <text
             key={`sub-${band.label}-${index}`}
             x={PLOT.x + psdX(band.from, PLOT.w)}
             y={SUB_LABEL_Y}
             fontFamily={FONT}
-            fontSize={5.2}
+            fontSize={4.4}
             fill="#000000"
             textAnchor="middle"
           >
@@ -145,14 +152,33 @@ export default function ParticleSizeDistributionChart({ points, id, className }:
           </text>
         ))}
 
-        {/* Fraction bands. Each label is centred on the geometric mean of its own
-            band: anchoring to the band edge collides with the left-hand "FRACTION"
-            caption, because the silt band starts almost on the axis. */}
-        {PSD_FRACTIONS.map((band) => (
+        {/* Fraction band: the SILT / SAND / GRAVEL captions sit between a top
+            rule (silt start to gravel end) and a wider bottom rule, divided by
+            hairlines at the 0.063 / 2 / 63 mm boundaries. The CLAY FRACTION
+            and BOULDERS captions live on the sub-fraction row above instead. */}
+        <line x1={DECADE_RULE_LEFT} y1={DECADE_RULE_Y} x2={DECADE_RULE_RIGHT} y2={DECADE_RULE_Y} stroke="#000000" strokeWidth={GRID_WIDTH} />
+        {PSD_DECADE_LINES.map((size) => {
+          const x = PLOT.x + psdX(size, PLOT.w);
+          return <line key={`comb-${size}`} x1={x} y1={PLOT_BOTTOM} x2={x} y2={BAND_TOP_Y} stroke="#000000" strokeWidth={GRID_WIDTH} />;
+        })}
+        <line
+          x1={PLOT.x + psdX(0.002, PLOT.w)}
+          y1={BAND_TOP_Y}
+          x2={PLOT.x + psdX(63, PLOT.w)}
+          y2={BAND_TOP_Y}
+          stroke="#000000"
+          strokeWidth={GRID_WIDTH}
+        />
+        {[0.063, 2, 63].map((size) => {
+          const x = PLOT.x + psdX(size, PLOT.w);
+          return <line key={`band-${size}`} x1={x} y1={BAND_TOP_Y} x2={x} y2={BAND_BOTTOM_Y} stroke="#000000" strokeWidth={GRID_WIDTH} />;
+        })}
+        <line x1={BAND_RULE_LEFT} y1={BAND_BOTTOM_Y} x2={BAND_RULE_RIGHT} y2={BAND_BOTTOM_Y} stroke="#000000" strokeWidth={0.37} />
+        {PSD_FRACTIONS.slice(1, 4).map((band) => (
           <text
             key={`fraction-${band.label}`}
             x={PLOT.x + psdX(Math.sqrt(band.from * band.to), PLOT.w)}
-            y={band.label === "CLAY" ? FRACTION_LABEL_Y : FRACTION_SUB_LABEL_Y}
+            y={FRACTION_ROW_Y}
             fontFamily={FONT}
             fontSize={5.2}
             fill="#000000"
@@ -161,18 +187,7 @@ export default function ParticleSizeDistributionChart({ points, id, className }:
             {band.label}
           </text>
         ))}
-        <text
-          x={PLOT.x}
-          y={FRACTION_SUB_LABEL_Y}
-          fontFamily={FONT}
-          fontSize={5.2}
-          fill="#000000"
-          textAnchor="start"
-        >
-          FRACTION
-        </text>
 
-        <line x1={PLOT.x} y1={FRACTION_RULE_Y} x2={PLOT.x + PLOT.w} y2={FRACTION_RULE_Y} stroke="#000000" strokeWidth={0.37} />
         <text
           x={PLOT.x + PLOT.w / 2}
           y={AXIS_TITLE_Y}

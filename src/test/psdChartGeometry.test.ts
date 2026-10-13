@@ -69,11 +69,11 @@ describe("psd gridlines and fractions", () => {
     ]);
   });
 
-  it("labels CLAY plus three Fine/Medium/Coarse sub-fractions at their band centres", () => {
-    expect(PSD_SUB_LABELS[0].label).toBe("CLAY");
+  it("labels CLAY FRACTION plus three Fine/Medium/Coarse sub-fractions at their band centres", () => {
+    expect(PSD_SUB_LABELS[0].label).toBe("CLAY FRACTION");
     expect(PSD_SUB_LABELS[1].from).toBeCloseTo(psdBandCentre(0.002, 0.006), 10);
     expect(PSD_SUB_LABELS.map((band) => band.label)).toEqual([
-      "CLAY",
+      "CLAY FRACTION",
       "Fine",
       "Medium",
       "Coarse",
@@ -83,7 +83,7 @@ describe("psd gridlines and fractions", () => {
       "Fine",
       "Medium",
       "Coarse",
-      "COBBLES",
+      "BOULDERS",
     ]);
   });
 });

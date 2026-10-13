@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { jsPDF } from "jspdf";
 
 vi.mock("@/lib/imageUtils", () => ({ fetchAdminImagesAsBase64: async () => ({}) }));
 
@@ -18,7 +19,10 @@ const hydrometerInputs = {
   kFactor: "",
 };
 
-const makeRecord = (sieveRows: { sieveSize: string; weightRetained: string }[]): PsdRecordView => ({
+const makeRecord = (
+  sieveRows: { sieveSize: string; weightRetained: string }[],
+  hydrometerRows: { time: string; actualHydrometer: string }[] = [],
+): PsdRecordView => ({
   label: "BH1",
   sampleNumber: "-",
   sampleDepthFrom: "0.0",
@@ -30,13 +34,16 @@ const makeRecord = (sieveRows: { sieveSize: string; weightRetained: string }[]):
   samplePreparation: { initialDryMass: "328.0", washedOvenDryMass: "176.4" },
   moisture: { wetMass: "186.5", dryMass: "149.0" },
   sieveRows,
-  hydrometerRows: [],
+  hydrometerRows,
 });
 
-const build = async (sieveRows: { sieveSize: string; weightRetained: string }[]) => {
-  const record = makeRecord(sieveRows);
+const build = async (
+  sieveRows: { sieveSize: string; weightRetained: string }[],
+  hydrometerRows: { time: string; actualHydrometer: string }[] = [],
+) => {
+  const record = makeRecord(sieveRows, hydrometerRows);
   const grading = calculateGrading(sieveRows);
-  const hydrometer = calculateHydrometer([], hydrometerInputs, "176.4");
+  const hydrometer = calculateHydrometer(hydrometerRows, hydrometerInputs, "176.4");
   return generateParticleSizeDistributionPDF({
     projectName: "KIRIAINI AHP",
     clientName: "SDHUD",
@@ -52,6 +59,7 @@ const build = async (sieveRows: { sieveSize: string; weightRetained: string }[])
     hydrometerInputs,
     series: mergePsdSeries(
       sieveRows.map((row, index) => ({ size: Number.parseFloat(row.sieveSize), passing: grading.cumulativePassing[index] })),
+      hydrometer.results.map((result) => ({ size: result.particleDiameter, passing: result.finesByHydrometer })),
     ),
     chartImage: null,
     gravelPercentage: 22.8,
@@ -78,6 +86,17 @@ const FULL_SIEVE = [
   ["0.075", "2.5"], ["0.063", "0.0"], ["<0.063", "176.4"],
 ].map(([sieveSize, weightRetained]) => ({ sieveSize, weightRetained }));
 
+const DENSE_SIEVE = [
+  ["75", "0"], ["63", "0"], ["50", "0"], ["37.5", "0"], ["28", "0"], ["20", "14.5"],
+  ["14", "6.5"], ["10", "8.0"], ["6.3", "8.0"], ["5", "6.5"], ["4.75 (No. 4)", "4.5"],
+  ["3.35", "4.5"], ["2.36", "8.0"], ["2.00 (No. 10)", "5.5"], ["1.18", "5.5"],
+  ["0.6", "2.0"], ["0.425", "0.5"], ["0.3", "1.0"], ["0.15", "1.5"],
+  ["0.075", "2.5"], ["0.063", "0.0"], ["<0.063", "148.4"],
+].map(([sieveSize, weightRetained]) => ({ sieveSize, weightRetained }));
+
+const FULL_HYDROMETER = ["0.25", "0.5", "1", "2", "4", "8", "15", "30", "60", "120", "240", "480", "1440"]
+  .map((time) => ({ time, actualHydrometer: "48" }));
+
 describe("Particle Size Distribution PDF page layout", () => {
   it("keeps the graph on the same page when the sieve table is short", async () => {
     expect((await build(THREE_ROWS)).getNumberOfPages()).toBe(1);
@@ -89,18 +108,24 @@ describe("Particle Size Distribution PDF page layout", () => {
     // than spilling onto a second page or overlapping the footer.
     expect((await build(FULL_SIEVE)).getNumberOfPages()).toBe(1);
   });
-});
-  it("keeps the 'Wet & Dry Sieve' caption inside the sieve table cell", () => {
-    const { jsPDF } = require("jspdf");
-    const doc = new jsPDF({ unit: "mm", format: "a4" });
-    doc.setFont("helvetica", "bold");
-    // Sieve table width is 62mm, so the caption cell offers 62 - 1.2mm.
-    const available = 62 - 1.2;
-    const caption = "Wet & Dry Sieve Analysis to BS 1377-2:1990: 9.2/9.3/9.4";
 
-    // The caption starts at 6pt and shrinks only if needed; it must fit in one line.
-    doc.setFontSize(6);
+  it("fits everything on a single page with a full sieve and hydrometer stack", async () => {
+    // The densest real record: twenty-two sieve rows plus thirteen hydrometer
+    // readings, the combination the KIRIAINI stack produces.
+    expect((await build(DENSE_SIEVE, FULL_HYDROMETER)).getNumberOfPages()).toBe(1);
+  });
+
+  it("keeps the 'Wet & Dry Sieve' caption inside the sieve table cell", () => {
+    const doc = new jsPDF({ unit: "mm", format: "letter" });
+    doc.setFont("helvetica", "bold");
+    // Sieve table width is 69.5mm, so the caption cell offers 69.5 - 1.2mm.
+    const available = 69.5 - 1.2;
+    const caption = "Wet & Dry Sieve Analysis to BS 1377 2:1990: 9.2/9.3/9.4";
+
+    // The caption starts at 6.6pt and shrinks only if needed; it must fit in one line.
+    doc.setFontSize(6.6);
     const width = doc.getTextWidth(caption);
     expect(width).toBeLessThanOrEqual(available);
   });
+});
 

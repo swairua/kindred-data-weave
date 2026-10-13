@@ -161,14 +161,14 @@ describe("GradingTest selected record", () => {
     expect(screen.getByText("SAND FRACTION")).toBeInTheDocument();
     expect(screen.getByText("GRAVEL FRACTION")).toBeInTheDocument();
     expect(screen.queryByText("Fines (<0.075 mm)")).not.toBeInTheDocument();
-    // CLAY and COBBLES each appear twice: once on the sub-fraction row and once on
-    // the fraction band row, so they are matched by quantity rather than uniquely.
-    expect(screen.getAllByText("CLAY")).toHaveLength(2);
-    expect(screen.getAllByText("COBBLES")).toHaveLength(2);
+    // CLAY FRACTION and BOULDERS each appear once, on the sub-fraction row;
+    // the SILT / SAND / GRAVEL captions sit on the fraction band row below.
+    expect(screen.getAllByText("CLAY FRACTION")).toHaveLength(1);
+    expect(screen.getAllByText("BOULDERS")).toHaveLength(1);
     expect(screen.getAllByText("Fine")).toHaveLength(3);
     expect(screen.getAllByText("Medium")).toHaveLength(3);
     expect(screen.getAllByText("Coarse")).toHaveLength(3);
-    expect(screen.getByText("FRACTION")).toBeInTheDocument();
+    expect(screen.queryByText("FRACTION")).not.toBeInTheDocument();
     expect(screen.getByText("Passing (%)")).toBeInTheDocument();
     expect(screen.getByText("Particle size (mm)")).toBeInTheDocument();
     expect(screen.getByText("PARTICLE SIZE DISTRIBUTION GRAPH")).toBeInTheDocument();

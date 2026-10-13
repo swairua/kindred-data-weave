@@ -58,19 +58,20 @@ export const psdBandCentre = (from: number, to: number) => Math.sqrt(from * to);
  * right-hand edge, exactly as the reference sheet does.
  */
 export const PSD_FRACTIONS: PsdBand[] = [
-  { label: "CLAY", from: 0.001, to: 0.002 },
+  { label: "CLAY FRACTION", from: 0.001, to: 0.002 },
   { label: "SILT FRACTION", from: 0.002, to: 0.063 },
   { label: "SAND FRACTION", from: 0.063, to: 2 },
   { label: "GRAVEL FRACTION", from: 2, to: 63 },
-  { label: "COBBLES", from: 63, to: PSD_X_MAX },
+  { label: "BOULDERS", from: 63, to: PSD_X_MAX },
 ];
 
 /**
- * The CLAY / Fine / Medium / Coarse row that sits under the axis line itself.
- * Each sub-fraction is centred on the geometric mean of its own band.
+ * The CLAY FRACTION / Fine / Medium / Coarse / BOULDERS row that sits under
+ * the axis line itself. Each sub-fraction is centred on the geometric mean of
+ * its own band, including the first and last bands.
  */
 export const PSD_SUB_LABELS: PsdBand[] = [
-  { label: "CLAY", from: 0.001, to: 0.002 },
+  { label: "CLAY FRACTION", from: 0.001, to: 0.002 },
   { label: "Fine", from: 0.002, to: 0.006 },
   { label: "Medium", from: 0.006, to: 0.02 },
   { label: "Coarse", from: 0.02, to: 0.063 },
@@ -80,7 +81,7 @@ export const PSD_SUB_LABELS: PsdBand[] = [
   { label: "Fine", from: 2, to: 6 },
   { label: "Medium", from: 6, to: 20 },
   { label: "Coarse", from: 20, to: 63 },
-  { label: "COBBLES", from: 63, to: PSD_X_MAX },
+  { label: "BOULDERS", from: 63, to: PSD_X_MAX },
 ].map((band) => ({ label: band.label, from: psdBandCentre(band.from, band.to), to: band.to }));
 
 /** Position of a size in decades from the left edge of the axis, clamped to the domain. */

@@ -23,28 +23,48 @@ import {
  * Particle size distribution report laid out like the BS 1377-2:1990
  * 9.2/9.3/9.4 and 9.5 sheet issued by the testing laboratory.
  *
+ * The sheet is US Letter with a ruled frame: identification block, sample
+ * preparation panels, a two-row soil classification, side-by-side sieve and
+ * hydrometer tables, the grading graph, and a footer row carrying the stamp.
+ *
  * The grading curve prefers the html2canvas capture of the on-screen chart so
  * the printed graph is pixel-identical to the screen, and falls back to a
  * natively drawn vector curve built from the same `psdChartGeometry` helpers
  * when that capture is unavailable.
  */
 
-const MARGIN = 10;
-const CONTENT_W = 190;
-const ROW_H = 4.2;
-const HEADER_H = 6;
-const MIN_ROW_H = 3.4;
-const MIN_GRAPH_H = 52;
-const MAX_GRAPH_H = 78;
+// US Letter sheet. The reference frame sits at ~21.2/20.2 mm side margins.
+const MARGIN = 21.2;
+const CONTENT_W = 174.5;
+const ROW_H = 2.84;
+const SPACER_H = 2.86;
+const SIEVE_CAP_H = 2.9;
+const SIEVE_HEAD_H = 5.4;
+const HYDRO_CAP_H = 8.3;
+const HYDRO_PARAM_H = 3.14;
+const HYDRO_HEAD_H = 8.7;
+const FOOTER_H = 5.5;
+const FOOTER_GAP = 1.7;
+const GRAPH_GAP = 1.5;
+const GRAPH_INSET = 10;
+const MIN_ROW_H = 2.55;
+const MIN_BLOCK_H = 62;
+const MAX_BLOCK_H = 87.9;
+const SIEVE_W = 69.5;
 
 const COLORS = {
   dark: [0, 0, 0] as [number, number, number],
   labelBg: [214, 214, 214] as [number, number, number],
+  footerBg: [191, 191, 191] as [number, number, number],
+  white: [255, 255, 255] as [number, number, number],
   plotBg: [242, 220, 219] as [number, number, number],
   curve: [192, 0, 0] as [number, number, number],
+  red: [255, 0, 0] as [number, number, number],
+  blue: [0, 0, 204] as [number, number, number],
 };
 
 const BLANK = "__________";
+const DASH = "-";
 
 interface Cell {
   /** Width in millimetres. */
@@ -56,6 +76,21 @@ interface Cell {
   /** Lower bound for the automatic shrink, for cells holding long captions. */
   minSize?: number;
   label?: boolean;
+  /** Explicit fill, otherwise the label grey or white. */
+  fill?: [number, number, number];
+  color?: [number, number, number];
+  /** Extra text right-aligned inside the same cell (unit suffixes). */
+  right?: string;
+  /** Right inset for `right`, in millimetres. */
+  rightPad?: number;
+  /** Left inset for left-aligned text, in millimetres. */
+  pad?: number;
+  /** Taller rect for this cell only (rowspans). */
+  h?: number;
+  /** Advances x without drawing, leaving the rowspan gap. */
+  gap?: boolean;
+  /** Custom drawing after the fill and text, for glyphs the fonts lack. */
+  postDraw?: (d: jsPDF, cx: number, cy: number, cw: number, ch: number) => void;
 }
 
 export interface PsdRecordView {
@@ -109,11 +144,35 @@ const text = (value: string | number | null | undefined, fallback = BLANK): stri
 const num = (value: number | null | undefined, digits = 1, fallback = BLANK): string =>
   value === null || value === undefined || !Number.isFinite(value) ? fallback : value.toFixed(digits);
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** ISO dates print as dd-Mmm-yy on the sheet ("2026-06-09" -> "09-Jun-26"). */
+const refDate = (value: string | number | null | undefined): string => {
+  const raw = text(value, "");
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw.trim());
+  if (!match) return raw === "" ? BLANK : raw;
+  const month = Number.parseInt(match[2], 10);
+  if (month < 1 || month > 12) return raw;
+  return `${match[3]}-${MONTHS[month - 1]}-${match[1].slice(2)}`;
+};
+
+/** Hydrometer times print plain when integral, else to two decimals. */
+const timeText = (value: number | null | undefined): string => {
+  if (value === null || value === undefined || !Number.isFinite(value)) return DASH;
+  return Number.isInteger(value) ? String(value) : value.toFixed(2);
+};
+
 /** Shrink a string until it fits its cell rather than letting it spill over the rule. */
 const fitText = (d: jsPDF, value: string, maxWidth: number, startSize: number, minSize = 2.8): number => {
   let size = startSize;
   try {
-    while (size > minSize && d.getTextWidth(value) > Math.max(maxWidth, 1)) size -= 0.25;
+    // getTextWidth measures at the live font size, so the size must be
+    // applied on every step or the loop collapses to minSize.
+    d.setFontSize(size);
+    while (size > minSize && d.getTextWidth(value) > Math.max(maxWidth, 1)) {
+      size -= 0.25;
+      d.setFontSize(size);
+    }
   } catch { /* jsPDF text metrics are unavailable in some environments */ }
   return size;
 };
@@ -125,65 +184,87 @@ const imageParts = (dataUrl: string): { base64: string; format: "PNG" | "JPEG" }
   return { base64: match[3], format: mime === "jpeg" || mime === "jpg" ? "JPEG" : "PNG" };
 };
 
-/** Draw one row of ruled cells and return the y below it. Supports "\n" two-line captions. */
+/** Draw one row of ruled cells and return the y below it. Supports "\n" multi-line captions. */
 const drawCells = (d: jsPDF, x: number, y: number, h: number, cells: Cell[]): number => {
   let cx = x;
   d.setDrawColor(...COLORS.dark);
   d.setLineWidth(0.2);
   for (const cell of cells) {
-    const shade = cell.label ? COLORS.labelBg : ([255, 255, 255] as [number, number, number]);
+    const cw = cell.w;
+    if (cell.gap) {
+      cx += cw;
+      continue;
+    }
+    const ch = cell.h ?? h;
+    const shade = cell.fill ?? (cell.label ? COLORS.labelBg : COLORS.white);
     d.setFillColor(shade[0], shade[1], shade[2]);
-    d.rect(cx, y, cell.w, h, "FD");
+    d.rect(cx, y, cw, ch, "FD");
     const value = (cell.text ?? "").trim();
     if (value) {
       const lines = value.split("\n").map((line) => line.trim()).filter(Boolean);
       const longest = lines.reduce((a, b) => (a.length >= b.length ? a : b), "");
-      const size = fitText(d, longest, cell.w - 1.2, cell.size ?? 6.2, cell.minSize ?? 2.8);
+      const pad = cell.pad ?? 0.8;
+      d.setFont("helvetica", cell.bold ? "bold" : "normal");
+      d.setFontSize(cell.size ?? 6.6);
+      let budget = cw - pad - 0.8;
+      if (cell.right) {
+        const unitWidth = d.getTextWidth(cell.right);
+        budget -= (cell.rightPad ?? 0.8) + unitWidth + 0.8;
+      }
+      const size = fitText(d, longest, budget, cell.size ?? 6.6, cell.minSize ?? 2.8);
       d.setFontSize(size);
       d.setFont("helvetica", cell.bold ? "bold" : "normal");
-      d.setTextColor(...COLORS.dark);
+      d.setTextColor(...(cell.color ?? COLORS.dark));
       const align = cell.align ?? "left";
-      const tx = align === "left" ? cx + 0.8 : align === "right" ? cx + cell.w - 0.8 : cx + cell.w / 2;
+      const tx = align === "left" ? cx + pad : align === "right" ? cx + cw - 0.8 : cx + cw / 2;
       const lineH = size * 0.38;
-      const startY = lines.length > 1 ? y + h / 2 - lineH / 2 : y + h / 2;
+      const blockTop = lines.length > 1 ? y + ch / 2 - lineH / 2 : y + ch / 2;
       lines.forEach((line, index) => {
-        d.text(line, tx, startY + index * lineH, { align, baseline: "middle" });
+        d.text(line, tx, blockTop + index * lineH, { align, baseline: "middle" });
       });
+      if (cell.right) {
+        d.setFontSize(size);
+        d.text(cell.right, cx + cw - (cell.rightPad ?? 0.8), y + ch / 2, { align: "right", baseline: "middle" });
+      }
     }
-    cx += cell.w;
+    cell.postDraw?.(d, cx, y, cw, ch);
+    cx += cw;
   }
   return y + h;
 };
 
-/** A section caption spanning the full content width. */
-const drawCaption = (d: jsPDF, x: number, y: number, w: number, caption: string, rowH = ROW_H): number =>
-  drawCells(d, x, y, rowH, [{ w, text: caption, align: "center", bold: true, size: 6 }]);
-/** Client / project / sample identification block. */
-const drawHeader = (d: jsPDF, x: number, y: number, o: ParticleSizeDistributionPdfOptions, rowH = ROW_H): number => {
+/** A blank ruled row spanning the content width, separating the sections. */
+const drawSpacer = (d: jsPDF, x: number, y: number): number =>
+  drawCells(d, x, y, SPACER_H, [{ w: CONTENT_W, text: "" }]);
+
+/** Client / project / sample identification block. Values are centred, client red, project blue. */
+const drawHeader = (d: jsPDF, x: number, y: number, o: ParticleSizeDistributionPdfOptions, rowH: number): number => {
   const { record } = o;
   const depth = [record.sampleDepthFrom, record.sampleDepthTo].filter(Boolean).join(" - ");
+  const valueW = CONTENT_W - 19.9 - 34.6 - 15;
   let cy = y;
   cy = drawCells(d, x, cy, rowH, [
-    { w: 28, text: "Client:", label: true, bold: true },
-    { w: 116, text: text(o.clientName) },
-    { w: 26, text: "Date submitted:", label: true, bold: true },
-    { w: 20, text: text(record.dateSubmitted || o.date) },
+    { w: 19.9, text: "Client:", label: true, bold: true },
+    { w: valueW, text: text(o.clientName), align: "center", color: COLORS.red },
+    { w: 34.6, text: "Date submitted:", label: true, bold: true },
+    { w: 15, text: refDate(record.dateSubmitted || o.date), align: "center" },
   ]);
   cy = drawCells(d, x, cy, rowH, [
-    { w: 28, text: "Project/Site Name:", label: true, bold: true },
-    { w: 116, text: text(o.projectName) },
-    { w: 26, text: "Date tested:", label: true, bold: true },
-    { w: 20, text: text(record.dateTested || o.dateTested) },
+    { w: 19.9, text: "Project/Site Name:", label: true, bold: true },
+    { w: valueW, text: text(o.projectName), align: "center", color: COLORS.blue },
+    { w: 34.6, text: "Date tested:", label: true, bold: true },
+    { w: 15, text: refDate(record.dateTested || o.dateTested), align: "center" },
   ]);
+  const tailW = CONTENT_W - 19.9 - 14.4 - 24.5 - 29.4 - 21.9 - 14.8 - 34.6;
   cy = drawCells(d, x, cy, rowH, [
-    { w: 22, text: "Sample ID:", label: true, bold: true },
-    { w: 18, text: text(record.label) },
-    { w: 20, text: "Sample No.:", label: true, bold: true },
-    { w: 18, text: text(record.sampleNumber) },
-    { w: 24, text: "Sample depth (M):", label: true, bold: true },
-    { w: 22, text: text(depth) },
-    { w: 36, text: "Sampled and Submitted by:", label: true, bold: true },
-    { w: 30, text: text(record.sampledSubmittedBy) },
+    { w: 19.9, text: "Sample ID:", label: true, bold: true },
+    { w: 14.4, text: text(record.label), align: "center" },
+    { w: 24.5, text: "Sample No.:", label: true, bold: true },
+    { w: 29.4, text: text(record.sampleNumber), align: "center" },
+    { w: 21.9, text: "Sample depth (M):", label: true, bold: true },
+    { w: 14.8, text: text(depth), align: "center" },
+    { w: 34.6, text: "Sampled and Submitted by:", label: true, bold: true },
+    { w: tailW, text: text(record.sampledSubmittedBy), align: "center" },
   ]);
   return cy;
 };
@@ -194,136 +275,217 @@ const parse = (value: string) => {
 };
 
 /** Sample preparation on the left, moisture content at preparation on the right. */
-const drawPreparation = (d: jsPDF, x: number, y: number, o: ParticleSizeDistributionPdfOptions, rowH = ROW_H): number => {
-  const leftW = 94;
-  const rightW = CONTENT_W - leftW;
+const drawPreparation = (d: jsPDF, x: number, y: number, o: ParticleSizeDistributionPdfOptions, rowH: number): number => {
+  const leftW = 58.8;
+  const gapW = 51.1;
+  const rightW = CONTENT_W - leftW - gapW;
   const initial = parse(o.record.samplePreparation.initialDryMass);
   const washed = parse(o.record.samplePreparation.washedOvenDryMass);
   const fineMass = initial !== null && washed !== null ? Math.max(initial - washed, 0) : null;
   const finesPercent = initial && fineMass !== null ? (fineMass / initial) * 100 : null;
   const moisture = calculateMoisture(o.record.moisture.wetMass, o.record.moisture.dryMass);
 
-  const pair = (caption: string, label: string, value: string): Cell[] => [
-    { w: 34, text: label, bold: true, size: 6 },
-    { w: 16, text: caption },
-    { w: leftW - 50, text: value, align: "right" },
+  const pair = (panelW: number, labelW: number, unit: string, labelText: string, value: string): Cell[] => [
+    { w: labelW, text: labelText, right: unit, rightPad: 5.4, bold: true, size: 6 },
+    { w: panelW - labelW, text: value, align: "center" },
   ];
 
-  let left = drawCells(d, x, y, rowH, [{ w: leftW, text: "Sample preparation details", align: "center", bold: true, size: 6.5 }]);
-  left = drawCells(d, x, left, rowH, pair("(gm)", "Initial quartered and air dried mass", text(initial)));
-  left = drawCells(d, x, left, rowH, pair("(gm)", "Washed and oven dried mass", text(washed)));
-  left = drawCells(d, x, left, rowH, pair("(gm)", "Fine mass", num(fineMass)));
-  drawCells(d, x, left, rowH, pair("(%)", "Fines percent", num(finesPercent)));
+  let left = drawCells(d, x, y, rowH, [{ w: leftW, text: "Sample preparation details", bold: true, label: true }]);
+  left = drawCells(d, x, left, rowH, pair(leftW, 46.5, "(gm)", "Initial quartered and air dried mass", text(initial)));
+  left = drawCells(d, x, left, rowH, pair(leftW, 46.5, "(gm)", "Washed and oven dried mass", text(washed)));
+  left = drawCells(d, x, left, rowH, pair(leftW, 46.5, "(gm)", "Fine mass", num(fineMass)));
+  drawCells(d, x, left, rowH, pair(leftW, 46.5, "(%)", "Fines percent", num(finesPercent)));
 
-  let right = drawCells(d, x + leftW, y, rowH, [{ w: rightW, text: "Moisture content at sample preparations", align: "center", bold: true, size: 6.5 }]);
-  const rightPair = (caption: string, label: string, value: string): Cell[] => [
-    { w: 40, text: label, bold: true, size: 6 },
-    { w: 16, text: caption },
-    { w: rightW - 56, text: value, align: "right" },
-  ];
-  right = drawCells(d, x + leftW, right, rowH, rightPair("(gm)", "Wet weight of sample", text(o.record.moisture.wetMass)));
-  right = drawCells(d, x + leftW, right, rowH, rightPair("(gm)", "Dry weight of sample", text(o.record.moisture.dryMass)));
-  right = drawCells(d, x + leftW, right, rowH, rightPair("(gm)", "Wet weight of water", num(moisture.waterWeight)));
-  drawCells(d, x + leftW, right, rowH, rightPair("(%)", "Moisture content", num(moisture.moistureContent)));
+  const rx = x + leftW + gapW;
+  let right = drawCells(d, rx, y, rowH, [{ w: rightW, text: "Moisture content at sample preparations", bold: true, label: true }]);
+  const rightPair = (unit: string, labelText: string, value: string): Cell[] => pair(rightW, 49.4, unit, labelText, value);
+  right = drawCells(d, rx, right, rowH, rightPair("(gm)", "Wet weight of sample", text(o.record.moisture.wetMass)));
+  right = drawCells(d, rx, right, rowH, rightPair("(gm)", "Dry weight of sample", text(o.record.moisture.dryMass)));
+  right = drawCells(d, rx, right, rowH, rightPair("(gm)", "Wet weight of water", num(moisture.waterWeight)));
+  drawCells(d, rx, right, rowH, rightPair("(%)", "Moisture content", num(moisture.moistureContent)));
 
   return y + rowH * 5;
 };
 
-const drawClassification = (d: jsPDF, x: number, y: number, o: ParticleSizeDistributionPdfOptions, rowH = ROW_H): number => {
-  let cy = drawCaption(d, x, y, CONTENT_W, "Soil Classification", rowH);
-  const uscs = [o.uscsSymbol, o.uscsDescription].filter(Boolean).join(" - ");
+const drawClassification = (d: jsPDF, x: number, y: number, o: ParticleSizeDistributionPdfOptions, rowH: number): number => {
+  const uscs = o.uscsDescription && o.uscsSymbol && o.uscsSymbol !== "auto"
+    ? `${o.uscsDescription}(${o.uscsSymbol})`.toUpperCase()
+    : text(o.uscsDescription || o.uscsSymbol);
+  const midLabelW = 24.5;
+  const midValueW = 18.2;
+  const tailLabelW = 21.9;
+  const valueW = CONTENT_W - 19.9 - 14.4 - midLabelW - midValueW - tailLabelW;
+  let cy = drawCells(d, x, y, rowH, [{ w: CONTENT_W, text: "Soil Classification", bold: true, pad: 19.6, label: true }]);
   cy = drawCells(d, x, cy, rowH, [
-    { w: 20, text: "GRAVEL (%):", label: true, bold: true },
-    { w: 12, text: num(o.gravelPercentage), align: "right" },
-    { w: 18, text: "SAND (%):", label: true, bold: true },
-    { w: 12, text: num(o.sandPercentage), align: "right" },
-    { w: 24, text: "CLAY/SILT (%):", label: true, bold: true },
-    { w: 12, text: num(o.finesPercentage), align: "right" },
-    { w: 18, text: "USCS", label: true, bold: true },
-    { w: 36, text: uscs, align: "center" },
-    { w: 18, text: "AASHTO", label: true, bold: true },
-    { w: 20, text: o.groupIndex === null ? text(o.aashtoGroup) : `${text(o.aashtoGroup)} (GI ${o.groupIndex})`, align: "center" },
+    { w: 19.9, text: "GRAVEL     (%):", label: true, bold: true },
+    { w: 14.4, text: num(o.gravelPercentage), align: "center" },
+    { w: midLabelW, text: "CLAY/SILT (%):", align: "right", label: true, bold: true, h: rowH * 2 },
+    { w: midValueW, text: num(o.finesPercentage), align: "center", h: rowH * 2 },
+    { w: tailLabelW, text: "USCS", align: "center", label: true, bold: true },
+    { w: valueW, text: uscs, align: "center" },
+  ]);
+  cy = drawCells(d, x, cy, rowH, [
+    { w: 19.9, text: "SAND          (%):", label: true, bold: true },
+    { w: 14.4, text: num(o.sandPercentage), align: "center" },
+    { w: midLabelW + midValueW, text: "", gap: true },
+    { w: tailLabelW, text: "AASHTO", align: "center", label: true, bold: true },
+    { w: valueW, text: text(o.aashtoGroup), align: "center" },
   ]);
   return cy;
 };
 
-const SIEVE_COLUMNS: Cell[] = [
-  { w: 20, text: "Sieve size\n(mm)", label: true, bold: true, size: 5.6 },
-  { w: 14, text: "Retained\nmass (gm)", label: true, bold: true, size: 5.6 },
-  { w: 14, text: "% Retained\n(%)", label: true, bold: true, size: 5.6 },
-  { w: 14, text: "Cumulative\npassing (%)", label: true, bold: true, size: 5.4, minSize: 2.8 },
-];
-
-const drawSieveTable = (d: jsPDF, x: number, y: number, w: number, o: ParticleSizeDistributionPdfOptions, rowH = ROW_H, headerH = HEADER_H): number => {
-  const columns = SIEVE_COLUMNS.map((column) => ({ ...column, w: column.w * (w / 62) }));
-  let cy = drawCaption(d, x, y, w, "Wet & Dry Sieve Analysis to BS 1377-2:1990: 9.2/9.3/9.4", rowH);
-  cy = drawCells(d, x, cy, headerH, columns);
-  o.record.sieveRows.forEach((row, index) => {
-    const passing = o.grading.cumulativePassing[index];
-    cy = drawCells(d, x, cy, rowH, [
-      { w: columns[0].w, text: row.sieveSize, align: "center", bold: true },
-      { w: columns[1].w, text: row.weightRetained, align: "center" },
-      { w: columns[2].w, text: num(o.grading.percentageRetained[index]), align: "center" },
-      { w: columns[3].w, text: passing === null ? BLANK : num(passing), align: "center" },
-    ]);
-  });
-  return drawCells(d, x, cy, rowH, [
-    { w: columns[0].w, text: "TOTAL", align: "center", bold: true },
-    { w: columns[1].w, text: num(o.grading.totalWeight), align: "center", bold: true },
-    { w: columns[2].w, text: o.grading.totalWeight > 0 ? "100.0" : BLANK, align: "center", bold: true },
-    { w: columns[3].w, text: "", align: "center" },
-  ]);
-};
-const HYDROMETER_COLUMNS = [
-  "Time\n(min)",
-  "Actual HR\n(Rn′)",
-  "Adjusted\n(Rh)",
-  "Composite\ncorr.",
-  "Corrected\nHR",
-  "Eff. depth\n(cm)",
-  "Diameter\n(mm)",
-  "% Fines\n(susp.)",
-  "% Fines\n(sample)",
-];
-
-const drawHydrometerTable = (d: jsPDF, x: number, y: number, w: number, o: ParticleSizeDistributionPdfOptions, rowH = ROW_H, headerH = HEADER_H): number => {
-  const inputs = o.hydrometerInputs;
-  let cy = drawCaption(d, x, y, w, "Hydrometer Analysis to BS 1377-2:1990:9.5", rowH);
-  const half = w / 2;
-  const paramRow = (leftLabel: string, leftValue: string, rightLabel: string, rightValue: string): Cell[] => [
-    { w: 28, text: leftLabel, label: true, bold: true, size: 5.2, minSize: 2.8 },
-    { w: half - 28, text: leftValue, align: "right" },
-    { w: 28, text: rightLabel, label: true, bold: true, size: 5.2, minSize: 2.8 },
-    { w: half - 28, text: rightValue, align: "right" },
+const drawSieveTable = (d: jsPDF, x: number, y: number, w: number, o: ParticleSizeDistributionPdfOptions, rowH: number): number => {
+  const colW = [19.8, 14.4, 12.2];
+  const lastW = w - colW[0] - colW[1] - colW[2];
+  const widths = [...colW, lastW];
+  const headers = [
+    "Sieve size\n(mm)",
+    "Retained mass\n(gm)",
+    "% Retained\n(%)",
+    "Cumulative passing\npercentage (%)",
   ];
-  cy = drawCells(d, x, cy, rowH, paramRow("Dry weight (gm)", text(inputs.dryWeight), "S.G (Mg/m³)", num(o.hydrometer.specificGravity, 2)));
-  cy = drawCells(d, x, cy, rowH, paramRow("Hydro. type", text(inputs.hydrometerType), "Susp. vol. (cm³)", num(o.hydrometer.suspensionVolume, 0)));
-  cy = drawCells(d, x, cy, rowH, paramRow("Zero corr. (g/L)", text(inputs.zeroCorrection), "Meniscus (g/L)", text(inputs.meniscusCorrection)));
-  cy = drawCells(d, x, cy, rowH, paramRow("Temp. (°C)", text(inputs.temperature), "K factor", num(o.hydrometer.stokesConstant, 3)));
-
-  const columnWidth = w / HYDROMETER_COLUMNS.length;
-  cy = drawCells(d, x, cy, headerH, HYDROMETER_COLUMNS.map((caption) => ({
-    w: columnWidth,
+  let cy = drawCells(d, x, y, SIEVE_CAP_H, [{
+    w,
+    text: "Wet & Dry Sieve Analysis to BS 1377 2:1990: 9.2/9.3/9.4",
+    align: "center",
+    bold: true,
+    label: true,
+    minSize: 4,
+  }]);
+  cy = drawCells(d, x, cy, SIEVE_HEAD_H, headers.map((caption, index) => ({
+    w: widths[index],
     text: caption,
     label: true,
     bold: true,
-    size: 4.6,
-    minSize: 2.8,
+    size: 6,
+    minSize: 4,
     align: "center" as const,
+  })));
+  o.record.sieveRows.forEach((row, index) => {
+    const passing = o.grading.cumulativePassing[index];
+    cy = drawCells(d, x, cy, rowH, [
+      { w: widths[0], text: row.sieveSize, align: "center", bold: true },
+      { w: widths[1], text: text(row.weightRetained, DASH), align: "center" },
+      { w: widths[2], text: num(o.grading.percentageRetained[index], 1, DASH), align: "center" },
+      { w: widths[3], text: passing === null ? DASH : num(passing, 1, DASH), align: "center" },
+    ]);
+  });
+  return drawCells(d, x, cy, rowH, [
+    { w: widths[0], text: "TOTAL", align: "center", bold: true },
+    { w: widths[1], text: num(o.grading.totalWeight), align: "center", bold: true },
+    { w: widths[2], text: DASH, align: "center" },
+    { w: widths[3], text: DASH, align: "center" },
+  ]);
+};
+
+/**
+ * The built-in PDF fonts have no radical sign, so the "K√(L/T)" line of the
+ * diameter header is drawn by hand: "K", a stroked √, then "(L/T)".
+ */
+const drawDiameterHeader = (d: jsPDF, cx: number, cy: number, cw: number, ch: number): void => {
+  d.setFont("helvetica", "bold");
+  d.setFontSize(6);
+  const size = fitText(d, "Diameter;", cw - 1.2, 6, 3);
+  d.setFontSize(size);
+  d.setFont("helvetica", "bold");
+  d.setTextColor(...COLORS.dark);
+  const lineH = size * 0.38;
+  const mid = cy + ch / 2;
+  d.text("Diameter;", cx + cw / 2, mid - lineH, { align: "center", baseline: "middle" });
+  d.text("D", cx + cw / 2, mid, { align: "center", baseline: "middle" });
+
+  const first = "K";
+  const last = "(L/T)";
+  const firstW = d.getTextWidth(first);
+  const lastW = d.getTextWidth(last);
+  const glyphH = size * 0.352778 * 0.72;
+  const radicalW = glyphH;
+  const total = firstW + radicalW * 1.2 + lastW;
+  const y3 = mid + lineH;
+  let sx = cx + cw / 2 - total / 2;
+  d.text(first, sx, y3, { align: "left", baseline: "middle" });
+  const rx = sx + firstW + radicalW * 0.1;
+  d.setDrawColor(...COLORS.dark);
+  d.setLineWidth(0.18);
+  d.line(rx, y3 - glyphH * 0.12, rx + radicalW * 0.32, y3 + glyphH * 0.45);
+  d.line(rx + radicalW * 0.32, y3 + glyphH * 0.45, rx + radicalW, y3 - glyphH * 0.5);
+  d.text(last, rx + radicalW * 1.1, y3, { align: "left", baseline: "middle" });
+};
+
+const HYDROMETER_COLUMNS = [
+  "Time,\nmin",
+  "Actual\nrh",
+  "Adjusted\nHR(Rh)",
+  "Composite\ncorrection",
+  "Corrected\nHR",
+  "Effective\ndepth\n(cm)",
+  "",
+  "% Fines in\nSuspension",
+  "% Fines based\non whole sample",
+];
+
+const drawHydrometerTable = (d: jsPDF, x: number, y: number, w: number, o: ParticleSizeDistributionPdfOptions, rowH: number): number => {
+  const inputs = o.hydrometerInputs;
+  let cy = drawCells(d, x, y, HYDRO_CAP_H, [{
+    w,
+    text: "Hydrometer Analysis to BS 1377-2:1990:9.5",
+    align: "center",
+    bold: true,
+    label: true,
+  }]);
+  const paramRow = (
+    leftLabel: string, leftUnit: string, leftValue: string,
+    rightLabel: string, rightUnit: string, rightValue: string,
+  ): Cell[] => [
+    { w: 40.5, text: leftLabel, right: leftUnit, rightPad: 5.4, label: true, bold: true, size: 6, minSize: 3 },
+    { w: 14.8, text: leftValue, align: "center" },
+    { w: 34.6, text: rightLabel, right: rightUnit, rightPad: 5.4, label: true, bold: true, size: 6, minSize: 3 },
+    { w: 15.1, text: rightValue, align: "center" },
+  ];
+  cy = drawCells(d, x, cy, HYDRO_PARAM_H, paramRow(
+    "Dry Weight", "(g)", text(inputs.dryWeight),
+    "Hydrometer Type", "", text(inputs.hydrometerType),
+  ));
+  cy = drawCells(d, x, cy, HYDRO_PARAM_H, paramRow(
+    "S.G (Mg/m³)", "", num(o.hydrometer.specificGravity, 2),
+    "Zero Correction factor", "", text(inputs.zeroCorrection),
+  ));
+  cy = drawCells(d, x, cy, HYDRO_PARAM_H, paramRow(
+    "Temperature (°C)", "", text(inputs.temperature),
+    "Meniscus correction (g/L)", "", text(inputs.meniscusCorrection),
+  ));
+  cy = drawCells(d, x, cy, HYDRO_PARAM_H, paramRow(
+    "K Factor", "", num(o.hydrometer.stokesConstant, 3),
+    "Temperature Correction Factor", "", text(inputs.temperatureCorrection),
+  ));
+
+  const headW = [7.41, 11.18, 10.58, 11.31, 14.85, 10.25, 11.91, 12.38];
+  const lastW = w - headW.reduce((a, b) => a + b, 0);
+  const widths = [...headW, lastW];
+  cy = drawCells(d, x, cy, HYDRO_HEAD_H, HYDROMETER_COLUMNS.map((caption, index) => ({
+    w: widths[index],
+    text: caption,
+    label: true,
+    bold: true,
+    size: 6,
+    minSize: 3,
+    align: "center" as const,
+    ...(index === 6 ? { postDraw: drawDiameterHeader } : {}),
   })));
 
   o.hydrometer.results.forEach((result) => {
+    const actual = o.record.hydrometerRows.find((row) => row.time === String(result.time))?.actualHydrometer;
     cy = drawCells(d, x, cy, rowH, [
-      num(result.time, 2, BLANK),
-      text(o.record.hydrometerRows.find((row) => row.time === String(result.time))?.actualHydrometer),
-      num(result.adjustedReading),
-      num(result.compositeCorrection, 2),
-      num(result.correctedReading),
-      num(result.effectiveDepth, 2),
-      num(result.particleDiameter, 4),
-      num(result.finesInSuspension),
-      num(result.finesByHydrometer),
-    ].map((value) => ({ w: columnWidth, text: value, align: "center" as const })));
+      timeText(result.time),
+      text(actual, DASH),
+      num(result.adjustedReading, 1, DASH),
+      num(result.compositeCorrection, 2, DASH),
+      num(result.correctedReading, 1, DASH),
+      num(result.effectiveDepth, 2, DASH),
+      num(result.particleDiameter, 4, DASH),
+      num(result.finesInSuspension, 1, DASH),
+      num(result.finesByHydrometer, 1, DASH),
+    ].map((value, index) => ({ w: widths[index], text: value, align: "center" as const })));
   });
   return cy;
 };
@@ -333,14 +495,17 @@ const PASSING_VALUES = Array.from({ length: 11 }, (_, step) => step * 10);
 
 /**
  * The chart block is authored in the same 384.28-unit space as the on-screen
- * SVG. That space came off an A4 page in points, so one unit is 0.352778 mm and
- * everything, line weights and type sizes included, scales together.
+ * SVG, so one unit is 0.352778 mm and geometry, line weights and type sizes
+ * all scale together.
  */
 const REF_UNIT_MM = 0.352778;
 const REF_BLOCK_UNITS = 384.28;
 const REF_BLOCK_H_UNITS = 222;
 /** Plot rectangle inside the chart block, in the same units as the on-screen SVG. */
 const PLOT_UNITS = { x: 37.72, y: 27.81, w: 334.28, h: 160.86 };
+/** Fraction band rows below the plot, matching the reference sheet. */
+const BAND_TOP_UNITS = 205.6;
+const BAND_BOTTOM_UNITS = 211.9;
 
 /**
  * Native vector grading curve, used whenever the html2canvas capture of the
@@ -385,7 +550,7 @@ const drawPsdGraphVector = (d: jsPDF, x: number, y: number, w: number, o: Partic
   d.setFillColor(255, 255, 255);
   d.setDrawColor(...COLORS.dark);
   d.setLineWidth(0.2 * type);
-  d.rect(x, py(14), w, 200 * scale * vScale, "FD");
+  d.rect(x, py(14), w, 206.5 * scale * vScale, "FD");
 
   d.setFillColor(...COLORS.plotBg);
   d.rect(plot.x, plot.y, plot.w, plot.h, "F");
@@ -415,20 +580,31 @@ const drawPsdGraphVector = (d: jsPDF, x: number, y: number, w: number, o: Partic
 
   PASSING_VALUES.forEach((value) => label(value.toFixed(1), PLOT_UNITS.x - 2, PLOT_UNITS.y + psdY(value, PLOT_UNITS.h), "right", 6));
   label("Passing (%)", 20, PLOT_UNITS.y + PLOT_UNITS.h / 2, "center", 7.5, true, 90);
-  PSD_DECADE_TICKS.forEach((size) => label(size.toFixed(3), PLOT_UNITS.x + psdX(size, PLOT_UNITS.w), 192.4, "center", 6));
-  PSD_SUB_LABELS.forEach((band) => label(band.label, PLOT_UNITS.x + psdX(band.from, PLOT_UNITS.w), 198.6, "center", 5.2));
-  // Each fraction caption is centred on the geometric mean of its own band. The
-  // source sheet anchors them to the band boundary, which collides with the
-  // left-hand "FRACTION" caption because the silt band starts almost on the axis.
-  PSD_FRACTIONS.forEach((band) => {
-    const at = PLOT_UNITS.x + psdX(Math.sqrt(band.from * band.to), PLOT_UNITS.w);
-    label(band.label, at, band.label === "CLAY" ? 205.6 : 210.8, "center", 5.2);
+  PSD_DECADE_TICKS.forEach((size) => label(size.toFixed(3), PLOT_UNITS.x + psdX(size, PLOT_UNITS.w), 194.9, "center", 5.4));
+  d.setDrawColor(...COLORS.dark);
+  d.setLineWidth(0.14 * type);
+  d.line(px(27.0), py(195.3), px(376.9), py(195.3));
+  // Decade rules continue through the sub-label row down to the fraction band.
+  PSD_DECADE_LINES.forEach((size) => {
+    const gx = px(PLOT_UNITS.x + psdX(size, PLOT_UNITS.w));
+    d.line(gx, plotBottom, gx, py(BAND_TOP_UNITS));
   });
-  label("FRACTION", PLOT_UNITS.x, 210.8, "left", 5.2);
+  PSD_SUB_LABELS.forEach((band) => label(band.label, PLOT_UNITS.x + psdX(band.from, PLOT_UNITS.w), 198.6, "center", 4.4));
+  // Fraction band: a top rule from silt start to gravel end, dividers at the
+  // 0.063 / 2 / 63 mm boundaries, and a wider bottom rule.
+  d.line(px(PLOT_UNITS.x + psdX(0.002, PLOT_UNITS.w)), py(BAND_TOP_UNITS), px(PLOT_UNITS.x + psdX(63, PLOT_UNITS.w)), py(BAND_TOP_UNITS));
+  [0.063, 2, 63].forEach((size) => {
+    const gx = px(PLOT_UNITS.x + psdX(size, PLOT_UNITS.w));
+    d.line(gx, py(BAND_TOP_UNITS), gx, py(BAND_BOTTOM_UNITS));
+  });
+  d.setLineWidth(0.37 * type);
+  d.line(px(27.7), py(BAND_BOTTOM_UNITS), px(381.3), py(BAND_BOTTOM_UNITS));
+  PSD_FRACTIONS.slice(1, 4).forEach((band) => {
+    const at = PLOT_UNITS.x + psdX(Math.sqrt(band.from * band.to), PLOT_UNITS.w);
+    label(band.label, at, 209.9, "center", 5.2);
+  });
 
   d.setDrawColor(...COLORS.dark);
-  d.setLineWidth(0.37 * type);
-  d.line(plot.x, py(213.6), plot.x + plot.w, py(213.6));
   label("Particle size (mm)", PLOT_UNITS.x + PLOT_UNITS.w / 2, 219.6, "center", 7, true);
   label("PARTICLE SIZE DISTRIBUTION GRAPH", PLOT_UNITS.x + PLOT_UNITS.w / 2, 9, "center", 7.5, true);
 
@@ -448,6 +624,7 @@ const drawPsdGraph = (d: jsPDF, x: number, y: number, w: number, o: ParticleSize
   }
   return drawPsdGraphVector(d, x, y, w, o, h);
 };
+
 const drawTitleBlock = (
   d: jsPDF,
   x: number,
@@ -456,6 +633,7 @@ const drawTitleBlock = (
   o: ParticleSizeDistributionPdfOptions,
   images: AdminImages,
 ): number => {
+  void o;
   const imgW = 62;
   const imgH = 20;
   let cy = y;
@@ -476,38 +654,45 @@ const drawTitleBlock = (
   d.setDrawColor(...COLORS.dark);
   d.setLineWidth(0.5);
   d.line(x, cy, x + w, cy);
-  cy += 4;
-  const title = "PARTICLE SIZE DISTRIBUTION (BS 1377-2:1990: 9.2/9.3/9.4 & 9.5)";
-  const titleSize = fitText(d, title, w, 10.5, 7);
-  d.setFontSize(titleSize);
+
+  const line1 = "PARTICLE SIZE DISTRIBUTION";
+  const line2 = "BS 1377 2:1990: 9.2/9.3/9.4 & 9.5";
   d.setFont("helvetica", "bold");
+  d.setFontSize(8);
+  const size1 = fitText(d, line1, 33.5, 8, 5);
+  d.setFontSize(size1);
+  cy += 5.7;
   d.setTextColor(...COLORS.dark);
-  d.text(title, x + w / 2, cy, { align: "center" });
-  const titleW = d.getTextWidth(title);
+  d.text(line1, x + w / 2, cy, { align: "center" });
+  const w1 = d.getTextWidth(line1);
   d.setLineWidth(0.4);
-  d.line(x + w / 2 - titleW / 2, cy + 1.2, x + w / 2 + titleW / 2, cy + 1.2);
-  return cy + 5;
+  d.line(x + w / 2 - w1 / 2, cy + 0.7, x + w / 2 + w1 / 2, cy + 0.7);
+
+  const size2 = fitText(d, line2, 38.4, 8, 5);
+  d.setFontSize(size2);
+  cy += 3.1;
+  d.text(line2, x + w / 2, cy, { align: "center" });
+  const w2 = d.getTextWidth(line2);
+  d.line(x + w / 2 - w2 / 2, cy + 0.6, x + w / 2 + w2 / 2, cy + 0.6);
+  return cy + 3.5;
 };
 
-const drawFooter = (d: jsPDF, o: ParticleSizeDistributionPdfOptions, images: AdminImages, y: number): void => {
-  d.setDrawColor(...COLORS.dark);
-  d.setLineWidth(0.5);
-  d.line(MARGIN, y - 4, MARGIN + CONTENT_W, y - 4);
-  const usable = images.stamp ? CONTENT_W - 30 : CONTENT_W;
-  const column = usable / 3;
-  d.setFontSize(8);
-  d.setFont("helvetica", "bold");
-  d.setTextColor(...COLORS.dark);
-  d.text(`Tested by ${text(o.testedBy || o.record.testedBy)}`, MARGIN, y);
-  d.text(`Date reported ${text(o.dateReported)}`, MARGIN + column, y);
-  d.text(`Checked by: ${text(o.checkedBy)}`, MARGIN + column * 2, y);
+const drawFooter = (d: jsPDF, o: ParticleSizeDistributionPdfOptions, images: AdminImages, top: number): void => {
+  const checked = text(o.checkedBy, "_______________");
+  drawCells(d, MARGIN, top, FOOTER_H, [
+    { w: 34.3, text: "Tested by:", label: true, bold: true, fill: COLORS.footerBg },
+    { w: 42.6, text: text(o.testedBy || o.record.testedBy), align: "center", fill: COLORS.footerBg },
+    { w: 21.7, text: "Date reported:", label: true, bold: true, align: "right", fill: COLORS.footerBg },
+    { w: 26.0, text: refDate(o.dateReported), align: "center" },
+    { w: CONTENT_W - 34.3 - 42.6 - 21.7 - 26.0, text: `Checked by: ${checked}`, align: "center" },
+  ]);
 
   if (images.stamp) {
     try {
-      // Top edge sits on the content boundary so the stamp never climbs into the graph.
-      const s = 22;
+      // The stamp straddles the footer row, like the laboratory's own stamp.
+      const s = 15.7;
       const { base64, format } = imageParts(images.stamp);
-      d.addImage(base64, format, MARGIN + CONTENT_W - s - 4, y - 6, s, s, undefined, "FAST");
+      d.addImage(base64, format, MARGIN + CONTENT_W - s - 1.8, top - 6.8, s, s, undefined, "FAST");
     } catch { /* the stamp is optional */ }
   }
 };
@@ -521,64 +706,65 @@ export const generateParticleSizeDistributionPDF = async (options: ParticleSizeD
     console.warn("[PSD PDF] Could not load header/footer images, exporting without them:", error);
   }
 
-  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const doc = new jsPDF({ unit: "mm", format: "letter" });
   const pageHeight = doc.internal.pageSize.getHeight();
-  const pageWidth = doc.internal.pageSize.getWidth();
   const x = MARGIN;
   const topY = 10;
   // Reserve the footer band first so content can never run into it.
-  const footerY = pageHeight - 20;
-  const contentBottom = footerY - 6;
+  const footerTop = pageHeight - 36.8;
+  const contentBottom = footerTop - FOOTER_GAP;
 
-  const sieveWidth = 62;
-  const hydrometerWidth = CONTENT_W - sieveWidth - 2;
-  const sieveRows = 2 + options.record.sieveRows.length + 1; // caption + header + rows + total
-  const hydroRows = 1 + 4 + 1 + options.hydrometer.results.length; // caption + 4 params + header + readings
-  const tableRows = Math.max(sieveRows, hydroRows);
-  const graphNaturalH = Math.min((CONTENT_W * REF_BLOCK_H_UNITS) / REF_BLOCK_UNITS, MAX_GRAPH_H);
+  const y = drawTitleBlock(doc, x, topY, CONTENT_W, options, images);
+  const titleBottom = y;
 
-  // Fixed overhead above the side-by-side tables: title block (~33) + 3 header
-  // rows + preparation/classification blocks + gaps. Measured at ROW_H so the
-  // row-height scale below stays proportional.
-  const fixedH = 33 + 3 * ROW_H + 2 + 5 * ROW_H + 2 + 2 * ROW_H + 3;
+  const sieveCount = options.record.sieveRows.length;
+  const hydroCount = options.hydrometer.results.length;
+  const graphW = CONTENT_W - GRAPH_INSET * 2;
+  const graphNatural = Math.min((REF_BLOCK_H_UNITS * graphW) / REF_BLOCK_UNITS, MAX_BLOCK_H);
+  const hydroBlock = HYDRO_CAP_H + 4 * HYDRO_PARAM_H + HYDRO_HEAD_H;
+  const sieveCapHead = SIEVE_CAP_H + SIEVE_HEAD_H;
+  // Fixed overhead above the side-by-side tables: title block + 3 spacers +
+  // header/preparation/classification rows + the graph gap.
+  const tableBottomFor = (rowH: number): number =>
+    titleBottom + 3 * SPACER_H + 11 * rowH
+    + Math.max(sieveCapHead + (sieveCount + 1) * rowH, hydroBlock + hydroCount * rowH);
+
+  // Single-pass fit: shrink rows first, then the graph (never below
+  // MIN_BLOCK_H, the chart is mandatory). One page only — no addPage here.
   let rowH = ROW_H;
-  let graphH = graphNaturalH;
-  // Single-pass fit: shrink rows first, then the graph (never below MIN_GRAPH_H,
-  // the chart is mandatory). One page only — no addPage in this generator.
-  const need = fixedH + tableRows * rowH + 3 + graphH;
-  const have = contentBottom - topY;
-  if (need > have) {
-    // Rows absorb overflow first; the graph keeps its natural height when possible.
-    const rowHForNaturalGraph = (have - fixedH - 3 - graphNaturalH) / tableRows;
-    if (rowHForNaturalGraph >= MIN_ROW_H) {
-      rowH = rowHForNaturalGraph;
-    } else {
-      // Dense data (e.g. full KIRIAINI stack): rows at floor, graph takes the rest.
-      rowH = MIN_ROW_H;
-      graphH = Math.max(MIN_GRAPH_H, have - fixedH - 3 - tableRows * MIN_ROW_H);
-    }
+  let graphH = graphNatural;
+  while (tableBottomFor(rowH) + GRAPH_GAP + graphH > contentBottom && rowH > MIN_ROW_H + 1e-9) {
+    rowH = Math.round((rowH - 0.01) * 100) / 100;
+  }
+  if (tableBottomFor(rowH) + GRAPH_GAP + graphH > contentBottom) {
+    // Dense data: rows at floor, graph takes the rest.
+    rowH = MIN_ROW_H;
+    graphH = Math.max(MIN_BLOCK_H, contentBottom - tableBottomFor(MIN_ROW_H) - GRAPH_GAP);
   }
 
-  const headerH = Math.max(4.5, Math.min(6, rowH * 1.45));
-  let y = drawTitleBlock(doc, x, topY, CONTENT_W, options, images);
-  y = drawHeader(doc, x, y, options, rowH) + 1.5;
-  y = drawPreparation(doc, x, y, options, rowH) + 1.5;
-  y = drawClassification(doc, x, y, options, rowH) + 2;
+  let cursor = drawHeader(doc, x, y, options, rowH);
+  cursor = drawSpacer(doc, x, cursor);
+  cursor = drawPreparation(doc, x, cursor, options, rowH);
+  cursor = drawSpacer(doc, x, cursor);
+  cursor = drawClassification(doc, x, cursor, options, rowH);
+  cursor = drawSpacer(doc, x, cursor);
 
-  const sieveBottom = drawSieveTable(doc, x, y, sieveWidth, options, rowH, headerH);
-  const hydrometerBottom = drawHydrometerTable(doc, x + sieveWidth + 2, y, hydrometerWidth, options, rowH, headerH);
-  const graphTop = Math.max(sieveBottom, hydrometerBottom) + 2;
-  const graphBudget = Math.max(contentBottom - graphTop, MIN_GRAPH_H);
-  const fittedGraphH = Math.min(graphH, graphBudget);
-  drawPsdGraph(doc, x, graphTop, CONTENT_W, options, fittedGraphH);
+  const sieveBottom = drawSieveTable(doc, x, cursor, SIEVE_W, options, rowH);
+  const hydrometerBottom = drawHydrometerTable(doc, x + SIEVE_W, cursor, CONTENT_W - SIEVE_W, options, rowH);
+  const tableBottom = Math.max(sieveBottom, hydrometerBottom);
+
+  // Side rails continue the frame through the graph zone into the footer.
+  doc.setDrawColor(...COLORS.dark);
+  doc.setLineWidth(0.2);
+  doc.line(x, tableBottom, x, footerTop);
+  doc.line(x + CONTENT_W, tableBottom, x + CONTENT_W, footerTop);
+
+  const graphTop = tableBottom + GRAPH_GAP;
+  graphH = Math.max(MIN_BLOCK_H, Math.min(graphH, contentBottom - graphTop));
+  drawPsdGraph(doc, x + GRAPH_INSET, graphTop, graphW, options, graphH);
 
   // Footer last, on the reserved band — content above can never overlap it.
-  drawFooter(doc, options, images, footerY);
-  doc.setFontSize(7);
-  doc.setTextColor(120, 120, 120);
-  doc.setFont("helvetica", "normal");
-  doc.text("Page 1 of 1", pageWidth / 2, pageHeight - 6, { align: "center" });
-  doc.text(`Generated: ${new Date().toLocaleDateString()}`, MARGIN, pageHeight - 6);
+  drawFooter(doc, options, images, footerTop);
 
   if (!options.skipDownload) {
     const stem = (options.projectName || "Particle Size Distribution").replace(/[^\w-]+/g, "_");
