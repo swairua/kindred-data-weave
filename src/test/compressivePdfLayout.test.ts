@@ -1,8 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
+import { inflateSync } from "node:zlib";
+import { jsPDF } from "jspdf";
 
 vi.mock("@/lib/imageUtils", () => ({ fetchAdminImagesAsBase64: async () => ({}) }));
 
 import {
+  fillStrokeRect,
   formatReportDate,
   generateCompressiveStrengthPDF,
   isSatisfactory,
@@ -45,6 +48,22 @@ const options = (rows: CompressiveCubeInput[]) => ({
   rows,
   skipDownload: true,
 });
+
+/** Raw content-stream text of the document: inflate FlateDecode streams, pass the rest through. */
+const pageContent = (doc: jsPDF): string => {
+  const raw = Buffer.from(doc.output("arraybuffer")).toString("latin1");
+  const parts: string[] = [];
+  const streamRe = /stream\r?\n([\s\S]*?)\r?\nendstream/g;
+  let match: RegExpExecArray | null;
+  while ((match = streamRe.exec(raw)) !== null) {
+    try {
+      parts.push(inflateSync(Buffer.from(match[1], "latin1")).toString("latin1"));
+    } catch {
+      parts.push(match[1]);
+    }
+  }
+  return parts.join("\n");
+};
 
 describe("formatReportDate", () => {
   it("renders ISO dates the way the laboratory sheet does", () => {
@@ -156,5 +175,57 @@ describe("generateCompressiveStrengthPDF", () => {
     // The mock returns no logo or stamp; the report must still be produced.
     const doc = await generateCompressiveStrengthPDF(options(REFERENCE_CUBES));
     expect(doc.output("arraybuffer").byteLength).toBeGreaterThan(1000);
+  });
+
+  it("keeps every cube-row glyph inside the blue table frame", async () => {
+    // Regression: the old `size * 0.35` point offset pushed row baselines
+    // ~0.5 mm below short rows, so the blue frame cut the last line in half.
+    const doc = await generateCompressiveStrengthPDF(options([{ ...REFERENCE_CUBES[0], mark: "C1" }]));
+    expect(doc.getNumberOfPages()).toBe(1);
+    const content = pageContent(doc);
+
+    // The table's outer frame: blue stroke, then `x y w h re` in points.
+    // jsPDF writes the rect top-down, so its height is negative and the
+    // bottom edge sits at y + h.
+    const frames = [...content.matchAll(/0\. 0\. 1\. RG[\s\S]{0,200}?(-?[\d.]+) (-?[\d.]+) (-?[\d.]+) (-?[\d.]+) re/g)];
+    expect(frames).toHaveLength(1);
+    const [fx, fy, fw, fh] = frames[0].slice(1, 5).map(Number);
+    const frameBottom = fy + fh;
+
+    // Text positions `x y Td (string) Tj`, also in points from the page bottom.
+    const matrices = [...content.matchAll(/(-?[\d.]+) (-?[\d.]+) Td\s+\((?:\\.|[^)])*\) Tj/g)];
+    expect(matrices.length).toBeGreaterThan(0);
+    for (const matrix of matrices) {
+      const [tx, ty] = matrix.slice(1, 3).map(Number);
+      if (tx < fx || tx > fx + fw) continue;
+      const aboveFrameBottom = ty - frameBottom;
+      // Row text now sits ~2.1 mm above the frame; terms/footer text starts
+      // 3+ mm below it. Anything in between is a glyph crossing the frame.
+      const inForbiddenStrip = aboveFrameBottom >= -8 && aboveFrameBottom < 0.5;
+      expect(inForbiddenStrip).toBe(false);
+    }
+  });
+});
+
+describe("fill colour adjacency", () => {
+  it("re-emits the fill colour immediately before a rect drawn after text", () => {
+    // Regression for the black L/W/H and Remarks header cells: jsPDF's text()
+    // writes (and caches) a fill colour of its own, so a setFillColor issued
+    // before the text is not re-emitted for a later rect. fillStrokeRect must
+    // keep the rect's own colour adjacent to the rect in the content stream.
+    const doc = new jsPDF({ unit: "mm", format: "a4", compress: false });
+    doc.setFillColor(212, 212, 212); // the stale colour the bug would leave behind
+    doc.setFontSize(6.5);
+    doc.text("HEADING", 30, 30); // black text between colour and rect
+    fillStrokeRect(doc, 25, 40, 40, 8, [255, 255, 255]);
+
+    const stream = Buffer.from(doc.output("arraybuffer")).toString("latin1");
+    const rectIndex = stream.lastIndexOf(" re");
+    expect(rectIndex).toBeGreaterThan(-1);
+    const preceding = stream.slice(Math.max(0, rectIndex - 240), rectIndex);
+    // jsPDF 4 writes white as `1. g`; older versions wrote `1 1 1 rg`.
+    const fills = preceding.match(/\d[\d.]* \d[\d.]* \d[\d.]* rg|\d[\d.]* g/g) ?? [];
+    // The last fill colour written before the rect must be the rect's own white.
+    expect(["1. g", "1 1 1 rg"]).toContain(fills[fills.length - 1]);
   });
 });

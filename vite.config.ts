@@ -9,7 +9,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
-    port: 5182,
+    port: 5173,
+    strictPort: true,
     proxy: {
       "/api.php": {
         target: "https://lab.wayrus.co.ke",

@@ -23,6 +23,7 @@ import {
   strengthOf,
   type CompressiveCubeInput,
 } from "./compressiveCalculations";
+
 import { fetchAdminImagesAsBase64, type AdminImages } from "./imageUtils";
 
 /** Page margins. A4 landscape is 297 x 210 mm. */
@@ -39,21 +40,60 @@ const REF_ROW_H = 4.23;
 const MIN_ROW_H = 3.1;
 /** Height of the five identification rows above the table. */
 const ID_ROW_H = 6;
-/** Height of the two-line table heading. */
-const HEADER_H = 11;
+/** Height of the two-line table heading (~9mm band on the reference). */
+const HEADER_H = 9.5;
 /** Room reserved at the foot of the page for the terms and the signature line. */
 const FOOTER_RESERVE = 20;
 
 const COLORS = {
   dark: [0, 0, 0] as [number, number, number],
-  grid: [120, 120, 120] as [number, number, number],
-  /** Brand blue used for the page frame and the rule beneath the header. */
+  /** Hairline table rules are black on the reference sheet. */
+  grid: [0, 0, 0] as [number, number, number],
+  /** Brand blue used for the table's outer frame. */
   blue: [0, 0, 255] as [number, number, number],
   /** Peach label cells, matching the reference identification block. */
   labelBg: [252, 228, 214] as [number, number, number],
-  /** Light-grey table-header cells. */
-  headerBg: [212, 212, 212] as [number, number, number],
+  /** The reference heading band is white; only its rules are inked. */
+  headerBg: [255, 255, 255] as [number, number, number],
+  /** Light-grey separators around the title/blank rows. */
+  ruleLight: [211, 211, 211] as [number, number, number],
 } as const;
+
+/**
+ * jsPDF records the fill colour in the content stream the moment a filled rect
+ * is written, and `text()` also writes (and caches) a fill colour of its own.
+ * A `setFillColor` issued before an intervening `text()` is therefore NOT
+ * re-emitted for a later rect, which silently painted the L/W/H and Remarks
+ * header cells black. Every filled rect must set its colour immediately before
+ * the rect it paints, so these two helpers wrap that pattern.
+ */
+export const fillRect = (
+  d: jsPDF,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  fill: [number, number, number],
+) => {
+  d.setFillColor(...fill);
+  d.rect(x, y, w, h, "F");
+};
+
+export const fillStrokeRect = (
+  d: jsPDF,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  fill: [number, number, number],
+  stroke: [number, number, number] = COLORS.grid,
+  lineWidth = 0.2,
+) => {
+  d.setFillColor(...fill);
+  d.setDrawColor(...stroke);
+  d.setLineWidth(lineWidth);
+  d.rect(x, y, w, h, "FD");
+};
 
 const BLANK = "__________";
 
@@ -73,19 +113,19 @@ interface Col {
  * to the right-hand edge.
  */
 const COLS: Col[] = [
-  { label: "CUBE MARK", w: 24.0 },
-  { label: "DATE OF\nCAST", w: 18.0 },
-  { label: "DATE OF\nTEST", w: 19.7 },
-  { label: "AGE\n(DAYS)", w: 16.3 },
-  { label: "L", w: 16.2, group: "CUBE DIMM\n(mm)" },
-  { label: "W", w: 15.9, group: "CUBE DIMM\n(mm)" },
-  { label: "H", w: 16.2, group: "CUBE DIMM\n(mm)" },
-  { label: "MASS OF\nCUBE(g)", w: 16.2 },
-  { label: "DENSITY\n(Kg/m3)", w: 16.3 },
-  { label: "MAX LOAD\nAT\nFAILURE (KN)", w: 22.2 },
-  { label: "COMPRESSIVE\nSTRENGTH\n(N/mm2)", w: 23.3 },
-  { label: "", w: 15.8, group: "Remarks/Comments" },
-  { label: "", w: 42.5, group: "Remarks/Comments" },
+  { label: "CUBE MARK", w: 20.47 },
+  { label: "DATE OF\nCAST", w: 20.70 },
+  { label: "DATE OF\nTEST", w: 18.92 },
+  { label: "AGE\n(DAYS)", w: 19.41 },
+  { label: "L", w: 16.80, group: "CUBE DIMM\n(mm)" },
+  { label: "W", w: 16.80, group: "CUBE DIMM\n(mm)" },
+  { label: "H", w: 16.80, group: "CUBE DIMM\n(mm)" },
+  { label: "MASS OF\nCUBE(g)", w: 16.76 },
+  { label: "DENSITY\n(Kg/m3)", w: 19.45 },
+  { label: "MAX LOAD\nAT\nFAILURE (KN)", w: 23.08 },
+  { label: "COMPRESSIVE\nSTRENGTH\n(N/mm2)", w: 27.02 },
+  { label: "", w: 16.80, group: "Remarks/Comments" },
+  { label: "", w: 29.69, group: "Remarks/Comments" },
 ];
 
 /** Index of the column printed in bold, matching the reference's emphasised result. */
@@ -135,7 +175,13 @@ const num = (value: number | null | undefined, digits = 1, fallback = BLANK): st
 const fitText = (d: jsPDF, value: string, maxWidth: number, startSize: number, minSize = 2.8): number => {
   let size = startSize;
   try {
-    while (size > minSize && d.getTextWidth(value) > Math.max(maxWidth, 1)) size -= 0.25;
+    // getTextWidth measures at the live font size, so the size must be
+    // applied on every step or the loop collapses to minSize.
+    d.setFontSize(size);
+    while (size > minSize && d.getTextWidth(value) > Math.max(maxWidth, 1)) {
+      size -= 0.25;
+      d.setFontSize(size);
+    }
   } catch { /* jsPDF text metrics are unavailable in some environments */ }
   return size;
 };
@@ -226,31 +272,29 @@ const drawCellText = (
 ) => {
   // Labels like "DATE OF\nCAST" and two-line "CM/5552\nCM/5553" lab refs sit on
   // a vertical stack of centred lines; a single line keeps the old placement.
+  // Text is anchored with baseline "middle" so short cells (the L/W/H letter
+  // band, dense cube rows) cannot push glyphs below the cell rules.
   const lines = value
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
+  d.setFont("times", bold ? "bold" : "normal");
   if (lines.length <= 1) {
     const fitted = fitText(d, value, w - 1.6, size);
     d.setFontSize(fitted);
-    d.setFont("helvetica", bold ? "bold" : "normal");
     d.setTextColor(...COLORS.dark);
-    // jsPDF anchors on the text baseline, so offset by a third of the cap height
-    // to sit the text on the vertical centre of the cell.
-    d.text(value, x + w / 2, y + h / 2 + fitted * 0.35, { align: "center" });
+    d.text(value, x + w / 2, y + h / 2, { align: "center", baseline: "middle" });
     return;
   }
   const longest = lines.reduce((a, b) => (a.length >= b.length ? a : b), "");
   const fitted = fitText(d, longest, w - 1.6, size);
   d.setFontSize(fitted);
-  d.setFont("helvetica", bold ? "bold" : "normal");
   d.setTextColor(...COLORS.dark);
   const lineH = fitted * 0.42;
-  let cy = y + h / 2 - ((lines.length - 1) * lineH) / 2;
-  for (const line of lines) {
-    d.text(line, x + w / 2, cy + fitted * 0.35, { align: "center" });
-    cy += lineH;
-  }
+  const blockTop = y + h / 2 - ((lines.length - 1) * lineH) / 2;
+  lines.forEach((line, index) => {
+    d.text(line, x + w / 2, blockTop + index * lineH, { align: "center", baseline: "middle" });
+  });
 };
 
 /** Build the identification rows shown above the results table. */
@@ -294,8 +338,8 @@ const drawIdentification = (d: jsPDF, o: CompressiveStrengthPdfOptions, y: numbe
     for (const cell of row) {
       const labelW = Math.min(cell.w * 0.34, 34);
       const valueW = cell.w - labelW;
-      d.setFillColor(...COLORS.labelBg);
-      d.rect(cx, cy, labelW, ID_ROW_H, "F");
+      // The label tint is re-set immediately before its rect (see fillRect).
+      fillRect(d, cx, cy, labelW, ID_ROW_H, COLORS.labelBg);
       d.setDrawColor(...COLORS.grid);
       d.setLineWidth(0.2);
       d.rect(cx, cy, cell.w, ID_ROW_H);
@@ -328,25 +372,24 @@ const drawTableHeader = (d: jsPDF, y: number): number => {
     const width = COLS.slice(i, i + span).reduce((sum, c) => sum + c.w, 0);
     const hasSubLabels = grouped && COLS.slice(i, i + span).some((c) => c.label.trim() !== "");
 
-    d.setFillColor(...COLORS.headerBg);
-    d.setDrawColor(...COLORS.grid);
-    d.setLineWidth(0.2);
+    // Each cell sets its own colours adjacent to its rect (see fillStrokeRect):
+    // the drawCellText calls in between would otherwise leave a stale black.
     if (!grouped) {
-      d.rect(x, y, col.w, HEADER_H, "FD");
+      fillStrokeRect(d, x, y, col.w, HEADER_H, COLORS.headerBg);
       drawCellText(d, col.label, x, y, col.w, HEADER_H, 6.5, true);
     } else if (hasSubLabels) {
       // Two-line group name over the top two bands, letters on the bottom band.
-      d.rect(x, y, width, bandH * 2, "FD");
+      fillStrokeRect(d, x, y, width, bandH * 2, COLORS.headerBg);
       drawCellText(d, col.group as string, x, y, width, bandH * 2, 6.5, true);
       for (let k = 0; k < span; k += 1) {
         const sub = COLS[i + k];
         const sx = x + COLS.slice(i, i + k).reduce((sum, c) => sum + c.w, 0);
-        d.rect(sx, y + bandH * 2, sub.w, bandH, "FD");
+        fillStrokeRect(d, sx, y + bandH * 2, sub.w, bandH, COLORS.headerBg);
         drawCellText(d, sub.label, sx, y + bandH * 2, sub.w, bandH, 6.5, true);
       }
     } else {
       // Merged heading with no sub-labels (Remarks/Comments).
-      d.rect(x, y, width, HEADER_H, "FD");
+      fillStrokeRect(d, x, y, width, HEADER_H, COLORS.headerBg);
       drawCellText(d, col.group as string, x, y, width, HEADER_H, 6.5, true);
     }
     x += width;
@@ -389,11 +432,13 @@ const drawRow = (d: jsPDF, values: string[], y: number, rowH: number) => {
     d.setDrawColor(...COLORS.grid);
     d.setLineWidth(0.2);
     d.rect(x, y, col.w, rowH);
+    d.setFont("times", index === BOLD_COLUMN ? "bold" : "normal");
     const size = fitText(d, value, col.w - 1.6, rowH >= 4 ? 7.5 : 6.5, 4);
     d.setFontSize(size);
-    d.setFont("helvetica", index === BOLD_COLUMN ? "bold" : "normal");
     d.setTextColor(...COLORS.dark);
-    d.text(value, x + col.w / 2, y + rowH / 2 + size * 0.35, { align: "center" });
+    // Baseline "middle" keeps the value inside short rows; the old
+    // `size * 0.35` point offset pushed glyphs below the blue frame.
+    d.text(value, x + col.w / 2, y + rowH / 2, { align: "center", baseline: "middle" });
     x += col.w;
   });
 };
@@ -412,7 +457,7 @@ const measureTerms = (d: jsPDF): number => {
 
 const drawTerms = (d: jsPDF, y: number): void => {
   let cy = y;
-  d.setFont("helvetica", "bold");
+  d.setFont("times", "bold");
   d.setFontSize(6.5);
   d.setTextColor(...COLORS.dark);
   (d.splitTextToSize(TERMS_INTRO, TABLE_W - 8) as string[]).forEach((line) => {
@@ -420,7 +465,7 @@ const drawTerms = (d: jsPDF, y: number): void => {
     cy += 3.4;
   });
   cy += 1.2;
-  d.setFont("helvetica", "normal");
+  d.setFont("times", "normal");
   d.setFontSize(6.5);
   d.setTextColor(...COLORS.dark);
   TERMS.forEach((term, index) => {
@@ -440,7 +485,7 @@ const drawFooter = (d: jsPDF, o: CompressiveStrengthPdfOptions, images: AdminIma
   const stampSpace = images.stamp ? 30 : 0;
   const colW = (TABLE_W - stampSpace) / 3;
   d.setFontSize(7.5);
-  d.setFont("helvetica", "bold");
+  d.setFont("times", "bold");
   d.setTextColor(...COLORS.dark);
   d.text(`TESTED BY:  ${text(o.testedBy)}`, TABLE_X, y);
   d.text(`REPORTED ON:  ${formatReportDate(o.dateReported ?? "") || BLANK}`, TABLE_X + colW, y);
@@ -456,7 +501,7 @@ const drawFooter = (d: jsPDF, o: CompressiveStrengthPdfOptions, images: AdminIma
     } catch { /* the stamp is optional */ }
   }
 
-  d.setFont("helvetica", "normal");
+  d.setFont("times", "normal");
   d.setFontSize(7);
   d.text(
     "Specialists In: Non-Destructive Testing, Materials Testing and Inspection, Quality Assurance, Failure Investigations,",
@@ -474,7 +519,7 @@ const drawTitleBlock = (d: jsPDF, o: CompressiveStrengthPdfOptions, images: Admi
   const imgW = 62;
   const imgH = 20;
   d.setFontSize(7.5);
-  d.setFont("helvetica", "normal");
+  d.setFont("times", "normal");
   d.setTextColor(...COLORS.dark);
   d.text("Compressive Strength of Concrete Cubes Report", MARGIN, y);
   if (images.logo) {
@@ -497,7 +542,7 @@ const drawTitleBlock = (d: jsPDF, o: CompressiveStrengthPdfOptions, images: Admi
     // No letterhead images configured: print the address as text instead of
     // leaving an empty band, so the sheet always carries the lab identity.
     d.setFontSize(7.5);
-    d.setFont("helvetica", "normal");
+    d.setFont("times", "normal");
     d.setTextColor(...COLORS.dark);
     for (const line of addressLines) {
       cy += 3.6;
@@ -513,7 +558,7 @@ const drawTitleBlock = (d: jsPDF, o: CompressiveStrengthPdfOptions, images: Admi
   cy += 4;
   const title = "COMPRESSIVE STRENGTH OF CONCRETE CUBES";
   d.setFontSize(13);
-  d.setFont("helvetica", "bold");
+  d.setFont("times", "bold");
   d.setTextColor(...COLORS.dark);
   d.text(title, TABLE_X + TABLE_W / 2, cy, { align: "center" });
   const titleW = d.getTextWidth(title);
@@ -521,12 +566,12 @@ const drawTitleBlock = (d: jsPDF, o: CompressiveStrengthPdfOptions, images: Admi
   d.line(TABLE_X + TABLE_W / 2 - titleW / 2, cy + 1.2, TABLE_X + TABLE_W / 2 + titleW / 2, cy + 1.2);
   cy += 5;
   d.setFontSize(8.5);
-  d.setFont("helvetica", "normal");
+  d.setFont("times", "normal");
   d.text("BS EN 12390 - 3 : 2002", TABLE_X + TABLE_W / 2, cy, { align: "center" });
   if (o.labOrganization) {
     cy += 4;
     d.setFontSize(8);
-    d.setFont("helvetica", "bold");
+    d.setFont("times", "bold");
     d.text(o.labOrganization, TABLE_X + TABLE_W / 2, cy, { align: "center" });
     return cy + 4;
   }
@@ -567,11 +612,17 @@ export const generateCompressiveStrengthPDF = async (options: CompressiveStrengt
   const printPage = (page: CompressiveCubeInput[]): number => {
     let y = drawTitleBlock(doc, o, images, MARGIN);
     y = drawIdentification(doc, o, y);
+    const tableTop = y;
     y = drawTableHeader(doc, y);
     for (const row of page) {
       drawRow(doc, cubeSheetValues(row, classTarget), y, rowH);
       y += rowH;
     }
+    // The reference inks the table's outer frame in brand blue over the
+    // black hairlines, spanning the heading and every cube row.
+    doc.setDrawColor(...COLORS.blue);
+    doc.setLineWidth(0.5);
+    doc.rect(TABLE_X, tableTop, TABLE_W, y - tableTop);
     return y;
   };
 
