@@ -4,7 +4,6 @@ import {
   formatDensityTick,
   formatMoistureTick,
   mcCurveSamples,
-  mcMeasuredPath,
   mcScales,
   mcVoidSamples,
   toMcPlotPoints,
@@ -365,9 +364,11 @@ const drawMcGraphVector = (d: jsPDF, x: number, y: number, w: number, o: Moistur
   d.line(plot.x, plot.y, plot.x, plotBottom);
   d.line(plot.x, plotBottom, plot.x + plot.w, plotBottom);
 
-  // Air voids lines first, so the compaction curve and its points sit on top.
+  // Air voids lines first, so the fitted compaction curve sits on top.
   o.voidLines.forEach((line) => {
-    const samples = mcVoidSamples(line.points, PLOT_UNITS.w, PLOT_UNITS.h, scales.x, scales.y);
+    // Samples are projected into millimetres (plot.w/plot.h carry the block
+    // scale, vertical squash included) so they add directly onto plot.x/y.
+    const samples = mcVoidSamples(line.points, plot.w, plot.h, scales.x, scales.y);
     if (samples.length < 2) return;
     d.setDrawColor(...COLORS.dark);
     d.setLineWidth(0.6 * type);
@@ -380,23 +381,12 @@ const drawMcGraphVector = (d: jsPDF, x: number, y: number, w: number, o: Moistur
       );
     }
     const captionAt = samples[Math.round((samples.length - 1) * 0.12)];
-    label(voidLineCaption(line.percent), PLOT_UNITS.x + captionAt.x, PLOT_UNITS.y + captionAt.y + 7, "center", 5.4, true);
+    label(voidLineCaption(line.percent), PLOT_UNITS.x + captionAt.x / scale, PLOT_UNITS.y + captionAt.y / (scale * vScale) + 7, "center", 5.4, true);
   });
-const measured = toMcPlotPoints(o.points, PLOT_UNITS.w, PLOT_UNITS.h, scales.x, scales.y);
-  const curve = mcCurveSamples(toMcPlotPoints(o.fitted, PLOT_UNITS.w, PLOT_UNITS.h, scales.x, scales.y));
+const curve = mcCurveSamples(toMcPlotPoints(o.fitted, plot.w, plot.h, scales.x, scales.y));
 
-  d.setDrawColor(...COLORS.curve);
-  d.setLineWidth(0.9 * type);
-  for (let index = 1; index < measured.length; index += 1) {
-    d.line(
-      plot.x + measured[index - 1].x, plot.y + measured[index - 1].y,
-      plot.x + measured[index].x, plot.y + measured[index].y,
-    );
-  }
-  d.setFillColor(...COLORS.curve);
-  measured.forEach((point) => {
-    d.rect(plot.x + point.x - 1.1 * scale, plot.y + point.y - 1.1 * scale, 2.2 * scale, 2.2 * scale, "F");
-  });
+  // The fitted compaction curve is the graph's only curve, matching the
+  // single-curve laboratory sheets.
 
   if (curve.length > 1) {
     d.setDrawColor(...COLORS.curve);
