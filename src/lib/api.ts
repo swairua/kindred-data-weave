@@ -980,6 +980,12 @@ const COMPRESSIVE_ID_KEYS = [
   "compressive_test_id",
   "compressiveId",
   "compressive_id",
+  // Live rows store the bare link (e.g. payload {"test_id":2} on a
+  // test_key='compressive' row). The membership check in
+  // resolveCompressiveTestId only accepts ids that genuinely belong to this
+  // project, so these generic keys cannot hijack the form.
+  "testId",
+  "test_id",
 ];
 
 /**

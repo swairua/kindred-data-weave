@@ -59,6 +59,19 @@ describe("resolveCompressiveTestId", () => {
     await expect(resolveCompressiveTestId(88, 42)).resolves.toBe(7);
   });
 
+  it("honors the bare test_id link live rows carry", async () => {
+    fetchMock
+      .mockResolvedValueOnce(compressiveList([test7, test9]))
+      .mockResolvedValueOnce(resultRow({
+        id: 407,
+        project_id: 42,
+        test_key: "compressive",
+        payload_json: JSON.stringify({ test_id: 7 }),
+      }));
+
+    await expect(resolveCompressiveTestId(407, 42)).resolves.toBe(7);
+  });
+
   it("also reads the camelCase key from key_results_json", async () => {
     fetchMock
       .mockResolvedValueOnce(compressiveList([test7, test9]))
