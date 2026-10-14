@@ -594,7 +594,7 @@ const drawPsdGraphVector = (d: jsPDF, x: number, y: number, w: number, o: Partic
     const gx = px(PLOT_UNITS.x + psdX(size, PLOT_UNITS.w));
     d.line(gx, plotBottom, gx, py(BAND_TOP_UNITS));
   });
-  PSD_SUB_LABELS.forEach((band) => label(band.label, PLOT_UNITS.x + psdX(band.from, PLOT_UNITS.w), 198.6, "center", 4.4));
+  PSD_SUB_LABELS.forEach((band) => label(band.label, PLOT_UNITS.x + psdX(band.from, PLOT_UNITS.w), 199.2, "center", 4.4));
   // Fraction band: a top rule from silt start to gravel end, dividers at the
   // 0.063 / 2 / 63 mm boundaries, and a wider bottom rule.
   d.line(px(PLOT_UNITS.x + psdX(0.002, PLOT_UNITS.w)), py(BAND_TOP_UNITS), px(PLOT_UNITS.x + psdX(63, PLOT_UNITS.w)), py(BAND_TOP_UNITS));
@@ -606,11 +606,13 @@ const drawPsdGraphVector = (d: jsPDF, x: number, y: number, w: number, o: Partic
   d.line(px(27.7), py(BAND_BOTTOM_UNITS), px(381.3), py(BAND_BOTTOM_UNITS));
   PSD_FRACTIONS.slice(1, 4).forEach((band) => {
     const at = PLOT_UNITS.x + psdX(Math.sqrt(band.from * band.to), PLOT_UNITS.w);
-    label(band.label, at, 209.9, "center", 5.2);
+    // Fraction names sit clear of the band-bottom rule below them: at 5.9 pt
+    // a tighter slot lets the rule strike through the glyphs.
+    label(band.label, at, 208.6, "center", 5.2);
   });
 
   d.setDrawColor(...COLORS.dark);
-  label("Particle size (mm)", PLOT_UNITS.x + PLOT_UNITS.w / 2, 219.6, "center", 7, true);
+  label("Particle size (mm)", PLOT_UNITS.x + PLOT_UNITS.w / 2, 220.1, "center", 7, true);
   label("PARTICLE SIZE DISTRIBUTION GRAPH", PLOT_UNITS.x + PLOT_UNITS.w / 2, 9, "center", 7.5, true);
 
   return y + refH;
@@ -715,11 +717,11 @@ export const generateParticleSizeDistributionPDF = async (options: ParticleSizeD
   const pageHeight = doc.internal.pageSize.getHeight();
   const x = MARGIN;
   const topY = 10;
-  // Reserve the footer band first so content can never run into it. The full
-  // 36.8 mm covers the stamp straddling the footer; without a stamp the
-  // footer needs far less, and the spare ~15 mm goes back to the graph
-  // instead of idling below the footer.
-  const footerTop = pageHeight - (images.stamp ? 36.8 : 22);
+  // Reserve the footer band first so content can never run into it. The stamp
+  // straddles the footer, so with one configured the band keeps room for it;
+  // without a stamp the footer needs far less, and the spare goes back to
+  // the graph instead of idling below the footer.
+  const footerTop = pageHeight - (images.stamp ? 26 : 22);
   const contentBottom = footerTop - FOOTER_GAP;
 
   const y = drawTitleBlock(doc, x, topY, CONTENT_W, options, images);

@@ -211,4 +211,25 @@ describe("Particle Size Distribution PDF page layout", () => {
     const roomySize = tickSize(pageContent(roomy));
     expect(Number(roomySize)).toBeGreaterThan(compressed as number);
   });
+
+  it("keeps the fraction names clear of the band-bottom rule", async () => {
+    // The band-bottom rule once struck through the SILT/SAND/GRAVEL labels:
+    // the rule is the ~403 pt horizontal stroke just below the names, and the
+    // names must sit above it with real clearance, not kiss it.
+    const doc = await build(FULL_SIEVE, FULL_HYDROMETER);
+    const content = pageContent(doc);
+    const names = /(-?[\d.]+) (-?[\d.]+) Td\s+\(SILT FRACTION\)/.exec(content);
+    expect(names).not.toBeNull();
+    const namesY = Number(names?.[2]);
+    const rules: Array<{ y: number; len: number }> = [];
+    const ruleRe = /(-?[\d.]+) (-?[\d.]+) m\s+(-?[\d.]+) (-?[\d.]+) l/g;
+    let rule: RegExpExecArray | null;
+    while ((rule = ruleRe.exec(content)) !== null) {
+      const len = Math.abs(Number(rule[3]) - Number(rule[1]));
+      if (len > 395 && len < 412) rules.push({ y: Number(rule[2]), len });
+    }
+    const below = rules.filter((entry) => entry.y < namesY).sort((a, b) => b.y - a.y);
+    expect(below.length).toBeGreaterThan(0);
+    expect(namesY - below[0].y).toBeGreaterThanOrEqual(1.5);
+  });
 });
