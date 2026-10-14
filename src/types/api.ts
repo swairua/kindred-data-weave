@@ -19,11 +19,13 @@ export interface ApiCompressiveTestRow {
   fine_aggregate: string;
   coarse_aggregate: string;
   contractor: string;
+  county?: string | null;
   concrete_class: string;
   section: string;
   made_by: string;
   slump: string;
   client_ref: string;
+  lab_ref?: string | null;
   status?: string | null;
   created_at: string;
   updated_at: string;

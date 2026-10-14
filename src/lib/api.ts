@@ -974,6 +974,90 @@ export const getCompressiveTest = async (testId: number) => {
   }
 };
 
+/** Payload keys inside a test_results row that may hold the compressive test id. */
+const COMPRESSIVE_ID_KEYS = [
+  "compressiveTestId",
+  "compressive_test_id",
+  "compressiveId",
+  "compressive_id",
+];
+
+/**
+ * Pull a compressive_tests.id out of a test_results payload blob. Only keys
+ * that explicitly name a compressive test count: grading payloads carry
+ * unrelated numeric-looking ids (record/test/sample keys) that must never
+ * resolve to the wrong concrete test.
+ */
+const compressiveIdFromPayload = (value: unknown): number | null => {
+  let parsed: unknown = value;
+  if (typeof parsed === "string") {
+    const text = parsed.trim();
+    if (!text) return null;
+    try {
+      parsed = JSON.parse(text) as unknown;
+    } catch {
+      return null;
+    }
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+  const root = parsed as Record<string, unknown>;
+  const scopes = [root, root.project, root.test, root.record].filter(
+    (entry): entry is Record<string, unknown> =>
+      !!entry && typeof entry === "object" && !Array.isArray(entry),
+  );
+  for (const scope of scopes) {
+    for (const key of COMPRESSIVE_ID_KEYS) {
+      const raw = scope[key];
+      const id = typeof raw === "number" ? raw : typeof raw === "string" && raw.trim() !== "" ? Number(raw) : NaN;
+      if (Number.isInteger(id) && id > 0) return id;
+    }
+  }
+  return null;
+};
+
+/**
+ * Resolve a compressive_tests.id from a test_results row id (the `resultId`
+ * the project overview and test-results pages navigate with, which the cube
+ * grid does not understand on its own).
+ *
+ * First honors an explicit compressive id stored in the result payload, but
+ * only when that id genuinely belongs to this project. Otherwise falls back
+ * to the newest compressive test for the project — the same latest-wins
+ * convention the save path uses when matching existing rows. Returns null
+ * when there is nothing to open, so callers keep a blank form instead of
+ * loading another test's cubes.
+ */
+export const resolveCompressiveTestId = async (resultId: number, projectId: number): Promise<number | null> => {
+  let tests: ApiCompressiveTestRow[] = [];
+  try {
+    const listed = await listCompressiveTests(projectId);
+    tests = (listed.data || []).filter((row) => Number(row.project_id) === Number(projectId));
+  } catch (error) {
+    console.error("[API] Failed to list compressive tests for resolution:", error);
+    return null;
+  }
+  if (tests.length === 0) return null;
+
+  try {
+    const record = await readRecord("test_results", resultId);
+    const row = (record as { data?: unknown }).data;
+    if (row && typeof row === "object") {
+      const source = row as Record<string, unknown>;
+      for (const key of ["payload_json", "key_results_json"]) {
+        const id = compressiveIdFromPayload(source[key]);
+        if (id !== null && tests.some((test) => Number(test.id) === id)) return id;
+      }
+    }
+  } catch (error) {
+    console.error("[API] Failed to read test_results row for compressive resolution:", error);
+  }
+
+  const newest = [...tests].sort((a, b) =>
+    String(b.updated_at || b.created_at || "").localeCompare(String(a.updated_at || a.created_at || "")),
+  )[0];
+  return newest ? Number(newest.id) : null;
+};
+
 export const listCompressiveTests = async (projectId?: number) => {
   try {
     const params = projectId ? { filter: `project_id=${projectId}` } : undefined;

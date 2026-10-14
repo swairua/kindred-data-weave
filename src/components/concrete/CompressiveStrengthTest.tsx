@@ -12,7 +12,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, PieChart, Pie, Cell, Legend, ResponsiveContainer } from "recharts";
 import { Label } from "@/components/ui/label";
 import { useTestReport } from "@/hooks/useTestReport";
-import { saveCompressiveTest, listCompressiveCubes, getCompressiveTest, type CompressiveCubeApiRow } from "@/lib/api";
+import { saveCompressiveTest, listCompressiveCubes, getCompressiveTest, resolveCompressiveTestId, type CompressiveCubeApiRow } from "@/lib/api";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -118,6 +118,13 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   // save is a diff the technician would silently "confirm" an empty set of results.
   const testIdParam = Number.parseInt(new URLSearchParams(location.search).get("testId") || "", 10);
   const existingTestId = Number.isInteger(testIdParam) && testIdParam > 0 ? testIdParam : null;
+  // The project overview and test-results pages open saved tests with ?resultId= (a
+  // test_results id, not a compressive_tests id), which the grid cannot load from
+  // directly. Resolve it to the compressive test below instead of showing blank.
+  const resultIdParam = Number.parseInt(new URLSearchParams(location.search).get("resultId") || "", 10);
+  const projectIdParam = Number.parseInt(new URLSearchParams(location.search).get("projectId") || "", 10);
+  const [resolvedTestId, setResolvedTestId] = useState<number | null>(null);
+  const activeTestId = existingTestId ?? resolvedTestId;
   const [isSaving, setIsSaving] = useState(false);
   const [saveCompleted, setSaveCompleted] = useState(false);
   const [editingRemarksIndex, setEditingRemarksIndex] = useState<number | null>(null);
@@ -171,15 +178,48 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   // (cement, class, slump, refs) came from possibly-stale context, so a
   // reopen showed whatever the context happened to hold instead of the truth.
   const cubesLoadStartedRef = useRef<number | null>(null);
+
+  // Turn a ?resultId= link (project overview, test results) into the
+  // compressive_tests.id the grid loads from. A direct ?testId= always wins;
+  // when nothing resolves the form stays blank, which is a new test.
   useEffect(() => {
-    if (existingTestId === null) return;
-    if (cubesLoadStartedRef.current === existingTestId) return;
-    cubesLoadStartedRef.current = existingTestId;
+    if (existingTestId !== null || resolvedTestId !== null) return;
+    if (!Number.isInteger(resultIdParam) || resultIdParam <= 0) return;
+    if (!Number.isInteger(projectIdParam) || projectIdParam <= 0) return;
 
     let active = true;
     setIsLoadingCubes(true);
     setIsLoadingDetails(true);
-    listCompressiveCubes(existingTestId)
+    resolveCompressiveTestId(resultIdParam, projectIdParam)
+      .then((id) => {
+        if (active && id !== null) setResolvedTestId(id);
+      })
+      .catch((error) => {
+        if (!active) return;
+        const message = error instanceof Error ? error.message : String(error);
+        console.error("[CompressiveStrengthTest] Failed to resolve the saved test:", message);
+      })
+      .finally(() => {
+        if (active) {
+          setIsLoadingCubes(false);
+          setIsLoadingDetails(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [existingTestId, resolvedTestId, resultIdParam, projectIdParam]);
+
+  useEffect(() => {
+    if (activeTestId === null) return;
+    if (cubesLoadStartedRef.current === activeTestId) return;
+    cubesLoadStartedRef.current = activeTestId;
+
+    let active = true;
+    setIsLoadingCubes(true);
+    setIsLoadingDetails(true);
+    listCompressiveCubes(activeTestId)
       .then((response) => {
         if (!active) return;
         const loaded = (response.data || []).map(cubeFromApi);
@@ -194,7 +234,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
       .finally(() => {
         if (active) setIsLoadingCubes(false);
       });
-    getCompressiveTest(existingTestId)
+    getCompressiveTest(activeTestId)
       .then((response) => {
         if (!active) return;
         const row = (response as { data?: unknown }).data;
@@ -215,7 +255,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     return () => {
       active = false;
     };
-  }, [existingTestId]);
+  }, [activeTestId]);
 
   const getAge = (dateOfCast: string, dateOfTest: string) => {
     const days = ageOf(dateOfCast, dateOfTest);
@@ -305,7 +345,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
         projectId: project.currentProjectId,
         testData: testDataPayload,
         cubes: cubesPayload,
-        testId: existingTestId,
+        testId: activeTestId,
       });
 
       // Adopt the ids the server assigned. Without this a second save would treat every row
@@ -333,7 +373,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     } finally {
       setIsSaving(false);
     }
-  }, [project.currentProjectId, rows, testDetails, isLoadingCubes, isLoadingDetails, existingTestId, testData.updateConcreteTestMetadata]);
+  }, [project.currentProjectId, rows, testDetails, isLoadingCubes, isLoadingDetails, activeTestId, testData.updateConcreteTestMetadata]);
 
   const chartData = useMemo(() =>
     rows

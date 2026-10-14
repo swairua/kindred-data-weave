@@ -8,6 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 const compressiveMocks = vi.hoisted(() => ({
   listCompressiveCubes: vi.fn(),
   getCompressiveTest: vi.fn(),
+  resolveCompressiveTestId: vi.fn(),
   saveCompressiveTest: vi.fn(),
   metadata: {
     projectMetadata: {},
@@ -18,6 +19,7 @@ const compressiveMocks = vi.hoisted(() => ({
 vi.mock("@/lib/api", () => ({
   listCompressiveCubes: compressiveMocks.listCompressiveCubes,
   getCompressiveTest: compressiveMocks.getCompressiveTest,
+  resolveCompressiveTestId: compressiveMocks.resolveCompressiveTestId,
   saveCompressiveTest: compressiveMocks.saveCompressiveTest,
   listRecords: vi.fn(),
   createRecord: vi.fn(),
@@ -105,6 +107,7 @@ beforeAll(() => {
 beforeEach(() => {
   compressiveMocks.listCompressiveCubes.mockReset().mockResolvedValue({ data: storedCubes });
   compressiveMocks.getCompressiveTest.mockReset().mockResolvedValue({ data: storedTestDetails });
+  compressiveMocks.resolveCompressiveTestId.mockReset().mockResolvedValue(null);
   compressiveMocks.saveCompressiveTest
     .mockReset()
     .mockResolvedValue({ testId: 7, cubeIds: [5] });
@@ -240,5 +243,58 @@ describe("age bands and class-derived targets", () => {
     const saveButton = screen.getByRole("button", { name: "Save" });
     expect(pdfButton.parentElement).toBe(saveButton.parentElement);
     expect(pdfButton.compareDocumentPosition(saveButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
+
+/**
+ * The project overview and test-results pages open saved tests with
+ * ?resultId= (a test_results id). The grid must resolve that to the
+ * compressive_tests.id and populate exactly as a ?testId= open does —
+ * otherwise the report form comes up blank against a test that has data.
+ */
+describe("opening from a resultId link", () => {
+  it("resolves the compressive test and populates details and cube dates", async () => {
+    compressiveMocks.resolveCompressiveTestId.mockResolvedValue(7);
+    renderCompressive("/tests?projectId=42&resultId=88#compressive");
+
+    expect(compressiveMocks.resolveCompressiveTestId).toHaveBeenCalledWith(88, 42);
+    // Same population as a direct testId open: stored cubes, details, county, class.
+    expect(await screen.findByDisplayValue("667")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("C1")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("CEM I 42.5R")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Nakuru")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("C25/30")).toBeInTheDocument();
+    expect(compressiveMocks.listCompressiveCubes).toHaveBeenCalledWith(7);
+    expect(compressiveMocks.getCompressiveTest).toHaveBeenCalledWith(7);
+  });
+
+  it("saves against the resolved test instead of starting a duplicate", async () => {
+    compressiveMocks.resolveCompressiveTestId.mockResolvedValue(7);
+    renderCompressive("/tests?projectId=42&resultId=88#compressive");
+
+    await screen.findByDisplayValue("667");
+    fireEvent.click(screen.getByRole("button", { name: /Save/ }));
+
+    await waitFor(() => expect(compressiveMocks.saveCompressiveTest).toHaveBeenCalled());
+    expect(compressiveMocks.saveCompressiveTest.mock.calls[0][0].testId).toBe(7);
+  });
+
+  it("stays blank-safe when the resultId resolves to nothing", async () => {
+    compressiveMocks.resolveCompressiveTestId.mockResolvedValue(null);
+    renderCompressive("/tests?projectId=42&resultId=88#compressive");
+
+    // Resolution ran and found nothing: no other test's cubes may load.
+    await waitFor(() => expect(compressiveMocks.resolveCompressiveTestId).toHaveBeenCalledWith(88, 42));
+    expect(compressiveMocks.listCompressiveCubes).not.toHaveBeenCalled();
+    expect(compressiveMocks.getCompressiveTest).not.toHaveBeenCalled();
+    expect(screen.queryByDisplayValue("667")).not.toBeInTheDocument();
+  });
+
+  it("prefers a direct testId over the resultId link", async () => {
+    renderCompressive("/tests?projectId=42&testId=7&resultId=88#compressive");
+
+    expect(await screen.findByDisplayValue("667")).toBeInTheDocument();
+    expect(compressiveMocks.resolveCompressiveTestId).not.toHaveBeenCalled();
+    expect(compressiveMocks.listCompressiveCubes).toHaveBeenCalledWith(7);
   });
 });
