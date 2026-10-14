@@ -4,11 +4,10 @@ import TestSection from "@/components/TestSection";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import CalculatedInput from "@/components/CalculatedInput";
-import { Plus, X, Save as SaveIcon, Printer, Loader2, CheckCircle2, GripVertical } from "lucide-react";
+import { Plus, X, Save as SaveIcon, Printer, Loader2, CheckCircle2, GripVertical, FileDown } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
 import { useTestData } from "@/context/TestDataContext";
-import { generateCompressiveStrengthPDF, isSatisfactory, percentOfClass } from "@/lib/compressivePdfGenerator";
-import { generateTestExcel } from "@/lib/genericExcelExporter";
+import { generateCompressiveStrengthPDF } from "@/lib/compressivePdfGenerator";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, PieChart, Pie, Cell, Legend, ResponsiveContainer } from "recharts";
 import { Label } from "@/components/ui/label";
@@ -24,7 +23,6 @@ import {
   cubeStrengthFromClass,
   emptyCubeRow,
   formatDensity,
-  formatReportAge,
   formatStrength,
   gainSummary,
   getPassFailResults,
@@ -48,8 +46,8 @@ const cubeFromApi = (cube: CompressiveCubeApiRow): Row => ({
   // Older rows stored a placeholder "Unknown" for a blank mark; show those as blank again
   // rather than pretending the technician wrote a mark.
   mark: cube.cube_mark && cube.cube_mark !== "Unknown" ? String(cube.cube_mark) : "",
-  dateOfCast: toInputValue(cube.date_of_cast),
-  dateOfTest: toInputValue(cube.date_of_test),
+  dateOfCast: asDateInput(cube.date_of_cast),
+  dateOfTest: asDateInput(cube.date_of_test),
   load: toInputValue(cube.load_kn),
   width: toInputValue(cube.width_mm, "150"),
   height: toInputValue(cube.height_mm, "150"),
@@ -484,68 +482,6 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     window.print();
   };
 
-  /**
-   * Excel twin of the PDF sheet: same record object, same row helpers, so
-   * the two exports can never disagree on a single number.
-   */
-  const exportExcel = async () => {
-    const cubes = exportableCubes();
-    if (cubes.length === 0) {
-      toast.error("Add at least one cube with a load and dimensions before exporting");
-      return;
-    }
-    const record = buildRecordView();
-    const classTarget = cubeStrengthFromClass(record.concreteClass);
-    await generateTestExcel({
-      data: {
-        title: "Compressive Strength (Cube Test)",
-        fields: [
-          { label: "Contractor", value: record.contractor || "—" },
-          { label: "County", value: record.county || "—" },
-          { label: "Concrete Class", value: record.concreteClass || "—" },
-          { label: "Section", value: record.section || "—" },
-          { label: "Made By", value: record.madeBy || "—" },
-          { label: "Slump", value: record.slump || "—" },
-          { label: "Client Ref", value: record.clientRef || "—" },
-          { label: "Lab Ref", value: record.labRef || "—" },
-          { label: "Date Casted", value: record.dateCasted || "—" },
-        ],
-        tables: [{
-          title: "Cube results",
-          headers: ["Cube Mark", "Date of Cast", "Date of Test", "Age (days)", "L (mm)", "W (mm)", "H (mm)", "Mass (g)", "Density (kg/m3)", "Max Load (kN)", "Strength (N/mm2)", "% of class", "Remarks"],
-          rows: cubes.map((row) => {
-            const strength = strengthOf(row);
-            const density = densityOf(row);
-            const age = ageOf(row.dateOfCast, row.dateOfTest);
-            const verdict = strength === null || classTarget === null
-              ? ""
-              : isSatisfactory(strength, classTarget, age) ? "Satisfactory" : "Below target";
-            return [
-              row.mark.trim() || "None",
-              row.dateOfCast || "—",
-              row.dateOfTest || "—",
-              formatReportAge(age) || "—",
-              row.width || "150",
-              row.height || "150",
-              row.depth || "150",
-              row.mass || "—",
-              density === null ? "—" : density.toFixed(0),
-              row.load || "—",
-              strength === null ? "—" : strength.toFixed(2),
-              percentOfClass(strength, classTarget) || "—",
-              row.remarks.trim() || verdict || "—",
-            ];
-          }),
-        }],
-      },
-      projectName: project.projectName,
-      clientName: project.clientName,
-      dateReported: project.dateReported,
-      labOrganization: project.labOrganization,
-      checkedBy: project.checkedBy,
-    });
-  };
-
   const handleChartClick = (index: number) => {
     setHighlightedRowIndex(highlightedRowIndex === index ? null : index);
   };
@@ -658,13 +594,30 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
       </div>
       <div className="flex items-center justify-between mt-3">
         <Button variant="outline" size="sm" onClick={() => setRows([...rows, emptyCubeRow()])}><Plus className="h-3.5 w-3.5 mr-1" /> Add row</Button>
-        {saveCompleted ? (
-          <Button size="sm" variant="default" onClick={handlePrint}><Printer className="h-3.5 w-3.5 mr-1" /> Print to Browser</Button>
-        ) : isSaving ? (
-          <Button size="sm" variant="default" disabled><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Saving...</Button>
-        ) : (
-          <Button size="sm" variant="default" onClick={handleSave}><SaveIcon className="h-3.5 w-3.5 mr-1" /> Save</Button>
-        )}
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={isLoadingCubes || isLoadingDetails || isSaving}
+            onClick={async () => {
+              try {
+                const exported = await exportPDF();
+                if (exported !== false) toast.success("Compressive Strength (Cube Test) PDF downloaded");
+              } catch {
+                toast.error("Compressive Strength (Cube Test) PDF download failed");
+              }
+            }}
+          >
+            <FileDown className="h-3.5 w-3.5 mr-1" /> PDF
+          </Button>
+          {saveCompleted ? (
+            <Button size="sm" variant="default" onClick={handlePrint}><Printer className="h-3.5 w-3.5 mr-1" /> Print to Browser</Button>
+          ) : isSaving ? (
+            <Button size="sm" variant="default" disabled><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Saving...</Button>
+          ) : (
+            <Button size="sm" variant="default" onClick={handleSave}><SaveIcon className="h-3.5 w-3.5 mr-1" /> Save</Button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -910,8 +863,6 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
       title="Compressive Strength (Cube Test)"
       testKey={testKey}
       onClear={() => setRows([emptyCubeRow()])}
-      onExportPDF={exportPDF}
-      onExportXLSX={exportExcel}
     >
       <>
         <div className="flex flex-col gap-6 w-full">

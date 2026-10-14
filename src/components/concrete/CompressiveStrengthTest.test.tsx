@@ -9,7 +9,6 @@ const compressiveMocks = vi.hoisted(() => ({
   listCompressiveCubes: vi.fn(),
   getCompressiveTest: vi.fn(),
   saveCompressiveTest: vi.fn(),
-  generateTestExcel: vi.fn(),
   metadata: {
     projectMetadata: {},
     concreteTestMetadata: {},
@@ -24,10 +23,6 @@ vi.mock("@/lib/api", () => ({
   createRecord: vi.fn(),
   deleteRecord: vi.fn(),
   updateRecord: vi.fn(),
-}));
-
-vi.mock("@/lib/genericExcelExporter", () => ({
-  generateTestExcel: compressiveMocks.generateTestExcel,
 }));
 
 vi.mock("@/context/TestDataContext", () => ({
@@ -60,7 +55,7 @@ const storedTestDetails = {
   slump: "75",
   client_ref: "CL-1",
   lab_ref: "LAB-1",
-  date_tested: "2026-02-01",
+  date_tested: "2026-02-01T00:00:00.000Z",
 };
 
 /** Shaped like a row the PHP API returns: ids arrive as strings, unmeasured values as null. */
@@ -69,8 +64,8 @@ const storedCubes = [
     id: "5",
     test_id: "7",
     cube_mark: "C1",
-    date_of_cast: "2026-01-01",
-    date_of_test: "2026-01-29",
+    date_of_cast: "2026-01-01T00:00:00.000Z",
+    date_of_test: "2026-01-29T00:00:00.000Z",
     load_kn: "667",
     width_mm: "150",
     height_mm: "150",
@@ -113,7 +108,6 @@ beforeEach(() => {
   compressiveMocks.saveCompressiveTest
     .mockReset()
     .mockResolvedValue({ testId: 7, cubeIds: [5] });
-  compressiveMocks.generateTestExcel.mockReset().mockResolvedValue(undefined);
   compressiveMocks.metadata.projectMetadata = {};
   compressiveMocks.metadata.concreteTestMetadata = {};
 });
@@ -132,6 +126,8 @@ describe("editing a saved compressive test", () => {
 
     expect(await screen.findByDisplayValue("667")).toBeInTheDocument();
     expect(screen.getByDisplayValue("C1")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("2026-01-01")).toHaveAttribute("type", "date");
+    expect(screen.getByDisplayValue("2026-01-29")).toHaveAttribute("type", "date");
     // 667 kN over a 150 x 150 mm face is the 29.64 MPa the row was stored with.
     expect(screen.getByDisplayValue("29.64")).toBeInTheDocument();
     expect(compressiveMocks.listCompressiveCubes).toHaveBeenCalledWith(7);
@@ -144,6 +140,7 @@ describe("editing a saved compressive test", () => {
     expect(await screen.findByDisplayValue("CEM I 42.5R")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Nakuru")).toBeInTheDocument();
     expect(screen.getByDisplayValue("C25/30")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("2026-02-01")).toHaveAttribute("type", "date");
     expect(compressiveMocks.getCompressiveTest).toHaveBeenCalledWith(7);
   });
   it("saves against the same test and updates the cube in place", async () => {
@@ -162,8 +159,11 @@ describe("editing a saved compressive test", () => {
     expect(payload.cubes).toHaveLength(1);
     expect(payload.cubes[0].id).toBe(5);
     expect(payload.cubes[0].calculated_strength_mpa).toBeCloseTo(29.6444, 4);
-    // County travels in the test payload so it survives the round trip.
+    expect(payload.cubes[0].date_of_cast).toBe("2026-01-01");
+    expect(payload.cubes[0].date_of_test).toBe("2026-01-29");
+    // County and test date travel in the test payload so they survive the round trip.
     expect(payload.testData.county).toBe("Nakuru");
+    expect(payload.testData.date_tested).toBe("2026-02-01");
   });
 
   it("refuses to save while the stored cubes are still loading", async () => {
@@ -231,15 +231,14 @@ describe("age bands and class-derived targets", () => {
     expect(screen.getByText("Using 30 MPa from class C25/30")).toBeInTheDocument();
   });
 
-  it("exports an Excel twin of the PDF sheet", async () => {
+  it("shows PDF beside Save at the bottom and hides Excel", async () => {
     renderCompressive("/tests?projectId=42&testId=7#compressive");
     await screen.findByDisplayValue("667");
 
-    fireEvent.click(screen.getByRole("button", { name: "Excel" }));
-    await waitFor(() => expect(compressiveMocks.generateTestExcel).toHaveBeenCalledTimes(1));
-    const options = compressiveMocks.generateTestExcel.mock.calls[0][0];
-    expect(options.data.title).toBe("Compressive Strength (Cube Test)");
-    expect(options.data.tables[0].headers).toContain("Strength (N/mm2)");
-    expect(options.data.tables[0].rows[0][0]).toBe("C1");
+    expect(screen.queryByRole("button", { name: "Excel" })).not.toBeInTheDocument();
+    const pdfButton = screen.getByRole("button", { name: "PDF" });
+    const saveButton = screen.getByRole("button", { name: "Save" });
+    expect(pdfButton.parentElement).toBe(saveButton.parentElement);
+    expect(pdfButton.compareDocumentPosition(saveButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });
