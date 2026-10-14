@@ -299,8 +299,11 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
 
     const unmarked = cubesWithData.filter(row => !row.mark.trim()).length;
     if (unmarked > 0) {
-      toast.warning(
-        `${unmarked} cube${unmarked > 1 ? "s have" : " has"} no mark — recorded as blank, not "Unknown"`,
+      // Info, not a warning: a blank mark is legitimate and the save proceeds.
+      // It used to read as a failure ("recorded as blank, not "Unknown""),
+      // which stopped technicians mid-save even though nothing was wrong.
+      toast.info(
+        `${unmarked} cube${unmarked > 1 ? "s have" : " has"} no mark — saving with a blank mark`,
       );
     }
 

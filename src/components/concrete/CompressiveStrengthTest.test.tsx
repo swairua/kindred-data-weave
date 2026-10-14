@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { toast } from "sonner";
 import CompressiveStrengthTest from "@/components/concrete/CompressiveStrengthTest";
 import { ProjectContext } from "@/context/ProjectContext";
 import { TestAccordionProvider } from "@/context/TestAccordionContext";
@@ -39,7 +40,7 @@ vi.mock("@/context/TestDataContext", () => ({
 }));
 
 vi.mock("sonner", () => ({
-  toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
+  toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() },
 }));
 
 /** Shaped like the test row the PHP API returns for one compressive test. */
@@ -203,6 +204,28 @@ describe("editing a saved compressive test", () => {
     const payload = compressiveMocks.saveCompressiveTest.mock.calls[0][0];
     expect(payload.testId).toBeNull();
     expect(payload.cubes[0].id).toBeNull();
+  });
+
+  it("saves a mark-less cube as null instead of blocking the save", async () => {
+    compressiveMocks.listCompressiveCubes.mockResolvedValue({ data: [] });
+    vi.mocked(toast.success).mockClear();
+    vi.mocked(toast.error).mockClear();
+    vi.mocked(toast.info).mockClear();
+
+    renderCompressive("/tests?projectId=42#compressive");
+
+
+    // Load and dimensions but no mark: the save must go through, storing null.
+    fireEvent.change(await screen.findByPlaceholderText("0"), { target: { value: "500" } });
+    fireEvent.click(screen.getByRole("button", { name: /Save/ }));
+
+    await waitFor(() => expect(compressiveMocks.saveCompressiveTest).toHaveBeenCalled());
+    const payload = compressiveMocks.saveCompressiveTest.mock.calls[0][0];
+    expect(payload.cubes).toHaveLength(1);
+    expect(payload.cubes[0].cube_mark).toBeNull();
+    // The heads-up is informational and must not read as a failure.
+    expect(toast.info).toHaveBeenCalledWith("1 cube has no mark — saving with a blank mark");
+    expect(toast.error).not.toHaveBeenCalled();
   });
 });
 
