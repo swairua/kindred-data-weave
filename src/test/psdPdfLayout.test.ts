@@ -174,5 +174,41 @@ describe("Particle Size Distribution PDF page layout", () => {
     expect(content).toContain("Passing");
     expect(content).toContain("0.001");
   });
-});
 
+  it("sits the footer low enough to leave no idle band at the page foot", async () => {
+    // The old 36.8 mm reserve (sized for the stamp) stranded ~31 mm of empty
+    // page below the footer; without a stamp the footer drops, freeing room
+    // for the graph. PDF y runs bottom-up, so a lower footer reads smaller.
+    const doc = await build(FULL_SIEVE, FULL_HYDROMETER);
+    const content = pageContent(doc);
+    const footer = /(-?[\d.]+) (-?[\d.]+) Td\s+\(Tested by:\)/.exec(content);
+    expect(footer).not.toBeNull();
+    expect(Number(footer?.[2])).toBeLessThan(80);
+  });
+
+  it("shrinks graph labels when an extreme stack compresses the graph", async () => {
+    // Forty sieve rows force the fit loop past the graph's natural height, so
+    // the block draws compressed (vScale < 1). The decade ticks must shrink
+    // with the geometry instead of colliding with the fraction bands below.
+    const crowded = [
+      ...DENSE_SIEVE,
+      ...Array.from({ length: 17 }, () => ({ sieveSize: "<0.075", weightRetained: "" })),
+    ];
+    const doc = await build(crowded, FULL_HYDROMETER);
+    expect(doc.getNumberOfPages()).toBe(1);
+
+    const tickSize = (content: string): number | null => {
+      const match = /\/F\w+ ([\d.]+) Tf[^(]*\(0\.001\)/.exec(content);
+      return match ? Number(match[1]) : null;
+    };
+    const compressed = tickSize(pageContent(doc));
+    expect(compressed).not.toBeNull();
+    // Uncompressed the 5.4-unit tick prints at ~6.2 pt; compression must pull
+    // it below 6 pt or the labels overflow their squeezed slots.
+    expect(compressed as number).toBeLessThan(6.0);
+
+    const roomy = await build(THREE_ROWS, FULL_HYDROMETER);
+    const roomySize = tickSize(pageContent(roomy));
+    expect(Number(roomySize)).toBeGreaterThan(compressed as number);
+  });
+});

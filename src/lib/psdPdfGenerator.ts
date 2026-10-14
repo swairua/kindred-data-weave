@@ -541,7 +541,12 @@ const drawPsdGraphVector = (d: jsPDF, x: number, y: number, w: number, o: Partic
     bold = false,
     angle = 0,
   ) => {
-    d.setFontSize(Math.max(size * type, 3.5));
+    // Type scales with the vertical compression too: positions compress
+    // through py() but an unscaled size leaves full-size glyphs colliding
+    // in the squeezed slots (decade ticks over fraction bands). At vScale 1
+    // this is exactly the old size; the 3.5 pt floor keeps labels legible
+    // rather than vanishing on very dense sheets.
+    d.setFontSize(Math.max(size * type * vScale, 3.5));
     d.setFont("helvetica", bold ? "bold" : "normal");
     d.setTextColor(...COLORS.dark);
     d.text(value, px(atX), py(atY), { align, baseline: "middle", angle });
@@ -710,8 +715,11 @@ export const generateParticleSizeDistributionPDF = async (options: ParticleSizeD
   const pageHeight = doc.internal.pageSize.getHeight();
   const x = MARGIN;
   const topY = 10;
-  // Reserve the footer band first so content can never run into it.
-  const footerTop = pageHeight - 36.8;
+  // Reserve the footer band first so content can never run into it. The full
+  // 36.8 mm covers the stamp straddling the footer; without a stamp the
+  // footer needs far less, and the spare ~15 mm goes back to the graph
+  // instead of idling below the footer.
+  const footerTop = pageHeight - (images.stamp ? 36.8 : 22);
   const contentBottom = footerTop - FOOTER_GAP;
 
   const y = drawTitleBlock(doc, x, topY, CONTENT_W, options, images);
