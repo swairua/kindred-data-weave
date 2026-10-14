@@ -106,7 +106,7 @@ interface ApiTestResultRow {
 }
 
 const SIEVE_SIZES = [
-  "75", "63", "50", "37.5", "28", "20", "14", "10", "6.3", "5", "4.75 (No. 4)", "3.35", "2.36", "2.00 (No. 10)", "1.18", "0.6", "0.425", "0.3", "0.15", "0.075", "0.063", "<0.063",
+  "75", "63", "50", "37.5", "28", "20", "14", "10", "6.3", "5", "4.75 (No. 4)", "3.35", "2.36", "2.00 (No. 10)", "1.18", "0.6", "0.425", "0.3", "0.15", "0.075", "0.063", "<0.063", "<0.075",
 ];
 const HYDROMETER_TIMES = ["0.25", "0.50", "1", "2", "4", "8", "15", "30", "60", "120", "240", "480", "1440"];
 const EMPTY_SIEVE_ROWS: GradingRow[] = SIEVE_SIZES.map((sieveSize) => ({ sieveSize, weightRetained: "" }));
@@ -618,13 +618,16 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       return;
     }
     const chartImages: Record<string, string> = {};
-    if (psdSeries.length >= 2) {
+    // The PDF draws its own vector curve; only the Excel twin embeds the capture.
+    if (type !== "pdf" && psdSeries.length >= 2) {
       const chart = await captureChartAsBase64("grading-chart");
       if (chart) chartImages["Particle Size Distribution Curve"] = chart;
     }
     if (type === "pdf") {
-      // The dedicated generator reproduces the BS 1377-2 sheet layout and falls
-      // back to a natively drawn grading curve when html2canvas captures nothing.
+      // The dedicated generator reproduces the BS 1377-2 sheet layout. The
+      // curve is always drawn natively (selectable vector labels, print-sharp
+      // at any size) rather than embedding the on-screen raster capture; the
+      // capture is still attached to the Excel twin below.
       await generateParticleSizeDistributionPDF({
         ...metadata,
         record,
@@ -632,7 +635,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
         hydrometer,
         hydrometerInputs: { ...DEFAULT_HYDROMETER_INPUTS, ...record.hydrometerInputs },
         series: psdSeries,
-        chartImage: chartImages["Particle Size Distribution Curve"] ?? null,
+        chartImage: null,
         gravelPercentage: classificationValues.gravel,
         sandPercentage: classificationValues.sand,
         finesPercentage: classificationValues.fines,

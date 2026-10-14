@@ -66,7 +66,7 @@ export const FORMULA_SECTIONS: FormulaSection[] = [
           { symbol: "total", meaning: "sum of all retained masses (g)" },
         ],
         notes: [
-          "The pan row (<0.063) contributes its mass to the total but reports no passing value.",
+          "The pan rows (<0.063, <0.075) contribute their mass to the total but report no passing value.",
           "With no weighed material every percentage reads as auto, never 0%.",
           "Worked (lab sheet KIRIAINI AHP): 40.22 g retained on No. 4 of 176.4 g total -> 22.8% retained, 77.2% passing.",
         ],

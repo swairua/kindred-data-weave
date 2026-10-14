@@ -241,8 +241,10 @@ describe("Particle Size Distribution PDF export", () => {
     await waitFor(() => expect(exportState.psdPdfPayloads).toHaveLength(1));
     const payload = exportState.psdPdfPayloads[0];
 
-    expect(exportState.capturedIds).toEqual(["grading-chart"]);
-    expect(payload.chartImage).toBe("data:image/png;base64,iVBORw0KGgo=");
+    expect(exportState.capturedIds).toEqual([]);
+    // The PDF always draws the native vector curve with selectable labels;
+    // the on-screen raster capture is Excel-only now.
+    expect(payload.chartImage).toBeNull();
 
     expect(payload.testedBy).toBe("L. Technician");
     expect(payload.dateTested).toBe("2025-01-15");

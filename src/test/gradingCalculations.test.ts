@@ -40,6 +40,21 @@ describe("grading calculations", () => {
     expect(result.cumulativePassing).toEqual([85, 60, null]);
   });
 
+  it("treats <0.075 as a second pan row on the laboratory sheet", () => {
+    // The reference sheet carries both <0.063 and <0.075 pan rows: each
+    // contributes its mass to the total and reports no passing value, and
+    // neither disturbs the sieves above it.
+    const result = calculateGrading([
+      { sieveSize: "0.075", weightRetained: "10" },
+      { sieveSize: "0.063", weightRetained: "0" },
+      { sieveSize: "<0.063", weightRetained: "30" },
+      { sieveSize: "<0.075", weightRetained: "60" },
+    ]);
+
+    expect(result.totalWeight).toBe(100);
+    expect(result.cumulativePassing).toEqual([90, 90, null, null]);
+  });
+
   it("interpolates D values on a logarithmic particle-size scale", () => {
     const result = calculateGrading([
       { sieveSize: "1", weightRetained: "0" },
