@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import TestSection from "@/components/TestSection";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import CalculatedInput from "@/components/CalculatedInput";
 import { Plus, X, Save as SaveIcon, Printer, Loader2, CheckCircle2, GripVertical, FileDown } from "lucide-react";
@@ -549,11 +550,22 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
             { label: "Made By", field: "madeBy", placeholder: "Technician" },
             { label: "Slump (mm)", field: "slump", inputType: "number", placeholder: "e.g. 75" },
             { label: "Client Ref", field: "clientRef", placeholder: "—" },
-            { label: "Lab Ref", field: "labRef", placeholder: "—" },
+            // Stacked lab references (one per line) print stacked in the
+            // report cell, as on the laboratory's own sheet.
+            { label: "Lab Ref", field: "labRef", placeholder: "—", multiline: true },
             { label: "Date Tested", field: "dateTested", inputType: "date" },
-          ] as { label: string; field: keyof TestDetails; inputType?: string; placeholder?: string }[]).map((item) => (
+          ] as { label: string; field: keyof TestDetails; inputType?: string; placeholder?: string; multiline?: boolean }[]).map((item) => (
             <div key={item.field} className="flex flex-col gap-1">
               <span className="text-xs text-gray-600 font-medium">{item.label}</span>
+              {item.multiline ? (
+                <Textarea
+                  value={testDetails[item.field]}
+                  onChange={(e) => updateTestDetail(item.field, e.target.value)}
+                  className="min-h-8 text-sm"
+                  rows={2}
+                  placeholder={item.placeholder ?? "—"}
+                />
+              ) : (
               <Input
                 type={item.inputType ?? "text"}
                 value={testDetails[item.field]}
@@ -561,6 +573,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
                 className="h-8 text-sm"
                 placeholder={item.placeholder ?? "—"}
               />
+              )}
             </div>
           ))}
         </div>

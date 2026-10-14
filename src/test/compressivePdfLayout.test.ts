@@ -205,6 +205,46 @@ describe("generateCompressiveStrengthPDF", () => {
       expect(inForbiddenStrip).toBe(false);
     }
   });
+  it("encloses the whole report in a single full-page blue frame", async () => {
+    // The laboratory's sheet inks one blue frame around everything —
+    // letterhead rule through footer — not just the results table.
+    const doc = await generateCompressiveStrengthPDF(options(REFERENCE_CUBES));
+    const content = pageContent(doc);
+    const frames = [...content.matchAll(/0\. 0\. 1\. RG[\s\S]{0,200}?(-?[\d.]+) (-?[\d.]+) (-?[\d.]+) (-?[\d.]+) re/g)];
+    expect(frames).toHaveLength(1);
+    // Full-report frame is ~175 mm (~500 pt); the old table-only frame was ~18 mm.
+    expect(Math.abs(Number(frames[0][4]))).toBeGreaterThan(300);
+  });
+
+  it("prints whole-millimetre dimensions without decimals", async () => {
+    const doc = await generateCompressiveStrengthPDF(options([{
+      ...REFERENCE_CUBES[0],
+      width: "150.00",
+      height: "150",
+      depth: "150.5",
+    }]));
+    const content = pageContent(doc);
+    expect(content).toContain("(150)");
+    expect(content).toContain("(150.5)");
+    expect(content).not.toContain("150.00");
+  });
+
+  it("stacks a two-line lab reference inside its cell", async () => {
+    const doc = await generateCompressiveStrengthPDF({
+      ...options(REFERENCE_CUBES),
+      record: { ...RECORD, labRef: "CM/5552\nCM/5553" },
+    });
+    const content = pageContent(doc);
+    expect(content).toContain("CM/5552");
+    expect(content).toContain("CM/5553");
+  });
+
+  it("numbers pages without a Generated stamp the lab sheet never had", async () => {
+    const doc = await generateCompressiveStrengthPDF(options(REFERENCE_CUBES));
+    const content = pageContent(doc);
+    expect(content).not.toContain("Generated:");
+    expect(content).toContain("Page 1 of 1");
+  });
 });
 
 describe("fill colour adjacency", () => {

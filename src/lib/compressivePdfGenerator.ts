@@ -44,6 +44,8 @@ const ID_ROW_H = 6;
 const HEADER_H = 9.5;
 /** Room reserved at the foot of the page for the terms and the signature line. */
 const FOOTER_RESERVE = 20;
+/** Bottom edge of the full-page blue frame: clears the page-number baseline with ~2.5 mm to spare. */
+const FRAME_BOTTOM = 207;
 
 const COLORS = {
   dark: [0, 0, 0] as [number, number, number],
@@ -170,6 +172,14 @@ const text = (value: string | number | null | undefined, fallback = BLANK): stri
 
 const num = (value: number | null | undefined, digits = 1, fallback = BLANK): string =>
   value === null || value === undefined || !Number.isFinite(value) ? fallback : value.toFixed(digits);
+
+/** Whole-millimetre dimensions print without decimals, as on the reference ("150", never "150.00"). */
+const wholeMm = (value: string, fallback: string): string => {
+  const trimmed = value.trim();
+  if (trimmed === "") return fallback;
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) && Number.isInteger(parsed) ? String(parsed) : trimmed;
+};
 
 /** Shrink a string until it fits its cell rather than letting it spill over the rule. */
 const fitText = (d: jsPDF, value: string, maxWidth: number, startSize: number, minSize = 2.8): number => {
@@ -413,9 +423,9 @@ const cubeSheetValues = (row: CompressiveCubeInput, classTarget: number | null):
     formatReportDate(row.dateOfTest) || BLANK,
     // Past the 28-day tolerance window the sheet prints "Above 28".
     formatReportAge(age) || BLANK,
-    text(row.width, "150"),
-    text(row.height, "150"),
-    text(row.depth, "150"),
+    wholeMm(row.width, "150"),
+    wholeMm(row.height, "150"),
+    wholeMm(row.depth, "150"),
     num(parseNumber(row.mass), 1),
     density === null ? BLANK : Math.round(density).toLocaleString("en-US"),
     num(parseNumber(row.load), 1),
@@ -511,7 +521,6 @@ const drawFooter = (d: jsPDF, o: CompressiveStrengthPdfOptions, images: AdminIma
   d.setFontSize(7);
   d.setTextColor(120, 120, 120);
   d.text(`Page ${page} of ${pages}`, MARGIN + CONTENT_W / 2, 204, { align: "center" });
-  d.text(`Generated: ${new Date().toLocaleDateString()}`, MARGIN, 204);
 };
 
 /** Title, laboratory identity and the rule beneath, as on the reference. */
@@ -552,6 +561,8 @@ const drawTitleBlock = (d: jsPDF, o: CompressiveStrengthPdfOptions, images: Admi
   } else if (!hasImages) {
     cy += 3;
   }
+  // Top edge of the full-page blue frame: the rule under the letterhead.
+  const ruleY = cy;
   d.setDrawColor(...COLORS.dark);
   d.setLineWidth(0.5);
   d.line(MARGIN, cy, MARGIN + CONTENT_W, cy);
@@ -573,9 +584,9 @@ const drawTitleBlock = (d: jsPDF, o: CompressiveStrengthPdfOptions, images: Admi
     d.setFontSize(8);
     d.setFont("times", "bold");
     d.text(o.labOrganization, TABLE_X + TABLE_W / 2, cy, { align: "center" });
-    return cy + 4;
+    return { ruleY, endY: cy + 4 };
   }
-  return cy + 3;
+  return { ruleY, endY: cy + 3 };
 };
 
 /** Height of everything on a page that is not a cube row. Title block is ~38mm with images. */
@@ -609,39 +620,39 @@ export const generateCompressiveStrengthPDF = async (options: CompressiveStrengt
     : Math.max(MIN_ROW_H, Math.min(REF_ROW_H, usable / printable.length));
   const rowsPerPage = Math.max(1, Math.floor(usable / rowH));
 
-  const printPage = (page: CompressiveCubeInput[]): number => {
-    let y = drawTitleBlock(doc, o, images, MARGIN);
-    y = drawIdentification(doc, o, y);
-    const tableTop = y;
+  const printPage = (page: CompressiveCubeInput[]): { frameTop: number; bodyEnd: number } => {
+    const title = drawTitleBlock(doc, o, images, MARGIN);
+    let y = drawIdentification(doc, o, title.endY);
     y = drawTableHeader(doc, y);
     for (const row of page) {
       drawRow(doc, cubeSheetValues(row, classTarget), y, rowH);
       y += rowH;
     }
-    // The reference inks the table's outer frame in brand blue over the
-    // black hairlines, spanning the heading and every cube row.
-    doc.setDrawColor(...COLORS.blue);
-    doc.setLineWidth(0.5);
-    doc.rect(TABLE_X, tableTop, TABLE_W, y - tableTop);
-    return y;
+    return { frameTop: title.ruleY, bodyEnd: y };
   };
 
   // A test with no results still yields a valid sheet rather than a bare header.
   const totalPages = Math.max(1, Math.ceil(printable.length / rowsPerPage));
   let pageNo = 0;
   const footerY = pageHeight - MARGIN - 14;
-  const finishPage = (bottom: number) => {
+  const finishPage = (frameTop: number, bottom: number) => {
     pageNo += 1;
     drawTerms(doc, Math.min(bottom + 3, footerY - measureTerms(doc)));
     drawFooter(doc, o, images, footerY, pageNo, totalPages);
+    // The laboratory's sheet inks a single blue frame around the whole report
+    // — letterhead rule through footer — drawn last so it overlays the black
+    // hairlines.
+    doc.setDrawColor(...COLORS.blue);
+    doc.setLineWidth(0.5);
+    doc.rect(TABLE_X, frameTop, TABLE_W, FRAME_BOTTOM - frameTop);
   };
-  let y = printPage(printable.slice(0, rowsPerPage));
+  let printed = printPage(printable.slice(0, rowsPerPage));
   for (let index = rowsPerPage; index < printable.length; index += rowsPerPage) {
-    finishPage(y);
+    finishPage(printed.frameTop, printed.bodyEnd);
     doc.addPage();
-    y = printPage(printable.slice(index, index + rowsPerPage));
+    printed = printPage(printable.slice(index, index + rowsPerPage));
   }
-  finishPage(y);
+  finishPage(printed.frameTop, printed.bodyEnd);
 
   if (!o.skipDownload) {
     const stem = (o.projectName || "Compressive Strength").replace(/[^\w-]+/g, "_");
