@@ -4,16 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  FileDown, FileSpreadsheet, FileText, LayoutDashboard,
+  FileDown, FileText, LayoutDashboard,
   ClipboardList, BarChart3,
 } from "lucide-react";
 import {
   generateProjectSummaryReport,
   generateDashboardReport,
-  generateProjectSummaryCSV,
 } from "@/lib/reportGenerator";
 import { generateTestPDF } from "@/lib/pdfGenerator";
-import { generateTestCSV } from "@/lib/csvExporter";
 import { generateCompressiveStrengthPDF, type CompressiveRecordView } from "@/lib/compressivePdfGenerator";
 import { listCompressiveCubes, listCompressiveTests } from "@/lib/api";
 import { emptyCubeRow, mostCommonCastDate } from "@/lib/compressiveCalculations";
@@ -129,10 +127,6 @@ const Reports = () => {
     toast.success("Project summary report downloaded");
   };
 
-  const handleSummaryCSV = () => {
-    generateProjectSummaryCSV(project, tests);
-    toast.success("Project summary CSV downloaded");
-  };
 
   const handleDashboardPDF = () => {
     generateDashboardReport(project, tests);
@@ -157,9 +151,6 @@ const Reports = () => {
             <div className="flex gap-2">
               <Button size="sm" onClick={handleSummaryPDF} className="gap-1.5">
                 <FileDown className="h-3.5 w-3.5" /> PDF
-              </Button>
-              <Button size="sm" variant="outline" onClick={handleSummaryCSV} className="gap-1.5">
-                <FileSpreadsheet className="h-3.5 w-3.5" /> CSV
               </Button>
             </div>
           </CardContent>
@@ -261,21 +252,7 @@ const Reports = () => {
                         <FileDown className="h-3 w-3" /> PDF
                       </Button>
                     )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-9 text-xs gap-1"
-                      onClick={() => {
-                        generateTestCSV({
-                          title: test.name,
-                          ...project,
-                          fields: test.keyResults.map(r => ({ label: r.label, value: r.value })),
-                        });
-                        toast.success(`${test.name} CSV downloaded`);
-                      }}
-                    >
-                      <FileSpreadsheet className="h-3 w-3" /> CSV
-                    </Button>
+
                   </div>
                 </CardContent>
               </Card>

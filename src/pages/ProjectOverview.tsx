@@ -12,7 +12,6 @@ import Navigation from "@/components/Navigation";
 import { useSession } from "@/context/SessionContext";
 import { useTestData } from "@/context/TestDataContext";
 import { fetchFullProject, listRecords, updateRecord } from "@/lib/api";
-import { generateTestCSV } from "@/lib/csvExporter";
 import { generateTestExcel } from "@/lib/genericExcelExporter";
 import { generateTestPDF } from "@/lib/pdfGenerator";
 import { captureChartAsBase64 } from "@/lib/chartCapture";
@@ -201,7 +200,7 @@ const ProjectOverview = () => {
     navigate(`/tests?${params.toString()}#${testKey}`);
   };
 
-  const exportCombined = async (format: "pdf" | "csv" | "excel") => {
+  const exportCombined = async (format: "pdf" | "excel") => {
     if (!project || isExporting) return;
     setIsExporting(true);
     try {
@@ -231,7 +230,6 @@ const ProjectOverview = () => {
         fields: report.fields, tables: report.tables,
       };
       if (format === "pdf") await generateTestPDF({ ...base, chartImages });
-      else if (format === "csv") generateTestCSV(base);
       else await generateTestExcel({ data: { ...base, title: COMBINED_SOIL_FILENAME, chartImages } });
       toast.success(`Combined PSD + Compaction ${format.toUpperCase()} exported`);
     } catch (err) { toast.error(err instanceof Error ? err.message : "Combined export failed"); }
@@ -453,8 +451,7 @@ const ProjectOverview = () => {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onSelect={() => void exportCombined("pdf")}><FileDown className="mr-2 h-4 w-4" />PDF</DropdownMenuItem>
-                              <DropdownMenuItem onSelect={() => void exportCombined("csv")}><FileText className="mr-2 h-4 w-4" />CSV</DropdownMenuItem>
-                              <DropdownMenuItem onSelect={() => void exportCombined("excel")}><Sheet className="mr-2 h-4 w-4" />Excel</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => void exportCombined("excel")}><Sheet className="mr-2 h-4 w-4" />Excel</DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>

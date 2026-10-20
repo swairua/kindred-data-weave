@@ -11,7 +11,6 @@ import { useGridArrowNavigation } from "@/hooks/useGridArrowNavigation";
 import { type RecordMetadata, useTestData } from "@/context/TestDataContext";
 import { captureChartAsBase64 } from "@/lib/chartCapture";
 import { createRecord, deleteRecord, listRecords, updateRecord } from "@/lib/api";
-import { generateTestCSV } from "@/lib/csvExporter";
 import { generateTestExcel } from "@/lib/genericExcelExporter";
 import { generateParticleSizeDistributionPDF } from "@/lib/psdPdfGenerator";
 import { calculateGrading, calculateHydrometer, calculateMoisture, type GradingRow } from "@/lib/gradingCalculations";
@@ -565,7 +564,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
     });
   };
 
-  const exportFiles = async (type: "pdf" | "xlsx" | "csv") => {
+  const exportFiles = async (type: "pdf" | "xlsx") => {
     const tables = [{
       headers: ["Sieve size (mm)", "Retained mass (g)", "% retained", "Cumulative passing (%)"],
       // Empty tables read as "auto", exactly as on screen — never 0.0%.
@@ -613,10 +612,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       checkedBy: project.checkedBy,
       testedBy: record.testedBy,
     };
-    if (type === "csv") {
-      generateTestCSV({ title: "Particle Size Distribution", ...metadata, fields: resultFields, tables });
-      return;
-    }
+
     const chartImages: Record<string, string> = {};
     // The PDF draws its own vector curve; only the Excel twin embeds the capture.
     if (type !== "pdf" && psdSeries.length >= 2) {
