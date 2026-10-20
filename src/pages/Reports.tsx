@@ -16,7 +16,7 @@ import { generateTestPDF } from "@/lib/pdfGenerator";
 import { generateTestCSV } from "@/lib/csvExporter";
 import { generateCompressiveStrengthPDF, type CompressiveRecordView } from "@/lib/compressivePdfGenerator";
 import { listCompressiveCubes, listCompressiveTests } from "@/lib/api";
-import { emptyCubeRow } from "@/lib/compressiveCalculations";
+import { emptyCubeRow, mostCommonCastDate } from "@/lib/compressiveCalculations";
 import { toast } from "sonner";
 import { useState } from "react";
 
@@ -35,7 +35,7 @@ const Reports = () => {
     setIsCompressiveExporting(true);
     try {
       const projectId = project.currentProjectId;
-      let rows = projectId
+       const rows = projectId
         ? await (async () => {
             const listed = await listCompressiveTests(projectId);
             const match = (listed.data || []).find((row) => Number(row.project_id) === Number(projectId));
@@ -100,6 +100,12 @@ const Reports = () => {
         record.slump = record.slump || pick("slump");
         record.clientRef = record.clientRef || pick("client_ref", "clientRef");
         record.labRef = record.labRef || pick("lab_ref", "labRef");
+        record.reportNo = record.reportNo || pick("report_no", "reportNo");
+        record.dateReceived = record.dateReceived || pick("date_received", "dateReceived");
+        record.curing = record.curing || pick("curing");
+        record.modeOfFailure = record.modeOfFailure || pick("mode_of_failure", "modeOfFailure");
+        record.comment = record.comment || pick("comment");
+        record.dateCasted = record.dateCasted || mostCommonCastDate(rows?.cubes ?? []) || "";
       }
       await generateCompressiveStrengthPDF({
         projectName: project.projectName,

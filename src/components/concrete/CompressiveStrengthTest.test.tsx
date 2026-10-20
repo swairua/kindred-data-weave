@@ -321,3 +321,24 @@ describe("opening from a resultId link", () => {
     expect(compressiveMocks.listCompressiveCubes).toHaveBeenCalledWith(7);
   });
 });
+
+describe("auto-calculated fields", () => {
+  it("shows age, density, strength and remark for a stored cube", async () => {
+    renderCompressive("/tests?projectId=42&testId=7#compressive");
+
+    await screen.findByDisplayValue("667");
+    expect(screen.getByDisplayValue("28")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("2400")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("29.64")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Normal structural concrete")).toBeInTheDocument();
+  });
+
+  it("recomputes strength when the load changes", async () => {
+    renderCompressive("/tests?projectId=42&testId=7#compressive");
+
+    await screen.findByDisplayValue("667");
+    fireEvent.change(screen.getByDisplayValue("667"), { target: { value: "333" } });
+
+    await waitFor(() => expect(screen.getByDisplayValue("14.80")).toBeInTheDocument());
+  });
+});

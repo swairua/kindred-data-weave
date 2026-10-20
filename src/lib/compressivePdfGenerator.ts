@@ -367,9 +367,9 @@ const buildIdRows = (o: CompressiveStrengthPdfOptions): IdCell[][] => {
     ],
     [
       { label: "CONTRACTOR", value: text(r.contractor), w: third },
-      { label: "SECTION", value: text(r.section), w: third },
       // A two-line lab reference ("CM/5552\nCM/5553") stacks inside one cell.
       { label: "LAB REF", value: text(r.labRef), w: third },
+      { label: "SECTION", value: text(r.section), w: third },
     ],
     [
       { label: "MADE BY", value: text(r.madeBy), w: third },
@@ -549,7 +549,6 @@ const drawFooter = (d: jsPDF, o: CompressiveStrengthPdfOptions, images: AdminIma
   d.text(`CHECKED BY:  ${text(o.checkedBy)}`, TABLE_X + colW * 2, y);
   d.text(`RECEIVED BY:  ${text(o.receivedBy)}`, TABLE_X, y + 6);
   d.text(`DATE:  ${formatReportDate(o.receivedDate ?? "") || BLANK}`, TABLE_X + colW, y + 6);
-  d.text(`SIGNATURE:  ${text(o.signature)}`, TABLE_X + colW * 2, y + 6);
   d.text(`SIGNATURE:  ${text(o.signature)}`, TABLE_X + colW * 2, y + 6);
 
   if (images.stamp) {

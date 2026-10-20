@@ -85,8 +85,22 @@ const Reception = () => {
   const counts = useMemo(() => {
     const onHold = searched.filter((c) => c.status === "on-hold").length;
     const toLog = searched.filter((c) => c.status === "draft").length;
-    return { open: searched.length - toLog, toLog, onHold };
+    const waitingSamples = searched
+      .filter((c) => c.status === "draft")
+      .reduce((n, c) => n + c.samples.length, 0);
+    return { open: searched.length - toLog, toLog, onHold, waitingSamples };
   }, [searched]);
+
+  const receivedConsignments = useMemo(
+    () => consignments.filter((c) => c.status !== "draft"),
+    [consignments],
+  );
+  const oldestReceived = useMemo(() => {
+    if (receivedConsignments.length === 0) return null;
+    return receivedConsignments.reduce((oldest, current) =>
+      new Date(current.receivedAt).getTime() < new Date(oldest.receivedAt).getTime() ? current : oldest,
+    );
+  }, [receivedConsignments]);
 
   const visible = useMemo(() => {
     if (filter === "all") return searched;
@@ -113,17 +127,26 @@ const Reception = () => {
       const castDate = consignment.cubeCastDate;
       if (!castDate) continue;
       const due = cubeDueDates(castDate);
-      if (!due.sevenDay || !due.twentyEightDay) continue;
       const cubeSamples = consignment.samples.filter(
         (s) => sampleTypeTag(s.sampleType) === "Cube" || s.tests.includes("CMP"),
       );
       if (cubeSamples.length === 0) continue;
-      entries.push({
-        date: new Date(due.sevenDay),
-        label: `${cubeSamples.length} cubes`,
-        days: 7,
-        job: consignment.project || consignment.jobNo,
-      });
+      if (due.sevenDay) {
+        entries.push({
+          date: new Date(due.sevenDay),
+          label: `${cubeSamples.length} cubes`,
+          days: 7,
+          job: consignment.project || consignment.jobNo,
+        });
+      }
+      if (due.twentyEightDay) {
+        entries.push({
+          date: new Date(due.twentyEightDay),
+          label: `${cubeSamples.length} cubes`,
+          days: 28,
+          job: consignment.project || consignment.jobNo,
+        });
+      }
     }
     return entries.sort((a, b) => a.date.getTime() - b.date.getTime());
   }, [consignments]);
@@ -179,17 +202,15 @@ const Reception = () => {
           {/* Headline counters */}
           <div className="grid gap-4 px-6 pt-5 sm:grid-cols-2 xl:grid-cols-4">
             {[
-              {
-                label: "Received today",
-                value: consignments
-                  .filter((c) => c.status !== "draft")
-                  .reduce((n, c) => n + c.samples.length, 0),
-                hint: `samples in ${consignments.filter((c) => c.status !== "draft").length} consignments`,
-              },
-              {
-                label: "Waiting to be logged",
-                value: counts.toLog,
-                hint: "arrived, not yet logged",
+               {
+                 label: "Received today",
+                 value: receivedConsignments.reduce((n, c) => n + c.samples.length, 0),
+                 hint: `samples in ${receivedConsignments.length} consignments${oldestReceived ? ` · oldest ${new Date(oldestReceived.receivedAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}` : ""}`,
+               },
+               {
+                 label: "Waiting to be logged",
+                 value: counts.waitingSamples,
+                 hint: "arrived, not yet logged",
               },
               {
                 label: "On hold",

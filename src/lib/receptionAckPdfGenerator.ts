@@ -2,7 +2,7 @@
  * Header helpers for the receipt acknowledgement PDF.
  */
 import { jsPDF } from "jspdf";
-import { isSampleOnHold } from "./reception";
+import { isSampleOnHold, sampleTypeTag } from "./reception";
 import type { ReceptionConsignmentInput } from "./reception";
 import { fetchAdminImagesAsBase64, type AdminImages } from "./imageUtils";
 
@@ -23,6 +23,16 @@ export const ackText = (value: string, fallback = "—"): string => {
   return trimmed === "" ? fallback : trimmed;
 };
 
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+export const formatReceivedAt = (value: string): string => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/.exec(value.trim());
+  if (!match) return ackText(value);
+  const monthIndex = Number(match[2]) - 1;
+  if (monthIndex < 0 || monthIndex > 11) return ackText(value);
+  return `${Number(match[3])} ${MONTHS[monthIndex]} ${match[1]}, ${match[4]}:${match[5]}`;
+};
+
 export const drawAckHeader = (d: jsPDF, o: ReceptionAckOptions, images: AdminImages): number => {
   const MARGIN = RECEPTION_ACK_MARGIN;
   const PAGE_W = RECEPTION_ACK_PAGE_W;
@@ -39,7 +49,7 @@ export const drawAckHeader = (d: jsPDF, o: ReceptionAckOptions, images: AdminIma
   d.text((o.labName || "CRANSFIELD MATERIALS TESTING CENTER").toUpperCase(), MARGIN + 30, y + 3);
   d.setFont("times", "normal");
   d.setFontSize(8);
-  d.text(o.labAddress || "Ruiru Business Park, Kamiti Road · P.O. Box 59401-00200, Nairobi", MARGIN + 30, y + 8);
+    d.text(o.labAddress || "Ruiru Business Park, Kamiti Road : P.O. Box 59401-00200, Nairobi", MARGIN + 30, y + 8);
   d.text(`Tel ${o.labPhone || "[phone]"} · ${o.labEmail || "[email]"}`, MARGIN + 30, y + 12);
   y += 18;
   d.setDrawColor(0, 110, 110);
@@ -64,7 +74,7 @@ const drawIdBlock = (d: jsPDF, o: ReceptionAckOptions, y: number): number => {
   const block: Array<[string, string]> = [
     [`Client: ${ackText(o.client)}`, `Job no.: ${ackText(o.jobNo)}`],
     [`Project: ${ackText(o.project)}`, `Client request ref.: ${ackText(o.clientRef)}`],
-    [`Received: ${ackText(o.receivedAt)}`, `Method set: ${ackText(o.methodSet)}`],
+    [`Received: ${formatReceivedAt(o.receivedAt)}`, `Method set: ${ackText(o.methodSet)}`],
   ];
   const colW = (PAGE_W - MARGIN * 2) / 2;
   d.setFontSize(8.5);
@@ -100,7 +110,7 @@ const drawSamplesTable = (d: jsPDF, o: ReceptionAckOptions, y: number): number =
       sample.labId,
       sample.clientMark,
       `${sample.location}${sample.depthLabel ? ` · ${sample.depthLabel}` : ""}`,
-      `${sample.sampleType}${sample.container ? `, ${sample.container}` : ""}${sample.massKg ? `, ${sample.massKg} kg` : ""}`,
+      `${sample.sampleType}${sample.massKg ? `, ${sample.massKg} kg` : ""}`,
       sample.condition,
       sample.tests.join(", "),
     ];
@@ -127,10 +137,16 @@ const drawHoldBox = (d: jsPDF, o: ReceptionAckOptions, tableW: number, y: number
   d.setDrawColor(150, 90, 20);
   const lines: string[] = ["Nonconformance on receipt"];
   for (const sample of held) {
+    const conditionText = sample.condition.toLowerCase() === "seal broken"
+      ? "end seal found broken"
+      : sample.condition.toLowerCase();
+    const testsText = sample.tests
+      .map((code) => (code === "UU" ? "UU triaxial" : code))
+      .join(", ");
     lines.push(
-      `${sample.labId} (${sample.clientMark}, ${sample.sampleType} at ${sample.depthLabel || sample.location}): ` +
-      `${sample.condition.toLowerCase()}. The ${sample.tests.join("/")} test${sample.tests.length === 1 ? " is" : "s are"} ` +
-      "on hold until the client confirms in writing whether to test as received or to resample.",
+      `${sample.labId} (${sample.clientMark}, ${sampleTypeTag(sample.sampleType)} at ${sample.depthLabel || sample.location}): ` +
+      `${conditionText}. The ${testsText} test${sample.tests.length === 1 ? " is" : "s are"} on hold until the ` +
+      "client confirms in writing whether to test as received (results reported with this remark) or to resample.",
     );
   }
   const wrapped = lines.flatMap((line) => d.splitTextToSize(line, tableW - 6));
