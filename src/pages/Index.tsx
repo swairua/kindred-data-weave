@@ -41,7 +41,7 @@ import Reports from "@/pages/Reports";
 import Admin from "@/pages/Admin";
 import { TestAccordionProvider, useTestAccordion } from "@/context/TestAccordionContext";
 
-import Navigation from "@/components/Navigation";
+import Navigation, { type NavigationView } from "@/components/Navigation";
 import { fetchCurrentUser, loginUser, logoutUser, type ApiUser, listRecords, fetchFullProject, debugAuthState, debugApiConnectivity } from "@/lib/api";
 import { registerAllTests } from "@/lib/testRegistration";
 import { registry } from "@/lib/testRegistry";
@@ -223,7 +223,7 @@ const Index = ({ initialTab }: IndexProps) => {
   const isTestsPage = location.pathname === "/tests";
   const isReportsPage = location.pathname === "/reports";
   const isAdminPage = location.pathname === "/admin";
-  const [view, setView] = useState<"dashboard" | "tests" | "results" | "projects" | "admin" | "settings" | "users">(
+  const [view, setView] = useState<NavigationView>(
     isAdminPage ? "admin" : isReportsPage ? "results" : isTestsPage ? "tests" : "dashboard",
   );
   const [projectName, setProjectName] = useState("");

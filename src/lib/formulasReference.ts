@@ -38,7 +38,7 @@ export interface FormulaEntry {
 }
 
 export interface FormulaSection {
-  testKey: "grading" | "atterberg" | "proctor" | "compressive";
+  testKey: "grading" | "atterberg" | "proctor" | "compressive" | "classification";
   title: string;
   standard: string;
   entries: FormulaEntry[];

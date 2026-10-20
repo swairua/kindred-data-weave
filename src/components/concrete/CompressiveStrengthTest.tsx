@@ -83,6 +83,11 @@ const detailsFromApi = (row: Record<string, unknown>): TestDetails => ({
   slump: asText(row.slump),
   clientRef: asText(row.client_ref),
   labRef: asText(row.lab_ref),
+  reportNo: asText(row.report_no),
+  dateReceived: asDateInput(row.date_received),
+  curing: asText(row.curing),
+  modeOfFailure: asText(row.mode_of_failure),
+  comment: asText(row.comment),
   dateTested: asDateInput(row.date_tested),
 });
 
@@ -99,6 +104,11 @@ interface TestDetails {
   clientRef: string;
   /** The laboratory's own sample reference, printed on the results sheet. */
   labRef: string;
+  reportNo: string;
+  dateReceived: string;
+  curing: string;
+  modeOfFailure: string;
+  comment: string;
   dateTested: string;
 }
 
@@ -153,6 +163,11 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     slump: "",
     clientRef: "",
     labRef: "",
+    reportNo: "",
+    dateReceived: "",
+    curing: "",
+    modeOfFailure: "",
+    comment: "",
     dateTested: "",
     ...(testData.concreteTestMetadata ?? {})
   }));
@@ -171,6 +186,17 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
       setTestDetails(prev => (prev.county ? prev : { ...prev, county: fallback }));
     }
   }, [testData.projectMetadata?.contractor, testData.projectMetadata?.county]);
+
+  // The wizard hands the compressive sheet the reception Lab ID as the lab
+  // reference. The metadata can arrive after this form mounts (the wizard
+  // writes it just before navigating here), so fill a blank labRef once it
+  // shows up — never overwrite one the technician typed or loaded from a
+  // saved test.
+  useEffect(() => {
+    const incoming = testData.concreteTestMetadata?.labRef;
+    if (!incoming) return;
+    setTestDetails(prev => (prev.labRef ? prev : { ...prev, labRef: incoming }));
+  }, [testData.concreteTestMetadata?.labRef]);
 
   // Load the cubes and the test details of the test being edited. This is what
   // makes an existing test editable: previously the grid always rendered one
@@ -341,8 +367,13 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
         made_by: testDetails.madeBy,
         slump: testDetails.slump,
         client_ref: testDetails.clientRef,
-        lab_ref: testDetails.labRef,
-        status: "submitted",
+         lab_ref: testDetails.labRef,
+         report_no: testDetails.reportNo,
+         date_received: testDetails.dateReceived || null,
+         curing: testDetails.curing,
+         mode_of_failure: testDetails.modeOfFailure,
+         comment: testDetails.comment,
+         status: "submitted",
       };
 
       const result = await saveCompressiveTest({
@@ -491,6 +522,11 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     slump: testDetails.slump,
     clientRef: testDetails.clientRef,
     labRef: testDetails.labRef,
+    reportNo: testDetails.reportNo,
+    dateReceived: testDetails.dateReceived,
+    curing: testDetails.curing,
+    modeOfFailure: testDetails.modeOfFailure,
+    comment: testDetails.comment,
     dateCasted: mostCommonCastDate(rows) ?? "",
   });
 
@@ -502,11 +538,12 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
    * generic portrait generator so it matches the laboratory's own form, and the
    * header repeats automatically when a test has more cubes than one page holds.
    */
-  const exportPDF = async () => {
+  /** Exports the cube sheet. Resolves false when there was nothing to print. */
+  const exportPDF = async (): Promise<boolean> => {
     const cubes = exportableCubes();
     if (cubes.length === 0) {
       toast.error("Add at least one cube with a load and dimensions before exporting");
-      return;
+      return false;
     }
 
     await generateCompressiveStrengthPDF({
@@ -520,6 +557,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
       record: buildRecordView(),
       rows: cubes,
     });
+    return true;
   };
 
   const handlePrint = () => {
@@ -553,6 +591,11 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
             // Stacked lab references (one per line) print stacked in the
             // report cell, as on the laboratory's own sheet.
             { label: "Lab Ref", field: "labRef", placeholder: "—", multiline: true },
+            { label: "Report No.", field: "reportNo", placeholder: "—" },
+            { label: "Date Received", field: "dateReceived", inputType: "date" },
+            { label: "Curing", field: "curing", placeholder: "e.g. water cured" },
+            { label: "Mode of Failure", field: "modeOfFailure", placeholder: "—" },
+            { label: "Comment", field: "comment", placeholder: "—", multiline: true },
             { label: "Date Tested", field: "dateTested", inputType: "date" },
           ] as { label: string; field: keyof TestDetails; inputType?: string; placeholder?: string; multiline?: boolean }[]).map((item) => (
             <div key={item.field} className="flex flex-col gap-1">

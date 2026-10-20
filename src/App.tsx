@@ -12,6 +12,8 @@ import Login from "./pages/Login.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import RecordTestWizard from "./pages/RecordTestWizard.tsx";
 import TestResults from "./pages/TestResults.tsx";
+import Reception from "./pages/Reception.tsx";
+import LogConsignment from "./pages/LogConsignment.tsx";
 import Projects from "./pages/Projects.tsx";
 import ProjectOverview from "./pages/ProjectOverview.tsx";
 import UserManagement from "./pages/UserManagement.tsx";
@@ -36,6 +38,9 @@ const App = () => {
                     <Route path="/projects" element={<Projects />} />
                     <Route path="/projects/:projectId" element={<ProjectOverview />} />
                     <Route path="/record" element={<RecordTestWizard />} />
+                    <Route path="/reception" element={<Reception />} />
+                    <Route path="/reception/new" element={<LogConsignment />} />
+                    <Route path="/reception/:rcNo" element={<LogConsignment />} />
                   </Route>
                   <Route path="/tests" element={<Index initialTab="soil" />} />
                   <Route path="/tests/:projectId" element={<Index initialTab="soil" />} />

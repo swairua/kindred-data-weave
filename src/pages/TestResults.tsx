@@ -35,6 +35,9 @@ interface ApiTestResult {
   category: string;
   project_name?: string;
   status?: string;
+  sample_label?: string | null;
+  sample_key?: string | null;
+  sample_depth?: string | null;
   payload_json?: {
     project?: {
       records?: Array<{
@@ -45,6 +48,11 @@ interface ApiTestResult {
         sampledSubmittedBy?: string;
         testedBy?: string;
       }>;
+    };
+    test?: {
+      testKey?: string;
+      compressiveTestId?: number;
+      dataPoints?: number;
     };
   };
   created_at?: string;
@@ -92,6 +100,17 @@ const TestResults = () => {
       consolidation: "Consolidation Test",
       shear: "Shear Test",
       linearShrinkage: "Linear Shrinkage Test",
+      compressive: "Concrete Cubes — Compressive Strength",
+      slump: "Slump Test",
+      upvt: "UPVT Test",
+      schmidt: "Rebound Hammer Test",
+      coring: "Coring Test",
+      cubes: "Concrete Cubes",
+      ucs: "UCS Test",
+      pointload: "Point Load Test",
+      porosity: "Porosity Test",
+      spt: "SPT Test",
+      dcp: "DCP Test",
     };
     return testTypeMap[testKey] || testKey.charAt(0).toUpperCase() + testKey.slice(1);
   };
@@ -100,7 +119,14 @@ const TestResults = () => {
   // each sample is its own row, and before it several samples shared one row. collectSamples
   // handles both, drops any legacy project-level row left behind by the migration, and keeps
   // only the newest row per sample.
-  const samples = useMemo(() => collectSamples(apiTestResults), [apiTestResults]);
+  //
+  // Compressive saves mirror into test_results with payload {test:{compressiveTestId}}
+  // and carry no Atterberg records[], so collectSamples would drop them. They are
+  // excluded from that path and listed as one display row per result row.
+  const samples = useMemo(
+    () => collectSamples(apiTestResults.filter((row) => row.test_key !== "compressive")),
+    [apiTestResults],
+  );
 
   // Convert API test results to display format - one row per sample, so a project with
   // several boreholes and depths appears once per sample rather than once in total.
@@ -110,7 +136,7 @@ const TestResults = () => {
   // newest-first, so the ordering is inverted for display only - sort_order is left
   // alone. The sort is stable, so samples of one project stay adjacent and keep their
   // stored order: they inherit the parent row's timestamps, so nothing separates them.
-  const tests = useMemo(() => {
+  const soilTests = useMemo(() => {
     const rows = samples.map((sample, index) => {
       const result = sample.row;
       const record = sample.record;
@@ -145,6 +171,40 @@ const TestResults = () => {
 
     return rows.sort((a, b) => b.sort_stamp.localeCompare(a.sort_stamp));
   }, [samples]);
+
+  // Compressive mirror rows (see saveCompressiveTest): one display row per
+  // result row, newest first. Sorted together with the soil rows below.
+  const compressiveTests = useMemo(() => {
+    const rows = (apiTestResults || [])
+      .filter((row) => row.test_key === "compressive")
+      .map((row) => {
+        const payloadTest = row.payload_json?.test;
+        const cubes = typeof payloadTest?.dataPoints === "number" ? payloadTest.dataPoints : null;
+        return {
+          id: `compressive::${row.id}`,
+          resultId: Number(row.id),
+          sampleKey: "",
+          project_id: row.project_id,
+          test_key: row.test_key,
+          project_name: row.project_name || `Project #${row.project_id}`,
+          test_type: formatTestType(row.test_key),
+          sample_id:
+            (typeof row.sample_label === "string" && row.sample_label.trim() !== "" && row.sample_label) ||
+            (typeof payloadTest?.compressiveTestId === "number" ? `Cubes ${payloadTest.compressiveTestId}` : "-"),
+          depth: cubes === null ? "-" : `${cubes} cube${cubes === 1 ? "" : "s"}`,
+          date_created: row.created_at || row.updated_at || new Date().toISOString(),
+          created_by: "-",
+          material_type: row.category || "Concrete",
+          sort_stamp: row.updated_at || row.created_at || "",
+        };
+      });
+    return rows.sort((a, b) => b.sort_stamp.localeCompare(a.sort_stamp));
+  }, [apiTestResults]);
+
+  const tests = useMemo(
+    () => [...soilTests, ...compressiveTests].sort((a, b) => b.sort_stamp.localeCompare(a.sort_stamp)),
+    [soilTests, compressiveTests],
+  );
 
   // Get unique material types from the test data
   const materialTypes = useMemo(() => {

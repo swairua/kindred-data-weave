@@ -1,3 +1,4 @@
+import type { ReceptionConsignmentInput } from "@/lib/reception";
 import { type ApiCompressiveTestRow } from "@/types/api";
 
 const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
@@ -692,6 +693,77 @@ export const listRecords = async <T>(table: string, params?: Record<string, stri
   }
 };
 
+/** Reception consignments persist server-side once the table ships, localStorage until then. */
+const RECEPTION_STORAGE_KEY = "cransfield_reception_consignments_v1";
+
+export const listReceptionConsignments = async (): Promise<ReceptionConsignmentInput[]> => {
+  try {
+    const stored = await listRecords<{ payload_json?: unknown }>("reception_consignments", { limit: 500 });
+    const rows = stored.data || [];
+    if (rows.length > 0) {
+      const consignments: ReceptionConsignmentInput[] = [];
+      for (const row of rows) {
+        const payload = row.payload_json;
+        const parsed = typeof payload === "string" ? JSON.parse(payload) as unknown : payload;
+        if (parsed && typeof parsed === "object" && "rcNo" in (parsed as Record<string, unknown>)) {
+          consignments.push(parsed as ReceptionConsignmentInput);
+        }
+      }
+      if (consignments.length > 0) return consignments;
+    }
+  } catch {
+    // Backend table not provisioned yet — fall through to localStorage.
+  }
+  try {
+    const raw = localStorage.getItem(RECEPTION_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? (parsed as ReceptionConsignmentInput[]) : [];
+  } catch {
+    return [];
+  }
+};
+
+export const saveReceptionConsignment = async (consignment: ReceptionConsignmentInput): Promise<void> => {
+  try {
+    const stored = await listRecords<{ id: number; payload_json?: unknown }>("reception_consignments", { limit: 500 });
+    const match = (stored.data || []).find((row) => {
+      const payload = row.payload_json;
+      const parsed = typeof payload === "string" ? JSON.parse(payload) as unknown : payload;
+      return !!parsed && typeof parsed === "object" && (parsed as ReceptionConsignmentInput).rcNo === consignment.rcNo;
+    });
+    if (match) {
+      await updateRecord("reception_consignments", match.id, { payload_json: JSON.stringify(consignment) });
+    } else {
+      await createRecord("reception_consignments", {
+        rc_no: consignment.rcNo,
+        job_no: consignment.jobNo,
+        status: consignment.status,
+        payload_json: JSON.stringify(consignment),
+      });
+    }
+    return;
+  } catch {
+    // Backend table not provisioned yet — persist locally so reception keeps working.
+  }
+  let existing: ReceptionConsignmentInput[] = [];
+  try {
+    const raw = localStorage.getItem(RECEPTION_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as unknown;
+      if (Array.isArray(parsed)) existing = parsed as ReceptionConsignmentInput[];
+    }
+  } catch {
+    existing = [];
+  }
+  const next = [...existing.filter((c) => c.rcNo !== consignment.rcNo), consignment];
+  try {
+    localStorage.setItem(RECEPTION_STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    // Storage full/blocked: reception still works for the session.
+  }
+};
+
 export const readRecord = async <T>(table: string, id: string | number): Promise<ApiReadResponse<T>> => {
   const response = await apiRequest<ApiReadResponse<T>>(undefined, { action: "read", table, id });
   return { ...response, data: coerceNumericColumns(response.data) as T };
@@ -956,6 +1028,61 @@ export const saveCompressiveTest = async ({
         }),
       ),
     );
+
+    // Mirror the save into test_results so Test Results / Project Overview list
+    // the compressive test. Without this the cubes are only reachable by direct
+    // ?testId= link and never surface in reports.
+    try {
+      const testedCount = cubeIds.length;
+      const existingResults = await listRecords<{ id: number; project_id: number | string; test_key: string; payload_json?: unknown }>(
+        "test_results",
+        { limit: 5000, orderBy: "updated_at", direction: "DESC" },
+      );
+      const idInPayload = (payload: unknown): number | null => {
+        let parsed: unknown = payload;
+        if (typeof parsed === "string") {
+          const text = parsed.trim();
+          if (!text) return null;
+          try { parsed = JSON.parse(text) as unknown; } catch { return null; }
+        }
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+        const scopes = [parsed as Record<string, unknown>];
+        const nested = (parsed as Record<string, unknown>).test;
+        if (nested && typeof nested === "object" && !Array.isArray(nested)) scopes.push(nested as Record<string, unknown>);
+        for (const scope of scopes) {
+          for (const key of ["compressiveTestId", "compressive_test_id", "compressiveId", "compressive_id", "testId", "test_id"]) {
+            const raw = scope[key];
+            const id = typeof raw === "number" ? raw : typeof raw === "string" && raw.trim() !== "" ? Number(raw) : NaN;
+            if (Number.isInteger(id) && id > 0) return id;
+          }
+        }
+        return null;
+      };
+      const match = (existingResults.data || []).find((row) =>
+        Number(row.project_id) === Number(projectId)
+        && row.test_key === "compressive"
+        && idInPayload(row.payload_json) === resolvedTestId,
+      );
+      const sampleId = typeof testData.lab_ref === "string" && testData.lab_ref.trim() !== ""
+        ? testData.lab_ref.trim()
+        : typeof testData.client_ref === "string" && testData.client_ref.trim() !== ""
+          ? testData.client_ref.trim()
+          : `Cubes ${resolvedTestId}`;
+      const fields = {
+        name: "Compressive Strength Test",
+        category: "concrete",
+        status: testedCount > 0 ? "completed" : "in-progress",
+        sample_label: sampleId,
+        payload_json: JSON.stringify({
+          test: { testKey: "compressive", compressiveTestId: resolvedTestId, dataPoints: testedCount },
+        }),
+      };
+      if (match) await updateRecord("test_results", match.id, fields);
+      else await createRecord("test_results", { project_id: projectId, test_key: "compressive", ...fields });
+    } catch (mirrorError) {
+      // The cubes themselves saved; a failed mirror must not fail the whole save.
+      console.warn("[API] Compressive test_results mirror failed:", mirrorError);
+    }
 
     return { testId: resolvedTestId, cubeIds };
   } catch (error) {

@@ -133,6 +133,7 @@ const COLS: Col[] = [
 /** Index of the column printed in bold, matching the reference's emphasised result. */
 const BOLD_COLUMN = 10;
 
+/** Identification block for the compressive test. Mode/comment predate the latest sheet revision. */
 export interface CompressiveRecordView {
   contractor: string;
   county: string;
@@ -144,6 +145,16 @@ export interface CompressiveRecordView {
   labRef: string;
   /** Date the cubes were cast, ISO `YYYY-MM-DD`. */
   dateCasted: string;
+  /** Laboratory report number, printed in the identification block when set. */
+  reportNo?: string;
+  /** Date the laboratory received the cubes, ISO `YYYY-MM-DD`. */
+  dateReceived?: string;
+  /** Curing regime of the cubes, e.g. "20±2°C water". */
+  curing?: string;
+  /** Cube failure description, e.g. "Satisfactory". Optional: older saved rows predate the latest sheet. */
+  modeOfFailure?: string;
+  /** Laboratory comment on the mode of failure. Optional for the same reason. */
+  comment?: string;
 }
 
 export interface CompressiveStrengthPdfOptions {
@@ -158,6 +169,7 @@ export interface CompressiveStrengthPdfOptions {
   /** Signed on paper after issue; blank when not yet received. */
   receivedBy?: string;
   receivedDate?: string;
+  signature?: string;
   record: CompressiveRecordView;
   /** Every cube row. Blank rows are dropped so empty grid lines are not printed. */
   rows: CompressiveCubeInput[];
@@ -307,7 +319,37 @@ const drawCellText = (
   });
 };
 
-/** Build the identification rows shown above the results table. */
+  // Mode of failure and comment, printed after the cube table as on the
+  // laboratory's own sheet. Returns the new cursor.
+  const drawResultsSummary = (d: jsPDF, r: CompressiveRecordView, y: number): number => {
+    let cy = y + 2;
+    // Optional: older saved rows predate the mode/comment fields.
+    const modeOfFailure = r.modeOfFailure ?? "";
+    const comment = r.comment ?? "";
+    if (modeOfFailure.trim() !== "") {
+      d.setFont("times", "bold");
+      d.setFontSize(7.5);
+      d.setTextColor(...COLORS.dark);
+      d.text("MODE OF FAILURE:", TABLE_X, cy);
+      d.setFont("times", "normal");
+      const lines = d.splitTextToSize(modeOfFailure, TABLE_W - 32) as string[];
+      lines.forEach((line, index) => d.text(line, TABLE_X + 32, cy + index * 3.4));
+      cy += Math.max(ID_ROW_H, lines.length * 3.4 + 1);
+    }
+    if (comment.trim() !== "") {
+      d.setFont("times", "bold");
+      d.setFontSize(7.5);
+      d.setTextColor(...COLORS.dark);
+      d.text("COMMENT:", TABLE_X, cy);
+      d.setFont("times", "normal");
+      const lines = d.splitTextToSize(comment, TABLE_W - 22) as string[];
+      lines.forEach((line, index) => d.text(line, TABLE_X + 22, cy + index * 3.4));
+      cy += Math.max(ID_ROW_H, lines.length * 3.4 + 1);
+    }
+    return cy;
+  };
+
+  /** Build the identification rows shown above the results table. */
 const buildIdRows = (o: CompressiveStrengthPdfOptions): IdCell[][] => {
   const r = o.record;
   // Cells in each row share the table width exactly: full width, halves,
@@ -333,6 +375,11 @@ const buildIdRows = (o: CompressiveStrengthPdfOptions): IdCell[][] => {
       { label: "MADE BY", value: text(r.madeBy), w: third },
       { label: "CLIENT REF", value: text(r.clientRef), w: third },
       { label: "SLUMP", value: text(r.slump), w: third },
+    ],
+    [
+      { label: "REPORT NO.", value: text(r.reportNo), w: third },
+      { label: "DATE RECEIVED", value: formatReportDate(r.dateReceived) || BLANK, w: third },
+      { label: "CURING", value: text(r.curing), w: third },
     ],
   ];
 };
@@ -502,6 +549,8 @@ const drawFooter = (d: jsPDF, o: CompressiveStrengthPdfOptions, images: AdminIma
   d.text(`CHECKED BY:  ${text(o.checkedBy)}`, TABLE_X + colW * 2, y);
   d.text(`RECEIVED BY:  ${text(o.receivedBy)}`, TABLE_X, y + 6);
   d.text(`DATE:  ${formatReportDate(o.receivedDate ?? "") || BLANK}`, TABLE_X + colW, y + 6);
+  d.text(`SIGNATURE:  ${text(o.signature)}`, TABLE_X + colW * 2, y + 6);
+  d.text(`SIGNATURE:  ${text(o.signature)}`, TABLE_X + colW * 2, y + 6);
 
   if (images.stamp) {
     try {
@@ -524,7 +573,12 @@ const drawFooter = (d: jsPDF, o: CompressiveStrengthPdfOptions, images: AdminIma
 };
 
 /** Title, laboratory identity and the rule beneath, as on the reference. */
-const drawTitleBlock = (d: jsPDF, o: CompressiveStrengthPdfOptions, images: AdminImages, y: number): number => {
+const drawTitleBlock = (
+  d: jsPDF,
+  o: CompressiveStrengthPdfOptions,
+  images: AdminImages,
+  y: number,
+): { ruleY: number; endY: number } => {
   const imgW = 62;
   const imgH = 20;
   d.setFontSize(7.5);
@@ -628,6 +682,8 @@ export const generateCompressiveStrengthPDF = async (options: CompressiveStrengt
       drawRow(doc, cubeSheetValues(row, classTarget), y, rowH);
       y += rowH;
     }
+    // Mode of failure and comment follow the cube table, as on the lab sheet.
+    y = drawResultsSummary(doc, o.record, y);
     return { frameTop: title.ruleY, bodyEnd: y };
   };
 

@@ -144,6 +144,9 @@ const RecordTestWizard = () => {
   const initialTest = searchParams.get("test") as string | null;
   const projectIdParam = searchParams.get("projectId");
   const projectIdFromParam = projectIdParam ? parseInt(projectIdParam, 10) : null;
+  // Reception handoff: /record?material=concrete&test=compressive&labId=26-0418/01
+  // pre-fills the cube details so the lab reference matches the logged sample.
+  const labIdFromParam = searchParams.get("labId") || searchParams.get("labRef");
   const testData = useTestData();
   const { user, logout } = useSession();
 
@@ -152,10 +155,29 @@ const RecordTestWizard = () => {
   }, [testData.refreshTestDefinitions]);
 
   const [state, setState] = useState<WizardState>(() => {
-    const defaults = { ...emptyState, material: initialMaterial, testKey: initialTest };
+    const defaults = {
+      ...emptyState,
+      material: initialMaterial,
+      testKey: initialTest,
+      // A reception Lab ID becomes the cube sample id so recording starts linked.
+      sampleId: labIdFromParam || emptyState.sampleId,
+    };
     try {
       const raw = sessionStorage.getItem(STORAGE_KEY);
-      if (raw) return { ...defaults, ...JSON.parse(raw) } as WizardState;
+      if (raw) {
+        const restored = { ...defaults, ...JSON.parse(raw) } as WizardState;
+        // The URL wins over a restored draft: arriving from Reception must
+        // always start on the sample the lab just logged.
+        if (labIdFromParam) {
+          return {
+            ...restored,
+            material: restored.material ?? initialMaterial,
+            testKey: restored.testKey ?? initialTest,
+            sampleId: labIdFromParam,
+          };
+        }
+        return restored;
+      }
     } catch {}
     return defaults;
   });
@@ -605,7 +627,8 @@ const RecordTestWizard = () => {
       testData.updateRecordMetadata(state.testKey!, toRecordMetadata(state));
     }
 
-    // If concrete material, also push concrete test details to context
+    // If concrete material, also push concrete test details to context.
+    // The reception Lab ID doubles as the lab reference on the cube sheet.
     if (isCompressiveStrengthTest) {
       const concreteMetadata: any = {
         cement: state.cement,
@@ -618,6 +641,7 @@ const RecordTestWizard = () => {
         madeBy: state.madeBy,
         slump: state.slump,
         clientRef: state.clientRef,
+        labRef: labIdFromParam || state.sampleId,
         dateTested: state.dateTested,
         sampleId: state.sampleId,
       };
@@ -1182,6 +1206,9 @@ const RecordTestWizard = () => {
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Step {step + 1} of {steps.length}</p>
                   <h2 className="text-2xl font-semibold tracking-tight">Concrete cube details</h2>
+                  <p className="text-xs text-muted-foreground">
+                    Tip: open this step from Reception with <span className="font-mono">/record?material=concrete&amp;test=compressive&amp;labId=26-0418/01</span> to pre-fill the Lab ID below.
+                  </p>
                 </div>
                 <FormCard className="p-4 sm:p-4">
                   <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">

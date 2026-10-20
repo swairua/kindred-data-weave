@@ -14,13 +14,109 @@ import {
 } from "@/lib/reportGenerator";
 import { generateTestPDF } from "@/lib/pdfGenerator";
 import { generateTestCSV } from "@/lib/csvExporter";
+import { generateCompressiveStrengthPDF, type CompressiveRecordView } from "@/lib/compressivePdfGenerator";
+import { listCompressiveCubes, listCompressiveTests } from "@/lib/api";
+import { emptyCubeRow } from "@/lib/compressiveCalculations";
 import { toast } from "sonner";
+import { useState } from "react";
 
 const Reports = () => {
-  const { tests } = useTestData();
+  const { tests, concreteTestMetadata } = useTestData();
   const project = useProject();
   const testList = Object.values(tests);
   const testsWithData = testList.filter(t => t.dataPoints > 0);
+  const [isCompressiveExporting, setIsCompressiveExporting] = useState(false);
+
+  // The generic report path only prints the two key-results lines, which loses
+  // the whole cube table. Compressive exports go through the dedicated
+  // BS EN 12390-3 sheet so the PDF matches the recording grid.
+  const handleCompressivePDF = async () => {
+    if (isCompressiveExporting) return;
+    setIsCompressiveExporting(true);
+    try {
+      const projectId = project.currentProjectId;
+      let rows = projectId
+        ? await (async () => {
+            const listed = await listCompressiveTests(projectId);
+            const match = (listed.data || []).find((row) => Number(row.project_id) === Number(projectId));
+            if (!match) return null;
+            const cubes = await listCompressiveCubes(Number(match.id));
+            const toInput = (value: unknown, fallback = ""): string => {
+              if (value === null || value === undefined) return fallback;
+              const text = String(value);
+              return text === "" ? fallback : text;
+            };
+            const asDate = (value: unknown): string => {
+              const text = typeof value === "string" ? value.trim() : String(value ?? "").trim();
+              const m = /^(\d{4}-\d{2}-\d{2})/.exec(text);
+              return m ? m[1] : "";
+            };
+            return {
+              meta: match,
+              cubes: (cubes.data || []).map((cube) => ({
+                ...emptyCubeRow(),
+                id: Number(cube.id),
+                mark: cube.cube_mark && cube.cube_mark !== "Unknown" ? String(cube.cube_mark) : "",
+                dateOfCast: asDate(cube.date_of_cast),
+                dateOfTest: asDate(cube.date_of_test),
+                load: toInput(cube.load_kn),
+                width: toInput(cube.width_mm, "150"),
+                height: toInput(cube.height_mm, "150"),
+                depth: toInput(cube.depth_mm, "150"),
+                mass: toInput(cube.mass_g),
+                remarks: cube.remarks ? String(cube.remarks) : "",
+              })),
+            };
+          })()
+        : null;
+      const textOf = (value: unknown): string => (typeof value === "string" ? value : value == null ? "" : String(value));
+      const record: CompressiveRecordView = {
+        // Contractor and county are concrete metadata; the project context has no such fields.
+        contractor: textOf(concreteTestMetadata?.contractor),
+        county: textOf(concreteTestMetadata?.county),
+        concreteClass: textOf(concreteTestMetadata?.concreteClass),
+        section: textOf(concreteTestMetadata?.section),
+        madeBy: textOf(concreteTestMetadata?.madeBy),
+        slump: textOf(concreteTestMetadata?.slump),
+        clientRef: textOf(concreteTestMetadata?.clientRef),
+        labRef: textOf(concreteTestMetadata?.labRef),
+        dateCasted: "",
+      };
+      const meta = rows?.meta as unknown as Record<string, unknown> | undefined;
+      if (meta) {
+        const pick = (...keys: string[]): string => {
+          for (const key of keys) {
+            const value = meta[key];
+            if (typeof value === "string" && value.trim() !== "") return value;
+            if (typeof value === "number" && Number.isFinite(value)) return String(value);
+          }
+          return "";
+        };
+        record.contractor = record.contractor || pick("contractor");
+        record.county = record.county || pick("county");
+        record.concreteClass = record.concreteClass || pick("concrete_class", "concreteClass");
+        record.section = record.section || pick("section");
+        record.madeBy = record.madeBy || pick("made_by", "madeBy");
+        record.slump = record.slump || pick("slump");
+        record.clientRef = record.clientRef || pick("client_ref", "clientRef");
+        record.labRef = record.labRef || pick("lab_ref", "labRef");
+      }
+      await generateCompressiveStrengthPDF({
+        projectName: project.projectName,
+        clientName: project.clientName,
+        dateReported: project.dateReported,
+        checkedBy: project.checkedBy,
+        labOrganization: project.labOrganization,
+        record,
+        rows: rows?.cubes ?? [],
+      });
+      toast.success("Compressive strength report downloaded");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Compressive report download failed");
+    } finally {
+      setIsCompressiveExporting(false);
+    }
+  };
 
   const handleSummaryPDF = () => {
     generateProjectSummaryReport(project, tests);
@@ -132,21 +228,33 @@ const Reports = () => {
                     </div>
                   )}
                   <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-9 text-xs gap-1"
-                      onClick={() => {
-                        generateTestPDF({
-                          title: test.name,
-                          ...project,
-                          fields: test.keyResults.map(r => ({ label: r.label, value: r.value })),
-                        });
-                        toast.success(`${test.name} PDF downloaded`);
-                      }}
-                    >
-                      <FileDown className="h-3 w-3" /> PDF
-                    </Button>
+                    {test.id === "compressive" ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-9 text-xs gap-1"
+                        disabled={isCompressiveExporting}
+                        onClick={() => void handleCompressivePDF()}
+                      >
+                        <FileDown className="h-3 w-3" /> {isCompressiveExporting ? "Preparing…" : "Cube report PDF"}
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-9 text-xs gap-1"
+                        onClick={() => {
+                          generateTestPDF({
+                            title: test.name,
+                            ...project,
+                            fields: test.keyResults.map(r => ({ label: r.label, value: r.value })),
+                          });
+                          toast.success(`${test.name} PDF downloaded`);
+                        }}
+                      >
+                        <FileDown className="h-3 w-3" /> PDF
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="outline"

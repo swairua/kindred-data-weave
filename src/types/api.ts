@@ -26,6 +26,11 @@ export interface ApiCompressiveTestRow {
   slump: string;
   client_ref: string;
   lab_ref?: string | null;
+  report_no?: string | null;
+  date_received?: string | null;
+  curing?: string | null;
+  mode_of_failure?: string | null;
+  comment?: string | null;
   status?: string | null;
   created_at: string;
   updated_at: string;
