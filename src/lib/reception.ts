@@ -225,7 +225,9 @@ export const consignmentMaterial = (consignment: ReceptionConsignmentInput): str
   if (types.size === 0) return "—";
   if (types.has("Cube")) return "Concrete cubes 150 mm";
   const hasWater = types.has("Water");
-  const rest = Array.from(types).filter((tag) => tag !== "Water").map((tag) => tag.toLowerCase());
+  const rest = Array.from(types)
+    .filter((tag) => tag !== "Water")
+    .map((tag) => (tag === "Bulk" ? "bulk" : tag));
   const body = rest.join(", ");
   if (hasWater && body) return `Soil: ${body}; water`;
   if (hasWater) return "Soil: water";

@@ -3,6 +3,32 @@
  */
 import { jsPDF } from "jspdf";
 import { isSampleOnHold, sampleTypeTag } from "./reception";
+
+const RECEIPT_TEST_LABELS: Record<string, string> = {
+  MC: "MC",
+  PSD: "PSD",
+  HYD: "Hydrometer",
+  ATT: "LL/PL",
+  CMP: "Compaction",
+  CBR: "CBR",
+  UU: "UU triaxial",
+  CON: "Consolidation",
+  CHEM: "Sulfate, chloride, pH",
+};
+
+const receiptSampleType = (sample: { sampleType: string; container: string; massKg: string }): string => {
+  if (sample.sampleType.includes("U100")) {
+    const containerDetail = sample.container
+      .split(",")
+      .slice(1)
+      .join(",")
+      .trim()
+      .split("&")[0]
+      .trim();
+    if (containerDetail) return `${sampleTypeTag(sample.sampleType)}, ${containerDetail}`;
+  }
+  return `${sample.sampleType}${sample.massKg ? `, ${sample.massKg} kg` : ""}`;
+};
 import type { ReceptionConsignmentInput } from "./reception";
 import { fetchAdminImagesAsBase64, type AdminImages } from "./imageUtils";
 
@@ -110,9 +136,9 @@ const drawSamplesTable = (d: jsPDF, o: ReceptionAckOptions, y: number): number =
       sample.labId,
       sample.clientMark,
       `${sample.location}${sample.depthLabel ? ` · ${sample.depthLabel}` : ""}`,
-      `${sample.sampleType}${sample.massKg ? `, ${sample.massKg} kg` : ""}`,
+      receiptSampleType(sample),
       sample.condition,
-      sample.tests.join(", "),
+      sample.tests.map((code) => RECEIPT_TEST_LABELS[code] ?? code).join(", "),
     ];
     const lines = cells.map((cell, i) => d.splitTextToSize(ackText(cell, ""), cols[i] - 3));
     const rowH = Math.max(7, ...lines.map((l) => l.length * 3.6 + 3));
@@ -141,7 +167,7 @@ const drawHoldBox = (d: jsPDF, o: ReceptionAckOptions, tableW: number, y: number
       ? "end seal found broken"
       : sample.condition.toLowerCase();
     const testsText = sample.tests
-      .map((code) => (code === "UU" ? "UU triaxial" : code))
+      .map((code) => RECEIPT_TEST_LABELS[code] ?? code)
       .join(", ");
     lines.push(
       `${sample.labId} (${sample.clientMark}, ${sampleTypeTag(sample.sampleType)} at ${sample.depthLabel || sample.location}): ` +

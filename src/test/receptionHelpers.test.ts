@@ -177,7 +177,7 @@ describe("consignmentIsOnHold", () => {
 
 describe("consignmentMaterial", () => {
   it("lists the distinct materials of the mock consignment", () => {
-    expect(consignmentMaterial(mockFullConsignment())).toBe("Soil: bulk, u100, spt; water");
+    expect(consignmentMaterial(mockFullConsignment())).toBe("Soil: bulk, U100, SPT; water");
   });
 
   it("falls back to a dash when no sample type was recorded", () => {

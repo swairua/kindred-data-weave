@@ -208,6 +208,7 @@ const ALLOWED_TABLES = [
     'company_info' => true,
     'compressive_tests' => true,
     'compressive_cubes' => true,
+  'reception_consignments' => true,
 ];
 
 function apiLogAction(): string
@@ -310,6 +311,43 @@ function requireAuth(mysqli $conn): ?array
     return $user;
 }
 
+/**
+ * Read one value from config/database.php, when that file exists.
+ *
+ * The file returns an array of overrides. It is optional and must stay out of
+ * version control when it holds credentials, so every lookup is defensive: a
+ * missing file, a file that does not return an array, or a missing key all
+ * fall back to the caller's default.
+ *
+ * The result is cached per request because db() is called on every request and
+ * the file is read from disk.
+ */
+function dbConfigValue(string $key)
+{
+    static $config = null;
+
+    if ($config === null) {
+        $config = [];
+        // The local override comes first so it wins over the committed template.
+        $candidates = [
+            __DIR__ . '/config/database.local.php',
+            __DIR__ . '/config/database.php',
+        ];
+        foreach ($candidates as $path) {
+            if (!is_readable($path)) {
+                continue;
+            }
+            /** @psalm-suppress UnresolvableInclude */
+            $loaded = require $path;
+            if (is_array($loaded)) {
+                $config = array_merge($config, $loaded);
+            }
+        }
+    }
+
+    return $config[$key] ?? null;
+}
+
 function db(): mysqli
 {
     static $instance = null;
@@ -318,11 +356,26 @@ function db(): mysqli
     }
 
     // Support environment variables for remote database configuration
-    $host = getenv('DB_HOST') ?: 'localhost';
-    $user = getenv('DB_USER') ?: 'wayrusc1_labdatacraft';
-    $pass = getenv('DB_PASS') ?: 'Sirgeorge.12';
-    $name = getenv('DB_NAME') ?: 'wayrusc1_labdatacraft';
-    $port = (int) (getenv('DB_PORT') ?: 3306);
+    $host = getenv('DB_HOST') ?: (dbConfigValue('host') ?: 'localhost');
+    $user = getenv('DB_USER') ?: (dbConfigValue('user') ?: 'wayrusc1_labdatacraft');
+    $pass = getenv('DB_PASS') ?: (dbConfigValue('pass') ?: 'Sirgeorge.12');
+    $name = getenv('DB_NAME') ?: (dbConfigValue('name') ?: 'wayrusc1_labdatacraft');
+
+    // The port is not always the MySQL default. The local XAMPP MariaDB service
+    // listens on 3308, while the production host (lab.wayrus.co.ke) uses the
+    // standard 3306. Resolve it as:
+    //   1. DB_PORT from the environment  (explicit override, always wins)
+    //   2. the "port" entry of config/database.php, when that file exists
+    //   3. 3308 for a local host, 3306 for a remote one
+    $isLocalHost = in_array(
+        strtolower((string) parse_url($host, PHP_URL_HOST) ?: $host),
+        ['localhost', '127.0.0.1', '::1', ''],
+        true
+    );
+    $port = (int) (getenv('DB_PORT') ?: 0);
+    if ($port <= 0) {
+        $port = (int) (dbConfigValue('port') ?: ($isLocalHost ? 3308 : 3306));
+    }
 
     try {
         $instance = new mysqli($host, $user, $pass, $name, $port);
