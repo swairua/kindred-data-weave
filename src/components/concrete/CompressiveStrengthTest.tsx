@@ -9,8 +9,7 @@ import { Plus, X, Save as SaveIcon, Printer, Loader2, CheckCircle2, GripVertical
 import { useProject } from "@/context/ProjectContext";
 import { useTestData } from "@/context/TestDataContext";
 import { generateCompressiveStrengthPDF } from "@/lib/compressivePdfGenerator";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, PieChart, Pie, Cell, Legend, ResponsiveContainer } from "recharts";
+
 import { Label } from "@/components/ui/label";
 import { useTestReport } from "@/hooks/useTestReport";
 import { saveCompressiveTest, listCompressiveCubes, getCompressiveTest, resolveCompressiveTestId, type CompressiveCubeApiRow } from "@/lib/api";
@@ -27,7 +26,6 @@ import {
   formatStrength,
   gainSummary,
   getPassFailResults,
-  getStrengthDistribution,
   isFiniteNumber,
   parseNumber,
   strengthOf,
@@ -410,47 +408,6 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     }
   }, [project.currentProjectId, rows, testDetails, isLoadingCubes, isLoadingDetails, activeTestId, testData.updateConcreteTestMetadata]);
 
-  const chartData = useMemo(() =>
-    rows
-      .map((r, idx) => ({ strength: strengthOf(r), name: r.mark.trim() || `Cube ${idx + 1}` }))
-      .filter((point): point is { strength: number; name: string } => isFiniteNumber(point.strength)),
-    [rows]
-  );
-
-  const strengthTrendData = useMemo(() =>
-    rows
-      .map((r, idx) => ({
-        name: r.mark.trim() || `Cube ${idx + 1}`,
-        strength: strengthOf(r),
-        age: ageOf(r.dateOfCast, r.dateOfTest),
-        index: idx,
-      }))
-      .filter((point): point is { name: string; strength: number; age: number | null; index: number } =>
-        isFiniteNumber(point.strength)),
-    [rows]
-  );
-
-  const densityChartData = useMemo(() =>
-    rows
-      .map((r, idx) => ({ density: densityOf(r), name: r.mark.trim() || `Cube ${idx + 1}`, index: idx }))
-      .filter((point): point is { density: number; name: string; index: number } => isFiniteNumber(point.density))
-      .map((point) => ({
-        ...point,
-        isAbnormal: point.density < 2200 || point.density > 2600,
-      })),
-    [rows]
-  );
-
-  const strengthDistribution = useMemo(() => {
-    const dist = getStrengthDistribution(rows);
-    return [
-      { name: "Very Low (< 7)", value: dist.veryLow, color: "#ef4444" },
-      { name: "Low (7–20)", value: dist.low, color: "#f97316" },
-      { name: "Normal (20–40)", value: dist.normal, color: "#22c55e" },
-      { name: "High (> 40)", value: dist.high, color: "#3b82f6" },
-    ];
-  }, [rows]);
-
   /**
    * Target strength for the simple tally. Taken from the recorded concrete class when there is
    * one ("C25/30" -> 30 MPa cubes) so a stale hand-typed threshold can't quietly mislabel a
@@ -491,8 +448,6 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     () => buildAgeGroups(rows, effectiveMultiTargets),
     [rows, effectiveMultiTargets],
   );
-
-  const chartConfig = { strength: { label: "Strength (MPa)", color: "hsl(var(--primary))" } };
 
   const strengths = useMemo(
     () => rows.map(strengthOf).filter(isFiniteNumber),
@@ -562,10 +517,6 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
 
   const handlePrint = () => {
     window.print();
-  };
-
-  const handleChartClick = (index: number) => {
-    setHighlightedRowIndex(highlightedRowIndex === index ? null : index);
   };
 
   const handleRowClick = (index: number) => {
@@ -723,69 +674,6 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
 
   const renderAnalytics = () => (
     <div className="flex flex-col gap-4">
-      {strengthTrendData.length >= 1 && (
-        <div className="rounded-lg border bg-card p-4">
-          <Label className="text-xs font-semibold mb-2 block">Strength Trend</Label>
-          <ChartContainer config={chartConfig} className="h-[250px] w-full">
-            <LineChart data={strengthTrendData} margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" className="text-xs" />
-              <YAxis className="text-xs" />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Line
-                type="monotone"
-                dataKey="strength"
-                stroke="var(--color-strength)"
-                dot={{ r: 4, cursor: "pointer" }}
-                onClick={(e: any) => handleChartClick(e.payload.index)}
-              />
-            </LineChart>
-          </ChartContainer>
-        </div>
-      )}
-
-      {densityChartData.length >= 1 && (
-        <div className="rounded-lg border bg-card p-4">
-          <Label className="text-xs font-semibold mb-2 block">Density Distribution</Label>
-          <ChartContainer config={chartConfig} className="h-[200px] w-full">
-            <BarChart data={densityChartData} margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" className="text-xs" />
-              <YAxis className="text-xs" />
-              <ChartTooltip
-                content={<ChartTooltipContent />}
-              />
-              <Bar
-                dataKey="density"
-                fill="hsl(var(--primary))"
-                onClick={(e: any) => handleChartClick(e.payload.index)}
-                radius={[4, 4, 0, 0]}
-              >
-                {densityChartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.isAbnormal ? "#ef4444" : "hsl(var(--primary))"} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ChartContainer>
-        </div>
-      )}
-
-      {strengthDistribution.some(d => d.value > 0) && (
-        <div className="rounded-lg border bg-card p-4">
-          <Label className="text-xs font-semibold mb-2 block">Strength Classification</Label>
-          <ChartContainer config={chartConfig} className="h-[200px] w-full">
-            <PieChart>
-              <Pie data={strengthDistribution} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80}>
-                {strengthDistribution.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <ChartTooltip content={<ChartTooltipContent />} />
-            </PieChart>
-          </ChartContainer>
-        </div>
-      )}
-
       <div className="rounded-lg border bg-card p-4">
         <Label className="text-xs font-semibold mb-3 block">Pass/Fail Summary</Label>
         <Tabs value={passFailMode} onValueChange={(v) => setPassFailMode(v as "simple" | "multi")}>
@@ -939,21 +827,6 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
           </TabsContent>
         </Tabs>
       </div>
-
-      {chartData.length >= 1 && (
-        <div className="rounded-lg border bg-card p-4">
-          <Label className="text-xs font-semibold mb-2 block">Cube Compressive Strengths</Label>
-          <ChartContainer id="compressive-chart" config={chartConfig} className="h-[250px] w-full">
-            <BarChart data={chartData} margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" className="text-xs" />
-              <YAxis className="text-xs" />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="strength" name="strength" fill="var(--color-strength)" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ChartContainer>
-        </div>
-      )}
     </div>
   );
 
