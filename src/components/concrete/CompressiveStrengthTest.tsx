@@ -837,13 +837,13 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
       onClear={() => setRows([emptyCubeRow()])}
     >
       <>
-        <div className="flex flex-col gap-6 w-full">
-          <div className="w-full">
+        <div className="grid gap-5 w-full xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="space-y-5">
             {renderTable()}
           </div>
-          <div className="w-full">
+          <aside className="space-y-4">
             {renderAnalytics()}
-          </div>
+          </aside>
         </div>
       </>
     </TestSection>
