@@ -163,7 +163,8 @@ const TestResults = () => {
         depth: depth || "-",
         date_created: dateCreated,
         created_by: testedBy,
-        material_type: result.category || "Soil",
+         material_type: result.category || "Soil",
+         status: result.status || "-",
         // Most recently touched first, falling back to the creation date.
         sort_stamp: result.updated_at || result.created_at || "",
       };
@@ -194,7 +195,8 @@ const TestResults = () => {
           depth: cubes === null ? "-" : `${cubes} cube${cubes === 1 ? "" : "s"}`,
           date_created: row.created_at || row.updated_at || new Date().toISOString(),
           created_by: "-",
-          material_type: row.category || "Concrete",
+           material_type: row.category || "Concrete",
+           status: row.status || "-",
           sort_stamp: row.updated_at || row.created_at || "",
         };
       });
@@ -455,6 +457,11 @@ const TestResults = () => {
                                     <p className="text-[10px] leading-3 text-muted-foreground">
                                       Depth: {test.depth || "-"}
                                     </p>
+                                    {test.status && (
+                                      <p className="text-[10px] leading-3 text-muted-foreground">
+                                        Status: {test.status}
+                                      </p>
+                                    )}
                                     <p className="text-[10px] leading-3 text-muted-foreground md:hidden">
                                       {formatDate(test.date_created)}
                                     </p>

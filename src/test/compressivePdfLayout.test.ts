@@ -269,3 +269,15 @@ describe("fill colour adjacency", () => {
     expect(["1. g", "1 1 1 rg"]).toContain(fills[fills.length - 1]);
   });
 });
+
+describe("compressive PDF values", () => {
+  it("prints load, strength, density, age, and verdict for a cube", async () => {
+    const doc = await generateCompressiveStrengthPDF(options(REFERENCE_CUBES));
+    const content = pageContent(doc);
+    expect(content).toContain("(564.1)");
+    expect(content).toContain("(25.1)");
+    expect(content).toContain("(2,349)");
+    expect(content).toContain("(7)");
+    expect(content).toContain("Satisfactory");
+  });
+});

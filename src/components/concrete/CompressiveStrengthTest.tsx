@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import CalculatedInput from "@/components/CalculatedInput";
-import { Plus, X, Save as SaveIcon, Printer, Loader2, CheckCircle2, GripVertical, FileDown } from "lucide-react";
+import { Plus, X, Save as SaveIcon, Printer, Loader2, CheckCircle2, GripVertical, FileDown, AlertTriangle } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useProject } from "@/context/ProjectContext";
 import { useTestData } from "@/context/TestDataContext";
 import { generateCompressiveStrengthPDF } from "@/lib/compressivePdfGenerator";
@@ -119,6 +120,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   const testData = useTestData();
   const location = useLocation();
   const [rows, setRows] = useState<Row[]>(() => [emptyCubeRow()]);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isLoadingCubes, setIsLoadingCubes] = useState(false);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
@@ -297,6 +299,62 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     const next = [...rows];
     next[i] = { ...next[i], [field]: val };
     setRows(next);
+  };
+
+  const handleImportFieldLog = (event: { target: { files?: FileList | null; value: string } }) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = String(reader.result ?? "");
+      const lines = text.trim().split(/\r?\n/).filter((line) => line.trim() !== "");
+      if (lines.length < 2) {
+        toast.error("Field log is empty");
+        return;
+      }
+      const headers = lines[0].split(",").map((header) => header.trim().toLowerCase().replace(/[^a-z0-9]/g, ""));
+      const indexOf = (names: string[]) => {
+        for (const name of names) {
+          const index = headers.indexOf(name);
+          if (index >= 0) return index;
+        }
+        return -1;
+      };
+      const markIndex = indexOf(["mark", "cubemark", "cubemark"]);
+      const castIndex = indexOf(["dateofcast", "datecast", "castdate"]);
+      const testIndex = indexOf(["dateoftest", "testdate", "datetested"]);
+      const widthIndex = indexOf(["width", "widthmm", "l"]);
+      const heightIndex = indexOf(["height", "heightmm", "w"]);
+      const depthIndex = indexOf(["depth", "depthmm", "h"]);
+      const massIndex = indexOf(["mass", "massg"]);
+      const loadIndex = indexOf(["load", "loadkn", "maxload"]);
+      const remarksIndex = indexOf(["remarks", "remark", "comment"]);
+
+      const imported: Row[] = [];
+      for (let i = 1; i < lines.length; i += 1) {
+        const columns = lines[i].split(",");
+        const row = emptyCubeRow();
+        if (markIndex >= 0) row.mark = (columns[markIndex] ?? "").trim();
+        if (castIndex >= 0) row.dateOfCast = (columns[castIndex] ?? "").trim();
+        if (testIndex >= 0) row.dateOfTest = (columns[testIndex] ?? "").trim();
+        if (widthIndex >= 0) row.width = (columns[widthIndex] ?? "").trim() || "150";
+        if (heightIndex >= 0) row.height = (columns[heightIndex] ?? "").trim() || "150";
+        if (depthIndex >= 0) row.depth = (columns[depthIndex] ?? "").trim() || "150";
+        if (massIndex >= 0) row.mass = (columns[massIndex] ?? "").trim();
+        if (loadIndex >= 0) row.load = (columns[loadIndex] ?? "").trim();
+        if (remarksIndex >= 0) row.remarks = (columns[remarksIndex] ?? "").trim();
+        imported.push(row);
+      }
+
+      if (imported.length === 0) {
+        toast.error("No cubes found in field log");
+        return;
+      }
+      setRows(imported);
+      toast.success(`Imported ${imported.length} cube(s) from field log`);
+    };
+    reader.readAsText(file);
+    event.target.value = "";
   };
 
   const updateTestDetail = (field: keyof TestDetails, val: string) => {
@@ -642,8 +700,12 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
           </tbody>
         </table>
       </div>
-      <div className="flex items-center justify-between mt-3">
-        <Button variant="outline" size="sm" onClick={() => setRows([...rows, emptyCubeRow()])}><Plus className="h-3.5 w-3.5 mr-1" /> Add row</Button>
+       <div className="flex items-center justify-between mt-3">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setRows([...rows, emptyCubeRow()])}><Plus className="h-3.5 w-3.5 mr-1" /> Add row</Button>
+          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>Import from field log</Button>
+          <input ref={fileInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleImportFieldLog} />
+        </div>
         <div className="flex items-center gap-2">
           <Button
             size="sm"
@@ -842,6 +904,38 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
             {renderTable()}
           </div>
           <aside className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Summary</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-xs">
+                <div className="flex justify-between"><span>Cubes entered</span><span className="font-medium">{rows.filter((r) => isFiniteNumber(strengthOf(r))).length}</span></div>
+                <div className="flex justify-between"><span>Average strength</span><span className="font-medium">{avgStrength ? `${avgStrength} MPa` : "—"}</span></div>
+                <div className="flex justify-between"><span>Pass rate</span><span className="font-medium">{passFailData.passRate.toFixed(0)}%</span></div>
+                <div className="flex justify-between"><span>Abnormal density</span><span className="font-medium">{rows.filter((r) => isAbnormalDensity(r)).length}</span></div>
+              </CardContent>
+            </Card>
+            {(rows.filter((r) => isAbnormalDensity(r)).length > 0 || passFailData.failCount > 0) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <AlertTriangle className="h-4 w-4 text-amber-600" /> Checks
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-xs">
+                  {rows.filter((r) => isAbnormalDensity(r)).length > 0 && (
+                    <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900">
+                      {rows.filter((r) => isAbnormalDensity(r)).length} cube(s) have abnormal density.
+                    </p>
+                  )}
+                  {passFailData.failCount > 0 && (
+                    <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-red-900">
+                      {passFailData.failCount} cube(s) are below the pass threshold.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
             {renderAnalytics()}
           </aside>
         </div>
