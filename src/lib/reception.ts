@@ -223,5 +223,11 @@ export const consignmentMaterial = (consignment: ReceptionConsignmentInput): str
     if (tag !== "Sample") types.add(tag);
   }
   if (types.size === 0) return "—";
-  return Array.from(types).join(", ");
+  if (types.has("Cube")) return "Concrete cubes 150 mm";
+  const hasWater = types.has("Water");
+  const rest = Array.from(types).filter((tag) => tag !== "Water").map((tag) => tag.toLowerCase());
+  const body = rest.join(", ");
+  if (hasWater && body) return `Soil: ${body}; water`;
+  if (hasWater) return "Soil: water";
+  return `Soil: ${body}`;
 };
