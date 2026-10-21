@@ -31,6 +31,7 @@ export interface ApiCompressiveTestRow {
   curing?: string | null;
   mode_of_failure?: string | null;
   comment?: string | null;
+  custom_fields?: string | null;
   status?: string | null;
   created_at: string;
   updated_at: string;
