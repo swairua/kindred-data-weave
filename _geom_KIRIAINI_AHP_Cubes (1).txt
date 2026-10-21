@@ -1,0 +1,84 @@
+===== Additional docs/KIRIAINI_AHP_Cubes (1).pdf page 0
+  page: 841.9 x 595.3
+  H-lines: 3
+    H y=   93.5 x=   28.3..  813.5
+    H y=  108.3 x=  286.9..  601.2
+    H y=  515.9 x=   71.7..  816.4
+  V-lines: 0
+  Spans: 76
+  x0=   28.3 y0=   20.4 x1=  174.8 sz= 7.5 Compressive Strength of Concrete Cubes Report
+  x0=  286.9 y0=   91.3 x1=  602.6 sz=13.0 COMPRESSIVE STRENGTH OF CONCRETE CUBES
+  x0=  403.0 y0=  110.1 x1=  485.2 sz= 8.5 BS EN 12390 - 3 : 2002
+  x0=  104.8 y0=  135.7 x1=  135.1 sz= 6.5 PROJECT
+  x0=  468.3 y0=  135.6 x1=  516.4 sz= 7.5 KIRIAINI AHP
+  x0=  107.5 y0=  152.7 x1=  132.4 sz= 6.5 CLIENT
+  x0=  484.8 y0=  152.6 x1=  499.8 sz= 7.5 AHP
+  x0=   99.9 y0=  169.7 x1=  128.0 sz= 6.5 COUNTY
+  x0=  219.3 y0=  169.6 x1=  256.8 sz= 7.5 __________
+  x0=  332.6 y0=  169.7 x1=  392.0 sz= 6.5 CONCRETE CLASS
+  x0=  467.5 y0=  169.6 x1=  505.0 sz= 7.5 __________
+  x0=  587.5 y0=  169.7 x1=  633.5 sz= 6.5 DATE CASTED
+  x0=  715.7 y0=  169.6 x1=  753.2 sz= 7.5 __________
+  x0=   90.5 y0=  186.7 x1=  137.5 sz= 6.5 CONTRACTOR
+  x0=  219.3 y0=  186.6 x1=  256.8 sz= 7.5 __________
+  x0=  347.6 y0=  186.7 x1=  376.8 sz= 6.5 SECTION
+  x0=  467.5 y0=  186.6 x1=  505.0 sz= 7.5 __________
+  x0=  596.4 y0=  186.7 x1=  624.4 sz= 6.5 LAB REF
+  x0=  715.7 y0=  186.6 x1=  753.2 sz= 7.5 __________
+  x0=   98.7 y0=  203.8 x1=  129.2 sz= 6.5 MADE BY
+  x0=  219.3 y0=  203.6 x1=  256.8 sz= 7.5 __________
+  x0=  342.5 y0=  203.8 x1=  382.0 sz= 6.5 CLIENT REF
+  x0=  467.5 y0=  203.6 x1=  505.0 sz= 7.5 __________
+  x0=  599.0 y0=  203.8 x1=  621.8 sz= 6.5 SLUMP
+  x0=  715.7 y0=  203.6 x1=  753.2 sz= 7.5 __________
+  x0=   80.7 y0=  225.7 x1=  120.9 sz= 6.5 CUBE MARK
+  x0=  144.8 y0=  221.9 x1=  173.5 sz= 6.5 DATE OF
+  x0=  150.5 y0=  229.6 x1=  167.8 sz= 6.5 CAST
+  x0=  200.9 y0=  221.9 x1=  229.6 sz= 6.5 DATE OF
+  x0=  207.0 y0=  229.6 x1=  223.6 sz= 6.5 TEST
+  x0=  262.5 y0=  221.9 x1=  276.6 sz= 6.5 AGE
+  x0=  258.6 y0=  229.6 x1=  280.6 sz= 6.5 (DAYS)
+  x0=  349.0 y0=  217.4 x1=  388.2 sz= 6.5 CUBE DIMM
+  x0=  361.0 y0=  225.1 x1=  376.1 sz= 6.5 (mm)
+  x0=  318.7 y0=  234.7 x1=  323.1 sz= 6.5 L
+  x0=  365.3 y0=  234.7 x1=  371.8 sz= 6.5 W
+  x0=  413.6 y0=  234.7 x1=  418.6 sz= 6.5 H
+  x0=  449.4 y0=  221.9 x1=  478.1 sz= 6.5 MASS OF
+  x0=  451.0 y0=  229.6 x1=  476.6 sz= 6.5 CUBE(g)
+  x0=  500.6 y0=  221.9 x1=  529.5 sz= 6.5 DENSITY
+  x0=  503.5 y0=  229.6 x1=  526.6 sz= 6.5 (Kg/m3)
+  x0=  557.4 y0=  218.0 x1=  593.3 sz= 6.5 MAX LOAD
+  x0=  570.8 y0=  225.7 x1=  579.8 sz= 6.5 AT
+  x0=  552.9 y0=  233.5 x1=  597.9 sz= 6.5 FAILURE (KN)
+  x0=  622.6 y0=  218.0 x1=  670.2 sz= 6.5 COMPRESSIVE
+  x0=  628.3 y0=  225.7 x1=  664.4 sz= 6.5 STRENGTH
+  x0=  633.9 y0=  233.5 x1=  658.8 sz= 6.5 (N/mm2)
+  x0=  722.1 y0=  225.7 x1=  779.1 sz= 6.5 Remarks/Comments
+  x0=   92.6 y0=  245.1 x1=  108.9 sz= 7.5 None
+  x0=  140.3 y0=  245.1 x1=  177.8 sz= 7.5 __________
+  x0=  196.5 y0=  245.1 x1=  234.0 sz= 7.5 __________
+  x0=  250.8 y0=  245.1 x1=  288.3 sz= 7.5 __________
+  x0=  315.3 y0=  245.1 x1=  326.5 sz= 7.5 150
+  x0=  362.9 y0=  245.1 x1=  374.1 sz= 7.5 150
+  x0=  410.5 y0=  245.1 x1=  421.8 sz= 7.5 150
+  x0=  455.3 y0=  245.1 x1=  472.1 sz= 7.5 100.0
+  x0=  511.3 y0=  245.1 x1=  518.8 sz= 7.5 30
+  x0=  570.6 y0=  245.1 x1=  580.0 sz= 7.5 3.0
+  x0=  641.6 y0=  245.1 x1=  651.0 sz= 7.5 0.1
+  x0=  755.5 y0=  245.1 x1=  793.0 sz= 7.5 __________
+  x0=   83.1 y0=  253.2 x1=  353.5 sz= 6.5 Reports and Certificates by Cransfield Labs are issued subject to the below terms and conditions:
+  x0=   83.1 y0=  266.2 x1=  353.1 sz= 6.5 1.  Results herein is a true representation of the cubes submitted to our lab to the best of our knowledge.
+  x0=   83.1 y0=  277.6 x1=  288.1 sz= 6.5 2.  Any correction or addition to these test results will make this report invalid.
+  x0=   83.1 y0=  288.9 x1=  498.3 sz= 6.5 3.  Once report is transmitted or released it is final and no corrections pertaining to incorrect information submitted by the client will be accepted or considered.
+  x0=   83.1 y0=  300.2 x1=  373.4 sz= 6.5 4.  This report should not be reproduced or published in full or part without prior written approval from our lab.
+  x0=   83.1 y0=  311.6 x1=  382.0 sz= 6.5 5.  All photocopies of test reports produced and not signed by our Technical Director should be considered invalid.
+  x0=   83.1 y0=  322.9 x1=  522.8 sz= 6.5 6.  All the results released to the client from our lab are treated as strictly confidential and would only be released to other parties with written instruction from the client.
+  x0=   83.1 y0=  334.2 x1=  636.5 sz= 6.5 7.  A legal contract between the client and Cransfield Lab will deem to have constituted upon receipt of the test results by the client sent via any electronic transmission media or collected by client's representative.
+  x0=   71.7 y0=  519.4 x1=  157.4 sz= 7.5 TESTED BY:  __________
+  x0=  291.6 y0=  519.4 x1=  390.1 sz= 7.5 REPORTED ON:  __________
+  x0=  511.5 y0=  519.4 x1=  605.4 sz= 7.5 CHECKED BY:  __________
+  x0=   71.7 y0=  536.4 x1=  167.3 sz= 7.5 RECEIVED BY:  __________
+  x0=  291.6 y0=  536.4 x1=  356.2 sz= 7.5 DATE:  __________
+  x0=   71.7 y0=  576.6 x1=  399.3 sz= 7.0 Specialists In: Non-Destructive Testing, Materials Testing and Inspection, Quality Assurance, Failure Investigations,
+  x0=  405.2 y0=  570.9 x1=  436.8 sz= 7.0 Page 1 of 1
+  x0=   28.3 y0=  570.9 x1=   92.7 sz= 7.0 Generated: 13/10/2026

@@ -18,3 +18,6 @@ database/livemain.sql
 database/normalized.sql
 # Local numbered phpMyAdmin exports (e.g. "wayrusc1_labdatacraft (7).sql") - local dumps only.
 database/wayrusc1_labdatacraft*.sql
+
+# Local database credentials/overrides - never commit.
+config/database.local.php

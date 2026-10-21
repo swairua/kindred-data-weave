@@ -1,0 +1,68 @@
+===== KIRIAINI_AHP_Cubes.pdf page 0
+  page: 841.9 x 595.3
+  H-lines: 3
+    H y=   93.5 x=   28.3..  813.5
+    H y=  108.3 x=  285.8..  602.3
+    H y=  515.9 x=   71.7..  816.4
+  V-lines: 0
+  Spans: 60
+  x0=   28.3 y0=   20.3 x1=  191.7 sz= 7.5 Compressive Strength of Concrete Cubes Report
+  x0=  285.8 y0=   91.0 x1=  603.6 sz=13.0 COMPRESSIVE STRENGTH OF CONCRETE CUBES
+  x0=  399.5 y0=  109.9 x1=  489.2 sz= 8.5 BS EN 12390 - 3 : 2002
+  x0=  104.6 y0=  135.6 x1=  135.3 sz= 6.5 PROJECT
+  x0=  282.8 y0=  135.4 x1=  329.5 sz= 7.5 KIRIAINI AHP
+  x0=  480.5 y0=  135.6 x1=  504.0 sz= 6.5 CLIENT
+  x0=  670.8 y0=  135.4 x1=  686.2 sz= 7.5 AHP
+  x0=   90.8 y0=  152.6 x1=  137.1 sz= 6.5 CONTRACTOR
+  x0=  217.4 y0=  152.4 x1=  259.1 sz= 7.5 __________
+  x0=  348.5 y0=  152.6 x1=  375.9 sz= 6.5 COUNTY
+  x0=  465.6 y0=  152.4 x1=  507.3 sz= 7.5 __________
+  x0=  580.3 y0=  152.6 x1=  640.6 sz= 6.5 CONCRETE CLASS
+  x0=  713.8 y0=  152.4 x1=  755.5 sz= 7.5 __________
+  x0=   89.0 y0=  169.6 x1=  117.9 sz= 6.5 SECTION
+  x0=  175.8 y0=  169.5 x1=  217.5 sz= 7.5 __________
+  x0=  274.6 y0=  169.6 x1=  304.6 sz= 6.5 MADE BY
+  x0=  362.0 y0=  169.5 x1=  403.7 sz= 7.5 __________
+  x0=  464.4 y0=  169.6 x1=  487.1 sz= 6.5 SLUMP
+  x0=  548.2 y0=  169.5 x1=  589.9 sz= 7.5 __________
+  x0=  647.8 y0=  169.6 x1=  676.0 sz= 6.5 LAB REF
+  x0=  734.3 y0=  169.5 x1=  776.0 sz= 7.5 __________
+  x0=   94.8 y0=  186.6 x1=  133.1 sz= 6.5 CLIENT REF
+  x0=  217.4 y0=  186.5 x1=  259.1 sz= 7.5 __________
+  x0=  339.1 y0=  186.6 x1=  385.3 sz= 6.5 DATE CASTED
+  x0=  465.6 y0=  186.5 x1=  507.3 sz= 7.5 __________
+  x0=  582.7 y0=  186.6 x1=  638.3 sz= 6.5 DATE REPORTED
+  x0=  713.8 y0=  186.5 x1=  755.5 sz= 7.5 __________
+  x0=  165.7 y0=  209.9 x1=  199.0 sz= 6.5 Cube Mark
+  x0=  325.1 y0=  202.1 x1=  397.7 sz= 6.5 Cube Dimensions (mm)
+  x0=  313.8 y0=  218.5 x1=  317.8 sz= 6.5 L
+  x0=  358.2 y0=  218.5 x1=  364.4 sz= 6.5 W
+  x0=  404.4 y0=  218.5 x1=  409.1 sz= 6.5 H
+  x0=  514.2 y0=  209.9 x1=  566.6 sz= 6.5 Mass of Cube (g)
+  x0=  677.9 y0=  202.1 x1=  740.8 sz= 6.5 Remarks/Comments
+  x0=  670.3 y0=  218.5 x1=  676.1 sz= 6.5 %
+  x0=   96.8 y0=  232.1 x1=  114.8 sz= 7.5 None
+  x0=  150.7 y0=  232.1 x1=  179.9 sz= 7.5 1-Oct-26
+  x0=  204.2 y0=  232.1 x1=  233.4 sz= 7.5 9-Oct-26
+  x0=  267.7 y0=  232.1 x1=  271.8 sz= 7.5 8
+  x0=  309.6 y0=  232.1 x1=  322.1 sz= 7.5 150
+  x0=  355.1 y0=  232.1 x1=  367.6 sz= 7.5 150
+  x0=  400.6 y0=  232.1 x1=  413.1 sz= 7.5 150
+  x0=  445.5 y0=  232.1 x1=  460.1 sz= 7.5 13.0
+  x0=  496.7 y0=  232.1 x1=  500.9 sz= 7.5 4
+  x0=  546.1 y0=  232.1 x1=  560.7 sz= 7.5 46.0
+  x0=  612.6 y0=  232.2 x1=  623.1 sz= 7.5 2.0
+  x0=  711.0 y0=  232.1 x1=  752.7 sz= 7.5 __________
+  x0=   83.1 y0=  240.3 x1=  383.3 sz= 6.5 1.  Results herein is a true representation of the cubes submitted to our lab to the best of our knowledge.
+  x0=   83.1 y0=  251.6 x1=  305.2 sz= 6.5 2.  Any correction or addition to these test results will make this report invalid.
+  x0=   83.1 y0=  263.0 x1=  537.5 sz= 6.5 3.  Once report is transmitted or released it is final and no corrections pertaining to incorrect information submitted by the client will be accepted or considered.
+  x0=   83.1 y0=  274.3 x1=  396.6 sz= 6.5 4.  This report should not be reproduced or published in full or part without prior written approval from our lab.
+  x0=   83.1 y0=  285.6 x1=  410.7 sz= 6.5 5.  All photocopies of test reports produced and not signed by our Technical Director should be considered invalid.
+  x0=   83.1 y0=  297.0 x1=  562.5 sz= 6.5 6.  All the results released to the client from our lab are treated as strictly confidential and would only be released to other parties with written instruction from the client.
+  x0=   83.1 y0=  308.3 x1=  669.6 sz= 6.5 7.  A legal contract between the client and the lab will deem to have constituted upon receipt of the test results by the client sent via any electronic transmission media or collected by client's representative.
+  x0=   71.7 y0=  519.2 x1=  162.2 sz= 7.5 TESTED BY:  __________
+  x0=  291.6 y0=  519.2 x1=  395.0 sz= 7.5 REPORTED ON:  __________
+  x0=  511.5 y0=  519.2 x1=  609.4 sz= 7.5 CHECKED BY:  __________
+  x0=   71.7 y0=  576.4 x1=  429.2 sz= 7.0 Specialists In: Non-Destructive Testing, Materials Testing and Inspection, Quality Assurance, Failure Investigations,
+  x0=  403.2 y0=  570.7 x1=  439.0 sz= 7.0 Page 1 of 1
+  x0=   28.3 y0=  570.7 x1=   96.4 sz= 7.0 Generated: 10/9/2026

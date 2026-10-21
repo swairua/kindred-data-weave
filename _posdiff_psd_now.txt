@@ -1,0 +1,199 @@
+== PSD matched 207 of ref 351
+  Project/Site Name:             dx=   +0.0 dy=   +0.7 sz 6->6
+  Date tested:                   dx=   +0.0 dy=   +0.7 sz 7->7
+  Sample ID:                     dx=   +0.0 dy=   +1.1 sz 7->7
+  <0.063                         dx=  -48.7 dy= +266.4 sz 7->7
+  Sample No.:                    dx=   +0.0 dy=   +1.1 sz 7->7
+  Sample depth (M):              dx=   +0.0 dy=   +1.1 sz 7->7
+  0.0 - 25.0                     dx=   +0.0 dy=   +1.2 sz 7->7
+  Sampled and Submitted by:      dx=   +0.0 dy=   +1.1 sz 7->7
+  Cransfield                     dx=   +0.0 dy=   +1.2 sz 7->7
+  Sample preparation details     dx=   +0.0 dy=   +1.6 sz 7->7
+  Initial quartered and air dried mass dx=   +0.0 dy=   +2.0 sz 6->6
+  (gm)                           dx=   +0.0 dy=   +2.0 sz 6->6
+  328                            dx=   +0.0 dy=   +2.1 sz 7->7
+  Washed and oven dried mass     dx=   +0.0 dy=   +2.5 sz 6->6
+  (gm)                           dx=   +0.0 dy=   +2.5 sz 6->6
+  176.4                          dx=   +0.0 dy=   +2.5 sz 7->7
+  Fine mass                      dx=   +0.0 dy=   +3.0 sz 6->6
+  (gm)                           dx=   +0.0 dy=   +3.0 sz 6->6
+  151.6                          dx=   +0.0 dy=   +3.0 sz 7->7
+  Fines percent                  dx=   +0.0 dy=   +3.4 sz 6->6
+  (%)                            dx=   +0.0 dy=   +3.4 sz 6->6
+  46.2                           dx=   +0.0 dy=   +3.4 sz 7->7
+  Moisture content at sample preparations dx=   +0.0 dy=   +1.6 sz 7->7
+  Wet weight of sample           dx=   +0.0 dy=   +2.1 sz 6->6
+  (gm)                           dx=   +0.0 dy=   +2.1 sz 6->6
+  186.5                          dx=   +0.0 dy=   +2.1 sz 7->7
+  Dry weight of sample           dx=   +0.0 dy=   +2.5 sz 6->6
+  (gm)                           dx=   +0.0 dy=   +2.5 sz 6->6
+  149.0                          dx=   +0.0 dy=   +2.5 sz 7->7
+  Wet weight of water            dx=   +0.0 dy=   +3.0 sz 6->6
+  (gm)                           dx=   +0.0 dy=   +3.0 sz 6->6
+  37.5                           dx=   +0.0 dy=   +3.0 sz 7->7
+  Moisture content               dx=   +0.0 dy=   +3.4 sz 6->6
+  (%)                            dx=   +0.0 dy=   +3.4 sz 6->6
+  25.2                           dx=   +0.0 dy=   +3.4 sz 7->7
+  Soil Classification            dx=   +0.0 dy=   +3.8 sz 7->7
+  GRAVEL     (%):                dx=   +0.0 dy=   +4.3 sz 7->7
+  22.8                           dx=   +0.0 dy=   +4.3 sz 7->7
+  CLAY/SILT (%):                 dx=   +0.0 dy=   +4.5 sz 7->7
+  71.9                           dx=   +0.0 dy=   +4.6 sz 7->7
+  USCS                           dx=   +0.0 dy=   +4.3 sz 7->7
+  SAND          (%):             dx=   +0.0 dy=   +4.7 sz 7->7
+  5.3                            dx=   +0.0 dy=   +4.8 sz 7->7
+  AASHTO                         dx=   +0.0 dy=   +4.7 sz 7->7
+  A-7-5                          dx=   +0.0 dy=   +4.8 sz 7->7
+  Wet & Dry Sieve Analysis to BS 1377 2:1990: 9.2/9.3/9.4 dx=   +0.0 dy=   +5.0 sz 7->7
+  Sieve size                     dx=   +0.0 dy=   +5.0 sz 6->6
+  (mm)                           dx=   +0.0 dy=   +5.0 sz 6->6
+  Retained mass                  dx=   +0.0 dy=   +5.0 sz 5->5
+  (gm)                           dx=   +0.0 dy=   +5.0 sz 5->5
+  % Retained                     dx=   +0.0 dy=   +5.0 sz 6->6
+  (%)                            dx=   +0.0 dy=   +5.0 sz 6->6
+  Cumulative passing             dx=   +0.0 dy=   +5.0 sz 6->6
+  percentage (%)                 dx=   +0.0 dy=   +5.0 sz 6->6
+  0                              dx=   +0.0 dy=   +5.2 sz 7->7
+  0.0                            dx=   +0.0 dy=   +5.2 sz 7->7
+  100.0                          dx=   +0.0 dy=   +5.2 sz 7->7
+  63                             dx=   +0.0 dy=   -2.4 sz 7->7
+  0                              dx=   +0.0 dy=   +5.6 sz 7->7
+  0.0                            dx=   +0.0 dy=   +5.6 sz 7->7
+  100.0                          dx=   +0.0 dy=   +5.6 sz 7->7
+  50                             dx=   +0.0 dy=   -1.9 sz 7->7
+  0                              dx=   +0.0 dy=   +6.1 sz 7->7
+  0.0                            dx=   +0.0 dy=   +6.1 sz 7->7
+  100.0                          dx=   +0.0 dy=   +6.1 sz 7->7
+  37.5                           dx=   +0.0 dy=   -1.5 sz 7->7
+  0                              dx=   +0.0 dy=   +6.5 sz 7->7
+  0.0                            dx=   +0.0 dy=   +6.5 sz 7->7
+  100.0                          dx=   +0.0 dy=   +6.5 sz 7->7
+  28                             dx=   +0.0 dy=   -1.0 sz 7->7
+  0                              dx= +396.7 dy=  -15.9 sz 7->7
+  0.0                            dx=  -37.7 dy= +111.6 sz 7->7
+  100.0                          dx= -103.8 dy= +171.0 sz 7->7
+  0                              dx= +396.7 dy=   -5.7 sz 7->7
+  0.0                            dx=   +0.0 dy= +104.0 sz 7->7
+  0.0                            dx=  -49.9 dy= +336.5 sz 7->7
+  6.3                            dx=   +0.0 dy=   +0.8 sz 7->7
+  5                              dx=   +0.0 dy=   +1.2 sz 7->7
+  77.2                           dx=   +0.0 dy=   +9.8 sz 7->7
+  3.35                           dx=   +0.0 dy=   -5.9 sz 7->7
+  2.36                           dx=   +0.0 dy=   -5.5 sz 7->7
+  1.18                           dx=   +0.0 dy=  -12.6 sz 7->7
+  0.6                            dx=   +0.0 dy=  -12.2 sz 7->7
+  0.425                          dx=   +0.0 dy=  -11.7 sz 7->7
+  0.3                            dx=   +0.0 dy=  -11.2 sz 7->7
+  0.15                           dx=   +0.0 dy=  -10.7 sz 7->7
+  71.9                           dx=   +0.0 dy=   -2.7 sz 7->7
+  0.075                          dx=   +0.0 dy=  -10.3 sz 7->7
+  71.9                           dx=   +0.0 dy=   -2.3 sz 7->7
+  0.063                          dx=   +0.0 dy=   -9.8 sz 7->7
+  71.9                           dx=  -50.0 dy=   -1.8 sz 7->7
+  -                              dx=  +44.1 dy= -274.6 sz 7->7
+  TOTAL                          dx=   +0.0 dy=   -8.9 sz 7->7
+  176.4                          dx=   +0.0 dy=  -17.0 sz 7->7
+  -                              dx=  +50.1 dy=  -17.0 sz 7->7
+  -                              dx=  -50.1 dy=   -9.0 sz 7->7
+  Hydrometer Analysis to BS 1377-2:1990:9.5 dx=   +0.0 dy=   +5.0 sz 7->7
+  Dry Weight                     dx=   +0.0 dy=   +5.0 sz 6->6
+  (g)                            dx=   +0.0 dy=   +5.0 sz 6->6
+  176.4                          dx=   +0.0 dy=   +5.0 sz 7->7
+  Hydrometer Type                dx=   +0.0 dy=   +5.0 sz 6->6
+  152H                           dx=   +0.0 dy=   +5.0 sz 7->7
+  S.G (Mg/m³)                    dx=   +0.0 dy=   +5.0 sz 6->6
+  2.65                           dx=   +0.0 dy=   +5.0 sz 7->7
+  Zero Correction factor         dx=   +0.0 dy=   +5.0 sz 6->6
+  Temperature (°C)               dx=   +0.0 dy=   +5.0 sz 6->6
+  20                             dx=   +0.0 dy=   +5.0 sz 7->7
+  Meniscus correction (g/L)      dx=   +0.0 dy=   +5.0 sz 6->6
+  0.1                            dx=   +0.0 dy=   +5.0 sz 7->7
+  K Factor                       dx=   +0.0 dy=   +5.0 sz 6->6
+  1.358                          dx=   +0.0 dy=   +5.0 sz 7->7
+  Temperature Correction Factor  dx=   +0.0 dy=   +5.0 sz 6->6
+  Time,                          dx=   +0.0 dy=   +5.0 sz 6->6
+  min                            dx=   +0.0 dy=   +5.0 sz 6->6
+  Actual                         dx=   +0.0 dy=   +5.0 sz 6->6
+  rh                             dx=   +0.0 dy=   +5.0 sz 6->6
+  Adjusted                       dx=   +0.0 dy=   +4.9 sz 6->6
+  HR(Rh)                         dx=   +0.0 dy=   +5.0 sz 6->6
+  Composite                      dx=   +0.0 dy=   +5.0 sz 6->6
+  correction                     dx=   +0.0 dy=   +5.0 sz 6->6
+  Corrected                      dx=   +0.0 dy=   +5.0 sz 6->6
+  HR                             dx=   +0.0 dy=   +5.0 sz 6->6
+  Effective                      dx=   +0.0 dy=   +4.9 sz 6->6
+  depth                          dx=   +0.0 dy=   +5.0 sz 6->6
+  (cm)                           dx=   +0.0 dy=   +5.0 sz 6->6
+  Diameter;                      dx=   +0.0 dy=   +5.0 sz 6->6
+  D                              dx=   +0.0 dy=   +5.0 sz 6->6
+  K                              dx=   +0.0 dy=   +5.0 sz 6->6
+  (L/T)                          dx=   +0.0 dy=   +5.0 sz 6->6
+  % Fines in                     dx=   +0.0 dy=   +5.0 sz 6->6
+  Suspension                     dx=   +0.0 dy=   +5.0 sz 6->6
+  % Fines based                  dx=   +0.0 dy=   +5.0 sz 5->5
+  on whole sample                dx=   +0.0 dy=   +5.0 sz 5->5
+  0.25                           dx=   +0.0 dy=   +5.2 sz 7->7
+  0.10                           dx=   +0.0 dy=   +5.2 sz 7->7
+  0.50                           dx=   +0.0 dy=   +5.7 sz 7->7
+  -                              dx=  -69.6 dy=  +90.3 sz 7->7
+  0.10                           dx=   +0.0 dy=   +5.7 sz 7->7
+  1                              dx=   +0.0 dy=   +6.1 sz 7->7
+  0.10                           dx=   +0.0 dy=   +6.1 sz 7->7
+  2                              dx=   +0.0 dy=   +6.6 sz 7->7
+  0.10                           dx=   +0.0 dy=   +6.6 sz 7->7
+  4                              dx=   +0.0 dy=   +7.0 sz 7->7
+  0.10                           dx=   +0.0 dy=   +7.0 sz 7->7
+  8                              dx=   +0.0 dy=   +7.5 sz 7->7
+  0.10                           dx=   +0.0 dy=   +7.5 sz 7->7
+  15                             dx=   +0.0 dy=   +8.0 sz 7->7
+  0.10                           dx=   +0.0 dy=   +8.0 sz 7->7
+  30                             dx=   +0.0 dy=   +8.4 sz 7->7
+  0.10                           dx=   +0.0 dy=   +8.4 sz 7->7
+  60                             dx=   +0.0 dy=   +8.9 sz 7->7
+  0.10                           dx=   +0.0 dy=   +8.9 sz 7->7
+  120                            dx=   +0.0 dy=   +9.3 sz 7->7
+  0.10                           dx=   +0.0 dy=   +9.3 sz 7->7
+  240                            dx=   +0.0 dy=   +9.8 sz 7->7
+  0.10                           dx=   +0.0 dy=   +9.8 sz 7->7
+  480                            dx=   +0.0 dy=  +10.2 sz 7->7
+  0.10                           dx=   +0.0 dy=  +10.2 sz 7->7
+  1440                           dx=   +0.0 dy=  +10.7 sz 7->7
+  14.5                           dx= -157.3 dy= -114.0 sz 7->7
+  0.10                           dx=   +0.0 dy=  +10.7 sz 7->7
+  10.0                           dx=   +0.0 dy=   -4.9 sz 7->7
+  20.0                           dx=   +0.0 dy=   -4.8 sz 7->7
+  30.0                           dx=   +0.0 dy=   -4.8 sz 7->7
+  40.0                           dx=   +0.0 dy=   -4.8 sz 7->7
+  50.0                           dx=   +0.0 dy=   -4.8 sz 7->7
+  60.0                           dx=   +0.0 dy=   -4.8 sz 7->7
+  70.0                           dx=   +0.0 dy=   -4.8 sz 7->7
+  80.0                           dx=   +0.0 dy=   -4.8 sz 7->7
+  90.0                           dx=   +0.0 dy=   -4.8 sz 7->7
+  Passing (%)                    dx=   +0.0 dy=   -4.9 sz 8->8
+  0.001                          dx=   +0.0 dy=   -4.8 sz 6->6
+  0.010                          dx=   +0.0 dy=   -4.8 sz 6->6
+  0.100                          dx=   +0.0 dy=   -4.8 sz 6->6
+  1.000                          dx=   +0.0 dy=   -4.8 sz 6->6
+  10.000                         dx=   +0.0 dy=   -4.8 sz 6->6
+  100.000                        dx=   +0.0 dy=   -4.8 sz 6->6
+  CLAY FRACTION                  dx=   +0.0 dy=   -4.2 sz 5->5
+  Fine                           dx=   +0.0 dy=   -4.2 sz 5->5
+  Medium                         dx=   +0.0 dy=   -4.2 sz 5->5
+  Coarse                         dx=   +0.0 dy=   -4.2 sz 5->5
+  Fine                           dx=   +0.0 dy=   -4.2 sz 5->5
+  Medium                         dx=   +0.0 dy=   -4.2 sz 5->5
+  Coarse                         dx=   +0.0 dy=   -4.2 sz 5->5
+  Fine                           dx=   +0.0 dy=   -4.2 sz 5->5
+  Medium                         dx=   +0.0 dy=   -4.2 sz 5->5
+  Coarse                         dx=   +0.0 dy=   -4.2 sz 5->5
+  BOULDERS                       dx=   +0.0 dy=   -4.2 sz 5->5
+  SILT FRACTION                  dx=   +0.0 dy=   -6.3 sz 6->6
+  SAND FRACTION                  dx=   +0.0 dy=   -6.3 sz 6->6
+  GRAVEL FRACTION                dx=   +0.0 dy=   -6.3 sz 6->6
+  Particle size (mm)             dx=   +0.0 dy=   -4.2 sz 8->8
+  PARTICLE SIZE DISTRIBUTION GRAPH dx=   +0.0 dy=   -4.8 sz 8->8
+  Tested by:                     dx=   +0.0 dy=  +42.0 sz 7->7
+  JILLO                          dx=   +0.0 dy=  +41.9 sz 7->7
+  Date reported:                 dx=   +0.0 dy=  +42.0 sz 7->7
+  Checked by: _______________    dx=   +0.0 dy=  +41.9 sz 7->7
+  only in fresh: ['SDHUD', 'BH1', 'GRAVELLY ELASTIC SILT(MH)', '5.9', '94.1', '6.5', '2.6', '91.4', '8.0', '3.3', '88.2', '8.0', '3.3', '84.9', '6.5', '2.6', '82.3', '4.5', '1.8', '80.4', '8.0', '3.3', '5.5', '2.2', '74.9', '2.0', '0.8', '74.1', '0.5', '0.2', '73.9', '1.0', '0.4', '73.5', '1.5', '0.6', '72.9', '2.5', '1.0', '245.4']

@@ -1,0 +1,22 @@
+=== cube geometry comparison (tol=1.0pt) ===
+  Reference: KIRIAINI_AHP_Cubes.pdf
+  Fresh:     _fresh_cube.pdf
+  Total line/edge items: 5
+  Paired (matched): 1
+  Unmatched in ref: H=2, V=0
+  Unmatched in fresh: H=2, V=0
+
+--- H-lines (horizontal) ---
+  [PASS] y=  515.9 ref x=   71.7..  816.4  fresh x=   71.7..  816.4  dy=+0.0 dx0=+0.0 dx1=+0.0
+
+--- V-lines (vertical) ---
+
+--- Unmatched H-lines in reference (2) ---
+  y=   93.5 x=   28.3..  813.5
+  y=  108.3 x=  285.8..  602.3
+
+--- Unmatched H-lines in fresh (2) ---
+  y=   36.9 x=   28.3..  813.5
+  y=   51.6 x=  286.9..  601.2
+
+=== Summary: 1 passed, 0 failed, 4 unmatched ===
