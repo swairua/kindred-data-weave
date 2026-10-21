@@ -268,6 +268,7 @@ CREATE TABLE `compressive_tests` (
   `curing` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `mode_of_failure` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `comment` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `custom_fields` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'not-started',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -281,6 +282,17 @@ INSERT INTO `compressive_tests` (`id`, `project_id`, `test_key`, `date_tested`, 
 (1, 11, 'compressive', '2026-05-11', 'dd', 'dd', 'dd', '', 'dd', 'dd', 'dd', 'dd', 'dd', 'submitted', '2026-05-11 07:05:15', '2026-05-11 07:05:15');
 
 -- --------------------------------------------------------
+
+--
+-- Table structure for table `lab_reference_sequences`
+--
+
+CREATE TABLE `lab_reference_sequences` (
+  `scope` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `next_number` int UNSIGNED NOT NULL DEFAULT 1,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`scope`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Table structure for table `projects`

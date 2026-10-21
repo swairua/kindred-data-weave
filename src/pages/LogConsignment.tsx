@@ -409,13 +409,14 @@ const LogConsignment = () => {
                         <th className="px-3 py-2 font-medium">Type · container</th>
                         <th className="px-3 py-2 font-medium">Mass (kg)</th>
                         <th className="px-3 py-2 font-medium">Condition</th>
+                        <th className="px-3 py-2 font-medium">Fields</th>
                         <th className="px-3 py-2" />
                       </tr>
                     </thead>
                     <tbody>
                       {draft.samples.length === 0 && (
                         <tr>
-                          <td colSpan={7} className="px-3 py-8 text-center text-sm text-muted-foreground">
+                          <td colSpan={8} className="px-3 py-8 text-center text-sm text-muted-foreground">
                             No samples yet — use “Add sample”.
                           </td>
                         </tr>
@@ -512,6 +513,59 @@ const LogConsignment = () => {
                                   </button>
                                 );
                               })}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="space-y-1">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-7 px-2 text-[11px]"
+                                onClick={() =>
+                                  patchSample(index, {
+                                    customFields: [...(draft.samples[index].customFields ?? []), { key: "", value: "" }],
+                                  })
+                                }
+                              >
+                                Add field
+                              </Button>
+                              {(sample.customFields ?? []).map((field, fieldIndex) => (
+                                <div key={fieldIndex} className="flex items-center gap-1">
+                                  <Input
+                                    value={field.key}
+                                    onChange={(e) => {
+                                      const next = [...(sample.customFields ?? [])];
+                                      next[fieldIndex] = { ...next[fieldIndex], key: e.target.value };
+                                      patchSample(index, { customFields: next });
+                                    }}
+                                    placeholder="Field"
+                                    className="h-7 w-20 text-[11px]"
+                                  />
+                                  <Input
+                                    value={field.value}
+                                    onChange={(e) => {
+                                      const next = [...(sample.customFields ?? [])];
+                                      next[fieldIndex] = { ...next[fieldIndex], value: e.target.value };
+                                      patchSample(index, { customFields: next });
+                                    }}
+                                    placeholder="Value"
+                                    className="h-7 w-20 text-[11px]"
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    onClick={() => {
+                                      const next = (sample.customFields ?? []).filter((_, i) => i !== fieldIndex);
+                                      patchSample(index, { customFields: next });
+                                    }}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ))}
                             </div>
                           </td>
                           <td className="px-3 py-3">

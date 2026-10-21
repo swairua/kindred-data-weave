@@ -209,6 +209,7 @@ const ALLOWED_TABLES = [
     'compressive_tests' => true,
     'compressive_cubes' => true,
   'reception_consignments' => true,
+  'lab_reference_sequences' => true,
 ];
 
 function apiLogAction(): string

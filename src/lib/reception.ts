@@ -23,6 +23,7 @@ export interface ReceptionSampleInput {
   condition: ReceptionCondition;
   onHoldReason?: string;
   tests: string[];
+  customFields?: { key: string; value: string }[];
 }
 
 export interface ReceptionConsignmentInput {

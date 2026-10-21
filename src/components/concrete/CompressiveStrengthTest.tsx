@@ -62,6 +62,19 @@ const asText = (value: unknown): string => {
   return text;
 };
 
+const parseCustomFields = (value: unknown): { key: string; value: string }[] => {
+  if (value === null || value === undefined || value === "") return [];
+  try {
+    const parsed = typeof value === "string" ? JSON.parse(value) : value;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((item) => item && typeof item === "object")
+      .map((item) => ({ key: String((item as { key?: unknown }).key ?? ""), value: String((item as { value?: unknown }).value ?? "") }));
+  } catch {
+    return [];
+  }
+};
+
 /** ISO date (or datetime) straight from the API back into a date input. */
 const asDateInput = (value: unknown): string => {
   const text = asText(value);
@@ -87,6 +100,7 @@ const detailsFromApi = (row: Record<string, unknown>): TestDetails => ({
   curing: asText(row.curing),
   modeOfFailure: asText(row.mode_of_failure),
   comment: asText(row.comment),
+  customFields: parseCustomFields(row.custom_fields),
   dateTested: asDateInput(row.date_tested),
 });
 
@@ -108,6 +122,7 @@ interface TestDetails {
   curing: string;
   modeOfFailure: string;
   comment: string;
+  customFields: { key: string; value: string }[];
   dateTested: string;
 }
 
@@ -168,10 +183,40 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     curing: "",
     modeOfFailure: "",
     comment: "",
+    customFields: [],
     dateTested: "",
     ...(testData.concreteTestMetadata ?? {})
   }));
   const hasProjectSelected = !!project.currentProjectId;
+
+  // Auto-generate references for a new compressive test, following the laboratory's
+  // numbering: C/<project initial> L01 per project and CMT C - L001 across all tests.
+  useEffect(() => {
+    if (activeTestId !== null || !project.currentProjectId) return;
+    let active = true;
+    (async () => {
+      try {
+        const [projectTests, allTests] = await Promise.all([
+          listCompressiveTests(project.currentProjectId),
+          listCompressiveTests(),
+        ]);
+        if (!active) return;
+        const initial = (project.projectName || "").trim().charAt(0).toUpperCase() || "X";
+        const projectSeq = (projectTests.data || []).length + 1;
+        const globalSeq = (allTests.data || []).length + 1;
+        setTestDetails((prev) => ({
+          ...prev,
+          labRef: prev.labRef || `C/${initial} L${String(projectSeq).padStart(2, "0")}`,
+          reportNo: prev.reportNo || `CMT C - L${String(globalSeq).padStart(3, "0")}`,
+        }));
+      } catch {
+        // Reference generation is a convenience; a failed lookup leaves the fields blank.
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [project.currentProjectId, activeTestId, project.projectName]);
 
   useEffect(() => {
     // Project metadata only fills blanks: values loaded from a saved test
@@ -427,9 +472,10 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
          report_no: testDetails.reportNo,
          date_received: testDetails.dateReceived || null,
          curing: testDetails.curing,
-         mode_of_failure: testDetails.modeOfFailure,
-         comment: testDetails.comment,
-         status: "submitted",
+          mode_of_failure: testDetails.modeOfFailure,
+          comment: testDetails.comment,
+          custom_fields: JSON.stringify(testDetails.customFields),
+          status: "submitted",
       };
 
       const result = await saveCompressiveTest({
@@ -573,6 +619,35 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     return true;
   };
 
+  const printPDF = async () => {
+    const cubes = exportableCubes();
+    if (cubes.length === 0) {
+      toast.error("Add at least one cube with a load and dimensions before printing");
+      return;
+    }
+    try {
+      const doc = await generateCompressiveStrengthPDF({
+        projectName: project.projectName,
+        clientName: project.clientName,
+        dateReported: project.dateReported,
+        testedBy: testDetails.madeBy,
+        checkedBy: project.checkedBy,
+        labOrganization: project.labOrganization,
+        record: buildRecordView(),
+        rows: cubes,
+        skipDownload: true,
+      });
+      doc.autoPrint();
+      const blobUrl = doc.output("bloburl");
+      const printWindow = window.open(blobUrl, "_blank");
+      if (printWindow) {
+        printWindow.onload = () => printWindow.print();
+      }
+    } catch {
+      toast.error("Compressive Strength (Cube Test) print failed");
+    }
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -626,6 +701,59 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
                 placeholder={item.placeholder ?? "—"}
               />
               )}
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 space-y-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              setTestDetails((prev) => ({
+                ...prev,
+                customFields: [...prev.customFields, { key: "", value: "" }],
+              }))
+            }
+          >
+            Add field
+          </Button>
+          {testDetails.customFields.map((field, index) => (
+            <div key={index} className="flex items-center gap-2">
+              <Input
+                value={field.key}
+                onChange={(e) => {
+                  const next = [...testDetails.customFields];
+                  next[index] = { ...next[index], key: e.target.value };
+                  setTestDetails((prev) => ({ ...prev, customFields: next }));
+                }}
+                placeholder="Field name"
+                className="h-8 text-sm"
+              />
+              <Input
+                value={field.value}
+                onChange={(e) => {
+                  const next = [...testDetails.customFields];
+                  next[index] = { ...next[index], value: e.target.value };
+                  setTestDetails((prev) => ({ ...prev, customFields: next }));
+                }}
+                placeholder="Value"
+                className="h-8 text-sm"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() =>
+                  setTestDetails((prev) => ({
+                    ...prev,
+                    customFields: prev.customFields.filter((_, i) => i !== index),
+                  }))
+                }
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
             </div>
           ))}
         </div>
@@ -721,6 +849,9 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
             }}
           >
             <FileDown className="h-3.5 w-3.5 mr-1" /> PDF
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => void printPDF()}>
+            <Printer className="h-3.5 w-3.5 mr-1" /> Print
           </Button>
           {saveCompleted ? (
             <Button size="sm" variant="default" onClick={handlePrint}><Printer className="h-3.5 w-3.5 mr-1" /> Print to Browser</Button>
