@@ -778,7 +778,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
       </div>
 
        <div className="overflow-x-auto">
-        <table ref={tableRef} className="w-full min-w-[1180px] text-sm border border-border rounded-lg">
+        <table ref={tableRef} className="w-full min-w-[1320px] text-sm border border-border rounded-lg">
           <thead className="bg-muted/50">
             <tr>
               <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">#</th>
@@ -821,10 +821,10 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
                     </div>
                   </td>
                   <td className="py-1.5 px-2"><Input data-nav-row={i} data-nav-col={6} onKeyDown={handleTableKeyDown} type="number" value={row.mass} onChange={(e) => update(i, "mass", e.target.value)} className="h-8 min-w-[96px] text-sm" placeholder="—" /></td>
-                  <td className={`py-1.5 px-2 ${isDensityAbnormal ? "text-red-600 font-semibold" : ""}`}><CalculatedInput value={formatDensity(row)} /></td>
-                  <td className="py-1.5 px-2"><Input data-nav-row={i} data-nav-col={7} onKeyDown={handleTableKeyDown} type="number" value={row.load} onChange={(e) => update(i, "load", e.target.value)} className="h-8 text-sm" placeholder="0" /></td>
-                  <td className="py-1.5 px-2"><CalculatedInput value={formatStrength(row)} />{gain !== "" && (<div className="mt-0.5 text-[11px] leading-tight text-muted-foreground">{gain}</div>)}</td>
-                  <td className="py-1.5 px-2">
+                  <td className={`py-1.5 px-2 min-w-[96px] ${isDensityAbnormal ? "text-red-600 font-semibold" : ""}`}><CalculatedInput value={formatDensity(row)} /></td>
+                  <td className="py-1.5 px-2 min-w-[96px]"><Input data-nav-row={i} data-nav-col={7} onKeyDown={handleTableKeyDown} type="number" value={row.load} onChange={(e) => update(i, "load", e.target.value)} className="h-8 w-24 text-sm" placeholder="0" /></td>
+                  <td className="py-1.5 px-2 min-w-[96px]"><CalculatedInput value={formatStrength(row)} />{gain !== "" && (<div className="mt-0.5 text-[11px] leading-tight text-muted-foreground">{gain}</div>)}</td>
+                  <td className="py-1.5 px-2 min-w-[180px]">
                     {editingRemarksIndex === i ? (
                       <div className="flex gap-1">
                         <Input data-nav-row={i} data-nav-col={8} onKeyDown={handleTableKeyDown} value={row.remarks} onChange={(e) => update(i, "remarks", e.target.value)} className="h-8 text-sm flex-1" placeholder="—" />
