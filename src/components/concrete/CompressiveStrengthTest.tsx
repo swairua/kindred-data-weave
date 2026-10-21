@@ -136,6 +136,24 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   const location = useLocation();
   const [rows, setRows] = useState<Row[]>(() => [emptyCubeRow()]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const tableRef = useRef<HTMLTableElement | null>(null);
+
+  const handleTableKeyDown = (event: { key: string; currentTarget: HTMLInputElement; preventDefault: () => void }) => {
+    const row = Number(event.currentTarget.dataset.navRow);
+    const col = Number(event.currentTarget.dataset.navCol);
+    let nextRow = row;
+    let nextCol = col;
+    if (event.key === "ArrowRight") nextCol += 1;
+    else if (event.key === "ArrowLeft") nextCol -= 1;
+    else if (event.key === "ArrowDown") nextRow += 1;
+    else if (event.key === "ArrowUp") nextRow -= 1;
+    else return;
+    const target = tableRef.current?.querySelector<HTMLInputElement>(`input[data-nav-row="${nextRow}"][data-nav-col="${nextCol}"]`);
+    if (target) {
+      event.preventDefault();
+      target.focus();
+    }
+  };
   const [isLoadingCubes, setIsLoadingCubes] = useState(false);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
@@ -759,8 +777,8 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[1180px] text-sm border border-border rounded-lg">
+       <div className="overflow-x-auto">
+        <table ref={tableRef} className="w-full min-w-[1180px] text-sm border border-border rounded-lg">
           <thead className="bg-muted/50">
             <tr>
               <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">#</th>
@@ -789,27 +807,27 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
                   onClick={() => handleRowClick(i)}
                 >
                   <td className="py-1.5 px-2 text-muted-foreground">{i + 1}</td>
-                  <td className="py-1.5 px-2"><Input value={row.mark} onChange={(e) => update(i, "mark", e.target.value)} className="h-8 text-sm" placeholder="—" /></td>
-                  <td className="py-1.5 px-2"><Input type="date" value={row.dateOfCast} onChange={(e) => update(i, "dateOfCast", e.target.value)} className="h-8 min-w-[132px] text-sm" /></td>
-                  <td className="py-1.5 px-2"><Input type="date" value={row.dateOfTest} onChange={(e) => update(i, "dateOfTest", e.target.value)} className="h-8 min-w-[132px] text-sm" /></td>
+                  <td className="py-1.5 px-2"><Input data-nav-row={i} data-nav-col={0} onKeyDown={handleTableKeyDown} value={row.mark} onChange={(e) => update(i, "mark", e.target.value)} className="h-8 text-sm" placeholder="—" /></td>
+                  <td className="py-1.5 px-2"><Input data-nav-row={i} data-nav-col={1} onKeyDown={handleTableKeyDown} type="date" value={row.dateOfCast} onChange={(e) => update(i, "dateOfCast", e.target.value)} className="h-8 min-w-[132px] text-sm" /></td>
+                  <td className="py-1.5 px-2"><Input data-nav-row={i} data-nav-col={2} onKeyDown={handleTableKeyDown} type="date" value={row.dateOfTest} onChange={(e) => update(i, "dateOfTest", e.target.value)} className="h-8 min-w-[132px] text-sm" /></td>
                   <td className="py-1.5 px-2"><CalculatedInput value={getAge(row.dateOfCast, row.dateOfTest)} /></td>
                   <td className="py-1.5 px-2">
                     <div className="flex gap-1 text-xs">
-                      <Input type="number" value={row.width} onChange={(e) => update(i, "width", e.target.value)} className="h-8 w-20" placeholder="L" />
+                      <Input data-nav-row={i} data-nav-col={3} onKeyDown={handleTableKeyDown} type="number" value={row.width} onChange={(e) => update(i, "width", e.target.value)} className="h-8 w-20" placeholder="L" />
                       <span className="text-muted-foreground">×</span>
-                      <Input type="number" value={row.height} onChange={(e) => update(i, "height", e.target.value)} className="h-8 w-20" placeholder="W" />
+                      <Input data-nav-row={i} data-nav-col={4} onKeyDown={handleTableKeyDown} type="number" value={row.height} onChange={(e) => update(i, "height", e.target.value)} className="h-8 w-20" placeholder="W" />
                       <span className="text-muted-foreground">×</span>
-                      <Input type="number" value={row.depth} onChange={(e) => update(i, "depth", e.target.value)} className="h-8 w-20" placeholder="H" />
+                      <Input data-nav-row={i} data-nav-col={5} onKeyDown={handleTableKeyDown} type="number" value={row.depth} onChange={(e) => update(i, "depth", e.target.value)} className="h-8 w-20" placeholder="H" />
                     </div>
                   </td>
-                  <td className="py-1.5 px-2"><Input type="number" value={row.mass} onChange={(e) => update(i, "mass", e.target.value)} className="h-8 min-w-[96px] text-sm" placeholder="—" /></td>
+                  <td className="py-1.5 px-2"><Input data-nav-row={i} data-nav-col={6} onKeyDown={handleTableKeyDown} type="number" value={row.mass} onChange={(e) => update(i, "mass", e.target.value)} className="h-8 min-w-[96px] text-sm" placeholder="—" /></td>
                   <td className={`py-1.5 px-2 ${isDensityAbnormal ? "text-red-600 font-semibold" : ""}`}><CalculatedInput value={formatDensity(row)} /></td>
-                  <td className="py-1.5 px-2"><Input type="number" value={row.load} onChange={(e) => update(i, "load", e.target.value)} className="h-8 text-sm" placeholder="0" /></td>
+                  <td className="py-1.5 px-2"><Input data-nav-row={i} data-nav-col={7} onKeyDown={handleTableKeyDown} type="number" value={row.load} onChange={(e) => update(i, "load", e.target.value)} className="h-8 text-sm" placeholder="0" /></td>
                   <td className="py-1.5 px-2"><CalculatedInput value={formatStrength(row)} />{gain !== "" && (<div className="mt-0.5 text-[11px] leading-tight text-muted-foreground">{gain}</div>)}</td>
                   <td className="py-1.5 px-2">
                     {editingRemarksIndex === i ? (
                       <div className="flex gap-1">
-                        <Input value={row.remarks} onChange={(e) => update(i, "remarks", e.target.value)} className="h-8 text-sm flex-1" placeholder="—" />
+                        <Input data-nav-row={i} data-nav-col={8} onKeyDown={handleTableKeyDown} value={row.remarks} onChange={(e) => update(i, "remarks", e.target.value)} className="h-8 text-sm flex-1" placeholder="—" />
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingRemarksIndex(null)}><CheckCircle2 className="h-3.5 w-3.5" /></Button>
                       </div>
                     ) : (
