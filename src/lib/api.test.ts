@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createRecord, fetchCurrentUser, getSessionToken, listRecords, readRecord, setSessionToken } from "@/lib/api";
+import { createRecord, fetchCurrentUser, getSessionToken, listReceptionFieldDefinitions, listReceptionPhotos, listRecords, readRecord, setSessionToken } from "@/lib/api";
 
 const fetchMock = vi.fn();
 
@@ -143,5 +143,67 @@ describe("numeric column coercion", () => {
     const created = await createRecord<{ id: number }>("test_results", { test_key: "grading" });
     expect(created.id).toBe(99);
     expect(created.data).toMatchObject({ id: 99, project_id: 42 });
+  });
+});
+
+describe("reception API response mapping", () => {
+  it("maps PHP custom-field columns and parses options JSON", async () => {
+    fetchMock.mockResolvedValue(response(200, {
+      table: "reception_field_definitions",
+      data: [{
+        id: "12",
+        area: "sample",
+        field_key: "soil_type",
+        label: "Soil type",
+        value_type: "select",
+        options: '["Clay","Sand"]',
+        sort_order: "3",
+        is_required: "1",
+        is_active: "1",
+      }],
+      limit: 500,
+      offset: 0,
+    }));
+
+    await expect(listReceptionFieldDefinitions()).resolves.toEqual([{
+      id: 12,
+      area: "sample",
+      fieldKey: "soil_type",
+      label: "Soil type",
+      valueType: "select",
+      options: ["Clay", "Sand"],
+      sortOrder: 3,
+      isRequired: true,
+      isActive: true,
+    }]);
+  });
+
+  it("maps PHP photo columns to the reception photo model", async () => {
+    fetchMock.mockResolvedValue(response(200, {
+      table: "reception_photos",
+      data: [{
+        id: "8",
+        rc_no: "RC-26-0001",
+        file_path: "/uploads/reception/photo.jpg",
+        original_filename: "photo.jpg",
+        file_size: "2048",
+        mime_type: "image/jpeg",
+        uploaded_by: "4",
+        created_at: "2026-06-12 10:00:00",
+      }],
+      limit: 500,
+      offset: 0,
+    }));
+
+    await expect(listReceptionPhotos("RC-26-0001")).resolves.toEqual([{
+      id: 8,
+      rcNo: "RC-26-0001",
+      filePath: `${window.location.origin}/uploads/reception/photo.jpg`,
+      originalFilename: "photo.jpg",
+      fileSize: 2048,
+      mimeType: "image/jpeg",
+      uploadedBy: 4,
+      createdAt: "2026-06-12 10:00:00",
+    }]);
   });
 });

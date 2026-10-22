@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -39,7 +39,7 @@ export const ConsignmentPhotos = ({
         if (photo) {
           next.push(photo);
         } else {
-          toast.error(Failed to upload );
+          toast.error("Failed to upload photo");
         }
       }
       onChange(next);
