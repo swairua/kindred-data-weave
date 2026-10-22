@@ -301,8 +301,8 @@ const LogConsignment = () => {
                 <CardHeader>
                   <CardTitle className="text-sm">1 · Consignment</CardTitle>
                 </CardHeader>
-                <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <div className="space-y-1.5">
+                <CardContent className="flex flex-wrap gap-4">
+                  <div className="space-y-1.5 w-full lg:w-1/3">
                     <Label htmlFor="lc-client">Client</Label>
                     <Input
                       id="lc-client"
@@ -311,7 +311,7 @@ const LogConsignment = () => {
                       placeholder="Kenya Railways"
                     />
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 w-full lg:w-1/3">
                     <Label htmlFor="lc-job">Job / project</Label>
                     <Input
                       id="lc-job"
@@ -320,7 +320,7 @@ const LogConsignment = () => {
                       placeholder="26-0418"
                     />
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 w-full lg:w-1/3">
                     <Label htmlFor="lc-project">Project</Label>
                     <Input
                       id="lc-project"
@@ -329,7 +329,7 @@ const LogConsignment = () => {
                       placeholder="KUMIP Line 1"
                     />
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 w-full lg:w-1/3">
                     <Label htmlFor="lc-clientref">Client request form ref.</Label>
                     <Input
                       id="lc-clientref"
@@ -338,7 +338,7 @@ const LogConsignment = () => {
                       placeholder="KR-SSF-0093"
                     />
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 w-full lg:w-1/3">
                     <Label htmlFor="lc-delivered">Delivered by</Label>
                     <Input
                       id="lc-delivered"
@@ -347,7 +347,7 @@ const LogConsignment = () => {
                       placeholder="Joel Wairua (CMTC field team)"
                     />
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 w-full lg:w-1/3">
                     <Label htmlFor="lc-vehicle">Vehicle reg.</Label>
                     <Input
                       id="lc-vehicle"
@@ -356,7 +356,7 @@ const LogConsignment = () => {
                       placeholder="KDx 000X"
                     />
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 w-full lg:w-1/3">
                     <Label htmlFor="lc-received">Received · date & time</Label>
                     <Input
                       id="lc-received"
@@ -366,7 +366,7 @@ const LogConsignment = () => {
                     />
                   </div>
 
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 w-full lg:w-1/3">
                     <Label htmlFor="lc-castdate">Cubes cast on</Label>
                     <Input
                       id="lc-castdate"
@@ -377,16 +377,17 @@ const LogConsignment = () => {
                   </div>
 
                   {defsLoaded && (
-                    <CustomFieldsEditor
-                      area="consignment"
-                      fields={draft.customFields ?? []}
-                      definitions={fieldDefs}
-                      onChange={(next) => patchDraft({ customFields: next })}
-                    />
+                    <div className="w-full lg:w-1/3">
+                      <CustomFieldsEditor
+                        area="consignment"
+                        fields={draft.customFields ?? []}
+                        definitions={fieldDefs}
+                        onChange={(next) => patchDraft({ customFields: next })}
+                      />
+                    </div>
                   )}
 
-
-                  <div className="space-y-1.5 sm:col-span-3">
+                  <div className="w-full space-y-1.5">
                     <Label>Transport check</Label>
                     <div className="flex flex-wrap gap-5 pt-1">
                       {TRANSPORT_CHECKS.map(([key, label]) => (
@@ -409,7 +410,7 @@ const LogConsignment = () => {
                     )}
                   </div>
 
-                  <div className="sm:col-span-3">
+                  <div className="w-full">
                     <ConsignmentPhotos
                       rcNo={draft.rcNo}
                       photos={draft.photos ?? []}
