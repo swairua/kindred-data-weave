@@ -8,12 +8,20 @@ import type { ReceptionConsignmentInput } from "@/lib/reception";
 const receptionMocks = vi.hoisted(() => ({
   listReceptionConsignments: vi.fn(),
   saveReceptionConsignment: vi.fn(),
+  listReceptionFieldDefinitions: vi.fn().mockResolvedValue([]),
+  listReceptionPhotos: vi.fn().mockResolvedValue([]),
+  uploadReceptionPhoto: vi.fn().mockResolvedValue(null),
+  deleteReceptionPhoto: vi.fn().mockResolvedValue(true),
   generateReceptionAckPDF: vi.fn(),
 }));
 
 vi.mock("@/lib/api", () => ({
   listReceptionConsignments: receptionMocks.listReceptionConsignments,
   saveReceptionConsignment: receptionMocks.saveReceptionConsignment,
+  listReceptionFieldDefinitions: receptionMocks.listReceptionFieldDefinitions,
+  listReceptionPhotos: receptionMocks.listReceptionPhotos,
+  uploadReceptionPhoto: receptionMocks.uploadReceptionPhoto,
+  deleteReceptionPhoto: receptionMocks.deleteReceptionPhoto,
 }));
 
 vi.mock("@/lib/receptionAckPdfGenerator", () => ({

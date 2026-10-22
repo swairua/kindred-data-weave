@@ -21,3 +21,7 @@ database/wayrusc1_labdatacraft*.sql
 
 # Local database credentials/overrides - never commit.
 config/database.local.php
+
+
+# User uploads - never commit.
+uploads/

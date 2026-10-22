@@ -1,4 +1,4 @@
-import type { ReceptionConsignmentInput } from "@/lib/reception";
+import type { ReceptionConsignmentInput, ReceptionFieldArea, ReceptionFieldDefinition, ReceptionPhoto } from "@/lib/reception";
 import { type ApiCompressiveTestRow } from "@/types/api";
 
 const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
@@ -761,6 +761,164 @@ export const saveReceptionConsignment = async (consignment: ReceptionConsignment
     localStorage.setItem(RECEPTION_STORAGE_KEY, JSON.stringify(next));
   } catch {
     // Storage full/blocked: reception still works for the session.
+  }
+};
+
+/** Reception custom-field definitions helpers. */
+
+export const listReceptionFieldDefinitions = async (
+  area?: ReceptionFieldArea
+): Promise<ReceptionFieldDefinition[]> => {
+  try {
+    const response = await listRecords<ReceptionFieldDefinition>("reception_field_definitions", {
+      action: "list",
+      table: "reception_field_definitions",
+      limit: "500",
+      ...(area ? { area } : {}),
+    });
+    return (response.data || []).map((row) => ({
+      ...row,
+      id: typeof row.id === "string" ? Number(row.id) : row.id,
+      isRequired: row.isRequired === 1 || row.isRequired === true || row.isRequired === "1",
+      isActive: row.isActive === 1 || row.isActive === true || row.isActive === "1",
+      sortOrder: typeof row.sortOrder === "string" ? Number(row.sortOrder) : row.sortOrder,
+    }));
+  } catch {
+    return [];
+  }
+};
+
+export const createReceptionFieldDefinition = async (
+  def: Omit<ReceptionFieldDefinition, "id">
+): Promise<ReceptionFieldDefinition | null> => {
+  try {
+    const response = await createRecord<ReceptionFieldDefinition>(
+      "reception_field_definitions",
+      {
+        area: def.area,
+        field_key: def.fieldKey,
+        label: def.label,
+        value_type: def.valueType,
+        options: def.options ? JSON.stringify(def.options) : null,
+        sort_order: def.sortOrder,
+        is_required: def.isRequired ? 1 : 0,
+        is_active: def.isActive ? 1 : 0,
+      }
+    );
+    return response.data ?? null;
+  } catch {
+    return null;
+  }
+};
+
+export const updateReceptionFieldDefinition = async (
+  id: number | string,
+  def: Partial<Omit<ReceptionFieldDefinition, "id">>
+): Promise<ReceptionFieldDefinition | null> => {
+  try {
+    const data: Record<string, unknown> = {};
+    if (def.area !== undefined) data.area = def.area;
+    if (def.fieldKey !== undefined) data.field_key = def.fieldKey;
+    if (def.label !== undefined) data.label = def.label;
+    if (def.valueType !== undefined) data.value_type = def.valueType;
+    if (def.options !== undefined) data.options = JSON.stringify(def.options);
+    if (def.sortOrder !== undefined) data.sort_order = def.sortOrder;
+    if (def.isRequired !== undefined) data.is_required = def.isRequired ? 1 : 0;
+    if (def.isActive !== undefined) data.is_active = def.isActive ? 1 : 0;
+    const response = await updateRecord<ReceptionFieldDefinition>(
+      "reception_field_definitions",
+      id,
+      data
+    );
+    return response.data ?? null;
+  } catch {
+    return null;
+  }
+};
+
+export const deleteReceptionFieldDefinition = async (id: number | string): Promise<boolean> => {
+  try {
+    await deleteRecord<ReceptionFieldDefinition>("reception_field_definitions", id);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+/** Reception photo helpers. */
+
+export const listReceptionPhotos = async (rcNo: string): Promise<ReceptionPhoto[]> => {
+  try {
+    const response = await listRecords<ReceptionPhoto>("reception_photos", {
+      action: "list",
+      table: "reception_photos",
+      filter: `rc_no=${rcNo}`,
+      limit: "500",
+    });
+    return (response.data || []).map((row) => ({
+      ...row,
+      id: typeof row.id === "string" ? Number(row.id) : row.id,
+      rcNo: row.rcNo,
+      filePath: row.filePath,
+    }));
+  } catch {
+    return [];
+  }
+};
+
+export const uploadReceptionPhoto = async (
+  file: File,
+  rcNo: string
+): Promise<ReceptionPhoto | null> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("rc_no", rcNo);
+
+  const url = buildApiUrl({ action: "upload-reception-photo" });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout for uploads
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      credentials: "include",
+      body: formData,
+      signal: controller.signal,
+    });
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      const errorMessage = data?.message || data?.error || `HTTP ${response.status}`;
+      console.error("[API] Reception photo upload failed -", errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    return {
+      id: data?.id ?? 0,
+      rcNo: data?.rc_no ?? rcNo,
+      filePath: data?.file_path ?? "",
+      originalFilename: data?.original_filename ?? file.name,
+      fileSize: data?.file_size ?? file.size,
+      mimeType: data?.mime_type ?? file.type,
+    } as ReceptionPhoto;
+  } catch (error) {
+    console.error("[API] Reception photo upload error:", error);
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
+export const deleteReceptionPhoto = async (id: number | string): Promise<boolean> => {
+  try {
+    await apiRequest<ApiWriteResponse<null>>(
+      { method: "DELETE", body: JSON.stringify({ id }) },
+      { action: "delete-reception-photo" }
+    );
+    return true;
+  } catch {
+    return false;
   }
 };
 

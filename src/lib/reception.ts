@@ -26,6 +26,33 @@ export interface ReceptionSampleInput {
   customFields?: { key: string; value: string }[];
 }
 
+/** Area where a custom field or photo applies. */
+export type ReceptionFieldArea = 'consignment' | 'transport' | 'sample';
+
+export interface ReceptionFieldDefinition {
+  id: number;
+  area: ReceptionFieldArea;
+  fieldKey: string;
+  label: string;
+  valueType: 'text' | 'number' | 'date' | 'select';
+  options?: string[];
+  sortOrder: number;
+  isRequired: boolean;
+  isActive: boolean;
+}
+
+export interface ReceptionPhoto {
+  id: number;
+  rcNo: string;
+  filePath: string;
+  originalFilename?: string;
+  fileSize?: number;
+  mimeType?: string;
+  caption?: string;
+  uploadedBy?: number;
+  createdAt?: string;
+}
+
 export interface ReceptionConsignmentInput {
   rcNo: string;
   jobNo: string;
@@ -46,8 +73,11 @@ export interface ReceptionConsignmentInput {
     tubesUpright?: boolean;
     fieldLog?: boolean;
   };
-  /** Number of photos attached to the consignment. */
-  photosCount?: number;
+  /** User-defined custom fields per area. Stored inside payload_json keyed by field_key. */
+  customFields?: { key: string; value: string }[];            // consignment-level fields
+  transportCustomFields?: { key: string; value: string }[];   // transport-check fields
+  /** Attached photos of the consignment (replaces the old photosCount counter). */
+  photos?: ReceptionPhoto[];
   /** Date the cubes in this consignment were cast — drives the crushing due dates. */
   cubeCastDate?: string;
 }
@@ -157,6 +187,9 @@ export const emptyReceptionConsignment = (rcNo: string): ReceptionConsignmentInp
   storagePlan: "Auto by type",
   status: "draft",
   samples: [],
+  customFields: [],
+  transportCustomFields: [],
+  photos: [],
 });
 
 /** Short description of a sample type, as shown under the type on the samples grid. */

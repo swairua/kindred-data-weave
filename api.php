@@ -210,6 +210,8 @@ const ALLOWED_TABLES = [
     'compressive_cubes' => true,
   'reception_consignments' => true,
   'lab_reference_sequences' => true,
+  'reception_field_definitions' => true,
+  'reception_photos' => true,
 ];
 
 function apiLogAction(): string
@@ -849,6 +851,157 @@ try {
             }
             respond(['error' => 'Failed to save image to database', 'details' => $e->getMessage()], 500);
         }
+    }
+
+    // ============= RECEPTION PHOTO UPLOAD ENDPOINT =============
+    if ($action === 'upload-reception-photo') {
+        ini_set('log_errors', 1);
+        ini_set('error_log', __DIR__ . '/uploads_error.log');
+
+        // Require authentication
+        $user = requireAuth($conn);
+        if (!$user) {
+            respond(['error' => 'Unauthorized', 'debug' => 'Session validation failed'], 401);
+        }
+        $userId = (int) $_SESSION['user_id'];
+
+        // Validate rc_no
+        $rcNo = trim((string) ($_POST['rc_no'] ?? $_GET['rc_no'] ?? ''));
+        if (!$rcNo || !preg_match('/^[A-Za-z0-9_-]+$/', $rcNo)) {
+            respond(['error' => 'Missing or invalid rc_no'], 400);
+        }
+
+        // Check if file was uploaded
+        if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
+            respond(['error' => 'No file uploaded or upload error'], 400);
+        }
+
+        $file = $_FILES['file'];
+
+        // Validate file size (max 10MB)
+        $maxSize = 10 * 1024 * 1024;
+        if ($file['size'] > $maxSize) {
+            respond(['error' => 'File too large. Maximum size is 10MB'], 413);
+        }
+
+        // Validate MIME type
+        $allowed_mimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!in_array($file['type'], $allowed_mimes, true)) {
+            respond(['error' => 'Invalid file type. Allowed: JPG, PNG, GIF, WebP'], 400);
+        }
+
+        // Create upload directory: uploads/reception/
+        $upload_dir = __DIR__ . '/uploads/reception/';
+        if (!is_dir($upload_dir)) {
+            if (!@mkdir($upload_dir, 0755, true)) {
+                error_log('Reception upload directory creation failed');
+                respond(['error' => 'Failed to create upload directory'], 500);
+            }
+        }
+
+        // Generate unique filename prefixed with rc_no
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        $filename = $rcNo . '_' . date('Ymd_His') . '_' . bin2hex(random_bytes(6)) . '.' . $ext;
+        $file_path = $upload_dir . $filename;
+        $relative_path = '/uploads/reception/' . $filename;
+
+        // Move uploaded file
+        if (!@move_uploaded_file($file['tmp_name'], $file_path)) {
+            error_log('Reception photo move failed');
+            respond(['error' => 'Failed to save uploaded file'], 500);
+        }
+
+        // Insert into database
+        try {
+            $stmt = $conn->prepare(
+                "INSERT INTO reception_photos (rc_no, file_path, original_filename, file_size, mime_type, uploaded_by)
+                 VALUES (?, ?, ?, ?, ?, ?)"
+            );
+            if (!$stmt) {
+                throw new Exception("Prepare failed: " . $conn->error);
+            }
+
+            $stmt->bind_param(
+                'sssisi',
+                $rcNo,
+                $relative_path,
+                $file['name'],
+                $file['size'],
+                $file['type'],
+                $userId
+            );
+
+            if (!$stmt->execute()) {
+                throw new Exception("Execute failed: " . $stmt->error);
+            }
+
+            $photo_id = $conn->insert_id;
+
+            respond([
+                'success' => true,
+                'message' => 'Photo uploaded successfully',
+                'id' => $photo_id,
+                'file_path' => $relative_path,
+                'mime_type' => $file['type'],
+                'rc_no' => $rcNo,
+            ], 200);
+
+        } catch (Exception $e) {
+            error_log('Reception photo database insert failed (' . get_class($e) . ')');
+            if (file_exists($file_path)) {
+                if (!@unlink($file_path)) {
+                    error_log('Reception photo cleanup failed');
+                }
+            }
+            respond(['error' => 'Failed to save photo to database', 'details' => $e->getMessage()], 500);
+        }
+    }
+
+    // ============= RECEPTION PHOTO DELETE ENDPOINT =============
+    if ($action === 'delete-reception-photo') {
+        $user = requireAuth($conn);
+        if (!$user) {
+            respond(['error' => 'Unauthorized', 'debug' => 'Session validation failed'], 401);
+        }
+
+        $body = $body ?: [];
+        $id = $_GET['id'] ?? $body['id'] ?? null;
+        if ($id === null || $id === '') {
+            respond(['error' => 'Missing id'], 400);
+        }
+
+        // Fetch the photo row so we can delete the file and verify ownership
+        $stmt = $conn->prepare("SELECT id, file_path FROM reception_photos WHERE id = ? LIMIT 1");
+        if (!$stmt) {
+            respond(['error' => 'Database error'], 500);
+        }
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if (!$row) {
+            respond(['error' => 'Photo not found'], 404);
+        }
+
+        // Unlink the physical file (path-validated inside uploads/)
+        $filePath = __DIR__ . $row['file_path'];
+        $realPath = realpath($filePath);
+        $uploadsDir = realpath(__DIR__ . '/uploads/');
+        if ($realPath && $uploadsDir && strpos($realPath, $uploadsDir) === 0 && file_exists($realPath)) {
+            @unlink($realPath);
+        }
+
+        // Delete the row
+        $stmt = $conn->prepare("DELETE FROM reception_photos WHERE id = ?");
+        if (!$stmt) {
+            respond(['error' => 'Database error'], 500);
+        }
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+        $stmt->close();
+
+        respond(['success' => true, 'message' => 'Photo deleted', 'id' => $id], 200);
     }
 
     // ============= IMAGE SERVE ENDPOINT (fixes CORS for exports) =============

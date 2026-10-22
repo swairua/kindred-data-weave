@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import Navigation from "@/components/Navigation";
-import { listReceptionConsignments, saveReceptionConsignment } from "@/lib/api";
+import { listReceptionConsignments, listReceptionFieldDefinitions, listReceptionPhotos, saveReceptionConsignment } from "@/lib/api";
 import {
   RECEPTION_TEST_CODES,
   SAMPLE_TYPE_CONTAINERS,
@@ -28,12 +28,15 @@ import {
   sampleTypeTag,
   type ReceptionCondition,
   type ReceptionConsignmentInput,
+  type ReceptionFieldDefinition,
   type ReceptionSampleInput,
 } from "@/lib/reception";
 import { generateReceptionAckPDF } from "@/lib/receptionAckPdfGenerator";
 import { useSession } from "@/context/SessionContext";
+import { CustomFieldsEditor } from "@/components/reception/CustomFieldsEditor";
+import { ConsignmentPhotos } from "@/components/reception/ConsignmentPhotos";
 import { toast } from "sonner";
-import { AlertTriangle, ArrowLeft, Camera, Check, Loader2, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, Loader2, Plus, Trash2 } from "lucide-react";
 
 const CONDITIONS: ReceptionCondition[] = ["Intact", "Disturbed", "Seal broken", "Too little"];
 
@@ -93,14 +96,18 @@ const LogConsignment = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
+  const [fieldDefs, setFieldDefs] = useState<ReceptionFieldDefinition[]>([]);
+  const [defsLoaded, setDefsLoaded] = useState(false);
 
   // Load the consignment being edited, or seed a brand new draft with the next
   // consignment number and the first Lab ID of the job.
   useEffect(() => {
     let active = true;
-    listReceptionConsignments()
-      .then((rows) => {
+    Promise.all([listReceptionConsignments(), listReceptionFieldDefinitions()])
+      .then(([rows, defs]) => {
         if (!active) return;
+        setFieldDefs(defs);
+        setDefsLoaded(true);
         if (rcNo && rcNo !== "new") {
           const match = rows.find((r) => r.rcNo === decodeURIComponent(rcNo));
           if (match) setDraft({ ...match, transportChecks: match.transportChecks ?? {} });
@@ -117,7 +124,10 @@ const LogConsignment = () => {
         setLoaded(true);
       })
       .catch(() => {
-        if (active) setLoaded(true);
+        if (active) {
+          setLoaded(true);
+          setDefsLoaded(true);
+        }
       });
     return () => {
       active = false;
@@ -364,6 +374,16 @@ const LogConsignment = () => {
                     />
                   </div>
 
+                  {defsLoaded && (
+                    <CustomFieldsEditor
+                      area="consignment"
+                      fields={draft.customFields ?? []}
+                      definitions={fieldDefs}
+                      onChange={(next) => patchDraft({ customFields: next })}
+                    />
+                  )}
+
+
                   <div className="space-y-1.5 sm:col-span-3">
                     <Label>Transport check</Label>
                     <div className="flex flex-wrap gap-5 pt-1">
@@ -376,18 +396,26 @@ const LogConsignment = () => {
                           {label}
                         </label>
                       ))}
+
+                    {defsLoaded && (
+                      <CustomFieldsEditor
+                        area="transport"
+                        fields={draft.transportCustomFields ?? []}
+                        definitions={fieldDefs}
+                        onChange={(next) => patchDraft({ transportCustomFields: next })}
+                      />
+                    )}
+
                     </div>
                   </div>
 
                   <div className="sm:col-span-3">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5"
-                      onClick={() => patchDraft({ photosCount: (draft.photosCount ?? 0) + 1 })}
-                    >
-                      <Camera className="h-4 w-4" /> Photos of consignment · {draft.photosCount ?? 0}
-                    </Button>
+                    <ConsignmentPhotos
+                      rcNo={draft.rcNo}
+                      photos={draft.photos ?? []}
+                      onChange={(next) => patchDraft({ photos: next })}
+                      disabled={!draft.rcNo || draft.rcNo === "RC-26-0001"}
+                    />
                   </div>
                 </CardContent>
               </Card>
@@ -517,55 +545,14 @@ const LogConsignment = () => {
                           </td>
                           <td className="px-3 py-3">
                             <div className="space-y-1">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="h-7 px-2 text-[11px]"
-                                onClick={() =>
-                                  patchSample(index, {
-                                    customFields: [...(draft.samples[index].customFields ?? []), { key: "", value: "" }],
-                                  })
-                                }
-                              >
-                                Add field
-                              </Button>
-                              {(sample.customFields ?? []).map((field, fieldIndex) => (
-                                <div key={fieldIndex} className="flex items-center gap-1">
-                                  <Input
-                                    value={field.key}
-                                    onChange={(e) => {
-                                      const next = [...(sample.customFields ?? [])];
-                                      next[fieldIndex] = { ...next[fieldIndex], key: e.target.value };
-                                      patchSample(index, { customFields: next });
-                                    }}
-                                    placeholder="Field"
-                                    className="h-7 w-20 text-[11px]"
-                                  />
-                                  <Input
-                                    value={field.value}
-                                    onChange={(e) => {
-                                      const next = [...(sample.customFields ?? [])];
-                                      next[fieldIndex] = { ...next[fieldIndex], value: e.target.value };
-                                      patchSample(index, { customFields: next });
-                                    }}
-                                    placeholder="Value"
-                                    className="h-7 w-20 text-[11px]"
-                                  />
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6"
-                                    onClick={() => {
-                                      const next = (sample.customFields ?? []).filter((_, i) => i !== fieldIndex);
-                                      patchSample(index, { customFields: next });
-                                    }}
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              ))}
+                              {defsLoaded && (
+                                <CustomFieldsEditor
+                                  area="sample"
+                                  fields={sample.customFields ?? []}
+                                  definitions={fieldDefs}
+                                  onChange={(next) => patchSample(index, { customFields: next })}
+                                />
+                              )}
                             </div>
                           </td>
                           <td className="px-3 py-3">
@@ -792,4 +779,10 @@ const LogConsignment = () => {
   );
 };
 
-export default LogConsignment;
+export default LogConsignment;
+
+
+
+
+
+
