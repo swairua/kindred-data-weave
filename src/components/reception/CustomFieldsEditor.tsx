@@ -1,11 +1,11 @@
-﻿"use client";
+"use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, ArrowRight, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import type { ReceptionFieldArea, ReceptionFieldDefinition } from "@/lib/reception";
 
 type FieldValue = { key: string; value: string };
@@ -27,35 +27,21 @@ export const CustomFieldsEditor = ({
   definitions,
   onChange,
 }: CustomFieldsEditorProps) => {
-  const [currentArea, setCurrentArea] = useState<ReceptionFieldArea>(area);
-  const [adHocKey, setAdHocKey] = useState("");
-
-  const AREAS: ReceptionFieldArea[] = ["consignment", "transport", "sample"];
   const AREA_LABELS: Record<ReceptionFieldArea, string> = {
     consignment: "Consignment",
     transport: "Transport",
     sample: "Sample",
+    tests: "Test request",
   };
 
   const activeDefinitions = useMemo(
-    () => definitions.filter((d) => d.area === currentArea && d.isActive).sort((a, b) => a.sortOrder - b.sortOrder),
-    [currentArea, definitions]
+    () => definitions.filter((d) => d.area === area && d.isActive).sort((a, b) => a.sortOrder - b.sortOrder),
+    [area, definitions]
   );
 
-  const goToPrev = useCallback(() => {
-    setCurrentArea((prev) => AREAS[(AREAS.indexOf(prev) + AREAS.length - 1) % AREAS.length]);
-  }, []);
-
-  const goToNext = useCallback(() => {
-    setCurrentArea((prev) => AREAS[(AREAS.indexOf(prev) + 1) % AREAS.length]);
-  }, []);
-
   const addAdHocField = useCallback(() => {
-    const key = adHocKey.trim();
-    if (!key) return;
-    onChange([...fields, { key, value: "" }]);
-    setAdHocKey("");
-  }, [adHocKey, fields, onChange]);
+    onChange([...fields, { key: "", value: "" }]);
+  }, [fields, onChange]);
 
   const updateField = useCallback(
     (index: number, next: FieldValue) => {
@@ -73,33 +59,18 @@ export const CustomFieldsEditor = ({
     [fields, onChange]
   );
 
-  if (activeDefinitions.length === 0 && fields.length === 0) {
-    return null;
-  }
-
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-medium">{AREA_LABELS[area]} custom inputs</span>
         <Button
           type="button"
           variant="outline"
-          size="icon"
-          className="h-8 w-8 text-xs p-0"
-          onClick={goToPrev}
+          size="sm"
+          aria-label={`Add ${AREA_LABELS[area].toLowerCase()} custom input`}
+          onClick={addAdHocField}
         >
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <span className="flex items-center gap-1 text-xs font-medium uppercase tracking-wider">
-          {AREA_LABELS[currentArea]} Section
-        </span>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          className="h-8 w-8 text-xs p-0"
-          onClick={goToNext}
-        >
-          <ArrowRight className="h-4 w-4" />
+          <Plus className="mr-1 h-3 w-3" /> Add custom input
         </Button>
       </div>
 
@@ -157,11 +128,8 @@ export const CustomFieldsEditor = ({
 
       {/* Ad-hoc (user-defined) fields */}
 
-      {fields.length > 0 && (
+      {fields.some((field) => !activeDefinitions.some((definition) => definition.fieldKey === field.key)) && (
         <div className="border-t pt-2 space-y-1">
-          <div className="flex items-center gap-2 text-[10px] text-muted-foreground uppercase tracking-wider">
-            <Plus className="h-3 w-3" /> Additional fields
-          </div>
           {fields.map((field, index) => {
             const isDefinition = activeDefinitions.some((d) => d.fieldKey === field.key);
             if (isDefinition) return null;
@@ -171,19 +139,22 @@ export const CustomFieldsEditor = ({
                   value={field.key}
                   onChange={(e) => updateField(index, { ...field, key: e.target.value })}
                   placeholder="Field name"
-                  className="h-6 w-24 text-[10px]"
+                  aria-label={`${AREA_LABELS[area]} custom field name`}
+                  className="h-7 w-36 text-xs"
                 />
                 <Input
                   value={field.value}
                   onChange={(e) => updateField(index, { ...field, value: e.target.value })}
                   placeholder="Value"
-                  className="h-6 w-24 text-[10px]"
+                  aria-label={`${AREA_LABELS[area]} custom field value`}
+                  className="h-7 flex-1 text-xs"
                 />
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-5 w-5 p-0"
+                  className="h-7 w-7 p-0"
+                  aria-label={`Remove ${field.key || "custom input"}`}
                   onClick={() => removeField(index)}
                 >
                   <Trash2 className="h-3 w-3" />
@@ -191,17 +162,6 @@ export const CustomFieldsEditor = ({
               </div>
             );
           })}
-          <div className="flex items-center gap-1">
-            <Input
-              value={adHocKey}
-              onChange={(e) => setAdHocKey(e.target.value)}
-              placeholder="New field name"
-              className="h-6 w-28 text-[10px]"
-            />
-            <Button type="button" variant="outline" size="sm" onClick={addAdHocField}>
-              <Plus className="mr-1 h-3 w-3" /> Add
-            </Button>
-          </div>
         </div>
       )}
     </div>

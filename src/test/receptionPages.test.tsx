@@ -235,6 +235,34 @@ describe("Log consignment wizard", () => {
     expect(saved.status).toBe("on-hold");
   });
 
+  it("saves custom inputs from each reception area and keeps photo upload available", async () => {
+    renderLogConsignment();
+
+    await screen.findByText(/RC-26-0419/);
+    expect(screen.getByRole("button", { name: "Add consignment photos" })).toBeInTheDocument();
+
+    const customAreas = ["consignment", "transport", "sample", "test request"];
+    customAreas.forEach((area) => {
+      fireEvent.click(screen.getByRole("button", { name: `Add ${area} custom input` }));
+      fireEvent.change(screen.getByLabelText(`${area[0].toUpperCase()}${area.slice(1)} custom field name`), {
+        target: { value: `${area.replaceAll(" ", "_")}_note` },
+      });
+      fireEvent.change(screen.getByLabelText(`${area[0].toUpperCase()}${area.slice(1)} custom field value`), {
+        target: { value: `${area} value` },
+      });
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+    await waitFor(() => expect(receptionMocks.saveReceptionConsignment).toHaveBeenCalled());
+
+    const saved = receptionMocks.saveReceptionConsignment.mock
+      .calls[0][0] as ReceptionConsignmentInput;
+    expect(saved.customFields).toEqual([{ key: "consignment_note", value: "consignment value" }]);
+    expect(saved.transportCustomFields).toEqual([{ key: "transport_note", value: "transport value" }]);
+    expect(saved.samples[0].customFields).toEqual([{ key: "sample_note", value: "sample value" }]);
+    expect(saved.testCustomFields).toEqual([{ key: "test_request_note", value: "test request value" }]);
+  });
+
   it("saves a draft without receiving it", async () => {
     renderLogConsignment();
 
@@ -261,4 +289,3 @@ describe("Log consignment wizard", () => {
     expect(screen.getByDisplayValue("26-0418/04")).toBeInTheDocument();
   });
 });
-

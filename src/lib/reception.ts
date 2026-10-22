@@ -27,7 +27,7 @@ export interface ReceptionSampleInput {
 }
 
 /** Area where a custom field or photo applies. */
-export type ReceptionFieldArea = 'consignment' | 'transport' | 'sample';
+export type ReceptionFieldArea = 'consignment' | 'transport' | 'sample' | 'tests';
 
 export interface ReceptionFieldDefinition {
   id: number;
@@ -76,6 +76,7 @@ export interface ReceptionConsignmentInput {
   /** User-defined custom fields per area. Stored inside payload_json keyed by field_key. */
   customFields?: { key: string; value: string }[];            // consignment-level fields
   transportCustomFields?: { key: string; value: string }[];   // transport-check fields
+  testCustomFields?: { key: string; value: string }[];
   /** Attached photos of the consignment (replaces the old photosCount counter). */
   photos?: ReceptionPhoto[];
   /** Date the cubes in this consignment were cast — drives the crushing due dates. */
