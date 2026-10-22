@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -39,7 +39,7 @@ export const ConsignmentPhotos = ({
         if (photo) {
           next.push(photo);
         } else {
-          toast.error(`Failed to upload ${file.name}`);
+          toast.error(Failed to upload );
         }
       }
       onChange(next);
@@ -89,10 +89,6 @@ export const ConsignmentPhotos = ({
     };
   }, [rcNo]);
 
-  if (!photos.length && !uploading) {
-    return null;
-  }
-
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
@@ -111,42 +107,46 @@ export const ConsignmentPhotos = ({
             onChange={(e) => handleAdd(e.target.files)}
           />
         </label>
-        <span className="text-[10px] text-muted-foreground">
-          {photos.length} attached
-        </span>
+        {photos.length > 0 && (
+          <span className="text-[10px] text-muted-foreground">
+            {photos.length} attached
+          </span>
+        )}
       </div>
 
-      <div className="grid grid-cols-4 gap-1.5">
-        {photos.map((photo) => (
-          <div
-            key={photo.id}
-            className="relative aspect-square rounded border overflow-hidden"
-          >
-            <img
-              src={photo.filePath}
-              alt={photo.originalFilename ?? "photo"}
-              className="absolute inset-0 w-full h-full object-cover"
-              loading="lazy"
-            />
-            {deleting.has(photo.id) ? (
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                <span className="text-xs text-white">Removing…</span>
-              </div>
-            ) : (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute top-1 right-1 h-6 w-6 p-0 bg-black/60 text-white hover:bg-black/80"
-                onClick={() => handleRemove(photo.id)}
-                disabled={disabled}
-              >
-                <Trash2 className="h-3 w-3" />
-              </Button>
-            )}
-          </div>
-        ))}
-      </div>
+      {photos.length > 0 && (
+        <div className="grid grid-cols-4 gap-1.5">
+          {photos.map((photo) => (
+            <div
+              key={photo.id}
+              className="relative aspect-square rounded border overflow-hidden"
+            >
+              <img
+                src={photo.filePath}
+                alt={photo.originalFilename ?? "photo"}
+                className="absolute inset-0 w-full h-full object-cover"
+                loading="lazy"
+              />
+              {deleting.has(photo.id) ? (
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                  <span className="text-xs text-white">Removing…</span>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-1 right-1 h-6 w-6 p-0 bg-black/60 text-white hover:bg-black/80"
+                  onClick={() => handleRemove(photo.id)}
+                  disabled={disabled}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
