@@ -415,7 +415,7 @@ const LogConsignment = () => {
                       rcNo={draft.rcNo}
                       photos={draft.photos ?? []}
                       onChange={(next) => patchDraft({ photos: next })}
-                      disabled={!draft.rcNo || draft.rcNo === "RC-26-0001"}
+                      disabled={!draft.rcNo}
                     />
                   </div>
                 </CardContent>
