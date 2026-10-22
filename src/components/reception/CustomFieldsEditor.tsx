@@ -11,13 +11,9 @@ import type { ReceptionFieldArea, ReceptionFieldDefinition } from "@/lib/recepti
 type FieldValue = { key: string; value: string };
 
 interface CustomFieldsEditorProps {
-  /** Area these fields belong to. */
   area: ReceptionFieldArea;
-  /** Current values (editable). */
   fields: FieldValue[];
-  /** Server-defined field definitions for this area. */
   definitions: ReceptionFieldDefinition[];
-  /** Callback when values change. */
   onChange: (next: FieldValue[]) => void;
 }
 
@@ -61,12 +57,13 @@ export const CustomFieldsEditor = ({
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <span className="text-xs font-medium">{AREA_LABELS[area]} custom inputs</span>
         <Button
           type="button"
           variant="outline"
           size="sm"
+          className="w-full sm:w-auto"
           aria-label={`Add ${AREA_LABELS[area].toLowerCase()} custom input`}
           onClick={addAdHocField}
         >
@@ -80,9 +77,9 @@ export const CustomFieldsEditor = ({
         return (
           <div
             key={def.fieldKey}
-            className="flex items-center gap-2 text-xs"
+            className="flex flex-col sm:flex-row sm:items-center gap-2 text-xs"
           >
-            <Label className="w-[140px] shrink-0">{def.label}</Label>
+            <Label className="w-full sm:w-[140px] sm:shrink-0">{def.label}</Label>
             {def.valueType === "select" ? (
               <Select
                 value={value || undefined}
@@ -95,7 +92,7 @@ export const CustomFieldsEditor = ({
                   }
                 }}
               >
-                <SelectTrigger className="h-8 w-40 text-xs shrink-0">
+                <SelectTrigger className="h-8 w-full sm:w-40 sm:shrink-0 text-xs">
                   <SelectValue placeholder={def.label} />
                 </SelectTrigger>
                 <SelectContent>
@@ -118,7 +115,7 @@ export const CustomFieldsEditor = ({
                   }
                 }}
                 placeholder={def.label}
-                className="h-7 w-40 text-xs shrink-0"
+                className="h-7 w-full sm:w-40 sm:shrink-0 text-xs"
               />
             )}
             {def.isRequired && <span className="text-amber-600" title="Required">*</span>}
@@ -126,21 +123,19 @@ export const CustomFieldsEditor = ({
         );
       })}
 
-      {/* Ad-hoc (user-defined) fields */}
-
       {fields.some((field) => !activeDefinitions.some((definition) => definition.fieldKey === field.key)) && (
         <div className="border-t pt-2 space-y-1">
           {fields.map((field, index) => {
             const isDefinition = activeDefinitions.some((d) => d.fieldKey === field.key);
             if (isDefinition) return null;
             return (
-              <div key={index} className="flex items-center gap-1">
+              <div key={index} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                 <Input
                   value={field.key}
                   onChange={(e) => updateField(index, { ...field, key: e.target.value })}
                   placeholder="Field name"
                   aria-label={`${AREA_LABELS[area]} custom field name`}
-                  className="h-7 w-36 text-xs"
+                  className="h-7 w-full sm:w-36 sm:shrink-0 text-xs"
                 />
                 <Input
                   value={field.value}
@@ -153,7 +148,7 @@ export const CustomFieldsEditor = ({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 p-0"
+                  className="h-7 w-7 p-0 sm:shrink-0"
                   aria-label={`Remove ${field.key || "custom input"}`}
                   onClick={() => removeField(index)}
                 >

@@ -260,14 +260,16 @@ const LogConsignment = () => {
       <Navigation currentView="reception" onViewChange={() => {}} />
       <SidebarInset>
         <div className="min-h-screen bg-muted/30">
-          <header className="flex items-center gap-3 bg-[#1d2b26] px-6 py-3 text-white">
-            <Button variant="ghost" size="sm" className="text-white hover:bg-white/10" onClick={() => navigate("/reception")}>
+          <header className="flex flex-col items-start gap-2 bg-[#1d2b26] px-4 py-3 text-white sm:flex-row sm:items-center sm:gap-3">
+            <Button variant="ghost" size="sm" className="text-white hover:bg-white/10 w-full sm:w-auto" onClick={() => navigate("/reception")}>
               <ArrowLeft className="h-4 w-4" /> Reception
             </Button>
-            <h1 className="text-sm font-semibold">Log a consignment</h1>
-            <span className="ml-auto text-xs text-emerald-200">
-              {draft.rcNo} · {draft.status}
-            </span>
+            <div className="flex items-center gap-3 w-full sm:w-auto sm:ml-auto">
+              <h1 className="text-sm font-semibold">Log a consignment</h1>
+              <span className="text-xs text-emerald-200 whitespace-nowrap">
+                {draft.rcNo} · {draft.status}
+              </span>
+            </div>
           </header>
 
           {/* Wizard steps */}
@@ -292,14 +294,14 @@ const LogConsignment = () => {
             ))}
           </ol>
 
-          <main className="grid gap-5 px-6 py-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <main className="grid gap-4 px-4 py-4 sm:px-6 sm:py-5 xl:grid-cols-[minmax(0,1fr)_320px]">
             <div className="space-y-5">
               {/* 1 · Consignment */}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-sm">1 · Consignment</CardTitle>
                 </CardHeader>
-                <CardContent className="grid gap-4 sm:grid-cols-3">
+                <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="lc-client">Client</Label>
                     <Input
@@ -421,7 +423,7 @@ const LogConsignment = () => {
               <Card>
                 <CardHeader className="flex-row items-center justify-between space-y-0">
                   <CardTitle className="text-sm">2 · Samples & condition on receipt</CardTitle>
-                  <Button variant="outline" size="sm" className="gap-1.5" onClick={addSample}>
+                  <Button variant="outline" size="sm" className="gap-1.5 w-full sm:w-auto" onClick={addSample}>
                     <Plus className="h-4 w-4" /> Add sample
                   </Button>
                 </CardHeader>
@@ -494,7 +496,7 @@ const LogConsignment = () => {
                                 })
                               }
                             >
-                              <SelectTrigger className="h-8 w-48 text-xs">
+                              <SelectTrigger className="h-8 w-full sm:w-48 text-xs">
                                 <SelectValue placeholder="Sample type" />
                               </SelectTrigger>
                               <SelectContent>
@@ -518,7 +520,7 @@ const LogConsignment = () => {
                             />
                           </td>
                           <td className="px-3 py-3">
-                            <div className="flex max-w-[220px] flex-wrap gap-1.5">
+                            <div className="flex flex-wrap gap-1.5">
                               {CONDITIONS.map((condition) => {
                                 const active = sample.condition === condition;
                                 const held = isSampleOnHold(condition);
@@ -624,15 +626,15 @@ const LogConsignment = () => {
                                   onClick={() => toggleTest(index, code)}
                                   aria-pressed={checked}
                                   aria-label={`${code} for ${sample.labId || index + 1}`}
-                                  className={`inline-flex h-6 w-6 items-center justify-center rounded border transition-colors ${
+className={`inline-flex h-7 w-7 items-center justify-center rounded border transition-colors ${
                                     checked
                                       ? blocked
                                         ? "border-amber-700 bg-amber-700 text-white"
                                         : "border-[#0f6b5c] bg-[#0f6b5c] text-white"
                                       : "border-border bg-background hover:border-[#0f6b5c]"
                                   }`}
-                                >
-                                  {checked && <Check className="h-3.5 w-3.5" />}
+                                  >
+                                    {checked && <Check className="h-3.5 w-3.5" />}
                                 </button>
                               </td>
                             );
@@ -669,7 +671,7 @@ const LogConsignment = () => {
                   <CardTitle className="text-sm">Summary</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     {[
                       { value: summary.samples, label: "samples" },
                       { value: summary.tests, label: "tests" },

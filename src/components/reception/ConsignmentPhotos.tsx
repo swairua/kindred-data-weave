@@ -91,37 +91,39 @@ export const ConsignmentPhotos = ({
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="gap-1.5"
+          className="gap-1.5 w-full sm:w-auto"
           onClick={() => fileInput.current?.click()}
           disabled={disabled || uploading}
         >
           <Plus className="h-4 w-4" />
           {uploading ? "Uploading…" : "Add consignment photos"}
         </Button>
-        <Input
-          type="file"
-          accept="image/*"
-          multiple
-          ref={fileInput}
-          disabled={disabled || uploading}
-          className="hidden"
-          onChange={(e) => handleAdd(e.target.files)}
-          aria-label="Select consignment photos"
-        />
-        {photos.length > 0 && (
-          <span className="text-[10px] text-muted-foreground">
-            {photos.length} attached
-          </span>
-        )}
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Input
+            type="file"
+            accept="image/*"
+            multiple
+            ref={fileInput}
+            disabled={disabled || uploading}
+            className="hidden"
+            onChange={(e) => handleAdd(e.target.files)}
+            aria-label="Select consignment photos"
+          />
+          {photos.length > 0 && (
+            <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+              {photos.length} attached
+            </span>
+          )}
+        </div>
       </div>
 
       {photos.length > 0 && (
-        <div className="grid grid-cols-4 gap-1.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5">
           {photos.map((photo) => (
             <div
               key={photo.id}
