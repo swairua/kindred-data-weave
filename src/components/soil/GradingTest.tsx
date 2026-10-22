@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Check, ChevronDown, FileDown, HelpCircle, Loader2, Save, Trash2 } from "lucide-react";
+import { Check, ChevronDown, FileDown, HelpCircle, Loader2, Printer, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -749,6 +749,15 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       <RecordSection title="Particle size distribution graph">
         <div className="overflow-x-auto bg-white p-1"><ParticleSizeDistributionChart id="grading-chart" points={psdSeries} className="h-[360px] min-w-[620px]" /></div>
       </RecordSection>
+
+      <div className="flex flex-wrap gap-2 print:hidden px-4 py-2">
+        <Button variant="outline" size="sm" onClick={() => window.print()}>
+          <Printer className="mr-1.5 h-3.5 w-3.5" /> Print
+        </Button>
+        <Button size="sm" onClick={() => void exportFiles("pdf")}>
+          <FileDown className="mr-1.5 h-3.5 w-3.5" /> Download PDF
+        </Button>
+      </div>
 
       <section className="record-card flex flex-col gap-3 px-4 py-3 text-[10px] sm:flex-row sm:items-center sm:justify-between"><div><span className="text-muted-foreground">TESTED BY</span><div className="font-semibold uppercase">{record.testedBy || "—"}</div></div><div><span className="text-muted-foreground">DATE REPORTED</span><div className="font-semibold">{project.dateReported || "—"}</div></div></section>
       <div className="flex flex-wrap items-center justify-between gap-2 print:hidden"><Button variant="outline" size="sm" className="border-destructive/20 text-destructive hover:bg-destructive/10" onClick={handleClear}><Trash2 className="mr-1.5 h-3.5 w-3.5" />Delete</Button><div className="flex flex-wrap gap-0"><Button size="sm" className="rounded-r-none bg-primary" onClick={handleSave} disabled={saveStatus === "saving"}>{saveStatus === "saving" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : saveStatus === "saved" ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}{saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved" : "Save"}</Button><DropdownMenu><DropdownMenuTrigger asChild><Button size="sm" aria-label="Export options" className="rounded-l-none border-l border-primary-foreground/30 bg-primary px-2 text-primary-foreground hover:bg-primary/90"><ChevronDown className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => void exportFiles("pdf")}><FileDown className="mr-2 h-4 w-4" />PDF</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div></div>
