@@ -1,11 +1,11 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Minus, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Plus, Trash2 } from "lucide-react";
 import type { ReceptionFieldArea, ReceptionFieldDefinition } from "@/lib/reception";
 
 type FieldValue = { key: string; value: string };
@@ -27,12 +27,28 @@ export const CustomFieldsEditor = ({
   definitions,
   onChange,
 }: CustomFieldsEditorProps) => {
+  const [currentArea, setCurrentArea] = useState<ReceptionFieldArea>(area);
   const [adHocKey, setAdHocKey] = useState("");
 
+  const AREAS: ReceptionFieldArea[] = ["consignment", "transport", "sample"];
+  const AREA_LABELS: Record<ReceptionFieldArea, string> = {
+    consignment: "Consignment",
+    transport: "Transport",
+    sample: "Sample",
+  };
+
   const activeDefinitions = useMemo(
-    () => definitions.filter((d) => d.area === area && d.isActive).sort((a, b) => a.sortOrder - b.sortOrder),
-    [area, definitions]
+    () => definitions.filter((d) => d.area === currentArea && d.isActive).sort((a, b) => a.sortOrder - b.sortOrder),
+    [currentArea, definitions]
   );
+
+  const goToPrev = useCallback(() => {
+    setCurrentArea((prev) => AREAS[(AREAS.indexOf(prev) + AREAS.length - 1) % AREAS.length]);
+  }, []);
+
+  const goToNext = useCallback(() => {
+    setCurrentArea((prev) => AREAS[(AREAS.indexOf(prev) + 1) % AREAS.length]);
+  }, []);
 
   const addAdHocField = useCallback(() => {
     const key = adHocKey.trim();
@@ -63,6 +79,30 @@ export const CustomFieldsEditor = ({
 
   return (
     <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="h-8 w-8 text-xs p-0"
+          onClick={goToPrev}
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <span className="flex items-center gap-1 text-xs font-medium uppercase tracking-wider">
+          {AREA_LABELS[currentArea]} Section
+        </span>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="h-8 w-8 text-xs p-0"
+          onClick={goToNext}
+        >
+          <ArrowRight className="h-4 w-4" />
+        </Button>
+      </div>
+
       {activeDefinitions.map((def) => {
         const existing = fields.find((f) => f.key === def.fieldKey);
         const value = existing?.value ?? "";
