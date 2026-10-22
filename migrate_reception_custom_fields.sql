@@ -60,16 +60,19 @@ CREATE TABLE IF NOT EXISTS `reception_photos` (
 --  Mirrors the mockups: consignment details, transport checks, sample details.
 -- -----------------------------------------------------------------------------
 INSERT INTO `reception_field_definitions`
- (`area`, `field_key`, `label`, `value_type`, `sort_order`)
+ (`area`, `field_key`, `label`, `value_type`, `options`, `sort_order`, `is_required`, `is_active`)
 VALUES
-  ('consignment', 'chainage',      'Chainage / chainage from', 'text',   10),
-  ('consignment', 'weather',       'Weather on arrival',       'select', 20),
-  ('consignment', 'site_contact',  'Site contact',             'text',   30),
-  ('transport',   'cooler_temp',   'Cool box temperature (°C)', 'number', 10),
-  ('transport',   'delay_hours',   'Delay in transit (h)',      'number', 20),
-  ('sample',      'borehole',      'Borehole / trial pit',      'text',   10),
-  ('sample',      'strata',        'Strata description',        'text',   20)
+  ('consignment', 'chainage',      'Chainage / chainage from', 'text',   NULL, 10, 0, 1),
+  ('consignment', 'weather',       'Weather on arrival',       'select', '["Sunny","Cloudy","Overcast","Rainy","Windy","Stormy"]', 20, 0, 1),
+  ('consignment', 'site_contact',  'Site contact',             'text',   NULL, 30, 0, 1),
+  ('transport',   'cooler_temp',   'Cool box temperature (°C)', 'number', NULL, 10, 0, 1),
+  ('transport',   'delay_hours',   'Delay in transit (h)',      'number', NULL, 20, 0, 1),
+  ('sample',      'borehole',      'Borehole / trial pit',      'text',   NULL, 10, 0, 1),
+  ('sample',      'strata',        'Strata description',        'text',   NULL, 20, 0, 1)
 ON DUPLICATE KEY UPDATE
   `label`      = VALUES(`label`),
   `value_type` = VALUES(`value_type`),
-  `sort_order` = VALUES(`sort_order`);
+  `options`    = VALUES(`options`),
+  `sort_order` = VALUES(`sort_order`),
+  `is_required`= VALUES(`is_required`),
+  `is_active`  = VALUES(`is_active`);
