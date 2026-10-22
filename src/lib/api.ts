@@ -907,9 +907,17 @@ export const uploadReceptionPhoto = async (
   const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout for uploads
 
   try {
+    // Send session token so requireAuth() on the server can restore the session
+    const headers: HeadersInit = {};
+    const sessionToken = getSessionToken();
+    if (sessionToken) {
+      headers["X-Session-Token"] = sessionToken;
+    }
+
     const response = await fetch(url, {
       method: "POST",
       credentials: "include",
+      headers,
       body: formData,
       signal: controller.signal,
     });
@@ -920,6 +928,12 @@ export const uploadReceptionPhoto = async (
       const errorMessage = data?.message || data?.error || `HTTP ${response.status}`;
       console.error("[API] Reception photo upload failed -", errorMessage);
       throw new Error(errorMessage);
+    }
+
+    // Capture rotated session token from response header
+    const responseSessionToken = response.headers.get("X-Session-Token");
+    if (responseSessionToken) {
+      setSessionToken(responseSessionToken);
     }
 
     return mapReceptionPhoto({
