@@ -71,58 +71,6 @@ export const CustomFieldsEditor = ({
         </Button>
       </div>
 
-      {activeDefinitions.map((def) => {
-        const existing = fields.find((f) => f.key === def.fieldKey);
-        const value = existing?.value ?? "";
-        return (
-          <div
-            key={def.fieldKey}
-            className="flex flex-col sm:flex-row sm:items-center gap-2 text-xs"
-          >
-            <Label className="w-full sm:w-[140px] sm:shrink-0">{def.label}</Label>
-            {def.valueType === "select" ? (
-              <Select
-                value={value || undefined}
-                onValueChange={(val) => {
-                  const idx = fields.findIndex((f) => f.key === def.fieldKey);
-                  if (idx >= 0) {
-                    updateField(idx, { ...fields[idx], value: val ?? "" });
-                  } else {
-                    onChange([...fields, { key: def.fieldKey, value: val ?? "" }]);
-                  }
-                }}
-              >
-                <SelectTrigger className="h-8 w-full sm:w-40 sm:shrink-0 text-xs">
-                  <SelectValue placeholder={def.label} />
-                </SelectTrigger>
-                <SelectContent>
-                  {(def.options ?? []).map((opt) => (
-                    <SelectItem key={opt} value={opt} className="text-xs">
-                      {opt}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <Input
-                value={value}
-                onChange={(e) => {
-                  const idx = fields.findIndex((f) => f.key === def.fieldKey);
-                  if (idx >= 0) {
-                    updateField(idx, { ...fields[idx], value: e.target.value });
-                  } else {
-                    onChange([...fields, { key: def.fieldKey, value: e.target.value }]);
-                  }
-                }}
-                placeholder={def.label}
-                className="h-7 w-full sm:w-40 sm:shrink-0 text-xs"
-              />
-            )}
-            {def.isRequired && <span className="text-amber-600" title="Required">*</span>}
-          </div>
-        );
-      })}
-
       {fields.some((field) => !activeDefinitions.some((definition) => definition.fieldKey === field.key)) && (
         <div className="border-t pt-2 space-y-1">
           {fields.map((field, index) => {
