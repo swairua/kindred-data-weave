@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -39,7 +39,7 @@ export const ConsignmentPhotos = ({
         if (photo) {
           next.push(photo);
         } else {
-          toast.error(Failed to upload );
+          toast.error("Failed to upload photo");
         }
       }
       onChange(next);
@@ -92,21 +92,27 @@ export const ConsignmentPhotos = ({
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <label className="flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:pointer-events-none">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="gap-1.5"
+          onClick={() => fileInput.current?.click()}
+          disabled={disabled || uploading}
+        >
           <Plus className="h-4 w-4" />
-          <span className="text-xs">
-            {uploading ? "Uploading…" : "Add photos"}
-          </span>
-          <Input
-            type="file"
-            accept="image/*"
-            multiple
-            ref={fileInput}
-            disabled={disabled}
-            className="sr-only"
-            onChange={(e) => handleAdd(e.target.files)}
-          />
-        </label>
+          {uploading ? "Uploading…" : "Add consignment photos"}
+        </Button>
+        <Input
+          type="file"
+          accept="image/*"
+          multiple
+          ref={fileInput}
+          disabled={disabled || uploading}
+          className="hidden"
+          onChange={(e) => handleAdd(e.target.files)}
+          aria-label="Select consignment photos"
+        />
         {photos.length > 0 && (
           <span className="text-[10px] text-muted-foreground">
             {photos.length} attached

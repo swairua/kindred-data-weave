@@ -766,6 +766,45 @@ export const saveReceptionConsignment = async (consignment: ReceptionConsignment
 
 /** Reception custom-field definitions helpers. */
 
+const mapReceptionFieldDefinition = (value: unknown): ReceptionFieldDefinition => {
+  const row = value as Record<string, unknown>;
+  const rawOptions = row.options ?? row.options_json;
+  let options = rawOptions;
+  if (typeof rawOptions === "string") {
+    try {
+      options = JSON.parse(rawOptions) as unknown;
+    } catch {
+      options = [];
+    }
+  }
+  return {
+    id: Number(row.id),
+    area: (row.area ?? "consignment") as ReceptionFieldArea,
+    fieldKey: String(row.field_key ?? row.fieldKey ?? ""),
+    label: String(row.label ?? ""),
+    valueType: (row.value_type ?? row.valueType ?? "text") as ReceptionFieldDefinition["valueType"],
+    options: Array.isArray(options) ? options.map(String) : [],
+    sortOrder: Number(row.sort_order ?? row.sortOrder ?? 0),
+    isRequired: [row.is_required, row.isRequired].some((value) => value === 1 || value === true || value === "1"),
+    isActive: [row.is_active, row.isActive].some((value) => value === 1 || value === true || value === "1"),
+  };
+};
+
+const mapReceptionPhoto = (value: unknown): ReceptionPhoto => {
+  const row = value as Record<string, unknown>;
+  return {
+    id: Number(row.id),
+    rcNo: String(row.rc_no ?? row.rcNo ?? ""),
+    filePath: new URL(String(row.file_path ?? row.filePath ?? ""), new URL(API_BASE_URL, window.location.origin)).toString(),
+    originalFilename: (row.original_filename ?? row.originalFilename) as string | undefined,
+    fileSize: Number(row.file_size ?? row.fileSize) || undefined,
+    mimeType: (row.mime_type ?? row.mimeType) as string | undefined,
+    caption: row.caption as string | undefined,
+    uploadedBy: Number(row.uploaded_by ?? row.uploadedBy) || undefined,
+    createdAt: (row.created_at ?? row.createdAt) as string | undefined,
+  };
+};
+
 export const listReceptionFieldDefinitions = async (
   area?: ReceptionFieldArea
 ): Promise<ReceptionFieldDefinition[]> => {
@@ -776,13 +815,7 @@ export const listReceptionFieldDefinitions = async (
       limit: "500",
       ...(area ? { area } : {}),
     });
-    return (response.data || []).map((row) => ({
-      ...row,
-      id: typeof row.id === "string" ? Number(row.id) : row.id,
-      isRequired: row.isRequired === 1 || row.isRequired === true || row.isRequired === "1",
-      isActive: row.isActive === 1 || row.isActive === true || row.isActive === "1",
-      sortOrder: typeof row.sortOrder === "string" ? Number(row.sortOrder) : row.sortOrder,
-    }));
+    return (response.data || []).map(mapReceptionFieldDefinition);
   } catch {
     return [];
   }
@@ -805,7 +838,7 @@ export const createReceptionFieldDefinition = async (
         is_active: def.isActive ? 1 : 0,
       }
     );
-    return response.data ?? null;
+    return response.data ? mapReceptionFieldDefinition(response.data) : null;
   } catch {
     return null;
   }
@@ -830,7 +863,7 @@ export const updateReceptionFieldDefinition = async (
       id,
       data
     );
-    return response.data ?? null;
+    return response.data ? mapReceptionFieldDefinition(response.data) : null;
   } catch {
     return null;
   }
@@ -855,12 +888,7 @@ export const listReceptionPhotos = async (rcNo: string): Promise<ReceptionPhoto[
       filter: `rc_no=${rcNo}`,
       limit: "500",
     });
-    return (response.data || []).map((row) => ({
-      ...row,
-      id: typeof row.id === "string" ? Number(row.id) : row.id,
-      rcNo: row.rcNo,
-      filePath: row.filePath,
-    }));
+    return (response.data || []).map(mapReceptionPhoto);
   } catch {
     return [];
   }
@@ -894,14 +922,14 @@ export const uploadReceptionPhoto = async (
       throw new Error(errorMessage);
     }
 
-    return {
-      id: data?.id ?? 0,
-      rcNo: data?.rc_no ?? rcNo,
-      filePath: data?.file_path ?? "",
-      originalFilename: data?.original_filename ?? file.name,
-      fileSize: data?.file_size ?? file.size,
-      mimeType: data?.mime_type ?? file.type,
-    } as ReceptionPhoto;
+    return mapReceptionPhoto({
+      ...data,
+      rc_no: data?.rc_no ?? rcNo,
+      file_path: data?.file_path ?? "",
+      original_filename: data?.original_filename ?? file.name,
+      file_size: data?.file_size ?? file.size,
+      mime_type: data?.mime_type ?? file.type,
+    });
   } catch (error) {
     console.error("[API] Reception photo upload error:", error);
     return null;

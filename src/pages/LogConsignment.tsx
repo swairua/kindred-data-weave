@@ -396,7 +396,7 @@ const LogConsignment = () => {
                           {label}
                         </label>
                       ))}
-
+                    </div>
                     {defsLoaded && (
                       <CustomFieldsEditor
                         area="transport"
@@ -405,8 +405,6 @@ const LogConsignment = () => {
                         onChange={(next) => patchDraft({ transportCustomFields: next })}
                       />
                     )}
-
-                    </div>
                   </div>
 
                   <div className="sm:col-span-3">
@@ -643,6 +641,16 @@ const LogConsignment = () => {
                       ))}
                     </tbody>
                   </table>
+                  {defsLoaded && (
+                    <div className="px-3 pb-3">
+                      <CustomFieldsEditor
+                        area="tests"
+                        fields={draft.testCustomFields ?? []}
+                        definitions={fieldDefs}
+                        onChange={(next) => patchDraft({ testCustomFields: next })}
+                      />
+                    </div>
+                  )}
                   <div className="flex flex-wrap gap-x-4 gap-y-1 px-3 py-3 text-[11px] text-muted-foreground">
                     {RECEPTION_TEST_CODES.map((code) => (
                       <span key={code}>
@@ -780,9 +788,3 @@ const LogConsignment = () => {
 };
 
 export default LogConsignment;
-
-
-
-
-
-
