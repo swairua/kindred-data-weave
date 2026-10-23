@@ -176,7 +176,9 @@ const retryImageFetch = async (
   return null;
 };
 
-const imagePathToBase64 = async (filePath: string): Promise<string | undefined> => {
+import { makeStampTransparent } from "./stampUtils";
+
+const imagePathToBase64 = async (filePath: string, isStamp: boolean = false): Promise<string | undefined> => {
   const imageUrl = getAdminImageUrl(filePath);
   const sessionToken = localStorage.getItem("lab_session_token");
 
@@ -206,6 +208,22 @@ const imagePathToBase64 = async (filePath: string): Promise<string | undefined> 
     if (blob.size === 0) {
       console.debug("[ImageConvert] Downloaded image is empty:", { filePath });
       return undefined;
+    }
+
+    // For stamps, remove background and convert to transparent PNG.
+    if (isStamp) {
+      try {
+        const pngBlob = await makeStampTransparent(blob);
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => resolve(undefined);
+          reader.onabort = () => resolve(undefined);
+          reader.readAsDataURL(pngBlob);
+        });
+      } catch (err) {
+        console.debug("[ImageConvert] Stamp transparency processing failed, using original:", err);
+      }
     }
 
     // Convert blob to base64 data URL
@@ -265,9 +283,9 @@ export async function fetchAdminImagesAsBase64(): Promise<AdminImages> {
     // Fetch images in parallel with individual error handling
     // One failure won't break the others or the export
     const results = await Promise.allSettled([
-      latest.logo ? imagePathToBase64(latest.logo) : Promise.resolve(undefined),
-      latest.contacts ? imagePathToBase64(latest.contacts) : Promise.resolve(undefined),
-      latest.stamp ? imagePathToBase64(latest.stamp) : Promise.resolve(undefined),
+      latest.logo ? imagePathToBase64(latest.logo, false) : Promise.resolve(undefined),
+      latest.contacts ? imagePathToBase64(latest.contacts, false) : Promise.resolve(undefined),
+      latest.stamp ? imagePathToBase64(latest.stamp, true) : Promise.resolve(undefined),
     ]);
 
     const logo = results[0].status === "fulfilled" ? results[0].value : undefined;

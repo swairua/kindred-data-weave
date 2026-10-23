@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Upload, Loader2, X, Copy, Check } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { buildApiUrl, listRecords, uploadFile } from "@/lib/api";
+import { makeStampTransparent } from "@/lib/stampUtils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -181,9 +182,18 @@ const Admin = () => {
     setUploadProgress(10);
 
     try {
+      setUploadProgress(20);
+
+      // For stamps, remove background and convert to transparent PNG before upload.
+      let fileToUpload = file;
+      if (selectedImageType === "stamp") {
+        const pngBlob = await makeStampTransparent(file);
+        fileToUpload = new File([pngBlob], "stamp.png", { type: "image/png" });
+      }
+
       setUploadProgress(30);
 
-      const data = await uploadFile(file, { image_type: selectedImageType });
+      const data = await uploadFile(fileToUpload, { image_type: selectedImageType });
 
       setUploadProgress(90);
 
