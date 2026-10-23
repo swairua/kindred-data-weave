@@ -459,7 +459,7 @@ const drawHydrometerTable = (d: jsPDF, x: number, y: number, w: number, o: Parti
     "Temperature Correction Factor", "", text(inputs.temperatureCorrection),
   ));
 
-  const headW = [7.41, 11.18, 10.58, 11.31, 14.85, 10.25, 11.91, 12.38];
+  const headW = [7.41, 11.18, 10.58, 11.31, 17.85, 13.25, 11.91, 12.38];
   const lastW = w - headW.reduce((a, b) => a + b, 0);
   const widths = [...headW, lastW];
   cy = drawCells(d, x, cy, HYDRO_HEAD_H, HYDROMETER_COLUMNS.map((caption, index) => ({
