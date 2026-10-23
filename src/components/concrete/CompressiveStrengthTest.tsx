@@ -135,6 +135,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   const testData = useTestData();
   const location = useLocation();
   const [rows, setRows] = useState<Row[]>(() => [emptyCubeRow()]);
+  const [isPrinting, setIsPrinting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const tableRef = useRef<HTMLTableElement | null>(null);
 
@@ -666,8 +667,72 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    if (isPrinting) return;
+    setIsPrinting(true);
+    try {
+      const projectId = project.currentProjectId;
+      const rows = projectId
+        ? await (async () => {
+            const listed = await listCompressiveTests(projectId);
+            const match = (listed.data || []).find((row) => Number(row.project_id) === Number(projectId));
+            if (!match) return null;
+            const cubes = await listCompressiveCubes(Number(match.id));
+            const toInput = (value: unknown, fallback = ""): string => {
+              if (value === null || value === undefined) return fallback;
+              const text = String(value);
+              return text === "" ? fallback : text;
+            };
+            const asDate = (value: unknown): string => {
+              const text = typeof value === "string" ? value.trim() : String(value ?? "").trim();
+              const m = /^(\d{4}-\d{2}-\d{2})/.exec(text);
+              return m ? m[1] : "";
+            };
+            const cubesInput = cubes?.map((cube) => ({
+              ...emptyCubeRow(),
+              id: Number(cube.id),
+              mark: cube.cube_mark && cube.cube_mark !== "Unknown" ? String(cube.cube_mark) : "",
+              dateOfCast: asDate(cube.date_of_cast),
+              dateOfTest: asDate(cube.date_of_test),
+              load: toInput(cube.load_kn),
+              width: toInput(cube.width_mm, "150"),
+              height: toInput(cube.height_mm, "150"),
+              depth: toInput(cube.depth_mm, "150"),
+              mass: toInput(cube.mass_g),
+              remarks: cube.remarks ? String(cube.remarks) : "",
+            })) : [];
+            return cubesInput;
+          })() : [];
+      const textOf = (value: unknown): string => (typeof value === "string" ? value : value == null ? "" : String(value));
+      const record: CompressiveRecordView = {
+        contractor: textOf(concreteTestMetadata?.contractor),
+        county: textOf(concreteTestMetadata?.county),
+        concreteClass: textOf(concreteTestMetadata?.concreteClass),
+        section: textOf(concreteTestMetadata?.section),
+        madeBy: textOf(concreteTestMetadata?.madeBy),
+        slump: textOf(concreteTestMetadata?.slump),
+        clientRef: textOf(concreteTestMetadata?.clientRef),
+        labRef: textOf(concreteTestMetadata?.labRef),
+        dateCasted: "",
+      };
+      const cubes = rows ?? [];
+      await generateCompressiveStrengthPDF({
+        projectName: project.projectName,
+        clientName: project.clientName,
+        dateReported: project.dateReported,
+        testedBy: testDetails.madeBy,
+        checkedBy: project.checkedBy,
+        labOrganization: project.labOrganization,
+        record,
+        rows: cubes,
+        skipDownload: false,
+      });
+      toast.success("Compressive strength report downloaded");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Compressive report download failed");
+    } finally {
+      setIsPrinting(false);
+    }
   };
 
   const handleRowClick = (index: number) => {
