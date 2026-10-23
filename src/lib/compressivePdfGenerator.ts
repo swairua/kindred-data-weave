@@ -31,7 +31,7 @@ const MARGIN = 10;
 /** Width available to the page furniture (the table is inset, like the reference). */
 const CONTENT_W = 277;
 /** The reference table spans 71.8pt..816.5pt of an 841.92pt-wide page. */
-const TABLE_X = 25.3;
+const TABLE_X = 17.15;
 const TABLE_W = 262.7;
 
 /** Row height the reference uses for a cube row (~12pt). */
@@ -614,11 +614,6 @@ const drawTitleBlock = (
   } else if (!hasImages) {
     cy += 3;
   }
-  // Top edge of the full-page blue frame: the rule under the letterhead.
-  const ruleY = cy;
-  d.setDrawColor(...COLORS.dark);
-  d.setLineWidth(0.5);
-  d.line(TABLE_X, cy, TABLE_X + TABLE_W, cy);
   cy += 4;
   const title = "COMPRESSIVE STRENGTH OF CONCRETE CUBES";
   d.setFontSize(13);
@@ -637,9 +632,9 @@ const drawTitleBlock = (
     d.setFontSize(8);
     d.setFont("times", "bold");
     d.text(o.labOrganization, TABLE_X + TABLE_W / 2, cy, { align: "center" });
-    return { ruleY, endY: cy + 4 };
+    return { ruleY: cy, endY: cy + 4 };
   }
-  return { ruleY, endY: cy + 3 };
+  return { ruleY: cy, endY: cy + 3 };
 };
 
 /** Height of everything on a page that is not a cube row. Title block is ~38mm with images. */
