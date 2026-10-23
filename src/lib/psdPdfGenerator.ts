@@ -49,7 +49,7 @@ const GRAPH_GAP = 1.5;
 const GRAPH_INSET = 10;
 const MIN_ROW_H = 2.55;
 const MIN_BLOCK_H = 62;
-const MAX_BLOCK_H = 87.9;
+const MAX_BLOCK_H = 104.4;
 const SIEVE_W = 69.5;
 
 const COLORS = {
@@ -500,12 +500,12 @@ const PASSING_VALUES = Array.from({ length: 11 }, (_, step) => step * 10);
  */
 const REF_UNIT_MM = 0.352778;
 const REF_BLOCK_UNITS = 384.28;
-const REF_BLOCK_H_UNITS = 222;
+const REF_BLOCK_H_UNITS = 260;
 /** Plot rectangle inside the chart block, in the same units as the on-screen SVG. */
 const PLOT_UNITS = { x: 37.72, y: 27.81, w: 334.28, h: 160.86 };
 /** Fraction band rows below the plot, matching the reference sheet. */
-const BAND_TOP_UNITS = 205.6;
-const BAND_BOTTOM_UNITS = 211.9;
+const BAND_TOP_UNITS = 230.0;
+const BAND_BOTTOM_UNITS = 236.0;
 
 /**
  * Native vector grading curve, used whenever the html2canvas capture of the
@@ -555,7 +555,7 @@ const drawPsdGraphVector = (d: jsPDF, x: number, y: number, w: number, o: Partic
   d.setFillColor(255, 255, 255);
   d.setDrawColor(...COLORS.dark);
   d.setLineWidth(0.2 * type);
-  d.rect(x, py(14), w, 206.5 * scale * vScale, "FD");
+  d.rect(x, py(14), w, 246 * scale * vScale, "FD");
 
   d.setFillColor(...COLORS.plotBg);
   d.rect(plot.x, plot.y, plot.w, plot.h, "F");
@@ -585,16 +585,16 @@ const drawPsdGraphVector = (d: jsPDF, x: number, y: number, w: number, o: Partic
 
   PASSING_VALUES.forEach((value) => label(value.toFixed(1), PLOT_UNITS.x - 2, PLOT_UNITS.y + psdY(value, PLOT_UNITS.h), "right", 6));
   label("Passing (%)", 20, PLOT_UNITS.y + PLOT_UNITS.h / 2, "center", 7.5, true, 90);
-  PSD_DECADE_TICKS.forEach((size) => label(size.toFixed(3), PLOT_UNITS.x + psdX(size, PLOT_UNITS.w), 194.9, "center", 5.4));
+  PSD_DECADE_TICKS.forEach((size) => label(size.toFixed(3), PLOT_UNITS.x + psdX(size, PLOT_UNITS.w), 220.0, "center", 5.4));
   d.setDrawColor(...COLORS.dark);
   d.setLineWidth(0.14 * type);
-  d.line(px(27.0), py(195.3), px(376.9), py(195.3));
+  d.line(px(27.0), py(220.4), px(376.9), py(220.4));
   // Decade rules continue through the sub-label row down to the fraction band.
   PSD_DECADE_LINES.forEach((size) => {
     const gx = px(PLOT_UNITS.x + psdX(size, PLOT_UNITS.w));
     d.line(gx, plotBottom, gx, py(BAND_TOP_UNITS));
   });
-  PSD_SUB_LABELS.forEach((band) => label(band.label, PLOT_UNITS.x + psdX(band.from, PLOT_UNITS.w), 199.2, "center", 4.4));
+  PSD_SUB_LABELS.forEach((band) => label(band.label, PLOT_UNITS.x + psdX(band.from, PLOT_UNITS.w), 224.1, "center", 4.4));
   // Fraction band: a top rule from silt start to gravel end, dividers at the
   // 0.063 / 2 / 63 mm boundaries, and a wider bottom rule.
   d.line(px(PLOT_UNITS.x + psdX(0.002, PLOT_UNITS.w)), py(BAND_TOP_UNITS), px(PLOT_UNITS.x + psdX(63, PLOT_UNITS.w)), py(BAND_TOP_UNITS));
@@ -608,11 +608,11 @@ const drawPsdGraphVector = (d: jsPDF, x: number, y: number, w: number, o: Partic
     const at = PLOT_UNITS.x + psdX(Math.sqrt(band.from * band.to), PLOT_UNITS.w);
     // Fraction names sit clear of the band-bottom rule below them: at 5.9 pt
     // a tighter slot lets the rule strike through the glyphs.
-    label(band.label, at, 208.6, "center", 5.2);
+    label(band.label, at, 232.0, "center", 5.2);
   });
 
   d.setDrawColor(...COLORS.dark);
-  label("Particle size (mm)", PLOT_UNITS.x + PLOT_UNITS.w / 2, 220.1, "center", 7, true);
+  label("Particle size (mm)", PLOT_UNITS.x + PLOT_UNITS.w / 2, 250.0, "center", 7, true);
   label("PARTICLE SIZE DISTRIBUTION GRAPH", PLOT_UNITS.x + PLOT_UNITS.w / 2, 9, "center", 7.5, true);
 
   return y + refH;

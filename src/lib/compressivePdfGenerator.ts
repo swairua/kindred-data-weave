@@ -618,7 +618,7 @@ const drawTitleBlock = (
   const ruleY = cy;
   d.setDrawColor(...COLORS.dark);
   d.setLineWidth(0.5);
-  d.line(MARGIN, cy, MARGIN + CONTENT_W, cy);
+  d.line(TABLE_X, cy, TABLE_X + TABLE_W, cy);
   cy += 4;
   const title = "COMPRESSIVE STRENGTH OF CONCRETE CUBES";
   d.setFontSize(13);
@@ -697,9 +697,10 @@ export const generateCompressiveStrengthPDF = async (options: CompressiveStrengt
     // The laboratory's sheet inks a single blue frame around the whole report
     // — letterhead rule through footer — drawn last so it overlays the black
     // hairlines.
+    const FRAME_OFFSET = 2;
     doc.setDrawColor(...COLORS.blue);
     doc.setLineWidth(0.5);
-    doc.rect(TABLE_X, frameTop, TABLE_W, FRAME_BOTTOM - frameTop);
+    doc.rect(TABLE_X - FRAME_OFFSET, frameTop - FRAME_OFFSET, TABLE_W + FRAME_OFFSET * 2, FRAME_BOTTOM - frameTop + FRAME_OFFSET * 2);
   };
   let printed = printPage(printable.slice(0, rowsPerPage));
   for (let index = rowsPerPage; index < printable.length; index += rowsPerPage) {
