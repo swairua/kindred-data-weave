@@ -114,6 +114,25 @@ const DENSE_SIEVE = [
 const FULL_HYDROMETER = ["0.25", "0.5", "1", "2", "4", "8", "15", "30", "60", "120", "240", "480", "1440"]
   .map((time) => ({ time, actualHydrometer: "48" }));
 
+/** Middle-baseline y of the first text run with the given content (PDF y runs bottom-up). */
+const textY = (content: string, value: string): number | null => {
+  const escaped = value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = new RegExp(`(-?[\\d.]+) (-?[\\d.]+) Td\\s+\\(${escaped}\\)`).exec(content);
+  return match ? Number(match[2]) : null;
+};
+
+/** Horizontal and vertical strokes from the content stream, with their length in points. */
+const strokes = (content: string): Array<{ x1: number; y1: number; x2: number; y2: number; len: number }> => {
+  const out: Array<{ x1: number; y1: number; x2: number; y2: number; len: number }> = [];
+  const re = /(-?[\d.]+) (-?[\d.]+) m\s+(-?[\d.]+) (-?[\d.]+) l/g;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(content)) !== null) {
+    const [x1, y1, x2, y2] = match.slice(1).map(Number);
+    out.push({ x1, y1, x2, y2, len: Math.hypot(x2 - x1, y2 - y1) });
+  }
+  return out;
+};
+
 describe("Particle Size Distribution PDF page layout", () => {
   it("keeps the graph on the same page when the sieve table is short", async () => {
     expect((await build(THREE_ROWS)).getNumberOfPages()).toBe(1);
@@ -175,41 +194,76 @@ describe("Particle Size Distribution PDF page layout", () => {
     expect(content).toContain("0.001");
   });
 
-  it("sits the footer low enough to leave no idle band at the page foot", async () => {
-    // The old 36.8 mm reserve (sized for the stamp) stranded ~31 mm of empty
-    // page below the footer; without a stamp the footer drops, freeing room
-    // for the graph. PDF y runs bottom-up, so a lower footer reads smaller.
+  it("keeps the footer below the closed report box instead of enclosing it", async () => {
+    // The report now ends in its own bottom rule; the footer sits in the
+    // whitespace underneath, clear of the side rails. PDF y runs bottom-up,
+    // so the footer baseline must read below the report-bottom rule.
     const doc = await build(FULL_SIEVE, FULL_HYDROMETER);
     const content = pageContent(doc);
-    const footer = /(-?[\d.]+) (-?[\d.]+) Td\s+\(Tested by:\)/.exec(content);
-    expect(footer).not.toBeNull();
-    expect(Number(footer?.[2])).toBeLessThan(80);
+    const footerY = textY(content, "Tested by:");
+    expect(footerY).not.toBeNull();
+
+    const all = strokes(content);
+    const reportBottom = all
+      .filter((s) => Math.abs(s.y2 - s.y1) < 0.01 && s.len > 492 && s.len < 497 && s.y1 > 60 && s.y1 < 110)
+      .sort((a, b) => a.y1 - b.y1)[0];
+    expect(reportBottom).toBeDefined();
+    expect(reportBottom.y1 - (footerY as number)).toBeGreaterThan(30);
+
+    // The side rails stop at the report bottom rather than running past the
+    // footer; their lowest point is above the footer baseline.
+    const rail = all
+      .filter((s) => Math.abs(s.x2 - s.x1) < 0.01 && s.x1 < 70 && s.len > 200)
+      .sort((a, b) => b.len - a.len)[0];
+    expect(rail).toBeDefined();
+    expect(Math.min(rail.y1, rail.y2)).toBeGreaterThan(footerY as number);
   });
 
-  it("shrinks graph labels when an extreme stack compresses the graph", async () => {
-    // Forty sieve rows force the fit loop past the graph's natural height, so
-    // the block draws compressed (vScale < 1). The decade ticks must shrink
-    // with the geometry instead of colliding with the fraction bands below.
+  it("keeps the axis labels fixed and clear of their rules when the stack compresses", async () => {
+    // Forty sieve rows force the plot to shrink, but the label strip no longer
+    // scales with it: text sizes and row positions stay put, and each row keeps
+    // real clearance from the decade rule, the band rules, and its neighbours.
     const crowded = [
       ...DENSE_SIEVE,
       ...Array.from({ length: 17 }, () => ({ sieveSize: "<0.075", weightRetained: "" })),
     ];
-    const doc = await build(crowded, FULL_HYDROMETER);
-    expect(doc.getNumberOfPages()).toBe(1);
+    const dense = await build(crowded, FULL_HYDROMETER);
+    expect(dense.getNumberOfPages()).toBe(1);
+    const roomy = await build(THREE_ROWS, FULL_HYDROMETER);
 
     const tickSize = (content: string): number | null => {
       const match = /\/F\w+ ([\d.]+) Tf[^(]*\(0\.001\)/.exec(content);
       return match ? Number(match[1]) : null;
     };
-    const compressed = tickSize(pageContent(doc));
-    expect(compressed).not.toBeNull();
-    // Uncompressed the 5.4-unit tick prints at ~6.2 pt; compression must pull
-    // it below 6 pt or the labels overflow their squeezed slots.
-    expect(compressed as number).toBeLessThan(6.0);
+    const denseContent = pageContent(dense);
+    const roomyContent = pageContent(roomy);
+    expect(tickSize(denseContent)).not.toBeNull();
+    expect(tickSize(denseContent)).toBe(tickSize(roomyContent));
 
-    const roomy = await build(THREE_ROWS, FULL_HYDROMETER);
-    const roomySize = tickSize(pageContent(roomy));
-    expect(Number(roomySize)).toBeGreaterThan(compressed as number);
+    const decadeY = textY(denseContent, "0.001");
+    const subY = textY(denseContent, "CLAY FRACTION");
+    const fractionY = textY(denseContent, "SILT FRACTION");
+    expect(decadeY).not.toBeNull();
+    expect(subY).not.toBeNull();
+    expect(fractionY).not.toBeNull();
+    // Higher on the page reads higher in PDF coordinates.
+    expect(decadeY as number).toBeGreaterThan(subY as number);
+    expect(subY as number).toBeGreaterThan(fractionY as number);
+    expect((decadeY as number) - (subY as number)).toBeGreaterThan(9);
+    expect((subY as number) - (fractionY as number)).toBeGreaterThan(9);
+
+    const all = strokes(denseContent);
+    const decadeRule = all
+      .filter((s) => Math.abs(s.y2 - s.y1) < 0.01 && s.len > 396 && s.len < 401)
+      .sort((a, b) => Math.abs(a.y1 - (decadeY as number)) - Math.abs(b.y1 - (decadeY as number)))[0];
+    expect(decadeRule).toBeDefined();
+    expect((decadeY as number) - decadeRule.y1).toBeGreaterThan(4);
+
+    const bandTop = all
+      .filter((s) => Math.abs(s.y2 - s.y1) < 0.01 && s.len > 338 && s.len < 348 && s.y1 > (fractionY as number))
+      .sort((a, b) => b.y1 - a.y1)[0];
+    expect(bandTop).toBeDefined();
+    expect(bandTop.y1 - (fractionY as number)).toBeGreaterThan(4);
   });
 
   it("keeps the fraction names clear of the band-bottom rule", async () => {

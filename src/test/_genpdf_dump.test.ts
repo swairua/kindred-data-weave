@@ -1,11 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
 import * as fs from "node:fs";
 vi.mock("@/lib/imageUtils", () => ({ fetchAdminImagesAsBase64: async () => ({}) }));
-import { generateCompressiveStrengthPDF } from "../lib/compressivePdfGenerator";
+import { generateCompressiveStrengthPDF, type CompressiveRecordView } from "../lib/compressivePdfGenerator";
 import { generateParticleSizeDistributionPDF } from "../lib/psdPdfGenerator";
 import { calculateGrading, calculateHydrometer } from "../lib/gradingCalculations";
 import { mergePsdSeries } from "../lib/psdChartGeometry";
-import { type CompressiveCubeInput, type CompressiveRecordView } from "../lib/compressiveCalculations";
+import { type CompressiveCubeInput } from "../lib/compressiveCalculations";
 
 describe("dump", () => {
   it("cube", async () => {
@@ -73,6 +73,7 @@ describe("dump", () => {
         moisture: { wetMass: "186.5", dryMass: "149.0" }, sieveRows: FULL_SIEVE, hydrometerRows: FULL_HYDROMETER,
       },
       grading, hydrometer, hydrometerInputs, series,
+      chartImage: null,
       gravelPercentage: 22.8, sandPercentage: 5.3, finesPercentage: 71.9,
       uscsSymbol: "MH", uscsDescription: "GRAVELLY ELASTIC SILT", aashtoGroup: "A-7-5", groupIndex: 3,
       skipDownload: true,

@@ -2,6 +2,7 @@ import {
   PSD_DECADE_LINES,
   PSD_DECADE_TICKS,
   PSD_FRACTIONS,
+  PSD_LAYOUT,
   PSD_MINOR_TICKS,
   PSD_SUB_LABELS,
   psdCurvePath,
@@ -16,25 +17,25 @@ import {
  * proportions match the report exactly; the SVG scales to whatever width the
  * caller gives it.
  */
-const VIEW_W = 384.28;
-const VIEW_H = 222;
-
-const FRAME = { x: 0, y: 14, w: 384.28, h: 206.5 };
-const PLOT = { x: 37.72, y: 27.81, w: 334.28, h: 160.86 };
+const {
+  viewW: VIEW_W,
+  viewH: VIEW_H,
+  frame: FRAME,
+  plot: PLOT,
+  titleY: TITLE_Y,
+  decadeLabelY: DECADE_LABEL_Y,
+  decadeRuleY: DECADE_RULE_Y,
+  decadeRuleLeft: DECADE_RULE_LEFT,
+  decadeRuleRight: DECADE_RULE_RIGHT,
+  subLabelY: SUB_LABEL_Y,
+  bandTopY: BAND_TOP_Y,
+  bandBottomY: BAND_BOTTOM_Y,
+  fractionRowY: FRACTION_ROW_Y,
+  bandRuleLeft: BAND_RULE_LEFT,
+  bandRuleRight: BAND_RULE_RIGHT,
+  axisTitleY: AXIS_TITLE_Y,
+} = PSD_LAYOUT;
 const PLOT_BOTTOM = PLOT.y + PLOT.h;
-
-/** Baseline rows below the plot, top to bottom. */
-const DECADE_LABEL_Y = 194.9;
-const DECADE_RULE_Y = 195.3;
-const DECADE_RULE_LEFT = 27.0;
-const DECADE_RULE_RIGHT = 376.9;
-const SUB_LABEL_Y = 198.6;
-const BAND_TOP_Y = 205.6;
-const BAND_BOTTOM_Y = 211.9;
-const FRACTION_ROW_Y = 210.7;
-const BAND_RULE_LEFT = 27.7;
-const BAND_RULE_RIGHT = 381.3;
-const AXIS_TITLE_Y = 219.6;
 
 const FONT = "Helvetica, Arial, sans-serif";
 const PLOT_FILL = "#f2dcdb";
@@ -131,6 +132,7 @@ export default function ParticleSizeDistributionChart({ points, id, className }:
             fontSize={5.4}
             fill="#000000"
             textAnchor="middle"
+            dominantBaseline="middle"
           >
             {size.toFixed(3)}
           </text>
@@ -147,6 +149,7 @@ export default function ParticleSizeDistributionChart({ points, id, className }:
             fontSize={4.4}
             fill="#000000"
             textAnchor="middle"
+            dominantBaseline="middle"
           >
             {band.label}
           </text>
@@ -183,6 +186,7 @@ export default function ParticleSizeDistributionChart({ points, id, className }:
             fontSize={5.2}
             fill="#000000"
             textAnchor="middle"
+            dominantBaseline="middle"
           >
             {band.label}
           </text>
@@ -196,18 +200,20 @@ export default function ParticleSizeDistributionChart({ points, id, className }:
           fontWeight="bold"
           fill="#000000"
           textAnchor="middle"
+          dominantBaseline="middle"
         >
           Particle size (mm)
         </text>
 
         <text
           x={PLOT.x + PLOT.w / 2}
-          y={9}
+          y={TITLE_Y}
           fontFamily={FONT}
           fontSize={7.5}
           fontWeight="bold"
           fill="#000000"
           textAnchor="middle"
+          dominantBaseline="middle"
         >
           PARTICLE SIZE DISTRIBUTION GRAPH
         </text>

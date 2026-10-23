@@ -84,6 +84,34 @@ export const PSD_SUB_LABELS: PsdBand[] = [
   { label: "BOULDERS", from: 63, to: PSD_X_MAX },
 ].map((band) => ({ label: band.label, from: psdBandCentre(band.from, band.to), to: band.to }));
 
+/**
+ * Shared chart layout in the 384.28 x 260 authoring space used by the on-screen
+ * SVG and the native jsPDF curve. Keeping one copy here stops the printed sheet
+ * and the screen drifting apart, and the row spacing below is deliberately
+ * generous: every label clears the rule beside it instead of sitting on it.
+ */
+export const PSD_LAYOUT = {
+  viewW: 384.28,
+  viewH: 260,
+  frame: { x: 0, y: 14, w: 384.28, h: 246 },
+  plot: { x: 37.72, y: 27.81, w: 334.28, h: 160.86 },
+  titleY: 9,
+  decadeLabelY: 199,
+  decadeRuleY: 204.5,
+  decadeRuleLeft: 27,
+  decadeRuleRight: 376.9,
+  subLabelY: 209.5,
+  bandTopY: 215,
+  fractionRowY: 220.5,
+  bandBottomY: 227,
+  bandRuleLeft: 27.7,
+  bandRuleRight: 381.3,
+  axisTitleY: 245,
+} as const;
+
+/** Bottom edge of the plot rectangle in layout units. */
+export const PSD_PLOT_BOTTOM = PSD_LAYOUT.plot.y + PSD_LAYOUT.plot.h;
+
 /** Position of a size in decades from the left edge of the axis, clamped to the domain. */
 export const psdDecadePosition = (size: number): number => {
   if (!Number.isFinite(size) || size <= 0) return 0;

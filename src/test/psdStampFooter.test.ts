@@ -100,11 +100,10 @@ describe("PSD footer with a configured stamp", () => {
     expect(pageContent(doc)).toMatch(/\/I\d+ Do/);
   });
 
-  it("drops the footer to use the freed page foot while keeping the stamp on-page", async () => {
-    // The old flat 36.8 mm reserve pinned the footer (and its stamp) high
-    // with ~31 mm idling below; the stamp-aware reserve moves the block down
-    // while the stamp bottom stays safely inside the sheet. PDF y runs
-    // bottom-up, so a lower footer reads smaller than the old ~94 anchor.
+  it("anchors the footer at the fixed page foot and keeps the stamp on-page", async () => {
+    // The footer anchor no longer moves with the stamp: the report closes above
+    // it and the stamp straddles the footer's right edge, still inside the
+    // sheet. PDF y runs bottom-up, so the footer baseline sits low on the page.
     const doc = await build();
     const content = pageContent(doc);
     const footer = /(-?[\d.]+) (-?[\d.]+) Td\s+\(Tested by:\)/.exec(content);
@@ -112,5 +111,11 @@ describe("PSD footer with a configured stamp", () => {
     const footerY = Number(footer?.[2]);
     expect(footerY).toBeLessThan(80);
     expect(footerY).toBeGreaterThan(30);
+
+    const stamp = /(-?[\d.]+) 0 0 (-?[\d.]+) (-?[\d.]+) (-?[\d.]+) cm\s*\/I\d+ Do/.exec(content);
+    expect(stamp).not.toBeNull();
+    const [, , height, , bottom] = stamp as RegExpExecArray;
+    expect(Number(bottom)).toBeGreaterThanOrEqual(0);
+    expect(Number(bottom) + Number(height)).toBeLessThanOrEqual(792);
   });
 });

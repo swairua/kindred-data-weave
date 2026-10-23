@@ -11,7 +11,9 @@ import {
   PSD_DECADE_LINES,
   PSD_DECADE_TICKS,
   PSD_FRACTIONS,
+  PSD_LAYOUT,
   PSD_MINOR_TICKS,
+  PSD_PLOT_BOTTOM,
   PSD_SUB_LABELS,
   psdCurveSamples,
   psdX,
@@ -44,11 +46,14 @@ const HYDRO_CAP_H = 8.3;
 const HYDRO_PARAM_H = 3.14;
 const HYDRO_HEAD_H = 8.7;
 const FOOTER_H = 5.5;
-const FOOTER_GAP = 3; // increased for clearer separation from content
-const GRAPH_GAP = 2.5; // increased to prevent chart cramp against tables
+const BOTTOM_MARGIN = 12; // whitespace under the footer
+const REPORT_FOOTER_GAP = 12; // whitespace between the report and the footer
+const GRAPH_GAP = 2.5;
 const GRAPH_INSET = 10;
 const MIN_ROW_H = 2.55;
-const MIN_BLOCK_H = 62;
+// Enough for the fixed label strip plus a usable plot; the strip itself never
+// compresses, only the plot is allowed to shrink.
+const MIN_BLOCK_H = 52;
 const MAX_BLOCK_H = 104.4;
 const SIEVE_W = 69.5;
 
@@ -402,7 +407,7 @@ const drawDiameterHeader = (d: jsPDF, cx: number, cy: number, cw: number, ch: nu
   const radicalW = glyphH;
   const total = firstW + radicalW * 1.2 + lastW;
   const y3 = mid + lineH;
-  let sx = cx + cw / 2 - total / 2;
+  const sx = cx + cw / 2 - total / 2;
   d.text(first, sx, y3, { align: "left", baseline: "middle" });
   const rx = sx + firstW + radicalW * 0.1;
   d.setDrawColor(...COLORS.dark);
@@ -499,13 +504,13 @@ const PASSING_VALUES = Array.from({ length: 11 }, (_, step) => step * 10);
  * all scale together.
  */
 const REF_UNIT_MM = 0.352778;
-const REF_BLOCK_UNITS = 384.28;
-const REF_BLOCK_H_UNITS = 260;
+const REF_BLOCK_UNITS = PSD_LAYOUT.viewW;
+const REF_BLOCK_H_UNITS = PSD_LAYOUT.viewH;
 /** Plot rectangle inside the chart block, in the same units as the on-screen SVG. */
-const PLOT_UNITS = { x: 37.72, y: 27.81, w: 334.28, h: 160.86 };
+const PLOT_UNITS = PSD_LAYOUT.plot;
 /** Fraction band rows below the plot, matching the reference sheet. */
-const BAND_TOP_UNITS = 230.0;
-const BAND_BOTTOM_UNITS = 236.0;
+const BAND_TOP_UNITS = PSD_LAYOUT.bandTopY;
+const BAND_BOTTOM_UNITS = PSD_LAYOUT.bandBottomY;
 
 /**
  * Native vector grading curve, used whenever the html2canvas capture of the
@@ -517,20 +522,42 @@ const drawPsdGraphVector = (d: jsPDF, x: number, y: number, w: number, o: Partic
   // One unit of the authoring space is one point of the source sheet, so geometry
   // scales by millimetres per unit, while type scales by the same ratio expressed
   // as a plain multiplier on a point size.
-  const refH = forcedHeight ?? (REF_BLOCK_H_UNITS * w) / REF_BLOCK_UNITS;
   const scale = w / REF_BLOCK_UNITS;
   const type = scale / REF_UNIT_MM;
-  // If forcedHeight differs from natural, apply a vertical scale factor to the units.
-  const vScale = forcedHeight ? refH / (REF_BLOCK_H_UNITS * scale) : 1;
+  const naturalH = REF_BLOCK_H_UNITS * scale;
+  const refH = forcedHeight ?? naturalH;
+  const blockBottom = y + refH;
+  // The axis strip keeps its printed height however far the plot is squeezed,
+  // so a dense record can never fold the ticks onto their rules.
+  const stripH = (REF_BLOCK_H_UNITS - PSD_PLOT_BOTTOM) * scale;
   const px = (units: number) => x + units * scale;
-  const py = (units: number) => y + units * scale * vScale;
+  /** Top-anchored geometry: title, frame top and the top of the plot. */
+  const ty = (units: number) => y + units * scale;
+  /** Bottom-anchored label rows: unaffected by the plot's compression. */
+  const by = (units: number) => blockBottom - (REF_BLOCK_H_UNITS - units) * scale;
+  const plotY = ty(PLOT_UNITS.y);
   const plot = {
     x: px(PLOT_UNITS.x),
-    y: py(PLOT_UNITS.y),
+    y: plotY,
     w: PLOT_UNITS.w * scale,
-    h: PLOT_UNITS.h * scale * vScale,
+    h: Math.max(0, blockBottom - stripH - plotY),
   };
   const plotBottom = plot.y + plot.h;
+  /** Places text at an absolute position in millimetres. */
+  const text = (
+    value: string,
+    atX: number,
+    atY: number,
+    align: "left" | "center" | "right",
+    size: number,
+    bold = false,
+    angle = 0,
+  ) => {
+    d.setFontSize(Math.max(size * type, 3.5));
+    d.setFont("helvetica", bold ? "bold" : "normal");
+    d.setTextColor(...COLORS.dark);
+    d.text(value, atX, atY, { align, baseline: "middle", angle });
+  };
   /** Places text at a position given in chart-block units. */
   const label = (
     value: string,
@@ -540,22 +567,13 @@ const drawPsdGraphVector = (d: jsPDF, x: number, y: number, w: number, o: Partic
     size: number,
     bold = false,
     angle = 0,
-  ) => {
-    // Type scales with the vertical compression too: positions compress
-    // through py() but an unscaled size leaves full-size glyphs colliding
-    // in the squeezed slots (decade ticks over fraction bands). At vScale 1
-    // this is exactly the old size; the 3.5 pt floor keeps labels legible
-    // rather than vanishing on very dense sheets.
-    d.setFontSize(Math.max(size * type * vScale, 3.5));
-    d.setFont("helvetica", bold ? "bold" : "normal");
-    d.setTextColor(...COLORS.dark);
-    d.text(value, px(atX), py(atY), { align, baseline: "middle", angle });
-  };
+    anchor: "top" | "bottom" = "bottom",
+  ) => text(value, px(atX), (anchor === "top" ? ty : by)(atY), align, size, bold, angle);
 
   d.setFillColor(255, 255, 255);
   d.setDrawColor(...COLORS.dark);
   d.setLineWidth(0.2 * type);
-  d.rect(x, py(14), w, 246 * scale * vScale, "FD");
+  d.rect(x, ty(PSD_LAYOUT.frame.y), w, refH - PSD_LAYOUT.frame.y * scale, "FD");
 
   d.setFillColor(...COLORS.plotBg);
   d.rect(plot.x, plot.y, plot.w, plot.h, "F");
@@ -566,7 +584,7 @@ const drawPsdGraphVector = (d: jsPDF, x: number, y: number, w: number, o: Partic
     d.line(gx, plot.y, gx, plotBottom);
   });
   PASSING_VALUES.forEach((value) => {
-    const gy = py(PLOT_UNITS.y + psdY(value, PLOT_UNITS.h));
+    const gy = plot.y + psdY(value, plot.h);
     d.line(plot.x, gy, plot.x + plot.w, gy);
   });
 
@@ -583,37 +601,35 @@ const drawPsdGraphVector = (d: jsPDF, x: number, y: number, w: number, o: Partic
     }
   }
 
-  PASSING_VALUES.forEach((value) => label(value.toFixed(1), PLOT_UNITS.x - 2, PLOT_UNITS.y + psdY(value, PLOT_UNITS.h), "right", 6));
-  label("Passing (%)", 20, PLOT_UNITS.y + PLOT_UNITS.h / 2, "center", 7.5, true, 90);
-  PSD_DECADE_TICKS.forEach((size) => label(size.toFixed(3), PLOT_UNITS.x + psdX(size, PLOT_UNITS.w), 220.0, "center", 5.4));
+  PASSING_VALUES.forEach((value) => text(value.toFixed(1), px(PLOT_UNITS.x - 2), plot.y + psdY(value, plot.h), "right", 6));
+  text("Passing (%)", px(20), plot.y + plot.h / 2, "center", 7.5, true, 90);
+  PSD_DECADE_TICKS.forEach((size) => label(size.toFixed(3), PLOT_UNITS.x + psdX(size, PLOT_UNITS.w), PSD_LAYOUT.decadeLabelY, "center", 5.4));
   d.setDrawColor(...COLORS.dark);
   d.setLineWidth(0.14 * type);
-  d.line(px(27.0), py(220.4), px(376.9), py(220.4));
+  d.line(px(PSD_LAYOUT.decadeRuleLeft), by(PSD_LAYOUT.decadeRuleY), px(PSD_LAYOUT.decadeRuleRight), by(PSD_LAYOUT.decadeRuleY));
   // Decade rules continue through the sub-label row down to the fraction band.
   PSD_DECADE_LINES.forEach((size) => {
     const gx = px(PLOT_UNITS.x + psdX(size, PLOT_UNITS.w));
-    d.line(gx, plotBottom, gx, py(BAND_TOP_UNITS));
+    d.line(gx, plotBottom, gx, by(BAND_TOP_UNITS));
   });
-  PSD_SUB_LABELS.forEach((band) => label(band.label, PLOT_UNITS.x + psdX(band.from, PLOT_UNITS.w), 224.1, "center", 4.4));
+  PSD_SUB_LABELS.forEach((band) => label(band.label, PLOT_UNITS.x + psdX(band.from, PLOT_UNITS.w), PSD_LAYOUT.subLabelY, "center", 4.4));
   // Fraction band: a top rule from silt start to gravel end, dividers at the
   // 0.063 / 2 / 63 mm boundaries, and a wider bottom rule.
-  d.line(px(PLOT_UNITS.x + psdX(0.002, PLOT_UNITS.w)), py(BAND_TOP_UNITS), px(PLOT_UNITS.x + psdX(63, PLOT_UNITS.w)), py(BAND_TOP_UNITS));
+  d.line(px(PLOT_UNITS.x + psdX(0.002, PLOT_UNITS.w)), by(BAND_TOP_UNITS), px(PLOT_UNITS.x + psdX(63, PLOT_UNITS.w)), by(BAND_TOP_UNITS));
   [0.063, 2, 63].forEach((size) => {
     const gx = px(PLOT_UNITS.x + psdX(size, PLOT_UNITS.w));
-    d.line(gx, py(BAND_TOP_UNITS), gx, py(BAND_BOTTOM_UNITS));
+    d.line(gx, by(BAND_TOP_UNITS), gx, by(BAND_BOTTOM_UNITS));
   });
   d.setLineWidth(0.37 * type);
-  d.line(px(27.7), py(BAND_BOTTOM_UNITS), px(381.3), py(BAND_BOTTOM_UNITS));
+  d.line(px(PSD_LAYOUT.bandRuleLeft), by(BAND_BOTTOM_UNITS), px(PSD_LAYOUT.bandRuleRight), by(BAND_BOTTOM_UNITS));
   PSD_FRACTIONS.slice(1, 4).forEach((band) => {
     const at = PLOT_UNITS.x + psdX(Math.sqrt(band.from * band.to), PLOT_UNITS.w);
-    // Fraction names sit clear of the band-bottom rule below them: at 5.9 pt
-    // a tighter slot lets the rule strike through the glyphs.
-    label(band.label, at, 232.0, "center", 5.2);
+    label(band.label, at, PSD_LAYOUT.fractionRowY, "center", 5.2);
   });
 
   d.setDrawColor(...COLORS.dark);
-  label("Particle size (mm)", PLOT_UNITS.x + PLOT_UNITS.w / 2, 250.0, "center", 7, true);
-  label("PARTICLE SIZE DISTRIBUTION GRAPH", PLOT_UNITS.x + PLOT_UNITS.w / 2, 9, "center", 7.5, true);
+  label("Particle size (mm)", PLOT_UNITS.x + PLOT_UNITS.w / 2, PSD_LAYOUT.axisTitleY, "center", 7, true);
+  label("PARTICLE SIZE DISTRIBUTION GRAPH", PLOT_UNITS.x + PLOT_UNITS.w / 2, PSD_LAYOUT.titleY, "center", 7.5, true, 0, "top");
 
   return y + refH;
 };
@@ -717,12 +733,12 @@ export const generateParticleSizeDistributionPDF = async (options: ParticleSizeD
   const pageHeight = doc.internal.pageSize.getHeight();
   const x = MARGIN;
   const topY = 10;
-  // Reserve the footer band first so content can never run into it. The stamp
-  // straddles the footer, so with one configured the band keeps room for it;
-  // without a stamp the footer needs far less, and the spare goes back to
-  // the graph instead of idling below the footer.
-  const footerTop = pageHeight - (images.stamp ? 26 : 22);
-  const contentBottom = footerTop - FOOTER_GAP;
+  // The report closes above the footer; the footer itself sits in the
+  // whitespace below the report box, clear of the side rails. The stamp
+  // straddles the footer and still stays inside the page's bottom margin.
+  const footerTop = pageHeight - BOTTOM_MARGIN - FOOTER_H;
+  const reportBottom = footerTop - REPORT_FOOTER_GAP;
+  const contentBottom = reportBottom;
 
   const y = drawTitleBlock(doc, x, topY, CONTENT_W, options, images);
   const titleBottom = y;
@@ -763,17 +779,19 @@ export const generateParticleSizeDistributionPDF = async (options: ParticleSizeD
   const hydrometerBottom = drawHydrometerTable(doc, x + SIEVE_W, cursor, CONTENT_W - SIEVE_W, options, rowH);
   const tableBottom = Math.max(sieveBottom, hydrometerBottom);
 
-  // Side rails continue the frame through the graph zone into the footer.
+  // Side rails close at the foot of the report, above the footer, and a bottom
+  // rule seals the report box so the footer reads as separate from it.
   doc.setDrawColor(...COLORS.dark);
   doc.setLineWidth(0.2);
-  doc.line(x, tableBottom, x, footerTop);
-  doc.line(x + CONTENT_W, tableBottom, x + CONTENT_W, footerTop);
+  doc.line(x, tableBottom, x, reportBottom);
+  doc.line(x + CONTENT_W, tableBottom, x + CONTENT_W, reportBottom);
+  doc.line(x, reportBottom, x + CONTENT_W, reportBottom);
 
   const graphTop = tableBottom + GRAPH_GAP;
-  graphH = Math.max(MIN_BLOCK_H, Math.min(graphH, contentBottom - graphTop));
+  graphH = Math.min(graphH, Math.max(0, contentBottom - graphTop));
   drawPsdGraph(doc, x + GRAPH_INSET, graphTop, graphW, options, graphH);
 
-  // Footer last, on the reserved band — content above can never overlap it.
+  // Footer outside the report box, in the whitespace below it.
   drawFooter(doc, options, images, footerTop);
 
   if (!options.skipDownload) {
