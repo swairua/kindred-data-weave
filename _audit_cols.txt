@@ -1,0 +1,9 @@
+﻿id	int(10) unsigned	NO	NULL
+test_result_id	int(10) unsigned	NO	NULL
+user_id	int(10) unsigned	NO	NULL
+status	enum('initiated','in_progress','completed','failed')	YES	'initiated'
+data_points	int(10) unsigned	YES	NULL
+test_key	varchar(100)	YES	NULL
+error_message	text	YES	NULL
+created_at	timestamp	YES	current_timestamp()
+completed_at	timestamp	YES	NULL

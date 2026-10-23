@@ -38,6 +38,7 @@ interface ApiTestResult {
   sample_label?: string | null;
   sample_key?: string | null;
   sample_depth?: string | null;
+  testNumber?: number | null;
   payload_json?: {
     project?: {
       records?: Array<{
@@ -220,12 +221,25 @@ const TestResults = () => {
     return Array.from(types).sort();
   }, [tests]);
 
+  const numberedTests = useMemo(
+    () => {
+      const counts = new Map<number, number>();
+      return tests.map((test) => {
+        const projectNumber = Number(test.project_id);
+        const count = (counts.get(projectNumber) ?? 0) + 1;
+        counts.set(projectNumber, count);
+        return { ...test, testNumber: count };
+      });
+    },
+    [tests],
+  );
+
   // Get current user from project context
   const currentUser: { name?: string; email?: string } | null = null;
 
   // Filter tests based on selected filters and search query
   const filteredTests = useMemo(() => {
-    return tests.filter((test) => {
+    return numberedTests.filter((test) => {
       const materialMatch =
         materialFilter === "all" || test.material_type === materialFilter;
       const testTypeMatch = testTypeFilter === "all" || test.test_type === testTypeFilter;
@@ -237,7 +251,7 @@ const TestResults = () => {
 
       return materialMatch && testTypeMatch && searchMatch;
     });
-  }, [tests, materialFilter, testTypeFilter, searchQuery]);
+  }, [numberedTests, materialFilter, testTypeFilter, searchQuery]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -428,6 +442,7 @@ const TestResults = () => {
                         <Table>
                           <TableHeader>
                             <TableRow className="bg-muted/40 hover:bg-muted/40">
+                              <TableHead className="h-8 px-2 text-[10px] font-semibold tracking-wide text-muted-foreground">TEST #</TableHead>
                               <TableHead className="h-8 px-2 text-[10px] font-semibold tracking-wide text-muted-foreground">PROJECT</TableHead>
                               <TableHead className="hidden h-8 px-2 text-[10px] font-semibold tracking-wide text-muted-foreground sm:table-cell">TEST TYPE</TableHead>
                               <TableHead className="h-8 px-2 text-[10px] font-semibold tracking-wide text-muted-foreground">SAMPLE ID & DEPTH</TableHead>
@@ -442,6 +457,9 @@ const TestResults = () => {
                                 key={test.id}
                                 className="border-b last:border-0 hover:bg-muted/50"
                               >
+                                <TableCell className="px-2 py-1.5 text-[10px] text-muted-foreground">
+                                  Test {test.testNumber}
+                                </TableCell>
                                 <TableCell className="px-2 py-1.5 font-medium">
                                   <div>
                                     <p className="text-xs font-medium leading-4">{test.project_name || "-"}</p>

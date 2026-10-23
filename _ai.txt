@@ -1,0 +1,6 @@
+﻿L	2	logo	/uploads/admin/logo/logo_20260407_050124_d609d06ec523.jpg	1
+L	3	contacts	/uploads/admin/contacts/contacts_20260407_050218_3b81d75c955b.jpg	1
+L	4	stamp	/uploads/admin/stamp/stamp_20260407_050236_d3b0753382bf.jpg	1
+D	2	logo	/uploads/admin/logo/logo_20260407_050124_d609d06ec523.jpg	1
+D	3	contacts	/uploads/admin/contacts/contacts_20260407_050218_3b81d75c955b.jpg	1
+D	4	stamp	/uploads/admin/stamp/stamp_20260407_050236_d3b0753382bf.jpg	1

@@ -1,0 +1,8 @@
+﻿mysql.exe : ERROR 1054 (42S22) at line 1: Unknown column 'company_name' in 'field list'
+At line:1 char:1
++ & 'c:\xampp\mysql\bin\mysql.exe' -u root -P 3308 -N -B -e "SELECT 'L' ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (ERROR 1054 (42S...in 'field list':String) [] 
+   , RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

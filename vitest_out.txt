@@ -1,0 +1,2122 @@
+
+[1m[46m RUN [49m[22m [36mv3.2.7 [39m[90mC:/xampp/htdocs/kindred[39m
+
+[90mstderr[2m | src/pages/RecordTestWizard.test.tsx[2m > [22m[2mRecordTestWizard selection flow[2m > [22m[2mshows materials without bottom navigation and opens the selected material's tests
+[22m[39m⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+[90mstderr[2m | src/components/concrete/CompressiveStrengthTest.test.tsx[2m > [22m[2mediting a saved compressive test[2m > [22m[2mloads the stored cubes of the test the wizard opened
+[22m[39m⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+[90mstderr[2m | src/components/concrete/CompressiveStrengthTest.test.tsx[2m > [22m[2mediting a saved compressive test[2m > [22m[2mloads the stored test details of the test the wizard opened
+[22m[39mThe width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+
+[90mstderr[2m | src/pages/ProjectOverview.test.tsx[2m > [22m[2mProjectOverview[2m > [22m[2mopens a selected project from the main list into its overview
+[22m[39m⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+[90mstderr[2m | src/components/concrete/CompressiveStrengthTest.test.tsx[2m > [22m[2mediting a saved compressive test[2m > [22m[2msaves against the same test and updates the cube in place
+[22m[39mThe width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+
+[90mstderr[2m | src/components/concrete/CompressiveStrengthTest.test.tsx[2m > [22m[2mediting a saved compressive test[2m > [22m[2msaves against the same test and updates the cube in place
+[22m[39mThe width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+
+[90mstderr[2m | src/components/concrete/CompressiveStrengthTest.test.tsx[2m > [22m[2mediting a saved compressive test[2m > [22m[2msaves against the same test and updates the cube in place
+[22m[39mThe width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+
+[90mstderr[2m | src/components/concrete/CompressiveStrengthTest.test.tsx[2m > [22m[2mediting a saved compressive test[2m > [22m[2mrefuses to save while the stored cubes are still loading
+[22m[39mThe width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+
+[90mstderr[2m | src/components/concrete/CompressiveStrengthTest.test.tsx[2m > [22m[2mediting a saved compressive test[2m > [22m[2mrefuses to save while the stored cubes are still loading
+[22m[39mThe width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+
+[90mstderr[2m | src/components/concrete/CompressiveStrengthTest.test.tsx[2m > [22m[2mediting a saved compressive test[2m > [22m[2mrefuses to save while the stored cubes are still loading
+[22m[39mThe width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+
+[90mstderr[2m | src/components/concrete/CompressiveStrengthTest.test.tsx[2m > [22m[2mediting a saved compressive test[2m > [22m[2msaves a new cube without an id when no existing test was opened
+[22m[39mThe width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+
+[90mstderr[2m | src/components/concrete/CompressiveStrengthTest.test.tsx[2m > [22m[2mediting a saved compressive test[2m > [22m[2msaves a new cube without an id when no existing test was opened
+[22m[39mThe width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+
+[90mstderr[2m | src/components/concrete/CompressiveStrengthTest.test.tsx[2m > [22m[2mediting a saved compressive test[2m > [22m[2msaves a mark-less cube as null instead of blocking the save
+[22m[39mThe width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+
+[90mstderr[2m | src/components/concrete/CompressiveStrengthTest.test.tsx[2m > [22m[2mediting a saved compressive test[2m > [22m[2msaves a mark-less cube as null instead of blocking the save
+[22m[39mThe width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+
+[90mstderr[2m | src/components/concrete/CompressiveStrengthTest.test.tsx[2m > [22m[2mage bands and class-derived targets[2m > [22m[2mderives band targets from the concrete class until typed over
+[22m[39mThe width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+
+[90mstderr[2m | src/components/concrete/CompressiveStrengthTest.test.tsx[2m > [22m[2mopening from a resultId link[2m > [22m[2msaves against the resolved test instead of starting a duplicate
+[22m[39mThe width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+
+[90mstderr[2m | src/components/concrete/CompressiveStrengthTest.test.tsx[2m > [22m[2mopening from a resultId link[2m > [22m[2msaves against the resolved test instead of starting a duplicate
+[22m[39mThe width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+
+[90mstderr[2m | src/components/concrete/CompressiveStrengthTest.test.tsx[2m > [22m[2mopening from a resultId link[2m > [22m[2mprefers a direct testId over the resultId link
+[22m[39mThe width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+
+ [32m✓[39m src/components/concrete/CompressiveStrengthTest.test.tsx [2m([22m[2m13 tests[22m[2m)[22m[33m 8313[2mms[22m[39m
+   [33m[2m✓[22m[39m editing a saved compressive test[2m > [22mloads the stored cubes of the test the wizard opened [33m 1031[2mms[22m[39m
+   [33m[2m✓[22m[39m editing a saved compressive test[2m > [22mloads the stored test details of the test the wizard opened [33m 412[2mms[22m[39m
+   [33m[2m✓[22m[39m editing a saved compressive test[2m > [22msaves against the same test and updates the cube in place [33m 1059[2mms[22m[39m
+   [33m[2m✓[22m[39m editing a saved compressive test[2m > [22mrefuses to save while the stored cubes are still loading [33m 850[2mms[22m[39m
+   [33m[2m✓[22m[39m editing a saved compressive test[2m > [22msaves a new cube without an id when no existing test was opened [33m 739[2mms[22m[39m
+   [33m[2m✓[22m[39m editing a saved compressive test[2m > [22msaves a mark-less cube as null instead of blocking the save [33m 616[2mms[22m[39m
+   [33m[2m✓[22m[39m age bands and class-derived targets[2m > [22mderives band targets from the concrete class until typed over [33m 591[2mms[22m[39m
+   [33m[2m✓[22m[39m age bands and class-derived targets[2m > [22mshows PDF beside Save at the bottom and hides Excel [33m 1406[2mms[22m[39m
+   [33m[2m✓[22m[39m opening from a resultId link[2m > [22msaves against the resolved test instead of starting a duplicate [33m 671[2mms[22m[39m
+ [32m✓[39m src/pages/ProjectOverview.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 15839[2mms[22m[39m
+   [33m[2m✓[22m[39m ProjectOverview[2m > [22mopens a selected project from the main list into its overview [33m 2239[2mms[22m[39m
+   [33m[2m✓[22m[39m ProjectOverview[2m > [22mopens the selected grading project at its latest resumable grading result [33m 1219[2mms[22m[39m
+   [33m[2m✓[22m[39m ProjectOverview[2m > [22mstarts a new grading record for a project with no resumable grading result [33m 1287[2mms[22m[39m
+   [33m[2m✓[22m[39m ProjectOverview[2m > [22mshows saved test records and opens the selected test for the same project [33m 1535[2mms[22m[39m
+   [33m[2m✓[22m[39m ProjectOverview[2m > [22mopens Atterberg with the selected project ID [33m 1321[2mms[22m[39m
+   [33m[2m✓[22m[39m ProjectOverview[2m > [22moffers grading for grading projects in the overview and empty state [33m 837[2mms[22m[39m
+   [33m[2m✓[22m[39m ProjectOverview[2m > [22mupdates project metadata by ID and syncs the saved values [33m 4126[2mms[22m[39m
+   [33m[2m✓[22m[39m ProjectOverview[2m > [22mkeeps unsaved values visible when the project update fails [33m 3270[2mms[22m[39m
+[90mstderr[2m | src/pages/RecordTestWizard.test.tsx[2m > [22m[2mRecordTestWizard selection flow[2m > [22m[2mrecovers the wizard when the selected test's project no longer exists
+[22m[39m[RecordTestWizard] Failed to load project for selected test: Error: Record not found
+    at [90mC:\xampp\htdocs\kindred\[39msrc\pages\RecordTestWizard.test.tsx:248:52
+    at [90mfile:///C:/xampp/htdocs/kindred/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:155:11
+    at [90mfile:///C:/xampp/htdocs/kindred/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:752:26
+    at [90mfile:///C:/xampp/htdocs/kindred/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+    at runWithTimeout [90m(file:///C:/xampp/htdocs/kindred/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1863:10[90m)[39m
+    at runTest [90m(file:///C:/xampp/htdocs/kindred/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1574:12[90m)[39m
+    at runSuite [90m(file:///C:/xampp/htdocs/kindred/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1729:8[90m)[39m
+    at runSuite [90m(file:///C:/xampp/htdocs/kindred/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1729:8[90m)[39m
+    at runFiles [90m(file:///C:/xampp/htdocs/kindred/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1787:3[90m)[39m
+
+[90mstderr[2m | src/test/soilPdfExport.test.tsx[2m > [22m[2mProctor PDF export[2m > [22m[2mmoves between the weighing cells with the arrow keys
+[22m[39m⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+[90mstderr[2m | src/test/proctorFlow.test.ts[2m > [22m[2mProctor record page[2m > [22m[2mshows six A–F columns and switches between independent Standard and Modified inputs
+[22m[39m⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+[90mstderr[2m | src/pages/RecordTestWizard.test.tsx[2m > [22m[2mRecordTestWizard project loading[2m > [22m[2monly retries a rejected request after the user clicks Retry
+[22m[39m[RecordTestWizard] Failed to load projects: Network unavailable
+
+ [32m✓[39m src/pages/RecordTestWizard.test.tsx [2m([22m[2m19 tests[22m[2m)[22m[33m 38740[2mms[22m[39m
+   [33m[2m✓[22m[39m RecordTestWizard selection flow[2m > [22mshows materials without bottom navigation and opens the selected material's tests [33m 4383[2mms[22m[39m
+   [33m[2m✓[22m[39m RecordTestWizard selection flow[2m > [22mstays on the current step when backward navigation is dismissed and preserves the draft [33m 2038[2mms[22m[39m
+   [33m[2m✓[22m[39m RecordTestWizard selection flow[2m > [22mconfirms backward navigation from an earlier stepper item [33m 3035[2mms[22m[39m
+   [33m[2m✓[22m[39m RecordTestWizard selection flow[2m > [22mrequires selecting an available test before Continue advances [33m 1733[2mms[22m[39m
+   [33m[2m✓[22m[39m RecordTestWizard selection flow[2m > [22mkeeps Concrete on Select test and opens the new project form for a new test [33m 2399[2mms[22m[39m
+   [33m[2m✓[22m[39m RecordTestWizard selection flow[2m > [22mroutes a preselected Concrete test to Select test when existing compressive tests are available [33m 2299[2mms[22m[39m
+   [33m[2m✓[22m[39m RecordTestWizard selection flow[2m > [22mrequires county details before continuing with a selected compressive test [33m 2636[2mms[22m[39m
+   [33m[2m✓[22m[39m RecordTestWizard selection flow[2m > [22mrecovers the wizard when the selected test's project no longer exists [33m 1198[2mms[22m[39m
+   [33m[2m✓[22m[39m RecordTestWizard selection flow[2m > [22mopens the new project form directly when creating a new compressive test [33m 4008[2mms[22m[39m
+   [33m[2m✓[22m[39m RecordTestWizard selection flow[2m > [22mroutes a preselected Concrete test to Select test when no existing tests are available [33m 1426[2mms[22m[39m
+   [33m[2m✓[22m[39m RecordTestWizard selection flow[2m > [22mshows the Concrete project fields in reference order and supports optional custom fields [33m 1258[2mms[22m[39m
+   [33m[2m✓[22m[39m RecordTestWizard selection flow[2m > [22mcreates a project from the new-test modal and advances to cube details [33m 2374[2mms[22m[39m
+   [33m[2m✓[22m[39m RecordTestWizard selection flow[2m > [22mrenders the required cube details in reference order and advances only when complete [33m 1997[2mms[22m[39m
+   [33m[2m✓[22m[39m RecordTestWizard project loading[2m > [22mdoes not reload a successful empty result and keeps project creation available [33m 578[2mms[22m[39m
+   [33m[2m✓[22m[39m RecordTestWizard project loading[2m > [22mtreats projects filtered out by the selected test as an empty successful result [33m 310[2mms[22m[39m
+   [33m[2m✓[22m[39m RecordTestWizard project loading[2m > [22mallows selecting an existing project after a non-empty response [33m 1315[2mms[22m[39m
+   [33m[2m✓[22m[39m RecordTestWizard project loading[2m > [22monly retries a rejected request after the user clicks Retry [33m 965[2mms[22m[39m
+   [33m[2m✓[22m[39m RecordTestWizard project loading[2m > [22mshows and saves the project date when creating a grading project [33m 1776[2mms[22m[39m
+   [33m[2m✓[22m[39m RecordTestWizard existing-project clone[2m > [22mclones an existing Proctor project so the record starts as a new project [33m 3006[2mms[22m[39m
+ [32m✓[39m src/test/soilPdfExport.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 13140[2mms[22m[39m
+   [33m[2m✓[22m[39m Proctor PDF export[2m > [22mmoves between the weighing cells with the arrow keys [33m 1266[2mms[22m[39m
+   [33m[2m✓[22m[39m Proctor PDF export[2m > [22mcaptures the curve the export resolves by id and reports who tested it [33m 4167[2mms[22m[39m
+   [33m[2m✓[22m[39m Proctor PDF export[2m > [22mplots the zero, five and ten per cent air voids lines once Gs is known [33m 3802[2mms[22m[39m
+   [33m[2m✓[22m[39m Proctor PDF export[2m > [22moffers the printed sheet only, with no spreadsheet exports [33m 1767[2mms[22m[39m
+   [33m[2m✓[22m[39m Proctor PDF export[2m > [22mParticle Size Distribution PDF export[2m > [22mkeeps the chart, the signature details and the results summary in the report [33m 2126[2mms[22m[39m
+ [32m✓[39m src/test/proctorFlow.test.ts [2m([22m[2m24 tests[22m[2m)[22m[33m 16714[2mms[22m[39m
+   [33m[2m✓[22m[39m Proctor record page[2m > [22mshows six A–F columns and switches between independent Standard and Modified inputs [33m 2489[2mms[22m[39m
+   [33m[2m✓[22m[39m Proctor record page[2m > [22mopens blank when started as a new record from an existing project and saves a new row [33m 1933[2mms[22m[39m
+   [33m[2m✓[22m[39m Proctor record page[2m > [22msaves and reloads the expanded payload [33m 1920[2mms[22m[39m
+   [33m[2m✓[22m[39m Proctor record page[2m > [22mcites the rammer clause for each method [33m 519[2mms[22m[39m
+   [33m[2m✓[22m[39m Proctor record page[2m > [22mreports the fitted curve optimum for a bracketed set of moisture contents [33m 2170[2mms[22m[39m
+   [33m[2m✓[22m[39m Proctor record page[2m > [22mreaches Complete for a filled method even when the other method is empty [33m 3485[2mms[22m[39m
+   [33m[2m✓[22m[39m Proctor record page[2m > [22maccepts a specific gravity and saves it with the record [33m 1800[2mms[22m[39m
+   [33m[2m✓[22m[39m Proctor record page[2m > [22madds a point beyond F up to the cap [33m 2303[2mms[22m[39m
+[90mstderr[2m | src/pages/TestResults.test.tsx[2m > [22m[2mTestResults duplicate handling[2m > [22m[2mlists a test once when the database holds several rows for the same project and test
+[22m[39m⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg single-sample editing[2m > [22m[2mopens the sample that was selected in Test Results, not every sample of the project
+[22m[39m[AtterbergTest] Skipping localStorage save: not hydrated yet
+
+[90mstderr[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg single-sample editing[2m > [22m[2mopens the sample that was selected in Test Results, not every sample of the project
+[22m[39m⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg single-sample editing[2m > [22m[2mopens the sample that was selected in Test Results, not every sample of the project
+[22m[39mAdmin images fetched from DB: {
+  rowCount: [33m2[39m,
+  rows: [
+    {
+      id: [33m2[39m,
+      project_id: [33m19[39m,
+      test_key: [32m'atterberg'[39m,
+      name: [32m'KIKUYU'[39m,
+      sample_key: [32m'record-a'[39m,
+      sample_label: [32m'BH01'[39m,
+      sample_depth: [32m'0.0-1.5'[39m,
+      sort_order: [33m0[39m,
+      updated_at: [32m'2026-06-12 09:00:00'[39m,
+      payload_json: [36m[Object][39m
+    },
+    {
+      id: [33m3[39m,
+      project_id: [33m19[39m,
+      test_key: [32m'atterberg'[39m,
+      name: [32m'KIKUYU'[39m,
+      sample_key: [32m'record-b'[39m,
+      sample_label: [32m'BH02'[39m,
+      sample_depth: [32m'1.0-1.5'[39m,
+      sort_order: [33m1[39m,
+      updated_at: [32m'2026-06-12 09:00:00'[39m,
+      payload_json: [36m[Object][39m
+    }
+  ]
+}
+Admin image paths extracted: {}
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg single-sample editing[2m > [22m[2mopens the sample that was selected in Test Results, not every sample of the project
+[22m[39m[ImageFetch] No admin images found in database - export will proceed without images
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg single-sample editing[2m > [22m[2mopens the sample that was selected in Test Results, not every sample of the project
+[22m[39m[Chart Ref] Registered chart ref for record record-a {
+  refTagName: [32m'DIV'[39m,
+  refClassName: [32m'lg:col-span-7 card p-2 print:col-span-5 h-full flex flex-col'[39m,
+  refId: [32m''[39m
+}
+[Chart Ref] Total registered charts: [33m1[39m
+[AtterbergTest] Skipping localStorage save: flagged to skip
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg single-sample editing[2m > [22m[2mopens the sample that was selected in Test Results, not every sample of the project
+[22m[39m[AtterbergTest] Updated record "record-a": {
+  id: [32m'record-a'[39m,
+  title: [32m'Record 1'[39m,
+  label: [32m'BH01'[39m,
+  note: [32m''[39m,
+  isExpanded: [33mtrue[39m,
+  tests: [
+    {
+      id: [32m'test-1792450132248-jsifbp'[39m,
+      title: [32m'Liquid Limit 1'[39m,
+      type: [32m'liquidLimit'[39m,
+      isExpanded: [33mtrue[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    }
+  ],
+  results: {},
+  sampleNumber: [32m''[39m,
+  dateSubmitted: [32m''[39m,
+  dateTested: [32m''[39m,
+  testedBy: [32m''[39m,
+  passing425um: [32m''[39m
+}
+[AtterbergTest] Project state updated with 2 records
+[AtterbergTest] Updated record "record-a": {
+  id: [32m'record-a'[39m,
+  title: [32m'Record 1'[39m,
+  label: [32m'BH01'[39m,
+  note: [32m''[39m,
+  isExpanded: [33mtrue[39m,
+  tests: [
+    {
+      id: [32m'test-1792450132248-jsifbp'[39m,
+      title: [32m'Liquid Limit 1'[39m,
+      type: [32m'liquidLimit'[39m,
+      isExpanded: [33mfalse[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    },
+    {
+      id: [32m'test-1792450132249-dbeh1q'[39m,
+      title: [32m'Plastic Limit 1'[39m,
+      type: [32m'plasticLimit'[39m,
+      isExpanded: [33mtrue[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    }
+  ],
+  results: {},
+  sampleNumber: [32m''[39m,
+  dateSubmitted: [32m''[39m,
+  dateTested: [32m''[39m,
+  testedBy: [32m''[39m,
+  passing425um: [32m''[39m
+}
+[AtterbergTest] Project state updated with 2 records
+[AtterbergTest] Updated record "record-a": {
+  id: [32m'record-a'[39m,
+  title: [32m'Record 1'[39m,
+  label: [32m'BH01'[39m,
+  note: [32m''[39m,
+  isExpanded: [33mtrue[39m,
+  tests: [
+    {
+      id: [32m'test-1792450132248-jsifbp'[39m,
+      title: [32m'Liquid Limit 1'[39m,
+      type: [32m'liquidLimit'[39m,
+      isExpanded: [33mfalse[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    },
+    {
+      id: [32m'test-1792450132249-dbeh1q'[39m,
+      title: [32m'Plastic Limit 1'[39m,
+      type: [32m'plasticLimit'[39m,
+      isExpanded: [33mfalse[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    },
+    {
+      id: [32m'test-1792450132253-d2rnwe'[39m,
+      title: [32m'Linear Shrinkage 1'[39m,
+      type: [32m'shrinkageLimit'[39m,
+      isExpanded: [33mtrue[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    }
+  ],
+  results: {},
+  sampleNumber: [32m''[39m,
+  dateSubmitted: [32m''[39m,
+  dateTested: [32m''[39m,
+  testedBy: [32m''[39m,
+  passing425um: [32m''[39m
+}
+[AtterbergTest] Project state updated with 2 records
+[Chart Ref] Unregistered chart ref for record record-a
+[Chart Ref] Total registered charts: [33m0[39m
+[Chart Ref] Registered chart ref for record record-b {
+  refTagName: [32m'DIV'[39m,
+  refClassName: [32m'lg:col-span-7 card p-2 print:col-span-5 h-full flex flex-col'[39m,
+  refId: [32m''[39m
+}
+[Chart Ref] Total registered charts: [33m1[39m
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg single-sample editing[2m > [22m[2mopens the sample that was selected in Test Results, not every sample of the project
+[22m[39m[Chart Ref] Unregistered chart ref for record record-a
+[Chart Ref] Total registered charts: [33m1[39m
+[AtterbergTest] Persisting 2 records to localStorage
+[AtterbergTest] Successfully saved to localStorage
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg single-sample editing[2m > [22m[2mopens the sample that was selected in Test Results, not every sample of the project
+[22m[39m[Chart Ref] Unregistered chart ref for record record-b
+[Chart Ref] Total registered charts: [33m0[39m
+[Chart Ref] Unregistered chart ref for record record-b
+[Chart Ref] Total registered charts: [33m0[39m
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg single-sample editing[2m > [22m[2mfalls back to the row id when the sample key is not in the URL
+[22m[39m[AtterbergTest] Skipping localStorage save: not hydrated yet
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg single-sample editing[2m > [22m[2mfalls back to the row id when the sample key is not in the URL
+[22m[39mAdmin images fetched from DB: {
+  rowCount: [33m2[39m,
+  rows: [
+    {
+      id: [33m2[39m,
+      project_id: [33m19[39m,
+      test_key: [32m'atterberg'[39m,
+      name: [32m'KIKUYU'[39m,
+      sample_key: [32m'record-a'[39m,
+      sample_label: [32m'BH01'[39m,
+      sample_depth: [32m'0.0-1.5'[39m,
+      sort_order: [33m0[39m,
+      updated_at: [32m'2026-06-12 09:00:00'[39m,
+      payload_json: [36m[Object][39m
+    },
+    {
+      id: [33m3[39m,
+      project_id: [33m19[39m,
+      test_key: [32m'atterberg'[39m,
+      name: [32m'KIKUYU'[39m,
+      sample_key: [32m'record-b'[39m,
+      sample_label: [32m'BH02'[39m,
+      sample_depth: [32m'1.0-1.5'[39m,
+      sort_order: [33m1[39m,
+      updated_at: [32m'2026-06-12 09:00:00'[39m,
+      payload_json: [36m[Object][39m
+    }
+  ]
+}
+Admin image paths extracted: {}
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg single-sample editing[2m > [22m[2mfalls back to the row id when the sample key is not in the URL
+[22m[39m[ImageFetch] No admin images found in database - export will proceed without images
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg single-sample editing[2m > [22m[2mfalls back to the row id when the sample key is not in the URL
+[22m[39m[Chart Ref] Registered chart ref for record record-a {
+  refTagName: [32m'DIV'[39m,
+  refClassName: [32m'lg:col-span-7 card p-2 print:col-span-5 h-full flex flex-col'[39m,
+  refId: [32m''[39m
+}
+[Chart Ref] Total registered charts: [33m1[39m
+[AtterbergTest] Skipping localStorage save: flagged to skip
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg single-sample editing[2m > [22m[2mfalls back to the row id when the sample key is not in the URL
+[22m[39m[AtterbergTest] Updated record "record-a": {
+  id: [32m'record-a'[39m,
+  title: [32m'Record 1'[39m,
+  label: [32m'BH01'[39m,
+  note: [32m''[39m,
+  isExpanded: [33mtrue[39m,
+  tests: [
+    {
+      id: [32m'test-1792450133540-to5ko4'[39m,
+      title: [32m'Liquid Limit 1'[39m,
+      type: [32m'liquidLimit'[39m,
+      isExpanded: [33mtrue[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    }
+  ],
+  results: {},
+  sampleNumber: [32m''[39m,
+  dateSubmitted: [32m''[39m,
+  dateTested: [32m''[39m,
+  testedBy: [32m''[39m,
+  passing425um: [32m''[39m
+}
+[AtterbergTest] Project state updated with 2 records
+[AtterbergTest] Updated record "record-a": {
+  id: [32m'record-a'[39m,
+  title: [32m'Record 1'[39m,
+  label: [32m'BH01'[39m,
+  note: [32m''[39m,
+  isExpanded: [33mtrue[39m,
+  tests: [
+    {
+      id: [32m'test-1792450133540-to5ko4'[39m,
+      title: [32m'Liquid Limit 1'[39m,
+      type: [32m'liquidLimit'[39m,
+      isExpanded: [33mfalse[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    },
+    {
+      id: [32m'test-1792450133541-cq3ymr'[39m,
+      title: [32m'Plastic Limit 1'[39m,
+      type: [32m'plasticLimit'[39m,
+      isExpanded: [33mtrue[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    }
+  ],
+  results: {},
+  sampleNumber: [32m''[39m,
+  dateSubmitted: [32m''[39m,
+  dateTested: [32m''[39m,
+  testedBy: [32m''[39m,
+  passing425um: [32m''[39m
+}
+[AtterbergTest] Project state updated with 2 records
+[AtterbergTest] Updated record "record-a": {
+  id: [32m'record-a'[39m,
+  title: [32m'Record 1'[39m,
+  label: [32m'BH01'[39m,
+  note: [32m''[39m,
+  isExpanded: [33mtrue[39m,
+  tests: [
+    {
+      id: [32m'test-1792450133540-to5ko4'[39m,
+      title: [32m'Liquid Limit 1'[39m,
+      type: [32m'liquidLimit'[39m,
+      isExpanded: [33mfalse[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    },
+    {
+      id: [32m'test-1792450133541-cq3ymr'[39m,
+      title: [32m'Plastic Limit 1'[39m,
+      type: [32m'plasticLimit'[39m,
+      isExpanded: [33mfalse[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    },
+    {
+      id: [32m'test-1792450133542-qwfhg8'[39m,
+      title: [32m'Linear Shrinkage 1'[39m,
+      type: [32m'shrinkageLimit'[39m,
+      isExpanded: [33mtrue[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    }
+  ],
+  results: {},
+  sampleNumber: [32m''[39m,
+  dateSubmitted: [32m''[39m,
+  dateTested: [32m''[39m,
+  testedBy: [32m''[39m,
+  passing425um: [32m''[39m
+}
+[AtterbergTest] Project state updated with 2 records
+[Chart Ref] Unregistered chart ref for record record-a
+[Chart Ref] Total registered charts: [33m0[39m
+[Chart Ref] Registered chart ref for record record-a {
+  refTagName: [32m'DIV'[39m,
+  refClassName: [32m'lg:col-span-7 card p-2 print:col-span-5 h-full flex flex-col'[39m,
+  refId: [32m''[39m
+}
+[Chart Ref] Total registered charts: [33m1[39m
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg single-sample editing[2m > [22m[2mfalls back to the row id when the sample key is not in the URL
+[22m[39m[AtterbergTest] Persisting 2 records to localStorage
+[AtterbergTest] Successfully saved to localStorage
+[Chart Ref] Unregistered chart ref for record record-a
+[Chart Ref] Total registered charts: [33m0[39m
+[Chart Ref] Unregistered chart ref for record record-a
+[Chart Ref] Total registered charts: [33m0[39m
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg single-sample editing[2m > [22m[2mmoves between samples from the strip without stacking the forms
+[22m[39m[AtterbergTest] Skipping localStorage save: not hydrated yet
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg single-sample editing[2m > [22m[2mmoves between samples from the strip without stacking the forms
+[22m[39mAdmin images fetched from DB: {
+  rowCount: [33m2[39m,
+  rows: [
+    {
+      id: [33m2[39m,
+      project_id: [33m19[39m,
+      test_key: [32m'atterberg'[39m,
+      name: [32m'KIKUYU'[39m,
+      sample_key: [32m'record-a'[39m,
+      sample_label: [32m'BH01'[39m,
+      sample_depth: [32m'0.0-1.5'[39m,
+      sort_order: [33m0[39m,
+      updated_at: [32m'2026-06-12 09:00:00'[39m,
+      payload_json: [36m[Object][39m
+    },
+    {
+      id: [33m3[39m,
+      project_id: [33m19[39m,
+      test_key: [32m'atterberg'[39m,
+      name: [32m'KIKUYU'[39m,
+      sample_key: [32m'record-b'[39m,
+      sample_label: [32m'BH02'[39m,
+      sample_depth: [32m'1.0-1.5'[39m,
+      sort_order: [33m1[39m,
+      updated_at: [32m'2026-06-12 09:00:00'[39m,
+      payload_json: [36m[Object][39m
+    }
+  ]
+}
+Admin image paths extracted: {}
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg single-sample editing[2m > [22m[2mmoves between samples from the strip without stacking the forms
+[22m[39m[ImageFetch] No admin images found in database - export will proceed without images
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg single-sample editing[2m > [22m[2mmoves between samples from the strip without stacking the forms
+[22m[39m[Chart Ref] Registered chart ref for record record-a {
+  refTagName: [32m'DIV'[39m,
+  refClassName: [32m'lg:col-span-7 card p-2 print:col-span-5 h-full flex flex-col'[39m,
+  refId: [32m''[39m
+}
+[Chart Ref] Total registered charts: [33m1[39m
+[AtterbergTest] Skipping localStorage save: flagged to skip
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg single-sample editing[2m > [22m[2mmoves between samples from the strip without stacking the forms
+[22m[39m[AtterbergTest] Updated record "record-a": {
+  id: [32m'record-a'[39m,
+  title: [32m'Record 1'[39m,
+  label: [32m'BH01'[39m,
+  note: [32m''[39m,
+  isExpanded: [33mtrue[39m,
+  tests: [
+    {
+      id: [32m'test-1792450134458-k2nlfm'[39m,
+      title: [32m'Liquid Limit 1'[39m,
+      type: [32m'liquidLimit'[39m,
+      isExpanded: [33mtrue[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    }
+  ],
+  results: {},
+  sampleNumber: [32m''[39m,
+  dateSubmitted: [32m''[39m,
+  dateTested: [32m''[39m,
+  testedBy: [32m''[39m,
+  passing425um: [32m''[39m
+}
+[AtterbergTest] Project state updated with 2 records
+[AtterbergTest] Updated record "record-a": {
+  id: [32m'record-a'[39m,
+  title: [32m'Record 1'[39m,
+  label: [32m'BH01'[39m,
+  note: [32m''[39m,
+  isExpanded: [33mtrue[39m,
+  tests: [
+    {
+      id: [32m'test-1792450134458-k2nlfm'[39m,
+      title: [32m'Liquid Limit 1'[39m,
+      type: [32m'liquidLimit'[39m,
+      isExpanded: [33mfalse[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    },
+    {
+      id: [32m'test-1792450134463-x6zrn8'[39m,
+      title: [32m'Plastic Limit 1'[39m,
+      type: [32m'plasticLimit'[39m,
+      isExpanded: [33mtrue[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    }
+  ],
+  results: {},
+  sampleNumber: [32m''[39m,
+  dateSubmitted: [32m''[39m,
+  dateTested: [32m''[39m,
+  testedBy: [32m''[39m,
+  passing425um: [32m''[39m
+}
+[AtterbergTest] Project state updated with 2 records
+[AtterbergTest] Updated record "record-a": {
+  id: [32m'record-a'[39m,
+  title: [32m'Record 1'[39m,
+  label: [32m'BH01'[39m,
+  note: [32m''[39m,
+  isExpanded: [33mtrue[39m,
+  tests: [
+    {
+      id: [32m'test-1792450134458-k2nlfm'[39m,
+      title: [32m'Liquid Limit 1'[39m,
+      type: [32m'liquidLimit'[39m,
+      isExpanded: [33mfalse[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    },
+    {
+      id: [32m'test-1792450134463-x6zrn8'[39m,
+      title: [32m'Plastic Limit 1'[39m,
+      type: [32m'plasticLimit'[39m,
+      isExpanded: [33mfalse[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    },
+    {
+      id: [32m'test-1792450134464-wwxylo'[39m,
+      title: [32m'Linear Shrinkage 1'[39m,
+      type: [32m'shrinkageLimit'[39m,
+      isExpanded: [33mtrue[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    }
+  ],
+  results: {},
+  sampleNumber: [32m''[39m,
+  dateSubmitted: [32m''[39m,
+  dateTested: [32m''[39m,
+  testedBy: [32m''[39m,
+  passing425um: [32m''[39m
+}
+[AtterbergTest] Project state updated with 2 records
+[Chart Ref] Unregistered chart ref for record record-a
+[Chart Ref] Total registered charts: [33m0[39m
+[Chart Ref] Registered chart ref for record record-a {
+  refTagName: [32m'DIV'[39m,
+  refClassName: [32m'lg:col-span-7 card p-2 print:col-span-5 h-full flex flex-col'[39m,
+  refId: [32m''[39m
+}
+[Chart Ref] Total registered charts: [33m1[39m
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg single-sample editing[2m > [22m[2mmoves between samples from the strip without stacking the forms
+[22m[39m[AtterbergTest] Persisting 2 records to localStorage
+[AtterbergTest] Successfully saved to localStorage
+[Chart Ref] Unregistered chart ref for record record-a
+[Chart Ref] Total registered charts: [33m0[39m
+[Chart Ref] Registered chart ref for record record-b {
+  refTagName: [32m'DIV'[39m,
+  refClassName: [32m'lg:col-span-7 card p-2 print:col-span-5 h-full flex flex-col'[39m,
+  refId: [32m''[39m
+}
+[Chart Ref] Total registered charts: [33m1[39m
+[Chart Ref] Unregistered chart ref for record record-a
+[Chart Ref] Total registered charts: [33m1[39m
+[AtterbergTest] Updated record "record-b": {
+  id: [32m'record-b'[39m,
+  title: [32m'Record 2'[39m,
+  label: [32m'BH02'[39m,
+  note: [32m''[39m,
+  isExpanded: [33mtrue[39m,
+  tests: [
+    {
+      id: [32m'test-1792450134757-tlgcsl'[39m,
+      title: [32m'Liquid Limit 1'[39m,
+      type: [32m'liquidLimit'[39m,
+      isExpanded: [33mtrue[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    }
+  ],
+  results: {},
+  sampleNumber: [32m''[39m,
+  dateSubmitted: [32m''[39m,
+  dateTested: [32m''[39m,
+  testedBy: [32m''[39m,
+  passing425um: [32m''[39m
+}
+[AtterbergTest] Project state updated with 2 records
+[AtterbergTest] Updated record "record-b": {
+  id: [32m'record-b'[39m,
+  title: [32m'Record 2'[39m,
+  label: [32m'BH02'[39m,
+  note: [32m''[39m,
+  isExpanded: [33mtrue[39m,
+  tests: [
+    {
+      id: [32m'test-1792450134757-tlgcsl'[39m,
+      title: [32m'Liquid Limit 1'[39m,
+      type: [32m'liquidLimit'[39m,
+      isExpanded: [33mfalse[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    },
+    {
+      id: [32m'test-1792450134757-1xuxy0'[39m,
+      title: [32m'Plastic Limit 1'[39m,
+      type: [32m'plasticLimit'[39m,
+      isExpanded: [33mtrue[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    }
+  ],
+  results: {},
+  sampleNumber: [32m''[39m,
+  dateSubmitted: [32m''[39m,
+  dateTested: [32m''[39m,
+  testedBy: [32m''[39m,
+  passing425um: [32m''[39m
+}
+[AtterbergTest] Project state updated with 2 records
+[AtterbergTest] Updated record "record-b": {
+  id: [32m'record-b'[39m,
+  title: [32m'Record 2'[39m,
+  label: [32m'BH02'[39m,
+  note: [32m''[39m,
+  isExpanded: [33mtrue[39m,
+  tests: [
+    {
+      id: [32m'test-1792450134757-tlgcsl'[39m,
+      title: [32m'Liquid Limit 1'[39m,
+      type: [32m'liquidLimit'[39m,
+      isExpanded: [33mfalse[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    },
+    {
+      id: [32m'test-1792450134757-1xuxy0'[39m,
+      title: [32m'Plastic Limit 1'[39m,
+      type: [32m'plasticLimit'[39m,
+      isExpanded: [33mfalse[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    },
+    {
+      id: [32m'test-1792450134757-06ca2j'[39m,
+      title: [32m'Linear Shrinkage 1'[39m,
+      type: [32m'shrinkageLimit'[39m,
+      isExpanded: [33mtrue[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    }
+  ],
+  results: {},
+  sampleNumber: [32m''[39m,
+  dateSubmitted: [32m''[39m,
+  dateTested: [32m''[39m,
+  testedBy: [32m''[39m,
+  passing425um: [32m''[39m
+}
+[AtterbergTest] Project state updated with 2 records
+[Chart Ref] Unregistered chart ref for record record-b
+[Chart Ref] Total registered charts: [33m0[39m
+[Chart Ref] Registered chart ref for record record-b {
+  refTagName: [32m'DIV'[39m,
+  refClassName: [32m'lg:col-span-7 card p-2 print:col-span-5 h-full flex flex-col'[39m,
+  refId: [32m''[39m
+}
+[Chart Ref] Total registered charts: [33m1[39m
+[AtterbergTest] Persisting 2 records to localStorage
+[AtterbergTest] Successfully saved to localStorage
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg single-sample editing[2m > [22m[2mmoves between samples from the strip without stacking the forms
+[22m[39m[Chart Ref] Unregistered chart ref for record record-b
+[Chart Ref] Total registered charts: [33m0[39m
+[Chart Ref] Unregistered chart ref for record record-b
+[Chart Ref] Total registered charts: [33m0[39m
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg single-sample editing[2m > [22m[2madds the next sample in series, in the same window
+[22m[39m[AtterbergTest] Skipping localStorage save: not hydrated yet
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg single-sample editing[2m > [22m[2madds the next sample in series, in the same window
+[22m[39mAdmin images fetched from DB: {
+  rowCount: [33m2[39m,
+  rows: [
+    {
+      id: [33m2[39m,
+      project_id: [33m19[39m,
+      test_key: [32m'atterberg'[39m,
+      name: [32m'KIKUYU'[39m,
+      sample_key: [32m'record-a'[39m,
+      sample_label: [32m'BH01'[39m,
+      sample_depth: [32m'0.0-1.5'[39m,
+      sort_order: [33m0[39m,
+      updated_at: [32m'2026-06-12 09:00:00'[39m,
+      payload_json: [36m[Object][39m
+    },
+    {
+      id: [33m3[39m,
+      project_id: [33m19[39m,
+      test_key: [32m'atterberg'[39m,
+      name: [32m'KIKUYU'[39m,
+      sample_key: [32m'record-b'[39m,
+      sample_label: [32m'BH02'[39m,
+      sample_depth: [32m'1.0-1.5'[39m,
+      sort_order: [33m1[39m,
+      updated_at: [32m'2026-06-12 09:00:00'[39m,
+      payload_json: [36m[Object][39m
+    }
+  ]
+}
+Admin image paths extracted: {}
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg single-sample editing[2m > [22m[2madds the next sample in series, in the same window
+[22m[39m[ImageFetch] No admin images found in database - export will proceed without images
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg single-sample editing[2m > [22m[2madds the next sample in series, in the same window
+[22m[39m[Chart Ref] Registered chart ref for record record-a {
+  refTagName: [32m'DIV'[39m,
+  refClassName: [32m'lg:col-span-7 card p-2 print:col-span-5 h-full flex flex-col'[39m,
+  refId: [32m''[39m
+}
+[Chart Ref] Total registered charts: [33m1[39m
+[AtterbergTest] Skipping localStorage save: flagged to skip
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg single-sample editing[2m > [22m[2madds the next sample in series, in the same window
+[22m[39m[AtterbergTest] Updated record "record-a": {
+  id: [32m'record-a'[39m,
+  title: [32m'Record 1'[39m,
+  label: [32m'BH01'[39m,
+  note: [32m''[39m,
+  isExpanded: [33mtrue[39m,
+  tests: [
+    {
+      id: [32m'test-1792450135513-e5ts88'[39m,
+      title: [32m'Liquid Limit 1'[39m,
+      type: [32m'liquidLimit'[39m,
+      isExpanded: [33mtrue[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    }
+  ],
+  results: {},
+  sampleNumber: [32m''[39m,
+  dateSubmitted: [32m''[39m,
+  dateTested: [32m''[39m,
+  testedBy: [32m''[39m,
+  passing425um: [32m''[39m
+}
+[AtterbergTest] Project state updated with 2 records
+[AtterbergTest] Updated record "record-a": {
+  id: [32m'record-a'[39m,
+  title: [32m'Record 1'[39m,
+  label: [32m'BH01'[39m,
+  note: [32m''[39m,
+  isExpanded: [33mtrue[39m,
+  tests: [
+    {
+      id: [32m'test-1792450135513-e5ts88'[39m,
+      title: [32m'Liquid Limit 1'[39m,
+      type: [32m'liquidLimit'[39m,
+      isExpanded: [33mfalse[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    },
+    {
+      id: [32m'test-1792450135513-w6hfh4'[39m,
+      title: [32m'Plastic Limit 1'[39m,
+      type: [32m'plasticLimit'[39m,
+      isExpanded: [33mtrue[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    }
+  ],
+  results: {},
+  sampleNumber: [32m''[39m,
+  dateSubmitted: [32m''[39m,
+  dateTested: [32m''[39m,
+  testedBy: [32m''[39m,
+  passing425um: [32m''[39m
+}
+[AtterbergTest] Project state updated with 2 records
+[AtterbergTest] Updated record "record-a": {
+  id: [32m'record-a'[39m,
+  title: [32m'Record 1'[39m,
+  label: [32m'BH01'[39m,
+  note: [32m''[39m,
+  isExpanded: [33mtrue[39m,
+  tests: [
+    {
+      id: [32m'test-1792450135513-e5ts88'[39m,
+      title: [32m'Liquid Limit 1'[39m,
+      type: [32m'liquidLimit'[39m,
+      isExpanded: [33mfalse[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    },
+    {
+      id: [32m'test-1792450135513-w6hfh4'[39m,
+      title: [32m'Plastic Limit 1'[39m,
+      type: [32m'plasticLimit'[39m,
+      isExpanded: [33mfalse[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    },
+    {
+      id: [32m'test-1792450135514-0hhezj'[39m,
+      title: [32m'Linear Shrinkage 1'[39m,
+      type: [32m'shrinkageLimit'[39m,
+      isExpanded: [33mtrue[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    }
+  ],
+  results: {},
+  sampleNumber: [32m''[39m,
+  dateSubmitted: [32m''[39m,
+  dateTested: [32m''[39m,
+  testedBy: [32m''[39m,
+  passing425um: [32m''[39m
+}
+[AtterbergTest] Project state updated with 2 records
+[Chart Ref] Unregistered chart ref for record record-a
+[Chart Ref] Total registered charts: [33m0[39m
+[Chart Ref] Registered chart ref for record record-a {
+  refTagName: [32m'DIV'[39m,
+  refClassName: [32m'lg:col-span-7 card p-2 print:col-span-5 h-full flex flex-col'[39m,
+  refId: [32m''[39m
+}
+[Chart Ref] Total registered charts: [33m1[39m
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg single-sample editing[2m > [22m[2madds the next sample in series, in the same window
+[22m[39m[AtterbergTest] Persisting 2 records to localStorage
+[AtterbergTest] Successfully saved to localStorage
+[Chart Ref] Unregistered chart ref for record record-a
+[Chart Ref] Total registered charts: [33m0[39m
+[Chart Ref] Registered chart ref for record record-1792450135614-tk97q8 {
+  refTagName: [32m'DIV'[39m,
+  refClassName: [32m'lg:col-span-7 card p-2 print:col-span-5 h-full flex flex-col'[39m,
+  refId: [32m''[39m
+}
+[Chart Ref] Total registered charts: [33m1[39m
+[Chart Ref] Unregistered chart ref for record record-a
+[Chart Ref] Total registered charts: [33m1[39m
+[AtterbergTest] Persisting 3 records to localStorage
+[AtterbergTest] Successfully saved to localStorage
+[AtterbergTest] Updated record "record-1792450135614-tk97q8": {
+  id: [32m'record-1792450135614-tk97q8'[39m,
+  title: [32m'Record 3'[39m,
+  label: [32m''[39m,
+  note: [32m''[39m,
+  isExpanded: [33mtrue[39m,
+  tests: [
+    {
+      id: [32m'test-1792450135744-hpq4oj'[39m,
+      title: [32m'Liquid Limit 1'[39m,
+      type: [32m'liquidLimit'[39m,
+      isExpanded: [33mtrue[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    }
+  ],
+  results: {}
+}
+[AtterbergTest] Project state updated with 3 records
+[AtterbergTest] Updated record "record-1792450135614-tk97q8": {
+  id: [32m'record-1792450135614-tk97q8'[39m,
+  title: [32m'Record 3'[39m,
+  label: [32m''[39m,
+  note: [32m''[39m,
+  isExpanded: [33mtrue[39m,
+  tests: [
+    {
+      id: [32m'test-1792450135744-hpq4oj'[39m,
+      title: [32m'Liquid Limit 1'[39m,
+      type: [32m'liquidLimit'[39m,
+      isExpanded: [33mfalse[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    },
+    {
+      id: [32m'test-1792450135745-3aoukq'[39m,
+      title: [32m'Plastic Limit 1'[39m,
+      type: [32m'plasticLimit'[39m,
+      isExpanded: [33mtrue[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    }
+  ],
+  results: {}
+}
+[AtterbergTest] Project state updated with 3 records
+[AtterbergTest] Updated record "record-1792450135614-tk97q8": {
+  id: [32m'record-1792450135614-tk97q8'[39m,
+  title: [32m'Record 3'[39m,
+  label: [32m''[39m,
+  note: [32m''[39m,
+  isExpanded: [33mtrue[39m,
+  tests: [
+    {
+      id: [32m'test-1792450135744-hpq4oj'[39m,
+      title: [32m'Liquid Limit 1'[39m,
+      type: [32m'liquidLimit'[39m,
+      isExpanded: [33mfalse[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    },
+    {
+      id: [32m'test-1792450135745-3aoukq'[39m,
+      title: [32m'Plastic Limit 1'[39m,
+      type: [32m'plasticLimit'[39m,
+      isExpanded: [33mfalse[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    },
+    {
+      id: [32m'test-1792450135745-e9fmqq'[39m,
+      title: [32m'Linear Shrinkage 1'[39m,
+      type: [32m'shrinkageLimit'[39m,
+      isExpanded: [33mtrue[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    }
+  ],
+  results: {}
+}
+[AtterbergTest] Project state updated with 3 records
+[Chart Ref] Unregistered chart ref for record record-1792450135614-tk97q8
+[Chart Ref] Total registered charts: [33m0[39m
+[Chart Ref] Registered chart ref for record record-1792450135614-tk97q8 {
+  refTagName: [32m'DIV'[39m,
+  refClassName: [32m'lg:col-span-7 card p-2 print:col-span-5 h-full flex flex-col'[39m,
+  refId: [32m''[39m
+}
+[Chart Ref] Total registered charts: [33m1[39m
+[AtterbergTest] Persisting 3 records to localStorage
+[AtterbergTest] Successfully saved to localStorage
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg single-sample editing[2m > [22m[2madds the next sample in series, in the same window
+[22m[39m[Chart Ref] Unregistered chart ref for record record-1792450135614-tk97q8
+[Chart Ref] Total registered charts: [33m0[39m
+[Chart Ref] Unregistered chart ref for record record-1792450135614-tk97q8
+[Chart Ref] Total registered charts: [33m0[39m
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg new-record launch[2m > [22m[2mkeeps the project's samples as options but opens them with blank data
+[22m[39m[AtterbergTest] Skipping localStorage save: not hydrated yet
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg new-record launch[2m > [22m[2mkeeps the project's samples as options but opens them with blank data
+[22m[39mAdmin images fetched from DB: {
+  rowCount: [33m2[39m,
+  rows: [
+    {
+      id: [33m2[39m,
+      project_id: [33m19[39m,
+      test_key: [32m'atterberg'[39m,
+      name: [32m'KIKUYU'[39m,
+      sample_key: [32m'record-a'[39m,
+      sample_label: [32m'BH01'[39m,
+      sample_depth: [32m'0.0-1.5'[39m,
+      sort_order: [33m0[39m,
+      updated_at: [32m'2026-06-12 09:00:00'[39m,
+      payload_json: [36m[Object][39m
+    },
+    {
+      id: [33m3[39m,
+      project_id: [33m19[39m,
+      test_key: [32m'atterberg'[39m,
+      name: [32m'KIKUYU'[39m,
+      sample_key: [32m'record-b'[39m,
+      sample_label: [32m'BH02'[39m,
+      sample_depth: [32m'1.0-1.5'[39m,
+      sort_order: [33m1[39m,
+      updated_at: [32m'2026-06-12 09:00:00'[39m,
+      payload_json: [36m[Object][39m
+    }
+  ]
+}
+Admin image paths extracted: {}
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg new-record launch[2m > [22m[2mkeeps the project's samples as options but opens them with blank data
+[22m[39m[ImageFetch] No admin images found in database - export will proceed without images
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg new-record launch[2m > [22m[2mkeeps the project's samples as options but opens them with blank data
+[22m[39m[Chart Ref] Registered chart ref for record record-a {
+  refTagName: [32m'DIV'[39m,
+  refClassName: [32m'lg:col-span-7 card p-2 print:col-span-5 h-full flex flex-col'[39m,
+  refId: [32m''[39m
+}
+[Chart Ref] Total registered charts: [33m1[39m
+[AtterbergTest] Skipping localStorage save: flagged to skip
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg new-record launch[2m > [22m[2mkeeps the project's samples as options but opens them with blank data
+[22m[39m[AtterbergTest] Updated record "record-a": {
+  id: [32m'record-a'[39m,
+  title: [32m'Record 1'[39m,
+  label: [32m'BH01'[39m,
+  note: [32m''[39m,
+  isExpanded: [33mtrue[39m,
+  tests: [
+    {
+      id: [32m'test-1792450136276-5a878k'[39m,
+      title: [32m'Liquid Limit 1'[39m,
+      isExpanded: [33mfalse[39m,
+      result: {},
+      type: [32m'liquidLimit'[39m,
+      trials: [36m[Array][39m
+    },
+    {
+      id: [32m'test-1792450136493-cqz52u'[39m,
+      title: [32m'Plastic Limit 1'[39m,
+      type: [32m'plasticLimit'[39m,
+      isExpanded: [33mtrue[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    }
+  ],
+  results: {},
+  sampleNumber: [32m''[39m,
+  dateSubmitted: [32m''[39m,
+  dateTested: [32m''[39m,
+  testedBy: [32m''[39m,
+  passing425um: [32m''[39m
+}
+[AtterbergTest] Project state updated with 2 records
+[AtterbergTest] Updated record "record-a": {
+  id: [32m'record-a'[39m,
+  title: [32m'Record 1'[39m,
+  label: [32m'BH01'[39m,
+  note: [32m''[39m,
+  isExpanded: [33mtrue[39m,
+  tests: [
+    {
+      id: [32m'test-1792450136276-5a878k'[39m,
+      title: [32m'Liquid Limit 1'[39m,
+      isExpanded: [33mfalse[39m,
+      result: {},
+      type: [32m'liquidLimit'[39m,
+      trials: [36m[Array][39m
+    },
+    {
+      id: [32m'test-1792450136493-cqz52u'[39m,
+      title: [32m'Plastic Limit 1'[39m,
+      type: [32m'plasticLimit'[39m,
+      isExpanded: [33mfalse[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    },
+    {
+      id: [32m'test-1792450136493-puf1u0'[39m,
+      title: [32m'Linear Shrinkage 1'[39m,
+      type: [32m'shrinkageLimit'[39m,
+      isExpanded: [33mtrue[39m,
+      trials: [36m[Array][39m,
+      result: {}
+    }
+  ],
+  results: {},
+  sampleNumber: [32m''[39m,
+  dateSubmitted: [32m''[39m,
+  dateTested: [32m''[39m,
+  testedBy: [32m''[39m,
+  passing425um: [32m''[39m
+}
+[AtterbergTest] Project state updated with 2 records
+[Chart Ref] Unregistered chart ref for record record-a
+[Chart Ref] Total registered charts: [33m0[39m
+[Chart Ref] Registered chart ref for record record-a {
+  refTagName: [32m'DIV'[39m,
+  refClassName: [32m'lg:col-span-7 card p-2 print:col-span-5 h-full flex flex-col'[39m,
+  refId: [32m''[39m
+}
+[Chart Ref] Total registered charts: [33m1[39m
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg new-record launch[2m > [22m[2mkeeps the project's samples as options but opens them with blank data
+[22m[39m[AtterbergTest] Persisting 2 records to localStorage
+[AtterbergTest] Successfully saved to localStorage
+
+[90mstdout[2m | src/components/soil/AtterbergTest.focus.test.tsx[2m > [22m[2mAtterberg new-record launch[2m > [22m[2mkeeps the project's samples as options but opens them with blank data
+[22m[39m[Chart Ref] Unregistered chart ref for record record-a
+[Chart Ref] Total registered charts: [33m0[39m
+[Chart Ref] Unregistered chart ref for record record-a
+[Chart Ref] Total registered charts: [33m0[39m
+
+ [32m✓[39m src/components/soil/AtterbergTest.focus.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 5440[2mms[22m[39m
+   [33m[2m✓[22m[39m Atterberg single-sample editing[2m > [22mopens the sample that was selected in Test Results, not every sample of the project [33m 1366[2mms[22m[39m
+   [33m[2m✓[22m[39m Atterberg single-sample editing[2m > [22mfalls back to the row id when the sample key is not in the URL [33m 1091[2mms[22m[39m
+   [33m[2m✓[22m[39m Atterberg single-sample editing[2m > [22mmoves between samples from the strip without stacking the forms [33m 1135[2mms[22m[39m
+   [33m[2m✓[22m[39m Atterberg single-sample editing[2m > [22madds the next sample in series, in the same window [33m 1035[2mms[22m[39m
+   [33m[2m✓[22m[39m Atterberg new-record launch[2m > [22mkeeps the project's samples as options but opens them with blank data [33m 804[2mms[22m[39m
+[90mstderr[2m | src/components/soil/GradingTest.test.tsx[2m > [22m[2mGradingTest selected record[2m > [22m[2mopens blank when a new record is started from an existing project
+[22m[39m⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+ [32m✓[39m src/components/soil/GradingTest.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 5369[2mms[22m[39m
+   [33m[2m✓[22m[39m GradingTest selected record[2m > [22mopens blank when a new record is started from an existing project [33m 1185[2mms[22m[39m
+   [33m[2m✓[22m[39m GradingTest selected record[2m > [22mloads the saved result ID from the project overview [33m 2969[2mms[22m[39m
+   [33m[2m✓[22m[39m GradingTest selected record[2m > [22mtakes the AASHTO group index from the No. 200 sieve, not the No. 40 sieve [33m 375[2mms[22m[39m
+   [33m[2m✓[22m[39m GradingTest selected record[2m > [22mflags unverifiable granular groups when the No. 10 / No. 40 sieves are missing [33m 515[2mms[22m[39m
+   [33m[2m✓[22m[39m GradingTest selected record[2m > [22mverifies A-1-b from P40 while flagging only the missing No. 10 [33m 317[2mms[22m[39m
+ [32m✓[39m src/pages/TestResults.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 16827[2mms[22m[39m
+   [33m[2m✓[22m[39m TestResults duplicate handling[2m > [22mlists a test once when the database holds several rows for the same project and test [33m 3093[2mms[22m[39m
+   [33m[2m✓[22m[39m TestResults duplicate handling[2m > [22mopens the newest row of each pair, identified by resultId [33m 3732[2mms[22m[39m
+   [33m[2m✓[22m[39m TestResults duplicate handling[2m > [22mcarries the sample key so the exact sample of a shared row is opened [33m 3482[2mms[22m[39m
+   [33m[2m✓[22m[39m TestResults duplicate handling[2m > [22mfalls back to a resumable row when the newest duplicate has no first record [33m 1730[2mms[22m[39m
+   [33m[2m✓[22m[39m TestResults duplicate handling[2m > [22mkeeps different tests of the same project as separate rows [33m 2247[2mms[22m[39m
+   [33m[2m✓[22m[39m TestResults duplicate handling[2m > [22mleaves a different project's duplicate rows listed [33m 1968[2mms[22m[39m
+   [33m[2m✓[22m[39m TestResults duplicate handling[2m > [22mkeeps the samples of one project together and in their stored order [33m 327[2mms[22m[39m
+[90mstderr[2m | src/components/Navigation.test.tsx[2m > [22m[2msidebar navigation[2m > [22m[2mshows a single Formulas reference entry in the Lab group
+[22m[39m⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+ [32m✓[39m src/components/Navigation.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 2502[2mms[22m[39m
+   [33m[2m✓[22m[39m sidebar navigation[2m > [22mshows a single Formulas reference entry in the Lab group [33m 1480[2mms[22m[39m
+   [33m[2m✓[22m[39m sidebar navigation[2m > [22mdownloads the formulas reference PDF when the entry is clicked [33m 1017[2mms[22m[39m
+[90mstdout[2m | src/lib/atterberg-desired.test.ts[2m > [22m[2matterberg desired pdf layout[2m > [22m[2mgenerates a single-page blob without throwing
+[22m[39m[API] === CONFIGURATION ===
+[API] VITE_API_BASE_URL env: (not set)
+[API] Development mode: [33mtrue[39m
+[API] Final API_BASE_URL: /api.php
+[API] window.location.origin: http://localhost:3000
+
+[90mstdout[2m | src/lib/atterberg-desired.test.ts[2m > [22m[2matterberg desired pdf layout[2m > [22m[2mgenerates a single-page blob without throwing
+[22m[39m[PDF] Fetching admin images for export...
+[API] 2026-10-19T22:49:09.498Z Starting list request for table: admin_images with params: [90mundefined[39m
+[API] No session token available - request will not have X-Session-Token header
+[API] Built URL: http://localhost:3000/api.php?action=list&table=admin_images
+
+[90mstderr[2m | src/lib/atterberg-desired.test.ts[2m > [22m[2matterberg desired pdf layout[2m > [22m[2mgenerates a single-page blob without throwing
+[22m[39m[API] 2026-10-19T22:49:09.498Z Failed to load records from admin_images: fetch failed
+
+[90mstderr[2m | src/lib/atterberg-desired.test.ts[2m > [22m[2matterberg desired pdf layout[2m > [22m[2mgenerates a single-page blob without throwing
+[22m[39mFailed to fetch admin image paths: fetch failed
+
+[90mstdout[2m | src/lib/atterberg-desired.test.ts[2m > [22m[2matterberg desired pdf layout[2m > [22m[2mgenerates a single-page blob without throwing
+[22m[39m[ImageFetch] No admin images found in database - export will proceed without images
+
+[90mstdout[2m | src/lib/atterberg-desired.test.ts[2m > [22m[2matterberg desired pdf layout[2m > [22m[2mgenerates a single-page blob without throwing
+[22m[39m[PDF] Admin images fetch result: {
+  hasLogo: [33mfalse[39m,
+  hasContacts: [33mfalse[39m,
+  hasStamp: [33mfalse[39m,
+  logoSize: [33m0[39m,
+  contactsSize: [33m0[39m,
+  stampSize: [33m0[39m
+}
+Extracted base64 for PDF: {
+  dataUrlLength: [33m118[39m,
+  isDataUrl: [33mtrue[39m,
+  resultLength: [33m96[39m,
+  extracted: [32m'yes'[39m
+}
+
+ [32m✓[39m src/lib/atterberg-desired.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 1963[2mms[22m[39m
+   [33m[2m✓[22m[39m atterberg desired pdf layout[2m > [22mgenerates a single-page blob without throwing [33m 1958[2mms[22m[39m
+[90mstdout[2m | src/test/benchmarkValidation.test.ts[2m > [22m[2mBenchmark Validation - ATTERTEST.xlsx[2m > [22m[2mshould validate all calculations against Excel benchmark
+[22m[39m
+================================================================================
+BENCHMARK VALIDATION REPORT: unknown
+Generated: 20/10/2026, 01:49:11
+================================================================================
+
+Summary: 0/2 tests passed
+Overall Status: ❌ DISCREPANCIES FOUND
+
+
+PLASTICLIMIT
+--------------------------------------------------
+  Excel Expected:  N/A
+  Calculated:      9.94
+  Match:           ❌ NO
+  Valid Trials:    5
+  • Found Plastic Limit value in Excel row 26: null
+  • Extracted 12 Plastic Limit trial(s)
+  • Valid trials: 5
+
+SHRINKAGELIMIT
+--------------------------------------------------
+  Excel Expected:  N/A
+  Calculated:      20
+  Match:           ❌ NO
+  Valid Trials:    1
+  • Found Shrinkage Limit trial: initial=140mm, final=112mm
+  • Found Linear Shrinkage value in Excel row 45: null
+  • Valid trials: 1
+
+================================================================================
+
+plasticLimit:
+  Expected: null, Calculated: 9.94
+  Match: false, Discrepancy: null (null%)
+  Valid Trials: 5
+
+shrinkageLimit:
+  Expected: null, Calculated: 20
+  Match: false, Discrepancy: null (null%)
+  Valid Trials: 1
+
+[90mstdout[2m | src/test/benchmarkValidation.test.ts[2m > [22m[2mBenchmark Validation - ATTERTEST.xlsx[2m > [22m[2mshould extract Plastic Limit data correctly
+[22m[39m
+Plastic Limit: 9.94% (Expected: null%)
+
+[90mstdout[2m | src/test/benchmarkValidation.test.ts[2m > [22m[2mBenchmark Validation - ATTERTEST.xlsx[2m > [22m[2mshould extract Shrinkage Limit data correctly
+[22m[39m
+Linear Shrinkage: 20% (Expected: null%)
+
+[90mstdout[2m | src/test/benchmarkValidation.test.ts[2m > [22m[2mBenchmark Validation - ATTERTEST.xlsx[2m > [22m[2mshould document any discrepancies found
+[22m[39m
+✅ All calculations match Excel values!
+
+ [32m✓[39m src/test/benchmarkValidation.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 1389[2mms[22m[39m
+   [33m[2m✓[22m[39m Benchmark Validation - ATTERTEST.xlsx[2m > [22mshould validate all calculations against Excel benchmark [33m 580[2mms[22m[39m
+ [32m✓[39m src/test/psdPdfLayout.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 1494[2mms[22m[39m
+[90mstderr[2m | src/context/SessionContext.test.tsx[2m > [22m[2mSessionGuard[2m > [22m[2mkeeps the verified session while navigating from Projects to Record
+[22m[39m⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+[90mstderr[2m | src/context/SessionContext.test.tsx[2m > [22m[2mSessionGuard[2m > [22m[2mshows retry after an indeterminate session check without redirecting
+[22m[39m[SessionGuard] Session check failed: API unavailable
+
+ [32m✓[39m src/context/SessionContext.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 1370[2mms[22m[39m
+   [33m[2m✓[22m[39m SessionGuard[2m > [22mkeeps the verified session while navigating from Projects to Record [33m 832[2mms[22m[39m
+ [32m✓[39m src/test/gridArrowNavigation.test.tsx [2m([22m[2m9 tests[22m[2m)[22m[33m 772[2mms[22m[39m
+ [32m✓[39m src/test/psdStampFooter.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 454[2mms[22m[39m
+   [33m[2m✓[22m[39m PSD footer with a configured stamp[2m > [22membeds the stamp image on the sheet [33m 317[2mms[22m[39m
+ [32m✓[39m src/test/compressivePdfLayout.test.ts [2m([22m[2m21 tests[22m[2m)[22m[33m 801[2mms[22m[39m
+ [32m✓[39m src/test/mcPdfLayout.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 441[2mms[22m[39m
+[90mstdout[2m | src/test/formulasReference.test.ts[2m > [22m[2mformulas reference content[2m > [22m[2mcites only functions that genuinely exist in the calculation modules
+[22m[39m[API] === CONFIGURATION ===
+[API] VITE_API_BASE_URL env: (not set)
+[API] Development mode: [33mtrue[39m
+[API] Final API_BASE_URL: /api.php
+[API] window.location.origin: http://localhost:3000
+
+ [32m✓[39m src/test/formulasReference.test.ts [2m([22m[2m7 tests[22m[2m)[22m[33m 508[2mms[22m[39m
+[90mstdout[2m | src/components/soil/AtterbergTest.identity.test.tsx[2m > [22m[2mAtterberg selected-project hydration[2m > [22m[2mdoes not reuse another project’s local draft when the selected project has no Atterberg row
+[22m[39m[AtterbergTest] Skipping localStorage save: not hydrated yet
+
+[90mstderr[2m | src/components/soil/AtterbergTest.identity.test.tsx[2m > [22m[2mAtterberg selected-project hydration[2m > [22m[2mdoes not reuse another project’s local draft when the selected project has no Atterberg row
+[22m[39m⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+[90mstdout[2m | src/components/soil/AtterbergTest.identity.test.tsx[2m > [22m[2mAtterberg selected-project hydration[2m > [22m[2mdoes not reuse another project’s local draft when the selected project has no Atterberg row
+[22m[39mAdmin images fetched from DB: { rowCount: [33m0[39m, rows: [] }
+Admin image paths extracted: {}
+
+[90mstdout[2m | src/components/soil/AtterbergTest.identity.test.tsx[2m > [22m[2mAtterberg selected-project hydration[2m > [22m[2mdoes not reuse another project’s local draft when the selected project has no Atterberg row
+[22m[39m[ImageFetch] No admin images found in database - export will proceed without images
+
+ [32m✓[39m src/components/soil/AtterbergTest.identity.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 484[2mms[22m[39m
+   [33m[2m✓[22m[39m Atterberg selected-project hydration[2m > [22mdoes not reuse another project’s local draft when the selected project has no Atterberg row [33m 478[2mms[22m[39m
+[90mstdout[2m | src/hooks/useSessionKeepAlive.test.ts[2m > [22m[2museSessionKeepAlive[2m > [22m[2mshould call fetchCurrentUser immediately when enabled
+[22m[39m[KeepAlive] 2026-10-19T22:49:41.533Z Starting session keep-alive (interval: 5.0 minutes)
+[KeepAlive] 2026-10-19T22:49:41.533Z Ping #1 starting...
+
+[90mstdout[2m | src/hooks/useSessionKeepAlive.test.ts[2m > [22m[2museSessionKeepAlive[2m > [22m[2mshould call fetchCurrentUser immediately when enabled
+[22m[39m[KeepAlive] 2026-10-19T22:49:41.533Z ✓ Ping #1 SUCCESS - user: Test User (undefined)
+
+[90mstdout[2m | src/hooks/useSessionKeepAlive.test.ts[2m > [22m[2museSessionKeepAlive[2m > [22m[2mshould call fetchCurrentUser immediately when enabled
+[22m[39m[KeepAlive] 2026-10-19T22:49:41.639Z Cleaning up keep-alive interval (1 pings sent)
+
+[90mstdout[2m | src/hooks/useSessionKeepAlive.test.ts[2m > [22m[2museSessionKeepAlive[2m > [22m[2mshould ping at the correct interval (5 minutes by default)
+[22m[39m[KeepAlive] 2026-10-19T22:49:41.648Z Starting session keep-alive (interval: 5.0 minutes)
+[KeepAlive] 2026-10-19T22:49:41.648Z Ping #1 starting...
+[KeepAlive] 2026-10-19T22:54:41.648Z Ping #2 starting...
+[KeepAlive] 2026-10-19T22:59:41.648Z Ping #3 starting...
+[KeepAlive] 2026-10-19T23:04:41.648Z Ping #4 starting...
+[KeepAlive] 2026-10-19T22:49:41.648Z ✓ Ping #1 SUCCESS - user: Test User (undefined)
+[KeepAlive] 2026-10-19T22:54:41.648Z ✓ Ping #2 SUCCESS - user: Test User (undefined)
+[KeepAlive] 2026-10-19T22:59:41.648Z ✓ Ping #3 SUCCESS - user: Test User (undefined)
+[KeepAlive] 2026-10-19T23:04:41.648Z ✓ Ping #4 SUCCESS - user: Test User (undefined)
+
+[90mstdout[2m | src/hooks/useSessionKeepAlive.test.ts[2m > [22m[2museSessionKeepAlive[2m > [22m[2mshould ping at the correct interval (5 minutes by default)
+[22m[39m[KeepAlive] 2026-10-19T22:49:41.681Z Cleaning up keep-alive interval (4 pings sent)
+
+[90mstdout[2m | src/hooks/useSessionKeepAlive.test.ts[2m > [22m[2museSessionKeepAlive[2m > [22m[2mshould use custom interval when provided
+[22m[39m[KeepAlive] 2026-10-19T22:49:41.682Z Starting session keep-alive (interval: 2.0 minutes)
+[KeepAlive] 2026-10-19T22:49:41.682Z Ping #1 starting...
+[KeepAlive] 2026-10-19T22:51:41.682Z Ping #2 starting...
+[KeepAlive] 2026-10-19T22:53:41.682Z Ping #3 starting...
+[KeepAlive] 2026-10-19T22:49:41.682Z ✓ Ping #1 SUCCESS - user: Test User (undefined)
+[KeepAlive] 2026-10-19T22:51:41.682Z ✓ Ping #2 SUCCESS - user: Test User (undefined)
+[KeepAlive] 2026-10-19T22:53:41.682Z ✓ Ping #3 SUCCESS - user: Test User (undefined)
+
+[90mstdout[2m | src/hooks/useSessionKeepAlive.test.ts[2m > [22m[2museSessionKeepAlive[2m > [22m[2mshould use custom interval when provided
+[22m[39m[KeepAlive] 2026-10-19T22:49:41.698Z Cleaning up keep-alive interval (3 pings sent)
+
+[90mstdout[2m | src/hooks/useSessionKeepAlive.test.ts[2m > [22m[2museSessionKeepAlive[2m > [22m[2mshould start pinging when enabled transitions from false to true
+[22m[39m[KeepAlive] 2026-10-19T22:49:41.707Z Starting session keep-alive (interval: 5.0 minutes)
+[KeepAlive] 2026-10-19T22:49:41.707Z Ping #1 starting...
+[KeepAlive] 2026-10-19T22:54:41.707Z Ping #2 starting...
+[KeepAlive] 2026-10-19T22:49:41.707Z ✓ Ping #1 SUCCESS - user: Test User (undefined)
+[KeepAlive] 2026-10-19T22:54:41.707Z ✓ Ping #2 SUCCESS - user: Test User (undefined)
+
+[90mstdout[2m | src/hooks/useSessionKeepAlive.test.ts[2m > [22m[2museSessionKeepAlive[2m > [22m[2mshould start pinging when enabled transitions from false to true
+[22m[39m[KeepAlive] 2026-10-19T22:49:41.747Z Cleaning up keep-alive interval (2 pings sent)
+
+[90mstdout[2m | src/hooks/useSessionKeepAlive.test.ts[2m > [22m[2museSessionKeepAlive[2m > [22m[2mshould stop pinging when disabled transitions from true to false
+[22m[39m[KeepAlive] 2026-10-19T22:49:41.750Z Starting session keep-alive (interval: 5.0 minutes)
+[KeepAlive] 2026-10-19T22:49:41.750Z Ping #1 starting...
+[KeepAlive] 2026-10-19T22:54:41.750Z Ping #2 starting...
+[KeepAlive] 2026-10-19T22:54:41.750Z Cleaning up keep-alive interval (2 pings sent)
+[KeepAlive] 2026-10-19T22:49:41.750Z ✓ Ping #1 SUCCESS - user: Test User (undefined)
+[KeepAlive] 2026-10-19T22:54:41.750Z ✓ Ping #2 SUCCESS - user: Test User (undefined)
+
+[90mstdout[2m | src/hooks/useSessionKeepAlive.test.ts[2m > [22m[2museSessionKeepAlive[2m > [22m[2mshould handle null user response
+[22m[39m[KeepAlive] 2026-10-19T22:49:41.772Z Starting session keep-alive (interval: 5.0 minutes)
+[KeepAlive] 2026-10-19T22:49:41.772Z Ping #1 starting...
+
+[90mstdout[2m | src/hooks/useSessionKeepAlive.test.ts[2m > [22m[2museSessionKeepAlive[2m > [22m[2mshould handle null user response
+[22m[39m[KeepAlive] 2026-10-19T22:54:41.772Z Ping #2 starting...
+
+[90mstdout[2m | src/hooks/useSessionKeepAlive.test.ts[2m > [22m[2museSessionKeepAlive[2m > [22m[2mshould handle null user response
+[22m[39m[KeepAlive] 2026-10-19T22:49:41.796Z Cleaning up keep-alive interval (2 pings sent)
+
+[90mstdout[2m | src/hooks/useSessionKeepAlive.test.ts[2m > [22m[2museSessionKeepAlive[2m > [22m[2mshould return lastPingTime in return value
+[22m[39m[KeepAlive] 2026-10-19T22:49:41.798Z Starting session keep-alive (interval: 5.0 minutes)
+[KeepAlive] 2026-10-19T22:49:41.798Z Ping #1 starting...
+
+[90mstdout[2m | src/hooks/useSessionKeepAlive.test.ts[2m > [22m[2museSessionKeepAlive[2m > [22m[2mshould return lastPingTime in return value
+[22m[39m[KeepAlive] 2026-10-19T22:49:41.798Z ✓ Ping #1 SUCCESS - user: Test User (undefined)
+
+[90mstdout[2m | src/hooks/useSessionKeepAlive.test.ts[2m > [22m[2museSessionKeepAlive[2m > [22m[2mshould return lastPingTime in return value
+[22m[39m[KeepAlive] 2026-10-19T22:49:41.808Z Cleaning up keep-alive interval (1 pings sent)
+
+[90mstdout[2m | src/hooks/useSessionKeepAlive.test.ts[2m > [22m[2museSessionKeepAlive[2m > [22m[2mshould clean up interval on unmount
+[22m[39m[KeepAlive] 2026-10-19T22:49:41.813Z Starting session keep-alive (interval: 5.0 minutes)
+[KeepAlive] 2026-10-19T22:49:41.813Z Ping #1 starting...
+[KeepAlive] 2026-10-19T22:49:41.813Z Cleaning up keep-alive interval (1 pings sent)
+[KeepAlive] 2026-10-19T22:49:41.813Z ✓ Ping #1 SUCCESS - user: Test User (undefined)
+
+[90mstdout[2m | src/hooks/useSessionKeepAlive.test.ts[2m > [22m[2museSessionKeepAlive[2m > [22m[2mshould handle rapid enable/disable toggles
+[22m[39m[KeepAlive] 2026-10-19T22:49:41.824Z Starting session keep-alive (interval: 5.0 minutes)
+[KeepAlive] 2026-10-19T22:49:41.824Z Ping #1 starting...
+[KeepAlive] 2026-10-19T22:49:41.824Z Cleaning up keep-alive interval (1 pings sent)
+[KeepAlive] 2026-10-19T22:49:41.824Z Starting session keep-alive (interval: 5.0 minutes)
+[KeepAlive] 2026-10-19T22:49:41.824Z Ping #2 starting...
+[KeepAlive] 2026-10-19T22:49:41.824Z Cleaning up keep-alive interval (2 pings sent)
+[KeepAlive] 2026-10-19T22:49:41.824Z Starting session keep-alive (interval: 5.0 minutes)
+[KeepAlive] 2026-10-19T22:49:41.824Z Ping #3 starting...
+[KeepAlive] 2026-10-19T22:49:41.824Z ✓ Ping #1 SUCCESS - user: Test User (undefined)
+[KeepAlive] 2026-10-19T22:49:41.824Z ✓ Ping #2 SUCCESS - user: Test User (undefined)
+[KeepAlive] 2026-10-19T22:49:41.824Z ✓ Ping #3 SUCCESS - user: Test User (undefined)
+
+[90mstdout[2m | src/hooks/useSessionKeepAlive.test.ts[2m > [22m[2museSessionKeepAlive[2m > [22m[2mshould handle rapid enable/disable toggles
+[22m[39m[KeepAlive] 2026-10-19T22:49:41.839Z Cleaning up keep-alive interval (3 pings sent)
+
+ [32m✓[39m src/hooks/useSessionKeepAlive.test.ts [2m([22m[2m11 tests[22m[2m | [22m[33m1 skipped[39m[2m)[22m[33m 320[2mms[22m[39m
+ [32m✓[39m src/components/soil/MoistureDensityChart.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 320[2mms[22m[39m
+[90mstdout[2m | src/test/compressiveResolution.test.ts
+[22m[39m[API] === CONFIGURATION ===
+[API] VITE_API_BASE_URL env: (not set)
+[API] Development mode: [33mtrue[39m
+[API] Final API_BASE_URL: /api.php
+[API] window.location.origin: http://localhost:3000
+
+[90mstdout[2m | src/test/compressiveResolution.test.ts[2m > [22m[2mresolveCompressiveTestId[2m > [22m[2mhonors an explicit compressive id stored in the result payload
+[22m[39m[API] 2026-10-19T22:49:45.766Z ✓ Session token STORED (preview-test-session...) [localStorage: ✓, sessionStorage: ✗, memory: ✓]
+
+[90mstdout[2m | src/test/compressiveResolution.test.ts[2m > [22m[2mresolveCompressiveTestId[2m > [22m[2mhonors an explicit compressive id stored in the result payload
+[22m[39m[API] 2026-10-19T22:49:45.775Z Starting list request for table: compressive_tests with params: { filter: [32m'project_id=42'[39m }
+[API] Session token added to X-Session-Token header
+[API] Built URL: http://localhost:3000/api.php?action=list&table=compressive_tests&filter=project_id%3D42
+
+[90mstdout[2m | src/test/compressiveResolution.test.ts[2m > [22m[2mresolveCompressiveTestId[2m > [22m[2mhonors an explicit compressive id stored in the result payload
+[22m[39m[API] 2026-10-19T22:49:45.775Z Successfully loaded 2 records from compressive_tests
+
+[90mstdout[2m | src/test/compressiveResolution.test.ts[2m > [22m[2mresolveCompressiveTestId[2m > [22m[2mhonors an explicit compressive id stored in the result payload
+[22m[39m[API] Session token added to X-Session-Token header
+[API] Built URL: http://localhost:3000/api.php?action=read&table=test_results&id=88
+
+[90mstdout[2m | src/test/compressiveResolution.test.ts[2m > [22m[2mresolveCompressiveTestId[2m > [22m[2mhonors the bare test_id link live rows carry
+[22m[39m[API] 2026-10-19T22:49:45.804Z ✓ Session token STORED (preview-test-session...) [localStorage: ✓, sessionStorage: ✗, memory: ✓]
+
+[90mstdout[2m | src/test/compressiveResolution.test.ts[2m > [22m[2mresolveCompressiveTestId[2m > [22m[2mhonors the bare test_id link live rows carry
+[22m[39m[API] 2026-10-19T22:49:45.805Z Starting list request for table: compressive_tests with params: { filter: [32m'project_id=42'[39m }
+[API] Session token added to X-Session-Token header
+[API] Built URL: http://localhost:3000/api.php?action=list&table=compressive_tests&filter=project_id%3D42
+
+[90mstdout[2m | src/test/compressiveResolution.test.ts[2m > [22m[2mresolveCompressiveTestId[2m > [22m[2mhonors the bare test_id link live rows carry
+[22m[39m[API] 2026-10-19T22:49:45.805Z Successfully loaded 2 records from compressive_tests
+
+[90mstdout[2m | src/test/compressiveResolution.test.ts[2m > [22m[2mresolveCompressiveTestId[2m > [22m[2mhonors the bare test_id link live rows carry
+[22m[39m[API] Session token added to X-Session-Token header
+[API] Built URL: http://localhost:3000/api.php?action=read&table=test_results&id=407
+
+[90mstdout[2m | src/test/compressiveResolution.test.ts[2m > [22m[2mresolveCompressiveTestId[2m > [22m[2malso reads the camelCase key from key_results_json
+[22m[39m[API] 2026-10-19T22:49:45.831Z ✓ Session token STORED (preview-test-session...) [localStorage: ✓, sessionStorage: ✗, memory: ✓]
+
+[90mstdout[2m | src/test/compressiveResolution.test.ts[2m > [22m[2mresolveCompressiveTestId[2m > [22m[2malso reads the camelCase key from key_results_json
+[22m[39m[API] 2026-10-19T22:49:45.840Z Starting list request for table: compressive_tests with params: { filter: [32m'project_id=42'[39m }
+[API] Session token added to X-Session-Token header
+[API] Built URL: http://localhost:3000/api.php?action=list&table=compressive_tests&filter=project_id%3D42
+
+[90mstdout[2m | src/test/compressiveResolution.test.ts[2m > [22m[2mresolveCompressiveTestId[2m > [22m[2malso reads the camelCase key from key_results_json
+[22m[39m[API] 2026-10-19T22:49:45.840Z Successfully loaded 2 records from compressive_tests
+
+[90mstdout[2m | src/test/compressiveResolution.test.ts[2m > [22m[2mresolveCompressiveTestId[2m > [22m[2malso reads the camelCase key from key_results_json
+[22m[39m[API] Session token added to X-Session-Token header
+[API] Built URL: http://localhost:3000/api.php?action=read&table=test_results&id=88
+
+[90mstdout[2m | src/test/compressiveResolution.test.ts[2m > [22m[2mresolveCompressiveTestId[2m > [22m[2mfalls back to the newest project test when the payload names nothing
+[22m[39m[API] 2026-10-19T22:49:45.860Z ✓ Session token STORED (preview-test-session...) [localStorage: ✓, sessionStorage: ✗, memory: ✓]
+
+[90mstdout[2m | src/test/compressiveResolution.test.ts[2m > [22m[2mresolveCompressiveTestId[2m > [22m[2mfalls back to the newest project test when the payload names nothing
+[22m[39m[API] 2026-10-19T22:49:45.863Z Starting list request for table: compressive_tests with params: { filter: [32m'project_id=42'[39m }
+[API] Session token added to X-Session-Token header
+[API] Built URL: http://localhost:3000/api.php?action=list&table=compressive_tests&filter=project_id%3D42
+
+[90mstdout[2m | src/test/compressiveResolution.test.ts[2m > [22m[2mresolveCompressiveTestId[2m > [22m[2mfalls back to the newest project test when the payload names nothing
+[22m[39m[API] 2026-10-19T22:49:45.863Z Successfully loaded 2 records from compressive_tests
+
+[90mstdout[2m | src/test/compressiveResolution.test.ts[2m > [22m[2mresolveCompressiveTestId[2m > [22m[2mfalls back to the newest project test when the payload names nothing
+[22m[39m[API] Session token added to X-Session-Token header
+[API] Built URL: http://localhost:3000/api.php?action=read&table=test_results&id=88
+
+[90mstdout[2m | src/test/compressiveResolution.test.ts[2m > [22m[2mresolveCompressiveTestId[2m > [22m[2mignores a payload id that belongs to another project
+[22m[39m[API] 2026-10-19T22:49:45.981Z ✓ Session token STORED (preview-test-session...) [localStorage: ✓, sessionStorage: ✗, memory: ✓]
+
+[90mstdout[2m | src/test/compressiveResolution.test.ts[2m > [22m[2mresolveCompressiveTestId[2m > [22m[2mignores a payload id that belongs to another project
+[22m[39m[API] 2026-10-19T22:49:45.982Z Starting list request for table: compressive_tests with params: { filter: [32m'project_id=42'[39m }
+[API] Session token added to X-Session-Token header
+[API] Built URL: http://localhost:3000/api.php?action=list&table=compressive_tests&filter=project_id%3D42
+
+[90mstdout[2m | src/test/compressiveResolution.test.ts[2m > [22m[2mresolveCompressiveTestId[2m > [22m[2mignores a payload id that belongs to another project
+[22m[39m[API] 2026-10-19T22:49:45.982Z Successfully loaded 1 records from compressive_tests
+
+[90mstdout[2m | src/test/compressiveResolution.test.ts[2m > [22m[2mresolveCompressiveTestId[2m > [22m[2mignores a payload id that belongs to another project
+[22m[39m[API] Session token added to X-Session-Token header
+[API] Built URL: http://localhost:3000/api.php?action=read&table=test_results&id=88
+
+[90mstdout[2m | src/test/compressiveResolution.test.ts[2m > [22m[2mresolveCompressiveTestId[2m > [22m[2mreturns null when the project has no compressive tests, without reading the row
+[22m[39m[API] 2026-10-19T22:49:45.994Z ✓ Session token STORED (preview-test-session...) [localStorage: ✓, sessionStorage: ✗, memory: ✓]
+
+[90mstdout[2m | src/test/compressiveResolution.test.ts[2m > [22m[2mresolveCompressiveTestId[2m > [22m[2mreturns null when the project has no compressive tests, without reading the row
+[22m[39m[API] 2026-10-19T22:49:45.995Z Starting list request for table: compressive_tests with params: { filter: [32m'project_id=42'[39m }
+[API] Session token added to X-Session-Token header
+[API] Built URL: http://localhost:3000/api.php?action=list&table=compressive_tests&filter=project_id%3D42
+
+[90mstdout[2m | src/test/compressiveResolution.test.ts[2m > [22m[2mresolveCompressiveTestId[2m > [22m[2mreturns null when the project has no compressive tests, without reading the row
+[22m[39m[API] 2026-10-19T22:49:45.995Z Successfully loaded 0 records from compressive_tests
+
+[90mstdout[2m | src/test/compressiveResolution.test.ts[2m > [22m[2mresolveCompressiveTestId[2m > [22m[2mreturns null when the test list cannot be loaded
+[22m[39m[API] 2026-10-19T22:49:45.999Z ✓ Session token STORED (preview-test-session...) [localStorage: ✓, sessionStorage: ✗, memory: ✓]
+
+[90mstdout[2m | src/test/compressiveResolution.test.ts[2m > [22m[2mresolveCompressiveTestId[2m > [22m[2mreturns null when the test list cannot be loaded
+[22m[39m[API] 2026-10-19T22:49:46.001Z Starting list request for table: compressive_tests with params: { filter: [32m'project_id=42'[39m }
+[API] Session token added to X-Session-Token header
+[API] Built URL: http://localhost:3000/api.php?action=list&table=compressive_tests&filter=project_id%3D42
+
+[90mstderr[2m | src/test/compressiveResolution.test.ts[2m > [22m[2mresolveCompressiveTestId[2m > [22m[2mreturns null when the test list cannot be loaded
+[22m[39m[API] Failed to fetch for action: list
+[API] URL attempted: http://localhost:3000/api.php?action=list&table=compressive_tests&filter=project_id%3D42
+[API] This typically means:
+[API]   1. The API server is unreachable
+[API]   2. Network connectivity issue
+[API]   3. CORS or proxy configuration issue
+[API]   4. API_BASE_URL is incorrect
+
+[90mstderr[2m | src/test/compressiveResolution.test.ts[2m > [22m[2mresolveCompressiveTestId[2m > [22m[2mreturns null when the test list cannot be loaded
+[22m[39m[API] 2026-10-19T22:49:46.001Z Failed to load records from compressive_tests: Unable to reach API server. Please check your connection and try again.
+
+[90mstderr[2m | src/test/compressiveResolution.test.ts[2m > [22m[2mresolveCompressiveTestId[2m > [22m[2mreturns null when the test list cannot be loaded
+[22m[39m[API] Failed to list compressive tests: Error: Unable to reach API server. Please check your connection and try again.
+    at apiRequest [90m(C:\xampp\htdocs\kindred\[39msrc\lib\api.ts:461:15[90m)[39m
+[90m    at processTicksAndRejections (node:internal/process/task_queues:95:5)[39m
+    at listRecords [90m(C:\xampp\htdocs\kindred\[39msrc\lib\api.ts:685:22[90m)[39m
+    at listCompressiveTests [90m(C:\xampp\htdocs\kindred\[39msrc\lib\api.ts:1199:22[90m)[39m
+    at Module.resolveCompressiveTestId [90m(C:\xampp\htdocs\kindred\[39msrc\lib\api.ts:1166:20[90m)[39m
+
+[90mstderr[2m | src/test/compressiveResolution.test.ts[2m > [22m[2mresolveCompressiveTestId[2m > [22m[2mreturns null when the test list cannot be loaded
+[22m[39m[API] Failed to list compressive tests for resolution: Error: Unable to reach API server. Please check your connection and try again.
+    at apiRequest [90m(C:\xampp\htdocs\kindred\[39msrc\lib\api.ts:461:15[90m)[39m
+[90m    at processTicksAndRejections (node:internal/process/task_queues:95:5)[39m
+    at listRecords [90m(C:\xampp\htdocs\kindred\[39msrc\lib\api.ts:685:22[90m)[39m
+    at listCompressiveTests [90m(C:\xampp\htdocs\kindred\[39msrc\lib\api.ts:1199:22[90m)[39m
+    at Module.resolveCompressiveTestId [90m(C:\xampp\htdocs\kindred\[39msrc\lib\api.ts:1166:20[90m)[39m
+
+ [32m✓[39m src/test/compressiveResolution.test.ts [2m([22m[2m7 tests[22m[2m)[22m[33m 360[2mms[22m[39m
+[90mstdout[2m | src/lib/api.test.ts
+[22m[39m[API] === CONFIGURATION ===
+[API] VITE_API_BASE_URL env: (not set)
+[API] Development mode: [33mtrue[39m
+[API] Final API_BASE_URL: /api.php
+[API] window.location.origin: http://localhost:3000
+
+[90mstdout[2m | src/lib/api.test.ts[2m > [22m[2mfetchCurrentUser[2m > [22m[2mclears a token only after a confirmed 401
+[22m[39m[API] 2026-10-19T22:49:48.782Z ✓ Session token STORED (preview-test-session...) [localStorage: ✓, sessionStorage: ✗, memory: ✓]
+
+[90mstdout[2m | src/lib/api.test.ts[2m > [22m[2mfetchCurrentUser[2m > [22m[2mclears a token only after a confirmed 401
+[22m[39m[API] 2026-10-19T22:49:48.791Z === ME ENDPOINT REQUEST START (timeout: 15000ms) ===
+[API] Session token available: ✓ Yes
+[API] Built URL: http://localhost:3000/api.php?action=me
+
+[90mstdout[2m | src/lib/api.test.ts[2m > [22m[2mfetchCurrentUser[2m > [22m[2mclears a token only after a confirmed 401
+[22m[39m[API] 2026-10-19T22:49:48.791Z === ME ENDPOINT RESPONSE ===
+
+[90mstdout[2m | src/lib/api.test.ts[2m > [22m[2mfetchCurrentUser[2m > [22m[2mclears a token only after a confirmed 401
+[22m[39m[API] 2026-10-19T22:49:48.791Z User not authenticated (401 response - session expired or not logged in)
+[API] 2026-10-19T22:49:48.812Z ✗ Session token CLEARED (was: preview-test-session...) [localStorage: ✓, sessionStorage: cleared, memory: ✓]
+
+[90mstdout[2m | src/lib/api.test.ts[2m > [22m[2mfetchCurrentUser[2m > [22m[2mclears a token when the API explicitly reports an unauthenticated session
+[22m[39m[API] 2026-10-19T22:49:48.850Z ✓ Session token STORED (preview-test-session...) [localStorage: ✓, sessionStorage: ✗, memory: ✓]
+
+[90mstdout[2m | src/lib/api.test.ts[2m > [22m[2mfetchCurrentUser[2m > [22m[2mclears a token when the API explicitly reports an unauthenticated session
+[22m[39m[API] 2026-10-19T22:49:48.852Z === ME ENDPOINT REQUEST START (timeout: 15000ms) ===
+[API] Session token available: ✓ Yes
+[API] Built URL: http://localhost:3000/api.php?action=me
+
+[90mstdout[2m | src/lib/api.test.ts[2m > [22m[2mfetchCurrentUser[2m > [22m[2mclears a token when the API explicitly reports an unauthenticated session
+[22m[39m[API] 2026-10-19T22:49:48.852Z === ME ENDPOINT RESPONSE ===
+
+[90mstdout[2m | src/lib/api.test.ts[2m > [22m[2mfetchCurrentUser[2m > [22m[2mclears a token when the API explicitly reports an unauthenticated session
+[22m[39m[API] 2026-10-19T22:49:48.852Z User not authenticated (response indicated unauthenticated)
+[API] 2026-10-19T22:49:48.859Z ✗ Session token CLEARED (was: preview-test-session...) [localStorage: ✓, sessionStorage: cleared, memory: ✓]
+
+[90mstdout[2m | src/lib/api.test.ts[2m > [22m[2mfetchCurrentUser[2m > [22m[2mpreserves the token and rejects when the API cannot be reached
+[22m[39m[API] 2026-10-19T22:49:48.862Z ✓ Session token STORED (preview-test-session...) [localStorage: ✓, sessionStorage: ✗, memory: ✓]
+
+[90mstdout[2m | src/lib/api.test.ts[2m > [22m[2mfetchCurrentUser[2m > [22m[2mpreserves the token and rejects when the API cannot be reached
+[22m[39m[API] 2026-10-19T22:49:48.863Z === ME ENDPOINT REQUEST START (timeout: 15000ms) ===
+[API] Session token available: ✓ Yes
+[API] Built URL: http://localhost:3000/api.php?action=me
+
+[90mstderr[2m | src/lib/api.test.ts[2m > [22m[2mfetchCurrentUser[2m > [22m[2mpreserves the token and rejects when the API cannot be reached
+[22m[39m[API] 2026-10-19T22:49:48.871Z ME endpoint error: Failed to fetch
+
+[90mstdout[2m | src/lib/api.test.ts[2m > [22m[2mfetchCurrentUser[2m > [22m[2mpreserves the token and rejects on server errors
+[22m[39m[API] 2026-10-19T22:49:48.879Z ✓ Session token STORED (preview-test-session...) [localStorage: ✓, sessionStorage: ✗, memory: ✓]
+
+[90mstdout[2m | src/lib/api.test.ts[2m > [22m[2mfetchCurrentUser[2m > [22m[2mpreserves the token and rejects on server errors
+[22m[39m[API] 2026-10-19T22:49:48.880Z === ME ENDPOINT REQUEST START (timeout: 15000ms) ===
+[API] Session token available: ✓ Yes
+[API] Built URL: http://localhost:3000/api.php?action=me
+
+[90mstdout[2m | src/lib/api.test.ts[2m > [22m[2mfetchCurrentUser[2m > [22m[2mpreserves the token and rejects on server errors
+[22m[39m[API] 2026-10-19T22:49:48.880Z === ME ENDPOINT RESPONSE ===
+
+[90mstderr[2m | src/lib/api.test.ts[2m > [22m[2mfetchCurrentUser[2m > [22m[2mpreserves the token and rejects on server errors
+[22m[39m[API] 2026-10-19T22:49:48.884Z ME endpoint error: Service unavailable
+
+[90mstdout[2m | src/lib/api.test.ts[2m > [22m[2mfetchCurrentUser[2m > [22m[2mstores a rotated session token from the current-user response
+[22m[39m[API] 2026-10-19T22:49:48.888Z ✓ Session token STORED (preview-test-session...) [localStorage: ✓, sessionStorage: ✗, memory: ✓]
+
+[90mstdout[2m | src/lib/api.test.ts[2m > [22m[2mfetchCurrentUser[2m > [22m[2mstores a rotated session token from the current-user response
+[22m[39m[API] 2026-10-19T22:49:48.895Z === ME ENDPOINT REQUEST START (timeout: 15000ms) ===
+[API] Session token available: ✓ Yes
+[API] Built URL: http://localhost:3000/api.php?action=me
+
+[90mstdout[2m | src/lib/api.test.ts[2m > [22m[2mfetchCurrentUser[2m > [22m[2mstores a rotated session token from the current-user response
+[22m[39m[API] 2026-10-19T22:49:48.915Z ✓ Session token STORED (rotated-session...) [localStorage: ✓, sessionStorage: ✗, memory: ✓]
+[API] 2026-10-19T22:49:48.895Z === ME ENDPOINT RESPONSE ===
+
+[90mstdout[2m | src/lib/api.test.ts[2m > [22m[2mfetchCurrentUser[2m > [22m[2mstores a rotated session token from the current-user response
+[22m[39m[API] 2026-10-19T22:49:48.895Z ✓ User authenticated as: Test User (test@example.com)
+
+[90mstdout[2m | src/lib/api.test.ts[2m > [22m[2mfetchCurrentUser[2m > [22m[2mpreserves the token and rejects malformed session responses
+[22m[39m[API] 2026-10-19T22:49:48.935Z ✓ Session token STORED (preview-test-session...) [localStorage: ✓, sessionStorage: ✗, memory: ✓]
+
+[90mstdout[2m | src/lib/api.test.ts[2m > [22m[2mfetchCurrentUser[2m > [22m[2mpreserves the token and rejects malformed session responses
+[22m[39m[API] 2026-10-19T22:49:48.938Z === ME ENDPOINT REQUEST START (timeout: 15000ms) ===
+[API] Session token available: ✓ Yes
+[API] Built URL: http://localhost:3000/api.php?action=me
+
+[90mstdout[2m | src/lib/api.test.ts[2m > [22m[2mfetchCurrentUser[2m > [22m[2mpreserves the token and rejects malformed session responses
+[22m[39m[API] 2026-10-19T22:49:48.938Z === ME ENDPOINT RESPONSE ===
+
+[90mstderr[2m | src/lib/api.test.ts[2m > [22m[2mfetchCurrentUser[2m > [22m[2mpreserves the token and rejects malformed session responses
+[22m[39m[API] 2026-10-19T22:49:48.947Z ME endpoint error: Invalid session response
+
+[90mstdout[2m | src/lib/api.test.ts[2m > [22m[2mfetchCurrentUser[2m > [22m[2mpreserves the token and rejects when the session check times out
+[22m[39m[API] 2026-10-19T22:49:48.949Z ✓ Session token STORED (preview-test-session...) [localStorage: ✓, sessionStorage: ✗, memory: ✓]
+
+[90mstdout[2m | src/lib/api.test.ts[2m > [22m[2mfetchCurrentUser[2m > [22m[2mpreserves the token and rejects when the session check times out
+[22m[39m[API] 2026-10-19T22:49:48.951Z === ME ENDPOINT REQUEST START (timeout: 100ms) ===
+[API] Session token available: ✓ Yes
+[API] Built URL: http://localhost:3000/api.php?action=me
+
+[90mstderr[2m | src/lib/api.test.ts[2m > [22m[2mfetchCurrentUser[2m > [22m[2mpreserves the token and rejects when the session check times out
+[22m[39m[API] 2026-10-19T22:49:48.951Z Session check timeout triggered after 100ms
+[API] This typically indicates:
+[API]   - API server is slow to respond
+[API]   - Network connectivity issue
+[API]   - API endpoint is unresponsive
+
+[90mstderr[2m | src/lib/api.test.ts[2m > [22m[2mfetchCurrentUser[2m > [22m[2mpreserves the token and rejects when the session check times out
+[22m[39m[API] 2026-10-19T22:49:49.051Z Session check timed out after 100ms
+
+[90mstdout[2m | src/lib/api.test.ts[2m > [22m[2mnumeric column coercion[2m > [22m[2mconverts string ids and counts to numbers in list records
+[22m[39m[API] 2026-10-19T22:49:49.071Z ✓ Session token STORED (preview-test-session...) [localStorage: ✓, sessionStorage: ✗, memory: ✓]
+
+[90mstdout[2m | src/lib/api.test.ts[2m > [22m[2mnumeric column coercion[2m > [22m[2mconverts string ids and counts to numbers in list records
+[22m[39m[API] 2026-10-19T22:49:49.073Z Starting list request for table: test_results with params: [90mundefined[39m
+[API] Session token added to X-Session-Token header
+[API] Built URL: http://localhost:3000/api.php?action=list&table=test_results
+
+[90mstdout[2m | src/lib/api.test.ts[2m > [22m[2mnumeric column coercion[2m > [22m[2mconverts string ids and counts to numbers in list records
+[22m[39m[API] 2026-10-19T22:49:49.073Z Successfully loaded 2 records from test_results
+
+[90mstdout[2m | src/lib/api.test.ts[2m > [22m[2mnumeric column coercion[2m > [22m[2mleaves null ids and non-numeric values alone
+[22m[39m[API] 2026-10-19T22:49:49.103Z ✓ Session token STORED (preview-test-session...) [localStorage: ✓, sessionStorage: ✗, memory: ✓]
+
+[90mstdout[2m | src/lib/api.test.ts[2m > [22m[2mnumeric column coercion[2m > [22m[2mleaves null ids and non-numeric values alone
+[22m[39m[API] 2026-10-19T22:49:49.105Z Starting list request for table: test_results with params: [90mundefined[39m
+[API] Session token added to X-Session-Token header
+[API] Built URL: http://localhost:3000/api.php?action=list&table=test_results
+
+[90mstdout[2m | src/lib/api.test.ts[2m > [22m[2mnumeric column coercion[2m > [22m[2mleaves null ids and non-numeric values alone
+[22m[39m[API] 2026-10-19T22:49:49.105Z Successfully loaded 2 records from test_results
+
+[90mstdout[2m | src/lib/api.test.ts[2m > [22m[2mnumeric column coercion[2m > [22m[2mconverts the id returned by a read and by a write
+[22m[39m[API] 2026-10-19T22:49:49.115Z ✓ Session token STORED (preview-test-session...) [localStorage: ✓, sessionStorage: ✗, memory: ✓]
+
+[90mstdout[2m | src/lib/api.test.ts[2m > [22m[2mnumeric column coercion[2m > [22m[2mconverts the id returned by a read and by a write
+[22m[39m[API] Session token added to X-Session-Token header
+[API] Built URL: http://localhost:3000/api.php?action=read&table=projects&id=42
+
+[90mstdout[2m | src/lib/api.test.ts[2m > [22m[2mnumeric column coercion[2m > [22m[2mconverts the id returned by a read and by a write
+[22m[39m[API] Session token added to X-Session-Token header
+[API] Built URL: http://localhost:3000/api.php?action=create
+
+ [32m✓[39m src/lib/api.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 371[2mms[22m[39m
+ [32m✓[39m src/test/compressiveCalculations.test.ts [2m([22m[2m45 tests[22m[2m)[22m[32m 79[2mms[22m[39m
+ [32m✓[39m src/test/atterbergMultiRecord.test.ts [2m([22m[2m22 tests[22m[2m)[22m[32m 82[2mms[22m[39m
+[90mstdout[2m | src/components/soil/AtterbergTest.persistence.test.ts[2m > [22m[2mAtterberg project persistence - one test_results row per sample[2m > [22m[2mwrites one row per sample, each holding a single record
+[22m[39m[Atterberg Save] Lookup criteria: {
+  projectName: [32m'Grading project'[39m,
+  clientName: [32m'Client'[39m,
+  projectDate: [32m'2026-06-01'[39m
+}
+[Atterberg Save] Using project ID 42
+
+[90mstdout[2m | src/components/soil/AtterbergTest.persistence.test.ts[2m > [22m[2mAtterberg project persistence - one test_results row per sample[2m > [22m[2mwrites one row per sample, each holding a single record
+[22m[39m[Atterberg Save] === SAVE COMPLETE: 3 sample(s) ===
+
+[90mstdout[2m | src/components/soil/AtterbergTest.persistence.test.ts[2m > [22m[2mAtterberg project persistence - one test_results row per sample[2m > [22m[2mkeeps the project envelope and aggregate on every sample row
+[22m[39m[Atterberg Save] Lookup criteria: {
+  projectName: [32m'Grading project'[39m,
+  clientName: [32m'Client'[39m,
+  projectDate: [32m'2026-06-01'[39m
+}
+[Atterberg Save] Using project ID 42
+
+[90mstdout[2m | src/components/soil/AtterbergTest.persistence.test.ts[2m > [22m[2mAtterberg project persistence - one test_results row per sample[2m > [22m[2mkeeps the project envelope and aggregate on every sample row
+[22m[39m[Atterberg Save] === SAVE COMPLETE: 3 sample(s) ===
+
+[90mstdout[2m | src/components/soil/AtterbergTest.persistence.test.ts[2m > [22m[2mAtterberg project persistence - one test_results row per sample[2m > [22m[2mupdates every sample in place when the same test is saved again
+[22m[39m[Atterberg Save] Lookup criteria: {
+  projectName: [32m'Grading project'[39m,
+  clientName: [32m'Client'[39m,
+  projectDate: [32m'2026-06-01'[39m
+}
+[Atterberg Save] Using project ID 42
+
+[90mstdout[2m | src/components/soil/AtterbergTest.persistence.test.ts[2m > [22m[2mAtterberg project persistence - one test_results row per sample[2m > [22m[2mupdates every sample in place when the same test is saved again
+[22m[39m[Atterberg Save] === SAVE COMPLETE: 3 sample(s) ===
+
+[90mstdout[2m | src/components/soil/AtterbergTest.persistence.test.ts[2m > [22m[2mAtterberg project persistence - one test_results row per sample[2m > [22m[2mupdates every sample in place when the same test is saved again
+[22m[39m[Atterberg Save] Lookup criteria: {
+  projectName: [32m'Grading project'[39m,
+  clientName: [32m'Client'[39m,
+  projectDate: [32m'2026-06-01'[39m
+}
+[Atterberg Save] Using project ID 42
+
+[90mstdout[2m | src/components/soil/AtterbergTest.persistence.test.ts[2m > [22m[2mAtterberg project persistence - one test_results row per sample[2m > [22m[2mupdates every sample in place when the same test is saved again
+[22m[39m[Atterberg Save] === SAVE COMPLETE: 3 sample(s) ===
+
+[90mstdout[2m | src/components/soil/AtterbergTest.persistence.test.ts[2m > [22m[2mAtterberg project persistence - one test_results row per sample[2m > [22m[2mupdates every sample in place when the same test is saved again
+[22m[39m[Atterberg Save] Lookup criteria: {
+  projectName: [32m'Grading project'[39m,
+  clientName: [32m'Client'[39m,
+  projectDate: [32m'2026-06-01'[39m
+}
+[Atterberg Save] Using project ID 42
+
+[90mstdout[2m | src/components/soil/AtterbergTest.persistence.test.ts[2m > [22m[2mAtterberg project persistence - one test_results row per sample[2m > [22m[2mupdates every sample in place when the same test is saved again
+[22m[39m[Atterberg Save] === SAVE COMPLETE: 3 sample(s) ===
+
+[90mstdout[2m | src/components/soil/AtterbergTest.persistence.test.ts[2m > [22m[2mAtterberg project persistence - one test_results row per sample[2m > [22m[2mdeletes only the sample removed from the form
+[22m[39m[Atterberg Save] Lookup criteria: {
+  projectName: [32m'Grading project'[39m,
+  clientName: [32m'Client'[39m,
+  projectDate: [32m'2026-06-01'[39m
+}
+[Atterberg Save] Using project ID 42
+
+[90mstdout[2m | src/components/soil/AtterbergTest.persistence.test.ts[2m > [22m[2mAtterberg project persistence - one test_results row per sample[2m > [22m[2mdeletes only the sample removed from the form
+[22m[39m[Atterberg Save] Removed 1 stale row(s) for project 42
+[Atterberg Save] === SAVE COMPLETE: 2 sample(s) ===
+
+[90mstdout[2m | src/components/soil/AtterbergTest.persistence.test.ts[2m > [22m[2mAtterberg project persistence - one test_results row per sample[2m > [22m[2madds a newly added sample without touching the existing ones
+[22m[39m[Atterberg Save] Lookup criteria: {
+  projectName: [32m'Grading project'[39m,
+  clientName: [32m'Client'[39m,
+  projectDate: [32m'2026-06-01'[39m
+}
+[Atterberg Save] Using project ID 42
+
+[90mstdout[2m | src/components/soil/AtterbergTest.persistence.test.ts[2m > [22m[2mAtterberg project persistence - one test_results row per sample[2m > [22m[2madds a newly added sample without touching the existing ones
+[22m[39m[Atterberg Save] === SAVE COMPLETE: 2 sample(s) ===
+
+[90mstdout[2m | src/components/soil/AtterbergTest.persistence.test.ts[2m > [22m[2mAtterberg project persistence - one test_results row per sample[2m > [22m[2mremoves the legacy project-level row that held every sample in one record
+[22m[39m[Atterberg Save] Lookup criteria: {
+  projectName: [32m'Grading project'[39m,
+  clientName: [32m'Client'[39m,
+  projectDate: [32m'2026-06-01'[39m
+}
+[Atterberg Save] Using project ID 42
+
+[90mstdout[2m | src/components/soil/AtterbergTest.persistence.test.ts[2m > [22m[2mAtterberg project persistence - one test_results row per sample[2m > [22m[2mremoves the legacy project-level row that held every sample in one record
+[22m[39m[Atterberg Save] Removed 1 stale row(s) for project 42
+[Atterberg Save] === SAVE COMPLETE: 3 sample(s) ===
+
+[90mstdout[2m | src/components/soil/AtterbergTest.persistence.test.ts[2m > [22m[2mAtterberg project persistence - one test_results row per sample[2m > [22m[2mcollapses duplicate rows for the same sample, keeping the newest
+[22m[39m[Atterberg Save] Lookup criteria: {
+  projectName: [32m'Grading project'[39m,
+  clientName: [32m'Client'[39m,
+  projectDate: [32m'2026-06-01'[39m
+}
+[Atterberg Save] Using project ID 42
+
+[90mstdout[2m | src/components/soil/AtterbergTest.persistence.test.ts[2m > [22m[2mAtterberg project persistence - one test_results row per sample[2m > [22m[2mcollapses duplicate rows for the same sample, keeping the newest
+[22m[39m[Atterberg Save] Removed 1 stale row(s) for project 42
+[Atterberg Save] === SAVE COMPLETE: 1 sample(s) ===
+
+[90mstdout[2m | src/components/soil/AtterbergTest.persistence.test.ts[2m > [22m[2mAtterberg project persistence - one test_results row per sample[2m > [22m[2mfalls back to updating when the unique key rejects a create
+[22m[39m[Atterberg Save] Lookup criteria: {
+  projectName: [32m'Grading project'[39m,
+  clientName: [32m'Client'[39m,
+  projectDate: [32m'2026-06-01'[39m
+}
+[Atterberg Save] Using project ID 42
+
+[90mstdout[2m | src/components/soil/AtterbergTest.persistence.test.ts[2m > [22m[2mAtterberg project persistence - one test_results row per sample[2m > [22m[2mfalls back to updating when the unique key rejects a create
+[22m[39m[Atterberg Save] === SAVE COMPLETE: 1 sample(s) ===
+
+[90mstdout[2m | src/components/soil/AtterbergTest.persistence.test.ts[2m > [22m[2mAtterberg project persistence - one test_results row per sample[2m > [22m[2mleaves rows belonging to other tests alone
+[22m[39m[Atterberg Save] Lookup criteria: {
+  projectName: [32m'Grading project'[39m,
+  clientName: [32m'Client'[39m,
+  projectDate: [32m'2026-06-01'[39m
+}
+[Atterberg Save] Using project ID 42
+
+[90mstdout[2m | src/components/soil/AtterbergTest.persistence.test.ts[2m > [22m[2mAtterberg project persistence - one test_results row per sample[2m > [22m[2mleaves rows belonging to other tests alone
+[22m[39m[Atterberg Save] === SAVE COMPLETE: 3 sample(s) ===
+
+[90mstdout[2m | src/components/soil/AtterbergTest.persistence.test.ts[2m > [22m[2mAtterberg project persistence - one test_results row per sample[2m > [22m[2mwrites nothing when the payload has no records
+[22m[39m[Atterberg Save] Lookup criteria: {
+  projectName: [32m'Grading project'[39m,
+  clientName: [32m'Client'[39m,
+  projectDate: [32m'2026-06-01'[39m
+}
+[Atterberg Save] Using project ID 42
+
+[90mstderr[2m | src/components/soil/AtterbergTest.persistence.test.ts[2m > [22m[2mAtterberg project persistence - one test_results row per sample[2m > [22m[2mwrites nothing when the payload has no records
+[22m[39m[Atterberg Save] Payload has no records; leaving test_results untouched
+
+[90mstdout[2m | src/components/soil/AtterbergTest.persistence.test.ts[2m > [22m[2mAtterberg project persistence - one test_results row per sample[2m > [22m[2madds results to the selected project without creating a duplicate project
+[22m[39m[Atterberg Save] Lookup criteria: {
+  projectName: [32m'Other project name'[39m,
+  clientName: [32m'Other client'[39m,
+  projectDate: [32m'2026-01-01'[39m
+}
+[Atterberg Save] Using project ID 42
+
+[90mstdout[2m | src/components/soil/AtterbergTest.persistence.test.ts[2m > [22m[2mAtterberg project persistence - one test_results row per sample[2m > [22m[2madds results to the selected project without creating a duplicate project
+[22m[39m[Atterberg Save] === SAVE COMPLETE: 1 sample(s) ===
+
+ [32m✓[39m src/test/psdChartGeometry.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 70[2mms[22m[39m
+ [32m✓[39m src/components/soil/AtterbergTest.persistence.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 249[2mms[22m[39m
+ [32m✓[39m src/test/atterbergCalculations.test.ts [2m([22m[2m64 tests[22m[2m)[22m[32m 90[2mms[22m[39m
+ [32m✓[39m src/test/gradingCalculations.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 41[2mms[22m[39m
+[90mstdout[2m | src/lib/__tests__/atterbergCalculations.benchmark.test.ts[2m > [22m[2mAtterberg Calculations - BS 1377 Standard Validation[2m > [22m[2mReal World Example - Complete Test Sequence[2m > [22m[2mshould process a complete Atterberg test sequence
+[22m[39mComplete Test Results:
+  Liquid Limit: 50.21%
+  Plastic Limit: 17.51%
+  Plasticity Index: 32.7%
+  Linear Shrinkage: 20%
+  Modulus of Plasticity: 2897.22
+  Soil Classification: Clay (CH)
+
+ [32m✓[39m src/lib/__tests__/atterbergCalculations.benchmark.test.ts [2m([22m[2m53 tests[22m[2m)[22m[32m 149[2mms[22m[39m
+ [32m✓[39m src/test/testResultSamples.test.ts [2m([22m[2m23 tests[22m[2m)[22m[32m 133[2mms[22m[39m
+ [32m✓[39m src/test/atterbergClassification.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 70[2mms[22m[39m
+[90mstdout[2m | src/test/soilCombinedReport.test.ts
+[22m[39m[API] === CONFIGURATION ===
+[API] VITE_API_BASE_URL env: (not set)
+[API] Development mode: [33mtrue[39m
+[API] Final API_BASE_URL: /api.php
+[API] window.location.origin: http://localhost:3000
+
+ [32m✓[39m src/test/soilCombinedReport.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 30[2mms[22m[39m
+ [32m✓[39m src/test/aashtoGranular.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 101[2mms[22m[39m
+ [32m✓[39m src/test/mcChartGeometry.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 41[2mms[22m[39m
+ [32m✓[39m src/test/receptionFlow.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+[90mstdout[2m | src/test/manualExcelParse.test.ts[2m > [22m[2mManual Excel Parsing - ATTERTEST.xlsx[2m > [22m[2mshould read Excel file structure
+[22m[39mFile size: 92154 bytes
+
+[90mstderr[2m | src/test/manualExcelParse.test.ts[2m > [22m[2mManual Excel Parsing - ATTERTEST.xlsx[2m > [22m[2mshould extract and parse worksheet XML
+[22m[39mCould not extract worksheet XML
+
+ [32m✓[39m src/test/manualExcelParse.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m src/test/atterbergPdfLayout.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m src/test/aashtoGroupIndex.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m src/test/example.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 10[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m40 passed[39m[22m[90m (40)[39m
+[2m      Tests [22m [1m[32m504 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (505)[39m
+[2m   Start at [22m 01:47:43
+[2m   Duration [22m 178.03s[2m (transform 7.86s, setup 26.21s, collect 84.19s, tests 135.16s, environment 185.67s, prepare 35.24s)[22m
+

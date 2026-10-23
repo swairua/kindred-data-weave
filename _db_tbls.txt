@@ -1,0 +1,10 @@
+﻿foundation	8
+housefinder	31
+information_schema	79
+kindred_d10_check	14
+kindred_ref_check	14
+kindred_snap_check	13
+mercy_f	8
+mysql	31
+performance_schema	52
+wayrusc1_labdatacraft	14

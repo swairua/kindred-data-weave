@@ -1,0 +1,17 @@
+﻿admin_images	admin_images_ibfk_1	uploaded_by	users	id
+admin_images_audit	admin_images_audit_ibfk_2	changed_by	users	id
+admin_images_audit	admin_images_audit_ibfk_1	admin_image_id	admin_images	id
+atterberg_instances	fk_atterberg_instances_project	project_id	projects	id
+atterberg_rows	fk_atterberg_rows_instance	atterberg_instance_id	atterberg_instances	id
+atterberg_save_audit	atterberg_save_audit_ibfk_2	user_id	users	id
+atterberg_save_audit	atterberg_save_audit_ibfk_1	test_result_id	test_results	id
+company_info	fk_company_contacts_image	contacts_image_id	admin_images	id
+company_info	fk_company_stamp_image	stamp_image_id	admin_images	id
+company_info	fk_company_logo	logo_image_id	admin_images	id
+compressive_cubes	fk_test_id	test_id	compressive_tests	id
+projects	fk_projects_user	user_id	users	id
+sessions	fk_sessions_user	user_id	users	id
+test_results	fk_test_results_test_key	test_key	test_definitions	test_key
+test_results	fk_test_results_project	project_id	projects	id
+test_results	fk_test_results_user	user_id	users	id
+user_allowed_tables	fk_user_allowed_tables_user	user_id	users	id

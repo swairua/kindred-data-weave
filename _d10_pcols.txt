@@ -1,0 +1,44 @@
+﻿compressive_tests	id	int(10) unsigned	NO	NULL	auto_increment
+compressive_tests	project_id	int(10) unsigned	NO	NULL	
+compressive_tests	test_key	varchar(50)	NO	'compressive'	
+compressive_tests	date_tested	date	YES	NULL	
+compressive_tests	cement	varchar(255)	YES	NULL	
+compressive_tests	fine_aggregate	varchar(255)	YES	NULL	
+compressive_tests	coarse_aggregate	varchar(255)	YES	NULL	
+compressive_tests	contractor	varchar(255)	YES	NULL	
+compressive_tests	county	varchar(255)	YES	NULL	
+compressive_tests	concrete_class	varchar(50)	YES	NULL	
+compressive_tests	section	varchar(255)	YES	NULL	
+compressive_tests	made_by	varchar(255)	YES	NULL	
+compressive_tests	slump	varchar(255)	YES	NULL	
+compressive_tests	client_ref	varchar(255)	YES	NULL	
+compressive_tests	lab_ref	varchar(255)	YES	NULL	
+compressive_tests	report_no	varchar(255)	YES	NULL	
+compressive_tests	date_received	date	YES	NULL	
+compressive_tests	curing	varchar(255)	YES	NULL	
+compressive_tests	mode_of_failure	varchar(255)	YES	NULL	
+compressive_tests	comment	text	YES	NULL	
+compressive_tests	status	varchar(50)	YES	'not-started'	
+compressive_tests	created_at	timestamp	YES	current_timestamp()	
+compressive_tests	updated_at	timestamp	YES	current_timestamp()	on update current_timestamp()
+projects	id	int(10) unsigned	NO	NULL	auto_increment
+projects	user_id	int(10) unsigned	YES	NULL	
+projects	name	varchar(255)	NO	NULL	
+projects	client_name	varchar(255)	YES	NULL	
+projects	project_date	date	YES	NULL	
+projects	contractor	varchar(255)	YES	NULL	
+projects	county	varchar(255)	YES	NULL	
+projects	lab_organization	varchar(255)	YES	NULL	
+projects	date_reported	date	YES	NULL	
+projects	checked_by	varchar(255)	YES	NULL	
+projects	created_at	timestamp	NO	current_timestamp()	
+projects	updated_at	timestamp	NO	current_timestamp()	on update current_timestamp()
+projects	test_type	varchar(50)	YES	NULL	
+test_definitions	id	int(10) unsigned	NO	NULL	auto_increment
+test_definitions	test_key	varchar(50)	NO	NULL	
+test_definitions	name	varchar(255)	NO	NULL	
+test_definitions	category	enum('soil','concrete','rock','special')	NO	NULL	
+test_definitions	sort_order	int(10) unsigned	NO	0	
+test_definitions	enabled	tinyint(1)	NO	1	
+test_definitions	created_at	timestamp	NO	current_timestamp()	
+test_definitions	updated_at	timestamp	NO	current_timestamp()	on update current_timestamp()

@@ -1,0 +1,14 @@
+﻿admin_images	utf8mb4_unicode_ci	InnoDB
+admin_images_audit	utf8mb4_unicode_ci	InnoDB
+atterberg_instances	utf8mb4_unicode_ci	InnoDB
+atterberg_rows	utf8mb4_unicode_ci	InnoDB
+atterberg_save_audit	utf8mb4_unicode_ci	InnoDB
+company_info	utf8mb4_unicode_ci	InnoDB
+compressive_cubes	utf8mb4_unicode_ci	InnoDB
+compressive_tests	utf8mb4_unicode_ci	InnoDB
+projects	utf8mb4_unicode_ci	InnoDB
+sessions	utf8mb4_unicode_ci	InnoDB
+test_definitions	utf8mb4_unicode_ci	InnoDB
+test_results	utf8mb4_unicode_ci	InnoDB
+users	utf8mb4_unicode_ci	InnoDB
+user_allowed_tables	utf8mb4_unicode_ci	InnoDB

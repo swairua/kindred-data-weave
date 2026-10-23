@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Check, ChevronDown, FileDown, HelpCircle, Loader2, Printer, Save, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Download, FileDown, HelpCircle, Loader2, Printer, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -564,6 +564,57 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
     });
   };
 
+  // One metadata set for every export and for printing. `...project` carries no
+  // testedBy, so the PDF footer and the Date Tested row were previously blank
+  // and wrong respectively.
+  const exportMetadata = {
+    projectName: project.projectName,
+    clientName: project.clientName,
+    date: project.projectDate || project.date,
+    dateTested: record.dateTested,
+    labOrganization: project.labOrganization,
+    dateReported: project.dateReported,
+    checkedBy: project.checkedBy,
+    testedBy: record.testedBy,
+  };
+
+  /** The BS 1377-2 sheet, shared by the download and the print window. */
+  const buildPdfOptions = () => ({
+    ...exportMetadata,
+    record,
+    grading: calculations,
+    hydrometer,
+    hydrometerInputs: { ...DEFAULT_HYDROMETER_INPUTS, ...record.hydrometerInputs },
+    series: psdSeries,
+    chartImage: null,
+    gravelPercentage: classificationValues.gravel,
+    sandPercentage: classificationValues.sand,
+    finesPercentage: classificationValues.fines,
+    uscsSymbol: autoClassification?.uscsSymbol ?? record.classification.uscs,
+    uscsDescription: autoClassification?.uscsDescription ?? null,
+    aashtoGroup: autoClassification?.aashtoGroup ?? record.classification.aashtoGroup,
+    groupIndex,
+  });
+
+  const handlePrint = async () => {
+    try {
+      // Hand the processed sheet itself to a browser tab and let that tab print
+      // it — never the on-screen report page.
+      const doc = await generateParticleSizeDistributionPDF({ ...buildPdfOptions(), skipDownload: true });
+      doc.autoPrint();
+      const pdfUrl = doc.output("bloburl");
+      const printWindow = window.open(pdfUrl, "_blank");
+      if (printWindow) {
+        printWindow.onload = () => printWindow.print();
+      } else {
+        toast.error("Failed to open print dialog. Pop-ups may be blocked.");
+      }
+    } catch (printError) {
+      console.error("[PSD print]", printError);
+      toast.error("Unable to print the Particle Size Distribution report");
+    }
+  };
+
   const exportFiles = async (type: "pdf" | "xlsx") => {
     const tables = [{
       headers: ["Sieve size (mm)", "Retained mass (g)", "% retained", "Cumulative passing (%)"],
@@ -600,19 +651,6 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       ...(autoClassification ? [{ label: "USCS", value: autoClassification.uscsSymbol }, { label: "AASHTO", value: autoClassification.aashtoGroup }] : []),
       ...(groupIndex === null ? [] : [{ label: "Group Index", value: String(groupIndex) }]),
     ];
-    // One metadata set for every export. `...project` carries no testedBy, so the PDF
-    // footer and the Date Tested row were previously blank and wrong respectively.
-    const metadata = {
-      projectName: project.projectName,
-      clientName: project.clientName,
-      date: project.projectDate || project.date,
-      dateTested: record.dateTested,
-      labOrganization: project.labOrganization,
-      dateReported: project.dateReported,
-      checkedBy: project.checkedBy,
-      testedBy: record.testedBy,
-    };
-
     const chartImages: Record<string, string> = {};
     // The PDF draws its own vector curve; only the Excel twin embeds the capture.
     if (type !== "pdf" && psdSeries.length >= 2) {
@@ -624,27 +662,11 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       // curve is always drawn natively (selectable vector labels, print-sharp
       // at any size) rather than embedding the on-screen raster capture; the
       // capture is still attached to the Excel twin below.
-      await generateParticleSizeDistributionPDF({
-        ...metadata,
-        record,
-        grading: calculations,
-        hydrometer,
-        hydrometerInputs: { ...DEFAULT_HYDROMETER_INPUTS, ...record.hydrometerInputs },
-        series: psdSeries,
-        chartImage: null,
-        gravelPercentage: classificationValues.gravel,
-        sandPercentage: classificationValues.sand,
-        finesPercentage: classificationValues.fines,
-        uscsSymbol: autoClassification?.uscsSymbol ?? record.classification.uscs,
-        uscsDescription: autoClassification?.uscsDescription ?? null,
-        aashtoGroup: autoClassification?.aashtoGroup ?? record.classification.aashtoGroup,
-        groupIndex,
-      });
+      await generateParticleSizeDistributionPDF(buildPdfOptions());
     } else {
-      generateTestExcel({ data: { title: "Particle Size Distribution", fields: resultFields, tables, chartImages }, ...metadata });
+      generateTestExcel({ data: { title: "Particle Size Distribution", fields: resultFields, tables, chartImages }, ...exportMetadata });
     }
   };
-
   if (isLoading) {
     return <div className="flex min-h-[360px] items-center justify-center text-sm text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" />Loading particle size distribution record...</div>;
   }
@@ -751,7 +773,15 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       </RecordSection>
 
       <section className="record-card flex flex-col gap-3 px-4 py-3 text-[10px] sm:flex-row sm:items-center sm:justify-between"><div><span className="text-muted-foreground">TESTED BY</span><div className="font-semibold uppercase">{record.testedBy || "—"}</div></div><div><span className="text-muted-foreground">DATE REPORTED</span><div className="font-semibold">{project.dateReported || "—"}</div></div></section>
-      <div className="flex flex-wrap items-center justify-between gap-2 print:hidden"><Button variant="outline" size="sm" className="border-destructive/20 text-destructive hover:bg-destructive/10" onClick={handleClear}><Trash2 className="mr-1.5 h-3.5 w-3.5" />Delete</Button><div className="flex flex-wrap gap-0"><Button size="sm" className="rounded-r-none bg-primary" onClick={handleSave} disabled={saveStatus === "saving"}>{saveStatus === "saving" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : saveStatus === "saved" ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}{saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved" : "Save"}</Button><DropdownMenu><DropdownMenuTrigger asChild><Button size="sm" aria-label="Export options" className="rounded-l-none border-l border-primary-foreground/30 bg-primary px-2 text-primary-foreground hover:bg-primary/90"><ChevronDown className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => void exportFiles("pdf")}><FileDown className="mr-2 h-4 w-4" />PDF</DropdownMenuItem><DropdownMenuItem onSelect={() => void exportFiles("pdf")}><Printer className="mr-2 h-4 w-4" />Print</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div></div>
+      <div className="flex flex-wrap items-center justify-end gap-2 print:hidden">
+        <Button variant="outline" size="sm" className="border-destructive/20 text-destructive hover:bg-destructive/10" onClick={handleClear}><Trash2 className="mr-1.5 h-3.5 w-3.5" />Delete</Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild><Button variant="outline" size="sm" aria-label="Export options"><Download className="mr-1.5 h-3.5 w-3.5" />Export<ChevronDown className="ml-1 h-3 w-3" /></Button></DropdownMenuTrigger>
+          <DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => void exportFiles("pdf")}><FileDown className="mr-2 h-4 w-4" />PDF</DropdownMenuItem></DropdownMenuContent>
+        </DropdownMenu>
+        <Button variant="outline" size="sm" onClick={() => void handlePrint()}><Printer className="mr-1.5 h-3.5 w-3.5" />Print</Button>
+        <Button size="sm" onClick={handleSave} disabled={saveStatus === "saving"}>{saveStatus === "saving" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : saveStatus === "saved" ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}{saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved" : "Save"}</Button>
+      </div>
     </div>
   );
 };

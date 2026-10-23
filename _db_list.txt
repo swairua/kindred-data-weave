@@ -1,0 +1,12 @@
+﻿10.4.32-MariaDB
+foundation
+housefinder
+information_schema
+kindred_d10_check
+kindred_ref_check
+kindred_snap_check
+mercy_f
+mysql
+performance_schema
+test
+wayrusc1_labdatacraft

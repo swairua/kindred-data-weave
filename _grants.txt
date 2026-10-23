@@ -1,0 +1,9 @@
+﻿mysql.exe : ERROR 1141 (42000) at line 1: There is no such grant defined for user 
+'wayrusc1_labdatacraft' on host 'localhost'
+At line:1 char:1
++ & 'c:\xampp\mysql\bin\mysql.exe' -u root -P 3308 -N -B -e "SHOW GRANT ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (ERROR 1141 (420...ost 'localhost':String) [] 
+   , RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

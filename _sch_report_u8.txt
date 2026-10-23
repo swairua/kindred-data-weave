@@ -1,0 +1,83 @@
+﻿########## COMPARE live vs kindred_ref_check (REF)
+tables only in live: []
+tables only in REF  : []
+  admin_images           live=3    REF=3    identical_rows=3    live_only=0    REF_only=0
+  admin_images_audit     live=0    REF=0    identical_rows=0    live_only=0    REF_only=0
+  atterberg_instances    live=0    REF=0    identical_rows=0    live_only=0    REF_only=0
+  atterberg_rows         live=0    REF=0    identical_rows=0    live_only=0    REF_only=0
+  atterberg_save_audit   live=62   REF=62   identical_rows=62   live_only=0    REF_only=0
+  company_info           live=1    REF=1    identical_rows=1    live_only=0    REF_only=0
+  compressive_cubes      live=1    REF=1    identical_rows=1    live_only=0    REF_only=0
+  COLDIFF compressive_tests      missing_in_live=['county', 'lab_ref', 'report_no', 'date_received', 'curing', 'mode_of_failure', 'comment']  extra_in_live=[]
+  compressive_tests      live=1    REF=1    identical_rows=1    live_only=0    REF_only=0
+  COLDIFF projects               missing_in_live=['contractor', 'county', 'lab_organization', 'date_reported', 'checked_by']  extra_in_live=[]
+  projects               live=21   REF=21   identical_rows=20   live_only=1    REF_only=1
+       live-only: 33	1	ffff	fffff	~N~	2026-09-24 20:59:14	2026-09-24 20:59:14	grading
+
+       REF   -only: 34	1	jjj	kkk	~N~	2026-09-25 12:42:16	2026-09-25 12:42:16	compressive
+
+  sessions               live=5    REF=237  identical_rows=5    live_only=0    REF_only=232
+  test_definitions       live=17   REF=19   identical_rows=0    live_only=17   REF_only=19
+  COLDIFF test_results           missing_in_live=['sample_key', 'sample_label', 'sample_depth', 'sort_order']  extra_in_live=[]
+  test_results           live=62   REF=62   identical_rows=62   live_only=0    REF_only=0
+  user_allowed_tables    live=10   REF=10   identical_rows=10   live_only=0    REF_only=0
+  users                  live=1    REF=1    identical_rows=1    live_only=0    REF_only=0
+########## COMPARE live vs kindred_snap_check (SNAP)
+tables only in live: ['company_info']
+tables only in SNAP  : []
+  admin_images           live=3    SNAP=3    identical_rows=3    live_only=0    SNAP_only=0
+  admin_images_audit     live=0    SNAP=0    identical_rows=0    live_only=0    SNAP_only=0
+  atterberg_instances    live=0    SNAP=0    identical_rows=0    live_only=0    SNAP_only=0
+  atterberg_rows         live=0    SNAP=0    identical_rows=0    live_only=0    SNAP_only=0
+  atterberg_save_audit   live=62   SNAP=63   identical_rows=0    live_only=62   SNAP_only=63
+  compressive_cubes      live=1    SNAP=2    identical_rows=0    live_only=1    SNAP_only=2
+       live-only: 1	1	Unknown	2026-05-01	2026-05-11	667.00	150.00	150.00	150.00	100.00	30.00	29.64		2026-05-11 10:05:16	2026-05-11 10:05:16
+
+       SNAP  -only: 1	1	~N~	2026-05-01	2026-05-11	667.00	150.00	150.00	150.00	100.00	29.63	29.64	~N~	2026-05-11 10:05:16	2026-10-02 13:28:06
+
+       SNAP  -only: 40	2	~N~	~N~	~N~	3.00	150.00	150.00	150.00	100.00	29.63	0.13	~N~	2026-10-13 15:27:34	2026-10-13 15:27:34
+
+  COLDIFF compressive_tests      missing_in_live=['county', 'lab_ref']  extra_in_live=[]
+  compressive_tests      live=1    SNAP=2    identical_rows=0    live_only=1    SNAP_only=2
+       live-only: 1	11	compressive	2026-05-11	dd	dd	dd		dd	dd	dd	dd	dd	submitted	2026-05-11 10:05:15	2026-05-11 10:05:15
+
+       SNAP  -only: 1	36	compressive	2026-05-11	dd	dd	dd	2t4	dd	dd	dd	dd	dd	submitted	2026-05-11 10:05:15	2026-10-02 13:28:04
+
+       SNAP  -only: 2	42	compressive	~N~										submitted	2026-10-08 12:01:09	2026-10-13 11:13:15
+
+  COLDIFF projects               missing_in_live=['contractor', 'county', 'lab_organization', 'date_reported', 'checked_by']  extra_in_live=[]
+  projects               live=21   SNAP=29   identical_rows=19   live_only=2    SNAP_only=10
+       live-only: 31	1	THE PROPOSED CONSTRUCTION OF PCEA CHURCH	PCEA CHURCH	2026-06-16	2026-06-13 13:20:31	2026-06-16 13:16:26	atterberg
+
+       live-only: 33	1	ffff	fffff	~N~	2026-09-24 20:59:14	2026-09-24 20:59:14	grading
+
+       SNAP  -only: 31	1	THE PROPOSED CONSTRUCTION OF PCEA CHURCH	PCEA CHURCH	2026-10-12	2026-06-13 13:20:31	2026-10-12 09:54:53	atterberg
+
+       SNAP  -only: 34	1	jjj	kkk	~N~	2026-09-25 12:42:16	2026-09-25 12:42:16	compressive
+
+       SNAP  -only: 35	1	TEST	Gichuki	2026-09-26	2026-09-26 15:52:05	2026-09-26 15:52:05	atterberg
+
+       SNAP  -only: 36	1			0000-00-00	2026-10-02 13:27:18	2026-10-02 13:27:18	compressive
+
+       SNAP  -only: 37	1	jjj	kkk	2026-10-02	2026-10-02 13:29:16	2026-10-02 13:29:16	grading
+
+       SNAP  -only: 38	1	KIRIAINI AHP	AHP	2026-06-11	2026-10-07 09:32:44	2026-10-07 09:32:44	grading
+
+       SNAP  -only: 39	1	KIRIAINI AHP	AHP	2026-06-11	2026-10-08 11:20:28	2026-10-08 11:20:28	proctor
+
+       SNAP  -only: 40	1	TEST	TEST	2026-01-01	2026-10-08 11:56:29	2026-10-08 11:56:29	compressive
+
+       SNAP  -only: 41	1	TEST	TEST	2026-01-01	2026-10-08 11:58:37	2026-10-08 11:58:37	compressive
+
+       SNAP  -only: 42	1	KIRIAINI AHP	AHP	2026-06-11	2026-10-08 12:01:07	2026-10-08 12:01:07	compressive
+
+  sessions               live=5    SNAP=1678 identical_rows=5    live_only=0    SNAP_only=1673
+  test_definitions       live=17   SNAP=19   identical_rows=0    live_only=17   SNAP_only=19
+  COLDIFF test_results           missing_in_live=['sample_key', 'sample_label', 'sample_depth', 'sort_order']  extra_in_live=[]
+  test_results           live=62   SNAP=110  identical_rows=0    live_only=62   SNAP_only=110
+  user_allowed_tables    live=10   SNAP=10   identical_rows=10   live_only=0    SNAP_only=0
+  users                  live=1    SNAP=3    identical_rows=1    live_only=0    SNAP_only=2
+       SNAP  -only: 2	seedkindred@example.com	$2y$10$.6oqosfzsSamA6Vn0maDt.QVM56cHgF9wdwbNOh1N18pqrcF0F..i	Kindred Seed	2026-10-07 06:18:04	2026-10-07 06:18:04
+
+       SNAP  -only: 3	seedkindred2@example.com	$2y$10$CL4XgcIl2mzWXD7iWXNt9.XhcX.a2.qyuU2C0OD2KAUvvS0FD9LF6	Kindred Seed 2	2026-10-07 06:18:57	2026-10-07 06:18:57
+

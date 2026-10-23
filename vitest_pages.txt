@@ -1,0 +1,32 @@
+
+[1m[46m RUN [49m[22m [36mv3.2.7 [39m[90mC:/xampp/htdocs/kindred[39m
+
+
+[31m⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Suites 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/test/receptionPages.test.tsx[2m [ src/test/receptionPages.test.tsx ][22m
+[31m[1mError[22m:   x Expression expected
+     ,-[C:/xampp/htdocs/kindred/src/pages/Reception.tsx:429:1]
+ 426 | 
+ 427 | export default Reception;
+ 428 | 
+ 429 |                                 )}
+     :                                 ^
+ 430 |                               </td>
+ 431 |                             </tr>
+ 431 |                           );
+     `----
+
+
+Caused by:
+    Syntax Error[39m
+  Plugin: [35mvite:react-swc[39m
+  File: [36mC:/xampp/htdocs/kindred/src/pages/Reception.tsx[39m
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [2mno tests[22m
+[2m   Start at [22m 02:14:47
+[2m   Duration [22m 4.85s[2m (transform 379ms, setup 509ms, collect 0ms, tests 0ms, environment 1.96s, prepare 1.21s)[22m
+

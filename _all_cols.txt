@@ -1,0 +1,278 @@
+﻿admin_images	1	id	int(10) unsigned	NO	NULL	auto_increment
+admin_images	1	id	int(10) unsigned	NO	NULL	auto_increment
+admin_images	2	image_type	enum('logo','contacts','stamp')	NO	NULL	
+admin_images	2	image_type	enum('logo','contacts','stamp')	NO	NULL	
+admin_images	3	file_path	varchar(500)	NO	NULL	
+admin_images	3	file_path	varchar(500)	NO	NULL	
+admin_images	4	original_filename	varchar(255)	NO	NULL	
+admin_images	4	original_filename	varchar(255)	NO	NULL	
+admin_images	5	file_size	int(10) unsigned	NO	NULL	
+admin_images	5	file_size	int(10) unsigned	NO	NULL	
+admin_images	6	mime_type	varchar(50)	YES	'image/jpeg'	
+admin_images	6	mime_type	varchar(50)	YES	'image/jpeg'	
+admin_images	7	uploaded_by	int(10) unsigned	NO	NULL	
+admin_images	7	uploaded_by	int(10) unsigned	NO	NULL	
+admin_images	8	uploaded_at	timestamp	YES	current_timestamp()	
+admin_images	8	uploaded_at	timestamp	YES	current_timestamp()	
+admin_images	9	updated_at	timestamp	YES	current_timestamp()	on update current_timestamp()
+admin_images	9	updated_at	timestamp	YES	current_timestamp()	on update current_timestamp()
+admin_images_audit	1	id	int(10) unsigned	NO	NULL	auto_increment
+admin_images_audit	1	id	int(10) unsigned	NO	NULL	auto_increment
+admin_images_audit	2	admin_image_id	int(10) unsigned	YES	NULL	
+admin_images_audit	2	admin_image_id	int(10) unsigned	YES	NULL	
+admin_images_audit	3	action	varchar(50)	NO	NULL	
+admin_images_audit	3	action	varchar(50)	NO	NULL	
+admin_images_audit	4	old_file_path	varchar(500)	YES	NULL	
+admin_images_audit	4	old_file_path	varchar(500)	YES	NULL	
+admin_images_audit	5	new_file_path	varchar(500)	YES	NULL	
+admin_images_audit	5	new_file_path	varchar(500)	YES	NULL	
+admin_images_audit	6	changed_by	int(10) unsigned	NO	NULL	
+admin_images_audit	6	changed_by	int(10) unsigned	NO	NULL	
+admin_images_audit	7	changed_at	timestamp	YES	current_timestamp()	
+admin_images_audit	7	changed_at	timestamp	YES	current_timestamp()	
+atterberg_instances	1	id	int(10) unsigned	NO	NULL	auto_increment
+atterberg_instances	1	id	int(10) unsigned	NO	NULL	auto_increment
+atterberg_instances	2	project_id	int(10) unsigned	NO	NULL	
+atterberg_instances	2	project_id	int(10) unsigned	NO	NULL	
+atterberg_instances	3	borehole_id	varchar(100)	NO	NULL	
+atterberg_instances	3	borehole_id	varchar(100)	NO	NULL	
+atterberg_instances	4	created_at	timestamp	NO	current_timestamp()	
+atterberg_instances	4	created_at	timestamp	NO	current_timestamp()	
+atterberg_instances	5	updated_at	timestamp	NO	current_timestamp()	on update current_timestamp()
+atterberg_instances	5	updated_at	timestamp	NO	current_timestamp()	on update current_timestamp()
+atterberg_rows	1	id	int(10) unsigned	NO	NULL	auto_increment
+atterberg_rows	1	id	int(10) unsigned	NO	NULL	auto_increment
+atterberg_rows	2	atterberg_instance_id	int(10) unsigned	NO	NULL	
+atterberg_rows	2	atterberg_instance_id	int(10) unsigned	NO	NULL	
+atterberg_rows	3	depth	decimal(10,2)	YES	NULL	
+atterberg_rows	3	depth	decimal(10,2)	YES	NULL	
+atterberg_rows	4	ll	decimal(10,2)	YES	NULL	
+atterberg_rows	4	ll	decimal(10,2)	YES	NULL	
+atterberg_rows	5	pl	decimal(10,2)	YES	NULL	
+atterberg_rows	5	pl	decimal(10,2)	YES	NULL	
+atterberg_rows	6	created_at	timestamp	NO	current_timestamp()	
+atterberg_rows	6	created_at	timestamp	NO	current_timestamp()	
+atterberg_rows	7	updated_at	timestamp	NO	current_timestamp()	on update current_timestamp()
+atterberg_rows	7	updated_at	timestamp	NO	current_timestamp()	on update current_timestamp()
+atterberg_save_audit	1	id	int(10) unsigned	NO	NULL	auto_increment
+atterberg_save_audit	1	id	int(10) unsigned	NO	NULL	auto_increment
+atterberg_save_audit	2	test_result_id	int(10) unsigned	NO	NULL	
+atterberg_save_audit	2	test_result_id	int(10) unsigned	NO	NULL	
+atterberg_save_audit	3	user_id	int(10) unsigned	NO	NULL	
+atterberg_save_audit	3	user_id	int(10) unsigned	NO	NULL	
+atterberg_save_audit	4	status	enum('initiated','in_progress','completed','failed')	YES	'initiated'	
+atterberg_save_audit	4	status	enum('initiated','in_progress','completed','failed')	YES	'initiated'	
+atterberg_save_audit	5	data_points	int(10) unsigned	YES	NULL	
+atterberg_save_audit	5	data_points	int(10) unsigned	YES	NULL	
+atterberg_save_audit	6	test_key	varchar(100)	YES	NULL	
+atterberg_save_audit	6	test_key	varchar(100)	YES	NULL	
+atterberg_save_audit	7	error_message	text	YES	NULL	
+atterberg_save_audit	7	error_message	text	YES	NULL	
+atterberg_save_audit	8	created_at	timestamp	YES	current_timestamp()	
+atterberg_save_audit	8	created_at	timestamp	YES	current_timestamp()	
+atterberg_save_audit	9	completed_at	timestamp	YES	NULL	
+atterberg_save_audit	9	completed_at	timestamp	YES	NULL	
+company_info	1	id	int(10) unsigned	NO	NULL	auto_increment
+company_info	1	id	int(10) unsigned	NO	NULL	auto_increment
+company_info	2	name	varchar(255)	NO	NULL	
+company_info	2	name	varchar(255)	NO	NULL	
+company_info	3	address_line1	varchar(255)	YES	NULL	
+company_info	3	address_line1	varchar(255)	YES	NULL	
+company_info	4	address_line2	varchar(255)	YES	NULL	
+company_info	4	address_line2	varchar(255)	YES	NULL	
+company_info	5	address_line3	varchar(255)	YES	NULL	
+company_info	5	address_line3	varchar(255)	YES	NULL	
+company_info	6	phone1	varchar(50)	YES	NULL	
+company_info	6	phone1	varchar(50)	YES	NULL	
+company_info	7	phone2	varchar(50)	YES	NULL	
+company_info	7	phone2	varchar(50)	YES	NULL	
+company_info	8	email	varchar(150)	YES	NULL	
+company_info	8	email	varchar(150)	YES	NULL	
+company_info	9	website	varchar(150)	YES	NULL	
+company_info	9	website	varchar(150)	YES	NULL	
+company_info	10	logo_image_id	int(10) unsigned	YES	NULL	
+company_info	10	logo_image_id	int(10) unsigned	YES	NULL	
+company_info	11	contacts_image_id	int(10) unsigned	YES	NULL	
+company_info	11	contacts_image_id	int(10) unsigned	YES	NULL	
+company_info	12	stamp_image_id	int(10) unsigned	YES	NULL	
+company_info	12	stamp_image_id	int(10) unsigned	YES	NULL	
+company_info	13	created_at	datetime	YES	current_timestamp()	
+company_info	13	created_at	datetime	YES	current_timestamp()	
+company_info	14	updated_at	datetime	YES	current_timestamp()	on update current_timestamp()
+company_info	14	updated_at	datetime	YES	current_timestamp()	on update current_timestamp()
+compressive_cubes	1	id	int(10) unsigned	NO	NULL	auto_increment
+compressive_cubes	1	id	int(10) unsigned	NO	NULL	auto_increment
+compressive_cubes	2	test_id	int(10) unsigned	NO	NULL	
+compressive_cubes	2	test_id	int(10) unsigned	NO	NULL	
+compressive_cubes	3	cube_mark	varchar(50)	YES	NULL	
+compressive_cubes	3	cube_mark	varchar(50)	YES	NULL	
+compressive_cubes	4	date_of_cast	date	YES	NULL	
+compressive_cubes	4	date_of_cast	date	YES	NULL	
+compressive_cubes	5	date_of_test	date	YES	NULL	
+compressive_cubes	5	date_of_test	date	YES	NULL	
+compressive_cubes	6	load_kn	decimal(10,2)	YES	NULL	
+compressive_cubes	6	load_kn	decimal(10,2)	YES	NULL	
+compressive_cubes	7	width_mm	decimal(10,2)	YES	NULL	
+compressive_cubes	7	width_mm	decimal(10,2)	YES	NULL	
+compressive_cubes	8	height_mm	decimal(10,2)	YES	NULL	
+compressive_cubes	8	height_mm	decimal(10,2)	YES	NULL	
+compressive_cubes	9	depth_mm	decimal(10,2)	YES	NULL	
+compressive_cubes	9	depth_mm	decimal(10,2)	YES	NULL	
+compressive_cubes	10	mass_g	decimal(10,2)	YES	NULL	
+compressive_cubes	10	mass_g	decimal(10,2)	YES	NULL	
+compressive_cubes	11	density_kg_m3	decimal(10,2)	YES	NULL	
+compressive_cubes	11	density_kg_m3	decimal(10,2)	YES	NULL	
+compressive_cubes	12	calculated_strength_mpa	decimal(10,2)	YES	NULL	
+compressive_cubes	12	calculated_strength_mpa	decimal(10,2)	YES	NULL	
+compressive_cubes	13	remarks	varchar(500)	YES	NULL	
+compressive_cubes	13	remarks	varchar(500)	YES	NULL	
+compressive_cubes	14	created_at	timestamp	YES	current_timestamp()	
+compressive_cubes	14	created_at	timestamp	YES	current_timestamp()	
+compressive_cubes	15	updated_at	timestamp	YES	current_timestamp()	on update current_timestamp()
+compressive_cubes	15	updated_at	timestamp	YES	current_timestamp()	on update current_timestamp()
+compressive_tests	1	id	int(10) unsigned	NO	NULL	auto_increment
+compressive_tests	1	id	int(10) unsigned	NO	NULL	auto_increment
+compressive_tests	2	project_id	int(10) unsigned	NO	NULL	
+compressive_tests	2	project_id	int(10) unsigned	NO	NULL	
+compressive_tests	3	test_key	varchar(50)	NO	'compressive'	
+compressive_tests	3	test_key	varchar(50)	NO	'compressive'	
+compressive_tests	4	date_tested	date	YES	NULL	
+compressive_tests	4	date_tested	date	YES	NULL	
+compressive_tests	5	cement	varchar(255)	YES	NULL	
+compressive_tests	5	cement	varchar(255)	YES	NULL	
+compressive_tests	6	fine_aggregate	varchar(255)	YES	NULL	
+compressive_tests	6	fine_aggregate	varchar(255)	YES	NULL	
+compressive_tests	7	coarse_aggregate	varchar(255)	YES	NULL	
+compressive_tests	7	coarse_aggregate	varchar(255)	YES	NULL	
+compressive_tests	8	contractor	varchar(255)	YES	NULL	
+compressive_tests	8	contractor	varchar(255)	YES	NULL	
+compressive_tests	9	county	varchar(255)	YES	NULL	
+compressive_tests	9	concrete_class	varchar(50)	YES	NULL	
+compressive_tests	10	concrete_class	varchar(50)	YES	NULL	
+compressive_tests	10	section	varchar(255)	YES	NULL	
+compressive_tests	11	section	varchar(255)	YES	NULL	
+compressive_tests	11	made_by	varchar(255)	YES	NULL	
+compressive_tests	12	made_by	varchar(255)	YES	NULL	
+compressive_tests	12	slump	varchar(255)	YES	NULL	
+compressive_tests	13	slump	varchar(255)	YES	NULL	
+compressive_tests	13	client_ref	varchar(255)	YES	NULL	
+compressive_tests	14	client_ref	varchar(255)	YES	NULL	
+compressive_tests	14	status	varchar(50)	YES	'not-started'	
+compressive_tests	15	lab_ref	varchar(255)	YES	NULL	
+compressive_tests	15	created_at	timestamp	YES	current_timestamp()	
+compressive_tests	16	report_no	varchar(255)	YES	NULL	
+compressive_tests	16	updated_at	timestamp	YES	current_timestamp()	on update current_timestamp()
+compressive_tests	17	date_received	date	YES	NULL	
+compressive_tests	18	curing	varchar(255)	YES	NULL	
+compressive_tests	19	mode_of_failure	varchar(255)	YES	NULL	
+compressive_tests	20	comment	text	YES	NULL	
+compressive_tests	21	status	varchar(50)	YES	'not-started'	
+compressive_tests	22	created_at	timestamp	YES	current_timestamp()	
+compressive_tests	23	updated_at	timestamp	YES	current_timestamp()	on update current_timestamp()
+projects	1	id	int(10) unsigned	NO	NULL	auto_increment
+projects	1	id	int(10) unsigned	NO	NULL	auto_increment
+projects	2	user_id	int(10) unsigned	YES	NULL	
+projects	2	user_id	int(10) unsigned	YES	NULL	
+projects	3	name	varchar(255)	NO	NULL	
+projects	3	name	varchar(255)	NO	NULL	
+projects	4	client_name	varchar(255)	YES	NULL	
+projects	4	client_name	varchar(255)	YES	NULL	
+projects	5	project_date	date	YES	NULL	
+projects	5	project_date	date	YES	NULL	
+projects	6	contractor	varchar(255)	YES	NULL	
+projects	6	created_at	timestamp	NO	current_timestamp()	
+projects	7	county	varchar(255)	YES	NULL	
+projects	7	updated_at	timestamp	NO	current_timestamp()	on update current_timestamp()
+projects	8	lab_organization	varchar(255)	YES	NULL	
+projects	8	test_type	varchar(50)	YES	NULL	
+projects	9	date_reported	date	YES	NULL	
+projects	10	checked_by	varchar(255)	YES	NULL	
+projects	11	created_at	timestamp	NO	current_timestamp()	
+projects	12	updated_at	timestamp	NO	current_timestamp()	on update current_timestamp()
+projects	13	test_type	varchar(50)	YES	NULL	
+sessions	1	id	int(10) unsigned	NO	NULL	auto_increment
+sessions	1	id	int(10) unsigned	NO	NULL	auto_increment
+sessions	2	session_id	varchar(255)	NO	NULL	
+sessions	2	session_id	varchar(255)	NO	NULL	
+sessions	3	session_data	longtext	YES	NULL	
+sessions	3	session_data	longtext	YES	NULL	
+sessions	4	user_id	int(10) unsigned	YES	NULL	
+sessions	4	user_id	int(10) unsigned	YES	NULL	
+sessions	5	user_agent	varchar(500)	YES	NULL	
+sessions	5	user_agent	varchar(500)	YES	NULL	
+sessions	6	ip_address	varchar(50)	YES	NULL	
+sessions	6	ip_address	varchar(50)	YES	NULL	
+sessions	7	expires_at	timestamp	NO	current_timestamp()	on update current_timestamp()
+sessions	7	expires_at	timestamp	NO	current_timestamp()	on update current_timestamp()
+sessions	8	created_at	timestamp	NO	current_timestamp()	
+sessions	8	created_at	timestamp	NO	current_timestamp()	
+sessions	9	updated_at	timestamp	NO	current_timestamp()	on update current_timestamp()
+sessions	9	updated_at	timestamp	NO	current_timestamp()	on update current_timestamp()
+test_definitions	1	id	int(10) unsigned	NO	NULL	auto_increment
+test_definitions	1	id	int(10) unsigned	NO	NULL	auto_increment
+test_definitions	2	test_key	varchar(50)	NO	NULL	
+test_definitions	2	test_key	varchar(50)	NO	NULL	
+test_definitions	3	name	varchar(255)	NO	NULL	
+test_definitions	3	name	varchar(255)	NO	NULL	
+test_definitions	4	category	enum('soil','concrete','rock','special')	NO	NULL	
+test_definitions	4	category	enum('soil','concrete','rock','special')	NO	NULL	
+test_definitions	5	sort_order	int(10) unsigned	NO	0	
+test_definitions	5	sort_order	int(10) unsigned	NO	0	
+test_definitions	6	enabled	tinyint(1)	NO	1	
+test_definitions	6	enabled	tinyint(1)	NO	1	
+test_definitions	7	created_at	timestamp	NO	current_timestamp()	
+test_definitions	7	created_at	timestamp	NO	current_timestamp()	
+test_definitions	8	updated_at	timestamp	NO	current_timestamp()	on update current_timestamp()
+test_definitions	8	updated_at	timestamp	NO	current_timestamp()	on update current_timestamp()
+test_results	1	id	int(10) unsigned	NO	NULL	auto_increment
+test_results	1	id	int(10) unsigned	NO	NULL	auto_increment
+test_results	2	user_id	int(10) unsigned	YES	NULL	
+test_results	2	user_id	int(10) unsigned	YES	NULL	
+test_results	3	project_id	int(10) unsigned	YES	NULL	
+test_results	3	project_id	int(10) unsigned	YES	NULL	
+test_results	4	test_key	varchar(50)	NO	NULL	
+test_results	4	test_key	varchar(50)	NO	NULL	
+test_results	5	sample_key	varchar(120)	NO	''	
+test_results	5	name	varchar(255)	NO	NULL	
+test_results	6	sample_label	varchar(100)	YES	NULL	
+test_results	6	category	enum('soil','concrete','rock','special')	NO	NULL	
+test_results	7	sample_depth	varchar(60)	YES	NULL	
+test_results	7	status	enum('not-started','in-progress','completed')	NO	'not-started'	
+test_results	8	name	varchar(255)	NO	NULL	
+test_results	8	data_points	int(10) unsigned	NO	0	
+test_results	9	category	enum('soil','concrete','rock','special')	NO	NULL	
+test_results	9	key_results_json	longtext	NO	NULL	
+test_results	10	status	enum('not-started','in-progress','completed')	NO	'not-started'	
+test_results	10	payload_json	longtext	NO	NULL	
+test_results	11	data_points	int(10) unsigned	NO	0	
+test_results	11	created_at	timestamp	NO	current_timestamp()	
+test_results	12	sort_order	int(10) unsigned	NO	0	
+test_results	12	updated_at	timestamp	NO	current_timestamp()	on update current_timestamp()
+test_results	13	key_results_json	longtext	NO	NULL	
+test_results	13	last_saved_at	timestamp	YES	NULL	
+test_results	14	payload_json	longtext	NO	NULL	
+test_results	15	created_at	timestamp	NO	current_timestamp()	
+test_results	16	updated_at	timestamp	NO	current_timestamp()	on update current_timestamp()
+test_results	17	last_saved_at	timestamp	YES	NULL	
+users	1	id	int(10) unsigned	NO	NULL	auto_increment
+users	1	id	int(10) unsigned	NO	NULL	auto_increment
+users	2	email	varchar(255)	NO	NULL	
+users	2	email	varchar(255)	NO	NULL	
+users	3	password	varchar(255)	NO	NULL	
+users	3	password	varchar(255)	NO	NULL	
+users	4	name	varchar(255)	NO	NULL	
+users	4	name	varchar(255)	NO	NULL	
+users	5	created_at	timestamp	NO	current_timestamp()	
+users	5	created_at	timestamp	NO	current_timestamp()	
+users	6	updated_at	timestamp	NO	current_timestamp()	on update current_timestamp()
+users	6	updated_at	timestamp	NO	current_timestamp()	on update current_timestamp()
+user_allowed_tables	1	id	int(10) unsigned	NO	NULL	auto_increment
+user_allowed_tables	1	id	int(10) unsigned	NO	NULL	auto_increment
+user_allowed_tables	2	user_id	int(10) unsigned	NO	NULL	
+user_allowed_tables	2	user_id	int(10) unsigned	NO	NULL	
+user_allowed_tables	3	table_name	varchar(100)	NO	NULL	
+user_allowed_tables	3	table_name	varchar(100)	NO	NULL	
+user_allowed_tables	4	created_at	timestamp	NO	current_timestamp()	
+user_allowed_tables	4	created_at	timestamp	NO	current_timestamp()	
+user_allowed_tables	5	updated_at	timestamp	NO	current_timestamp()	on update current_timestamp()
+user_allowed_tables	5	updated_at	timestamp	NO	current_timestamp()	on update current_timestamp()

@@ -1,0 +1,5 @@
+﻿mariadb.sys	localhost	mysql_native_password
+root	localhost	
+root	desktop-78cd95a	
+root	127.0.0.1	
+root	::1	

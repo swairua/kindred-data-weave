@@ -1,0 +1,13 @@
+﻿test_results	id	int(10) unsigned	NO	NULL	auto_increment
+test_results	user_id	int(10) unsigned	YES	NULL	
+test_results	project_id	int(10) unsigned	YES	NULL	
+test_results	test_key	varchar(50)	NO	NULL	
+test_results	name	varchar(255)	NO	NULL	
+test_results	category	enum('soil','concrete','rock','special')	NO	NULL	
+test_results	status	enum('not-started','in-progress','completed')	NO	'not-started'	
+test_results	data_points	int(10) unsigned	NO	0	
+test_results	key_results_json	longtext	NO	NULL	
+test_results	payload_json	longtext	NO	NULL	
+test_results	created_at	timestamp	NO	current_timestamp()	
+test_results	updated_at	timestamp	NO	current_timestamp()	on update current_timestamp()
+test_results	last_saved_at	timestamp	YES	NULL	
