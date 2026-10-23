@@ -339,7 +339,7 @@ const drawClassification = (d: jsPDF, x: number, y: number, o: ParticleSizeDistr
   return cy;
 };
 
-const drawSieveTable = (d: jsPDF, x: number, y: number, w: number, o: ParticleSizeDistributionPdfOptions, rowH: number): number => {
+const drawSieveTable = (d: jsPDF, x: number, y: number, w: number, o: ParticleSizeDistributionPdfOptions, rowH: number, targetBottom?: number): number => {
   const colW = [19.8, 14.4, 12.2];
   const lastW = w - colW[0] - colW[1] - colW[2];
   const widths = [...colW, lastW];
@@ -381,6 +381,18 @@ const drawSieveTable = (d: jsPDF, x: number, y: number, w: number, o: ParticleSi
     { w: widths[2], text: DASH, align: "center" },
     { w: widths[3], text: DASH, align: "center" },
   ]);
+  if (targetBottom !== undefined && cy < targetBottom) {
+    const fillerCells = [
+      { w: widths[0], text: "", align: "center" },
+      { w: widths[1], text: "", align: "center" },
+      { w: widths[2], text: "", align: "center" },
+      { w: widths[3], text: "", align: "center" },
+    ];
+    while (cy + rowH <= targetBottom) {
+      cy = drawCells(d, x, cy, rowH, fillerCells);
+    }
+  }
+  return cy;
 };
 
 /**
@@ -429,7 +441,7 @@ const HYDROMETER_COLUMNS = [
   "% Fines based\non whole sample",
 ];
 
-const drawHydrometerTable = (d: jsPDF, x: number, y: number, w: number, o: ParticleSizeDistributionPdfOptions, rowH: number): number => {
+const drawHydrometerTable = (d: jsPDF, x: number, y: number, w: number, o: ParticleSizeDistributionPdfOptions, rowH: number, targetBottom?: number): number => {
   const inputs = o.hydrometerInputs;
   let cy = drawCells(d, x, y, HYDRO_CAP_H, [{
     w,
@@ -492,6 +504,12 @@ const drawHydrometerTable = (d: jsPDF, x: number, y: number, w: number, o: Parti
       num(result.finesByHydrometer, 1, DASH),
     ].map((value, index) => ({ w: widths[index], text: value, align: "center" as const })));
   });
+  if (targetBottom !== undefined && cy < targetBottom) {
+    const fillerCells = widths.map((w) => ({ w, text: "", align: "center" as const }));
+    while (cy + rowH <= targetBottom) {
+      cy = drawCells(d, x, cy, rowH, fillerCells);
+    }
+  }
   return cy;
 };
 
@@ -775,9 +793,12 @@ export const generateParticleSizeDistributionPDF = async (options: ParticleSizeD
   cursor = drawClassification(doc, x, cursor, options, rowH);
   cursor = drawSpacer(doc, x, cursor);
 
-  const sieveBottom = drawSieveTable(doc, x, cursor, SIEVE_W, options, rowH);
-  const hydrometerBottom = drawHydrometerTable(doc, x + SIEVE_W, cursor, CONTENT_W - SIEVE_W, options, rowH);
-  const tableBottom = Math.max(sieveBottom, hydrometerBottom);
+  const sieveHeight = SIEVE_CAP_H + SIEVE_HEAD_H + (sieveCount + 1) * rowH;
+  const hydroHeight = HYDRO_CAP_H + 4 * HYDRO_PARAM_H + HYDRO_HEAD_H + hydroCount * rowH;
+  const tableBottom = cursor + Math.max(sieveHeight, hydroHeight);
+
+  drawSieveTable(doc, x, cursor, SIEVE_W, options, rowH, tableBottom);
+  drawHydrometerTable(doc, x + SIEVE_W, cursor, CONTENT_W - SIEVE_W, options, rowH, tableBottom);
 
   // Side rails close at the foot of the report, above the footer, and a bottom
   // rule seals the report box so the footer reads as separate from it.
