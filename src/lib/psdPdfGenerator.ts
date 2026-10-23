@@ -391,6 +391,11 @@ const drawSieveTable = (d: jsPDF, x: number, y: number, w: number, o: ParticleSi
     while (cy + rowH <= targetBottom) {
       cy = drawCells(d, x, cy, rowH, fillerCells);
     }
+    if (cy < targetBottom) {
+      const remaining = targetBottom - cy;
+      const partialCells = fillerCells.map(c => ({ ...c, h: remaining }));
+      cy = drawCells(d, x, cy, remaining, partialCells);
+    }
   }
   return cy;
 };
@@ -508,6 +513,11 @@ const drawHydrometerTable = (d: jsPDF, x: number, y: number, w: number, o: Parti
     const fillerCells = widths.map((w) => ({ w, text: "", align: "center" as const }));
     while (cy + rowH <= targetBottom) {
       cy = drawCells(d, x, cy, rowH, fillerCells);
+    }
+    if (cy < targetBottom) {
+      const remaining = targetBottom - cy;
+      const partialCells = fillerCells.map(c => ({ ...c, h: remaining }));
+      cy = drawCells(d, x, cy, remaining, partialCells);
     }
   }
   return cy;
