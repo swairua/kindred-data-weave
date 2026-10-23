@@ -700,7 +700,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
               depth: toInput(cube.depth_mm, "150"),
               mass: toInput(cube.mass_g),
               remarks: cube.remarks ? String(cube.remarks) : "",
-            })) : [];
+            })) ?? [];
             return cubesInput;
           })() : [];
       const textOf = (value: unknown): string => (typeof value === "string" ? value : value == null ? "" : String(value));
