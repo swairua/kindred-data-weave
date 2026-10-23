@@ -1189,7 +1189,7 @@ try {
         if ($table === 'test_results') {
             $sql = "SELECT tr.*, p.name as project_name FROM `test_results` tr
                     LEFT JOIN `projects` p ON tr.project_id = p.id
-                    $whereClause ORDER BY tr.`$orderBy` $direction LIMIT ? OFFSET ?";
+                    $whereClause ORDER BY tr.`project_id` DESC, tr.`test_number` DESC, tr.`id` DESC LIMIT ? OFFSET ?";
         } else {
             $sql = "SELECT * FROM `$table` $whereClause ORDER BY `$orderBy` $direction LIMIT ? OFFSET ?";
         }
@@ -1258,6 +1258,22 @@ try {
         if (isset($schema['columns']['user_id'])) {
             $payload['user_id'] = $userId;
         }
+
+        // Per-project test numbering: auto-assign test_number on create when omitted
+        if ($table === 'test_results' && !isset($payload['test_number']) && isset($payload['project_id'])) {
+            $numStmt = $conn->prepare('SELECT COALESCE(MAX(`test_number`), 0) + 1 AS next_num FROM `test_results` WHERE `project_id` = ?');
+            if ($numStmt) {
+                $pid = (int) $payload['project_id'];
+                $numStmt->bind_param('i', $pid);
+                $numStmt->execute();
+                $numRes = $numStmt->get_result();
+                if ($numRes && ($row = $numRes->fetch_assoc())) {
+                    $payload['test_number'] = (int) $row['next_num'];
+                }
+                $numStmt->close();
+            }
+        }
+
 
         $columns = [];
         $placeholders = [];

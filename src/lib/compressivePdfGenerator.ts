@@ -697,10 +697,11 @@ export const generateCompressiveStrengthPDF = async (options: CompressiveStrengt
     // The laboratory's sheet inks a single blue frame around the whole report
     // — letterhead rule through footer — drawn last so it overlays the black
     // hairlines.
-    const FRAME_OFFSET = 2;
+    const BORDER_PADDING = 3; // space between blue frame and content on all sides
     doc.setDrawColor(...COLORS.blue);
     doc.setLineWidth(0.5);
-    doc.rect(TABLE_X - FRAME_OFFSET, frameTop - FRAME_OFFSET, TABLE_W + FRAME_OFFSET * 2, FRAME_BOTTOM - frameTop + FRAME_OFFSET * 2);
+    // Blue frame with equal padding on all sides; width matches the header underline (TABLE_W) plus padding on each side
+    doc.rect(TABLE_X - BORDER_PADDING, frameTop - BORDER_PADDING, TABLE_W + BORDER_PADDING * 2, FRAME_BOTTOM - frameTop + BORDER_PADDING * 2);
   };
   let printed = printPage(printable.slice(0, rowsPerPage));
   for (let index = rowsPerPage; index < printable.length; index += rowsPerPage) {
