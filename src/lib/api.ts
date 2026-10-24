@@ -1185,7 +1185,6 @@ export const processReceptionToProject = async (consignment: ReceptionConsignmen
     setSessionToken(null);
     throw error;
   }
-};
 
 // Compressive Strength Test API helpers
 export interface CompressiveCubeApiRow {
