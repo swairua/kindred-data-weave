@@ -14,7 +14,7 @@ type NavItem = {
 
 const labItems: NavItem[] = [
   { id: "reception", label: "Reception", icon: Package, path: "/reception" },
-  { id: "tests", label: "Testing", icon: FileText, path: "/record" },
+  { id: "tests", label: "Testing", icon: FileText, path: "/testing" },
   { id: "reports", label: "Reports", icon: FileText, path: "/reports" },
   { id: "projects", label: "Jobs & clients", icon: Layers, path: "/projects" },
   { id: "storage", label: "Storage", icon: Package, path: "/storage" },
