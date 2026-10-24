@@ -212,6 +212,8 @@ const ALLOWED_TABLES = [
   'lab_reference_sequences' => true,
   'reception_field_definitions' => true,
   'reception_photos' => true,
+  'storage_locations' => true,
+  'equipment' => true,
 ];
 
 function apiLogAction(): string

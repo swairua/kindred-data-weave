@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
-import Navigation from "@/components/Navigation";
+import TopNavbar from "@/components/TopNavbar";
 import { listReceptionConsignments, processReceptionToProject } from "@/lib/api";
 import { toast } from "sonner";
 import {
@@ -209,7 +209,7 @@ const Reception = () => {
 
   return (
     <SidebarProvider>
-      <Navigation currentView="reception" onViewChange={() => {}} />
+      <TopNavbar currentView="reception" onViewChange={() => {}} />
       <SidebarInset>
         <div className="min-h-screen bg-muted/30">
           <header className="flex flex-wrap items-center gap-3 px-6 pt-5">

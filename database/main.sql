@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Oct 24, 2026 at 09:15 AM
+-- Generation Time: Oct 24, 2026 at 09:54 AM
 -- Server version: 8.0.36
 -- PHP Version: 8.4.27
 
@@ -294,6 +294,35 @@ INSERT INTO `compressive_tests` (`id`, `project_id`, `test_key`, `date_tested`, 
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `equipment`
+--
+
+CREATE TABLE `equipment` (
+  `id` int UNSIGNED NOT NULL,
+  `equipment_name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `equipment_type` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `serial_number` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `calibration_due` date DEFAULT NULL,
+  `status` enum('active','maintenance','out_of_service') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active',
+  `last_calibrated` date DEFAULT NULL,
+  `notes` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `equipment`
+--
+
+INSERT INTO `equipment` (`id`, `equipment_name`, `equipment_type`, `serial_number`, `calibration_due`, `status`, `last_calibrated`, `notes`, `created_at`, `updated_at`) VALUES
+(1, 'Compression Testing Machine 2000kN', 'Compression machine', 'CTM-2024-001', '2027-03-15', 'active', '2026-03-15', 'Annual calibration required', '2026-10-24 00:00:00', '2026-10-24 00:00:00'),
+(2, 'Oven 110C', 'Drying oven', 'OVEN-002', '2026-12-01', 'active', '2026-06-01', 'Moisture content drying', '2026-10-24 00:00:00', '2026-10-24 00:00:00'),
+(3, 'Sieve Shaker', 'Sieve shaker', 'SS-2023-005', '2027-01-10', 'maintenance', '2026-01-10', 'Grading analysis', '2026-10-24 00:00:00', '2026-10-24 00:00:00'),
+(4, 'Liquid Limit Apparatus', 'Atterberg limits', 'LL-2022-001', '2026-11-20', 'active', '2025-11-20', 'Casagrande cup method', '2026-10-24 00:00:00', '2026-10-24 00:00:00');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `lab_reference_sequences`
 --
 
@@ -451,62 +480,6 @@ CREATE TABLE `reception_photos` (
 
 INSERT INTO `reception_photos` (`id`, `rc_no`, `file_path`, `original_filename`, `file_size`, `mime_type`, `caption`, `uploaded_by`, `created_at`) VALUES
 (2, 'RC-26-0418', '/uploads/reception/RC-26-0418_20261024_030106_46a8aec14f70.jpg', 'reception_damage_photo.jpg', 37564, 'image/jpeg', 'Seal broken on BH2 tube', 1, '2026-10-24 03:01:06');
-
--- --------------------------------------------------------
-
---
--- Table structure for table `storage_locations`
---
-
-CREATE TABLE `storage_locations` (
-  `id` int UNSIGNED NOT NULL,
-  `location_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `location_type` enum('cold_room','curing_tank','bulk_racks','disposal') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `capacity` int UNSIGNED DEFAULT NULL,
-  `current_count` int UNSIGNED NOT NULL DEFAULT '0',
-  `description` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `storage_locations`
---
-
-INSERT INTO `storage_locations` (`id`, `location_name`, `location_type`, `capacity`, `current_count`, `description`, `created_at`, `updated_at`) VALUES
-(1, 'Cold room (U100)', 'cold_room', 60, 41, 'Temperature-controlled storage for undisturbed samples', '2026-10-24 03:00:00', '2026-10-24 03:00:00'),
-(2, 'Curing tank', 'curing_tank', 180, 112, 'Water curing tank for concrete cubes', '2026-10-24 03:00:00', '2026-10-24 03:00:00'),
-(3, 'Bulk racks', 'bulk_racks', 90, 68, 'Ambient storage for bulk soil samples', '2026-10-24 03:00:00', '2026-10-24 03:00:00'),
-(4, 'Due for disposal', 'disposal', NULL, 23, 'Samples pending disposal per retention policy', '2026-10-24 03:00:00', '2026-10-24 03:00:00');
-
--- --------------------------------------------------------
-
---
--- Table structure for table `equipment`
---
-
-CREATE TABLE `equipment` (
-  `id` int UNSIGNED NOT NULL,
-  `equipment_name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `equipment_type` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `serial_number` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `calibration_due` date DEFAULT NULL,
-  `status` enum('active','maintenance','out_of_service') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active',
-  `last_calibrated` date DEFAULT NULL,
-  `notes` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `equipment`
---
-
-INSERT INTO `equipment` (`id`, `equipment_name`, `equipment_type`, `serial_number`, `calibration_due`, `status`, `last_calibrated`, `notes`, `created_at`, `updated_at`) VALUES
-(1, 'Compression Testing Machine 2000kN', 'Compression machine', 'CTM-2024-001', '2027-03-15', 'active', '2026-03-15', 'Annual calibration required', '2026-10-24 03:00:00', '2026-10-24 03:00:00'),
-(2, 'Oven 110C', 'Drying oven', 'OVEN-002', '2026-12-01', 'active', '2026-06-01', 'Moisture content drying', '2026-10-24 03:00:00', '2026-10-24 03:00:00'),
-(3, 'Sieve Shaker', 'Sieve shaker', 'SS-2023-005', '2027-01-10', 'maintenance', '2026-01-10', 'Grading analysis', '2026-10-24 03:00:00', '2026-10-24 03:00:00'),
-(4, 'Liquid Limit Apparatus', 'Atterberg limits', 'LL-2022-001', '2026-11-20', 'active', '2025-11-20', 'Casagrande cup method', '2026-10-24 03:00:00', '2026-10-24 03:00:00');
 
 -- --------------------------------------------------------
 
@@ -3672,7 +3645,50 @@ INSERT INTO `sessions` (`id`, `session_id`, `session_data`, `user_id`, `user_age
 (10757, '66d1b80c3871cd596458c2cddd361f76', '', NULL, NULL, NULL, '2026-10-24 05:35:58', '2026-10-24 05:05:58', '2026-10-24 05:05:58'),
 (10758, '451793676fe3f6aefc6e36ea34a5344d', '', NULL, NULL, NULL, '2026-10-24 05:35:58', '2026-10-24 05:05:58', '2026-10-24 05:05:58'),
 (10759, 'fb3f18eb0dd44447bc7e9daa4758cc49', '', NULL, NULL, NULL, '2026-10-24 05:36:53', '2026-10-24 05:06:53', '2026-10-24 05:06:53'),
-(10760, 'fce556606b787ce1b5edd23d838d969e', '', NULL, NULL, NULL, '2026-10-24 05:36:53', '2026-10-24 05:06:53', '2026-10-24 05:06:53');
+(10760, 'fce556606b787ce1b5edd23d838d969e', '', NULL, NULL, NULL, '2026-10-24 05:36:53', '2026-10-24 05:06:53', '2026-10-24 05:06:53'),
+(10763, 'd8515d85ea5ad3c0b8d782b2367af62f', '', NULL, NULL, NULL, '2026-10-24 06:52:57', '2026-10-24 06:22:57', '2026-10-24 06:22:57'),
+(10764, '6543c27608f79f2e1d76695ca0c3c779', 'user_id|i:1;', 1, NULL, NULL, '2026-10-24 06:55:49', '2026-10-24 06:22:57', '2026-10-24 06:25:49'),
+(10765, '2784e19dd75d939c516fab6a94536a1f', '', NULL, NULL, NULL, '2026-10-24 06:52:57', '2026-10-24 06:22:57', '2026-10-24 06:22:57'),
+(10767, '2492b60f6b0ed674e58e6b28ea1c65b4', '', NULL, NULL, NULL, '2026-10-24 06:52:58', '2026-10-24 06:22:58', '2026-10-24 06:22:58'),
+(10769, '05e80cd9f6c8c38e21830150e058179b', '', NULL, NULL, NULL, '2026-10-24 06:53:01', '2026-10-24 06:23:01', '2026-10-24 06:23:01'),
+(10771, '39841b64511b49ad4150986702f43c94', '', NULL, NULL, NULL, '2026-10-24 06:53:06', '2026-10-24 06:23:06', '2026-10-24 06:23:06'),
+(10772, '6b602416caae15457dd5bcafdc5cb87e', '', NULL, NULL, NULL, '2026-10-24 06:53:06', '2026-10-24 06:23:06', '2026-10-24 06:23:06'),
+(10773, '7fc79dfda5fccaf9dae2271fa23c2c31', '', NULL, NULL, NULL, '2026-10-24 06:53:06', '2026-10-24 06:23:06', '2026-10-24 06:23:06'),
+(10777, 'c9787bad9534a1af7e2c68a8d394e468', '', NULL, NULL, NULL, '2026-10-24 06:53:07', '2026-10-24 06:23:07', '2026-10-24 06:23:07'),
+(10779, 'b223b8f7c0ae936cd708f1c0274b3137', '', NULL, NULL, NULL, '2026-10-24 06:53:24', '2026-10-24 06:23:24', '2026-10-24 06:23:24'),
+(10781, 'b594cacf7466b05988830e0d91a9cc17', '', NULL, NULL, NULL, '2026-10-24 06:55:10', '2026-10-24 06:25:10', '2026-10-24 06:25:10'),
+(10782, 'de995f84c28042cf0670ef9a53e1d928', '', NULL, NULL, NULL, '2026-10-24 06:55:10', '2026-10-24 06:25:10', '2026-10-24 06:25:10'),
+(10783, '2f5ae14a23615083dc48ed393804ad9d', '', NULL, NULL, NULL, '2026-10-24 06:55:10', '2026-10-24 06:25:10', '2026-10-24 06:25:10'),
+(10787, 'bb0718cc2c39dc79cbcf76ff1243edd6', '', NULL, NULL, NULL, '2026-10-24 06:55:10', '2026-10-24 06:25:10', '2026-10-24 06:25:10'),
+(10789, '59d7a169222133cfe7c44ff196f818fa', '', NULL, NULL, NULL, '2026-10-24 06:55:48', '2026-10-24 06:25:48', '2026-10-24 06:25:48'),
+(10791, 'eaa7d8c59f8480fd8bc3a61f5e969959', '', NULL, NULL, NULL, '2026-10-24 06:55:49', '2026-10-24 06:25:49', '2026-10-24 06:25:49');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `storage_locations`
+--
+
+CREATE TABLE `storage_locations` (
+  `id` int UNSIGNED NOT NULL,
+  `location_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `location_type` enum('cold_room','curing_tank','bulk_racks','disposal') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `capacity` int UNSIGNED DEFAULT NULL,
+  `current_count` int UNSIGNED NOT NULL DEFAULT '0',
+  `description` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `storage_locations`
+--
+
+INSERT INTO `storage_locations` (`id`, `location_name`, `location_type`, `capacity`, `current_count`, `description`, `created_at`, `updated_at`) VALUES
+(1, 'Cold room (U100)', 'cold_room', 60, 41, 'Temperature-controlled storage for undisturbed samples', '2026-10-24 00:00:00', '2026-10-24 00:00:00'),
+(2, 'Curing tank', 'curing_tank', 180, 112, 'Water curing tank for concrete cubes', '2026-10-24 00:00:00', '2026-10-24 00:00:00'),
+(3, 'Bulk racks', 'bulk_racks', 90, 68, 'Ambient storage for bulk soil samples', '2026-10-24 00:00:00', '2026-10-24 00:00:00'),
+(4, 'Due for disposal', 'disposal', NULL, 23, 'Samples pending disposal per retention policy', '2026-10-24 00:00:00', '2026-10-24 00:00:00');
 
 -- --------------------------------------------------------
 
@@ -4160,7 +4176,7 @@ ALTER TABLE `reception_photos`
 -- AUTO_INCREMENT for table `sessions`
 --
 ALTER TABLE `sessions`
-  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10763;
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10793;
 
 --
 -- AUTO_INCREMENT for table `test_definitions`
