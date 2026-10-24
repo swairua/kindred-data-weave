@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { LayoutDashboard, FlaskConical, FileText, Hammer, LogOut, Layers, ChevronRight, Sigma, Users, Settings as SettingsIcon, PackageOpen } from "lucide-react";
+import { LayoutDashboard, FlaskConical, FileText, Hammer, LogOut, Layers, ChevronRight, Sigma, Users, Settings as SettingsIcon, PackageOpen, ClipboardList, Package, Wrench } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -16,7 +16,7 @@ import { useProject } from "@/context/ProjectContext";
 import { generateFormulasReferencePDF } from "@/lib/formulasReferencePdfGenerator";
 import { toast } from "sonner";
 
-export type NavigationView = "dashboard" | "tests" | "results" | "projects" | "admin" | "users" | "settings" | "reception";
+export type NavigationView = "dashboard" | "tests" | "results" | "projects" | "admin" | "users" | "settings" | "reception" | "reports" | "storage" | "equipment";
 
 interface NavigationProps {
   currentView: NavigationView;
@@ -62,9 +62,11 @@ const Navigation = ({
   };
   const labItems: NavItem[] = [
     { id: "reception", label: "Reception", icon: PackageOpen, path: "/reception" },
-    { id: "tests", label: "Record test", icon: FlaskConical, path: "/record" },
-    { id: "results", label: "Test results", icon: FileText, path: "/results" },
-    { id: "projects", label: "Projects", icon: Layers, path: "/projects" },
+    { id: "tests", label: "Testing", icon: FlaskConical, path: "/record" },
+    { id: "reports", label: "Reports", icon: ClipboardList, path: "/reports" },
+    { id: "projects", label: "Jobs & clients", icon: Layers, path: "/projects" },
+    { id: "storage", label: "Storage", icon: Package, path: "/storage" },
+    { id: "equipment", label: "Equipment", icon: Wrench, path: "/equipment" },
   ];
 
   const systemItems: NavItem[] = [

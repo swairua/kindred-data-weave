@@ -18,6 +18,8 @@ import Projects from "./pages/Projects.tsx";
 import ProjectOverview from "./pages/ProjectOverview.tsx";
 import UserManagement from "./pages/UserManagement.tsx";
 import Settings from "./pages/Settings.tsx";
+import Storage from "./pages/Storage.tsx";
+import Equipment from "./pages/Equipment.tsx";
 
 const queryClient = new QueryClient();
 
@@ -41,6 +43,8 @@ const App = () => {
                     <Route path="/reception" element={<Reception />} />
                     <Route path="/reception/new" element={<LogConsignment />} />
                     <Route path="/reception/:rcNo" element={<LogConsignment />} />
+                    <Route path="/storage" element={<Storage />} />
+                    <Route path="/equipment" element={<Equipment />} />
                   </Route>
                   <Route path="/tests" element={<Index initialTab="soil" />} />
                   <Route path="/tests/:projectId" element={<Index initialTab="soil" />} />
