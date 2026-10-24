@@ -39,9 +39,12 @@ import {
 import Dashboard from "@/pages/Dashboard";
 import Reports from "@/pages/Reports";
 import Admin from "@/pages/Admin";
+import Storage from "@/pages/Storage";
+import Equipment from "@/pages/Equipment";
 import { TestAccordionProvider, useTestAccordion } from "@/context/TestAccordionContext";
 
 import Navigation, { type NavigationView } from "@/components/Navigation";
+import TopNavbar from "@/components/TopNavbar";
 import { fetchCurrentUser, loginUser, logoutUser, type ApiUser, listRecords, fetchFullProject, debugAuthState, debugApiConnectivity } from "@/lib/api";
 import { registerAllTests } from "@/lib/testRegistration";
 import { registry } from "@/lib/testRegistry";
@@ -223,8 +226,11 @@ const Index = ({ initialTab }: IndexProps) => {
   const isTestsPage = location.pathname === "/tests";
   const isReportsPage = location.pathname === "/reports";
   const isAdminPage = location.pathname === "/admin";
+  const isStoragePage = location.pathname === "/storage";
+  const isEquipmentPage = location.pathname === "/equipment";
+  const isReceptionPage = location.pathname === "/reception" || location.pathname.startsWith("/reception/");
   const [view, setView] = useState<NavigationView>(
-    isAdminPage ? "admin" : isReportsPage ? "results" : isTestsPage ? "tests" : "dashboard",
+    isAdminPage ? "admin" : isReportsPage ? "reports" : isTestsPage ? "tests" : isStoragePage ? "storage" : isEquipmentPage ? "equipment" : isReceptionPage ? "reception" : "dashboard",
   );
   const [projectName, setProjectName] = useState("");
   const [clientName, setClientName] = useState("");
@@ -319,7 +325,7 @@ const Index = ({ initialTab }: IndexProps) => {
       return;
     }
 
-    const protectedRoutes = ["/tests", "/reports", "/admin"];
+    const protectedRoutes = ["/tests", "/reports", "/admin", "/storage", "/equipment"];
     const isProtectedRoute = protectedRoutes.includes(location.pathname) || location.pathname.startsWith("/tests/");
 
     // Only redirect if auth check is complete AND user is confirmed unauthenticated
@@ -884,14 +890,21 @@ const Index = ({ initialTab }: IndexProps) => {
           userEmail={currentUser?.email}
         />
         <SidebarInset className="flex flex-col min-h-svh">
-          <header className="border-b sticky top-0 z-10 print:hidden" style={{ borderColor: "#E3E1D9", backgroundColor: "#FFFFFF" }}>
+          <TopNavbar
+            currentView={view}
+            onViewChange={setView}
+            userName={currentUser?.name}
+            userEmail={currentUser?.email}
+            onLogout={handleLogout}
+          />
+          <header className="border-b sticky top-16 z-10 print:hidden" style={{ borderColor: "#E3E1D9", backgroundColor: "#FFFFFF" }}>
             <div className="px-4 md:px-6 py-3">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <SidebarTrigger className="h-9 w-9" />
                   <div className="hidden sm:block">
                     <h1 className="text-base font-semibold text-foreground tracking-tight leading-tight">
-                      {view === "dashboard" ? "Dashboard" : view === "tests" ? "Record test" : view === "results" ? "Test results" : view === "projects" ? "Projects" : "Admin"}
+                      {view === "dashboard" ? "Dashboard" : view === "tests" ? "Record test" : view === "results" ? "Test results" : view === "projects" ? "Jobs & clients" : view === "reports" ? "Reports" : view === "storage" ? "Storage" : view === "equipment" ? "Equipment" : "Admin"}
                     </h1>
                     <p className="text-xs text-muted-foreground leading-tight">
                       Cransfield Geotechnical Laboratory
@@ -924,6 +937,10 @@ const Index = ({ initialTab }: IndexProps) => {
                   <Reports />
                 ) : view === "admin" ? (
                   <Admin />
+                ) : view === "storage" ? (
+                  <Storage />
+                ) : view === "equipment" ? (
+                  <Equipment />
                 ) : (
                   <div className="relative">
                     <TestsView
