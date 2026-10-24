@@ -1,4 +1,5 @@
 import type { ReceptionConsignmentInput, ReceptionFieldArea, ReceptionFieldDefinition, ReceptionPhoto } from "@/lib/reception";
+import { consignmentIsOnHold, getPrimaryTestTypeFromConsignment, type ReceptionSampleInput } from "@/lib/reception";
 import { type ApiCompressiveTestRow } from "@/types/api";
 
 const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
@@ -698,7 +699,7 @@ const RECEPTION_STORAGE_KEY = "cransfield_reception_consignments_v1";
 
 export const listReceptionConsignments = async (): Promise<ReceptionConsignmentInput[]> => {
   try {
-    const stored = await listRecords<{ payload_json?: unknown }>("reception_consignments", { limit: 500 });
+    const stored = await listRecords<{ id?: number; rc_no?: string; job_no?: string; status?: string; project_id?: number | null; payload_json?: unknown; processed_at?: string | null }>("reception_consignments", { limit: 500 });
     const rows = stored.data || [];
     if (rows.length > 0) {
       const consignments: ReceptionConsignmentInput[] = [];
@@ -706,7 +707,19 @@ export const listReceptionConsignments = async (): Promise<ReceptionConsignmentI
         const payload = row.payload_json;
         const parsed = typeof payload === "string" ? JSON.parse(payload) as unknown : payload;
         if (parsed && typeof parsed === "object" && "rcNo" in (parsed as Record<string, unknown>)) {
-          consignments.push(parsed as ReceptionConsignmentInput);
+          const c = parsed as ReceptionConsignmentInput;
+          if (row.project_id !== undefined && row.project_id !== null) c.projectId = row.project_id;
+          else if ((c as any).project_id !== undefined) c.projectId = (c as any).project_id;
+          if (row.processed_at) c.processedAt = row.processed_at;
+          consignments.push(c);
+        } else if (parsed && typeof parsed === "object") {
+          const c = parsed as any;
+          c.rcNo = c.rcNo || row.rc_no;
+          c.jobNo = c.jobNo || row.job_no;
+          c.status = c.status || row.status;
+          if (row.project_id) c.projectId = row.project_id;
+          if (row.processed_at) c.processedAt = row.processed_at;
+          consignments.push(c);
         }
       }
       if (consignments.length > 0) return consignments;
@@ -726,19 +739,28 @@ export const listReceptionConsignments = async (): Promise<ReceptionConsignmentI
 
 export const saveReceptionConsignment = async (consignment: ReceptionConsignmentInput): Promise<void> => {
   try {
-    const stored = await listRecords<{ id: number; payload_json?: unknown }>("reception_consignments", { limit: 500 });
+    const stored = await listRecords<{ id: number; rc_no?: string; payload_json?: unknown }>("reception_consignments", { limit: 500 });
     const match = (stored.data || []).find((row) => {
       const payload = row.payload_json;
       const parsed = typeof payload === "string" ? JSON.parse(payload) as unknown : payload;
-      return !!parsed && typeof parsed === "object" && (parsed as ReceptionConsignmentInput).rcNo === consignment.rcNo;
+      return (!!parsed && typeof parsed === "object" && (parsed as ReceptionConsignmentInput).rcNo === consignment.rcNo) || row.rc_no === consignment.rcNo;
     });
     if (match) {
-      await updateRecord("reception_consignments", match.id, { payload_json: JSON.stringify(consignment) });
+      await updateRecord("reception_consignments", match.id, { 
+        rc_no: consignment.rcNo,
+        job_no: consignment.jobNo,
+        status: consignment.status,
+        project_id: consignment.projectId ?? (consignment as any).project_id ?? null,
+        processed_at: consignment.processedAt ?? null,
+        payload_json: JSON.stringify(consignment) 
+      });
     } else {
       await createRecord("reception_consignments", {
         rc_no: consignment.rcNo,
         job_no: consignment.jobNo,
         status: consignment.status,
+        project_id: consignment.projectId ?? null,
+        processed_at: consignment.processedAt ?? null,
         payload_json: JSON.stringify(consignment),
       });
     }
@@ -1072,7 +1094,78 @@ export const uploadFile = async (file: File, metadata?: Record<string, string>) 
   }
 };
 
-export const logoutUser = async () => {
+export const processReceptionToProject = async (consignment: ReceptionConsignmentInput, overrideTestType?: string): Promise<{
+  projectId: number;
+  testResultIds: Record<string, number>;
+}> => {
+  if (!consignment) throw new Error("No consignment provided");
+  if (consignment.projectId || (consignment as any).processedAt) {
+    throw new Error("This consignment has already been processed into a project");
+  }
+
+  const testType = overrideTestType || getPrimaryTestTypeFromConsignment(consignment);
+  const projectPayload: Record<string, unknown> = {
+    name: consignment.project || consignment.jobNo || consignment.rcNo,
+    client_name: consignment.client || "",
+    project_date: consignment.receivedAt ? consignment.receivedAt.slice(0, 10) : null,
+    test_type: testType,
+    contractor: consignment.deliveredBy || "",
+    county: "",
+    submitted_by: consignment.receivedBy || "",
+    date_submitted: consignment.receivedAt ? consignment.receivedAt.slice(0, 10) : null,
+  };
+
+  const projectResp = await createRecord<{ id: number }>("projects", projectPayload);
+  const projectId = projectResp.data?.id;
+  if (!projectId) throw new Error("Failed to create project from reception");
+
+  const testResultIds: Record<string, number> = {};
+  for (const sample of consignment.samples || []) {
+    if (!sample.tests || sample.tests.length === 0) continue;
+    try {
+      const tr = await createRecord<{ id: number }>("test_results", {
+        project_id: projectId,
+        test_key: testType,
+        sample_key: sample.labId,
+        sample_label: sample.clientMark,
+        sample_depth: sample.depthLabel,
+        name: `${testType} - ${sample.labId}`,
+        category: testType === "compressive" ? "concrete" : "soil",
+        status: "in-progress",
+        data_points: 0,
+      });
+      if (tr.data?.id) testResultIds[sample.labId] = tr.data.id;
+    } catch (e) {
+      console.warn("[API] Failed to create test_result for sample", sample.labId, e);
+    }
+  }
+
+  if (testType === "compressive") {
+    try {
+      const ct = await createRecord<{ id: number }>("compressive_tests", {
+        project_id: projectId,
+        test_key: "compressive",
+        date_received: consignment.receivedAt ? consignment.receivedAt.slice(0, 10) : null,
+        lab_ref: consignment.rcNo,
+        status: "not-started",
+      });
+      (consignment as any)._compressiveTestId = ct.data?.id;
+    } catch (e) {
+      console.warn("[API] Failed to create compressive_tests", e);
+    }
+  }
+
+  const processedConsignment: ReceptionConsignmentInput = {
+    ...consignment,
+    projectId,
+    projectIds: [projectId],
+    status: "processed" as any,
+    processedAt: new Date().toISOString(),
+  };
+
+  await saveReceptionConsignment(processedConsignment);
+  return { projectId, testResultIds };
+};
   const timestamp = new Date().toISOString();
   console.log(`[API] ${timestamp} === LOGOUT REQUEST START ===`);
   console.log("[API] Current session token:", getSessionToken() ? "✓ Present" : "✗ Not found");

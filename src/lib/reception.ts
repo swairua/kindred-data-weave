@@ -65,7 +65,7 @@ export interface ReceptionConsignmentInput {
   methodSet: string;
   receivedBy: string;
   storagePlan: string;
-  status: "draft" | "logged" | "on-hold" | "in-testing";
+  status: "draft" | "logged" | "on-hold" | "in-testing" | "processed";
   samples: ReceptionSampleInput[];
   /** Transport checks ticked on receipt ("Cool box used for U100s", …). */
   transportChecks?: {
@@ -81,6 +81,11 @@ export interface ReceptionConsignmentInput {
   photos?: ReceptionPhoto[];
   /** Date the cubes in this consignment were cast — drives the crushing due dates. */
   cubeCastDate?: string;
+  /** Linked project ID(s) created from this reception. */
+  projectId?: number | null;
+  projectIds?: number[];
+  /** When the reception was processed into project(s). */
+  processedAt?: string | null;
 }
 
 /** Test-code columns of the "Tests requested" matrix. */
@@ -229,6 +234,7 @@ export const RECEPTION_STATUS_LABELS: Record<ReceptionConsignmentInput["status"]
   logged: "Logged",
   "on-hold": "On hold",
   "in-testing": "In testing",
+  processed: "Processed",
 };
 
 /**
@@ -251,20 +257,46 @@ export const deriveConsignmentStatus = (
 };
 
 /** Material column of the dashboard table, derived from the sample types. */
-export const consignmentMaterial = (consignment: ReceptionConsignmentInput): string => {
-  const types = new Set<string>();
-  for (const sample of consignment.samples) {
-    const tag = sampleTypeTag(sample.sampleType);
-    if (tag !== "Sample") types.add(tag);
+export const receptionTestCodeToTestType = (code: string): "compressive" | "atterberg" | "grading" | "proctor" | null => {
+  switch (code) {
+    case "CMP":
+      return "compressive";
+    case "ATT":
+    case "UU":
+    case "CON":
+      return "atterberg";
+    case "PSD":
+    case "HYD":
+    case "CBR":
+    case "CHEM":
+      return "grading";
+    case "MC":
+      return "grading";
+    default:
+      return null;
   }
-  if (types.size === 0) return "—";
-  if (types.has("Cube")) return "Concrete cubes 150 mm";
-  const hasWater = types.has("Water");
-  const rest = Array.from(types)
-    .filter((tag) => tag !== "Water")
-    .map((tag) => (tag === "Bulk" ? "bulk" : tag));
-  const body = rest.join(", ");
-  if (hasWater && body) return `Soil: ${body}; water`;
-  if (hasWater) return "Soil: water";
-  return `Soil: ${body}`;
+};
+
+export const getTestTypesFromConsignment = (consignment: ReceptionConsignmentInput): Set<string> => {
+  const types = new Set<string>();
+  for (const sample of consignment.samples || []) {
+    for (const code of sample.tests || []) {
+      const t = receptionTestCodeToTestType(code);
+      if (t) types.add(t);
+    }
+  }
+  return types;
+};
+
+export const getPrimaryTestTypeFromConsignment = (consignment: ReceptionConsignmentInput): string => {
+  const codes = new Set<string>();
+  for (const sample of consignment.samples || []) {
+    for (const code of sample.tests || []) {
+      codes.add(code);
+    }
+  }
+  if (codes.has("CMP")) return "compressive";
+  if (codes.has("ATT") || codes.has("UU") || codes.has("CON")) return "atterberg";
+  if (codes.has("PSD") || codes.has("HYD") || codes.has("CBR") || codes.has("CHEM") || codes.has("MC")) return "grading";
+  return "atterberg";
 };

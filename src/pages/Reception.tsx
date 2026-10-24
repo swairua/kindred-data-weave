@@ -3,13 +3,19 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import Navigation from "@/components/Navigation";
-import { listReceptionConsignments } from "@/lib/api";
+import { listReceptionConsignments, processReceptionToProject } from "@/lib/api";
+import { toast } from "sonner";
 import {
   RECEPTION_STATUS_LABELS,
   consignmentMaterial,
   cubeDueDates,
+  getPrimaryTestTypeFromConsignment,
+  getTestTypesFromConsignment,
   isSampleOnHold,
   sampleTypeTag,
   type ReceptionConsignmentInput,
@@ -41,6 +47,7 @@ const STATUS_STYLES: Record<ReceptionConsignmentInput["status"], string> = {
   logged: "bg-emerald-50 text-emerald-700 border-emerald-200",
   "on-hold": "bg-amber-50 text-amber-800 border-amber-200",
   "in-testing": "bg-violet-50 text-violet-700 border-violet-200",
+  processed: "bg-slate-50 text-slate-700 border-slate-200",
 };
 
 const Reception = () => {
@@ -48,6 +55,42 @@ const Reception = () => {
   const [consignments, setConsignments] = useState<ReceptionConsignmentInput[]>([]);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<ConsignmentFilter>("open");
+  const [processing, setProcessing] = useState<string | null>(null);
+  const [processDialogOpen, setProcessDialogOpen] = useState(false);
+  const [selectedForProcess, setSelectedForProcess] = useState<ReceptionConsignmentInput | null>(null);
+  const [selectedTestType, setSelectedTestType] = useState<string>("");
+
+  const openProcessDialog = (e: React.MouseEvent, consignment: ReceptionConsignmentInput) => {
+    e.stopPropagation();
+    if (consignment.projectId || (consignment as any).project_id || (consignment as any).processedAt) {
+      toast.info("Already processed to project");
+      return;
+    }
+    const recommended = getPrimaryTestTypeFromConsignment(consignment);
+    setSelectedForProcess(consignment);
+    setSelectedTestType(recommended);
+    setProcessDialogOpen(true);
+  };
+
+  const confirmProcess = async () => {
+    if (!selectedForProcess) return;
+    setProcessing(selectedForProcess.rcNo);
+    try {
+      const res = await processReceptionToProject(selectedForProcess, selectedTestType);
+      toast.success(`Created project #${res.projectId} from ${selectedForProcess.rcNo}`);
+      const rows = await listReceptionConsignments();
+      setConsignments(rows);
+      setProcessDialogOpen(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to process reception");
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  const handleProcessToProject = async (e: React.MouseEvent, consignment: ReceptionConsignmentInput) => {
+    openProcessDialog(e, consignment);
+  };
 
   useEffect(() => {
     let active = true;
@@ -343,10 +386,26 @@ const Reception = () => {
                                   <span className="h-1.5 w-1.5 rounded-full bg-current" />
                                   {RECEPTION_STATUS_LABELS[consignment.status]}
                                 </span>
+                                {(consignment.projectId || (consignment as any).project_id) && (
+                                  <p className="mt-1 text-xs text-muted-foreground">
+                                    Project #{consignment.projectId || (consignment as any).project_id}
+                                  </p>
+                                )}
                                 {held.length > 0 && (
                                   <p className="mt-1 text-xs text-muted-foreground">
                                     {held.length} sample{held.length === 1 ? "" : "s"} held (seal broken)
                                   </p>
+                                )}
+                                {!consignment.projectId && !(consignment as any).project_id && (consignment.status === "logged" || consignment.status === "on-hold" || consignment.status === "in-testing") && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="mt-2 h-7 text-xs"
+                                    disabled={processing === consignment.rcNo}
+                                    onClick={(e) => handleProcessToProject(e, consignment)}
+                                  >
+                                    {processing === consignment.rcNo ? "Processing..." : "Process to project"}
+                                  </Button>
                                 )}
                               </td>
                             </tr>
@@ -443,6 +502,47 @@ const Reception = () => {
         </div>
       </SidebarInset>
     </SidebarProvider>
+    <Dialog open={processDialogOpen} onOpenChange={setProcessDialogOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Process reception to project</DialogTitle>
+          <DialogDescription>
+            {selectedForProcess ? `Convert ${selectedForProcess.rcNo} (${selectedForProcess.client}) to a project.` : ""}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="text-sm">
+            <p className="font-medium mb-1">Detected test codes</p>
+            <p className="text-muted-foreground">
+              {selectedForProcess?.samples?.flatMap(s => s.tests || []).filter((v,i,a) => a.indexOf(v)===i).join(", ") || "None"}
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="project-type">Project type</Label>
+            <Select value={selectedTestType} onValueChange={setSelectedTestType}>
+              <SelectTrigger id="project-type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="compressive">Compressive (Concrete)</SelectItem>
+                <SelectItem value="atterberg">Atterberg (Soil classification)</SelectItem>
+                <SelectItem value="grading">Grading/Particle size</SelectItem>
+                <SelectItem value="proctor">Proctor/Compaction</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Recommended based on test codes. You can change this if the classification is incorrect.
+            </p>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setProcessDialogOpen(false)}>Cancel</Button>
+          <Button onClick={confirmProcess} disabled={processing === selectedForProcess?.rcNo}>
+            {processing === selectedForProcess?.rcNo ? "Processing..." : "Create project"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 
