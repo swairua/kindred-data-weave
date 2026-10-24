@@ -59,25 +59,54 @@ export const formatReceivedAt = (value: string): string => {
   return `${Number(match[3])} ${MONTHS[monthIndex]} ${match[1]}, ${match[4]}:${match[5]}`;
 };
 
+/** Pull the raw base64 out of a data URL and report the image type. */
+const imageParts = (dataUrl: string): { base64: string; format: "PNG" | "JPEG" } => {
+  const match = /^(data:image\/(\w+);base64,)(.+)$/.exec(dataUrl);
+  if (!match) return { base64: dataUrl, format: "PNG" };
+  const mime = match[2].toLowerCase();
+  const format = mime === "jpeg" || mime === "jpg" ? "JPEG" : "PNG";
+  return { base64: match[3], format };
+};
+
+/**
+ * Letterhead in the house style shared by every other report: the logo at the
+ * left, the contacts artwork (phone · e-mail · address — kept in Admin images
+ * so it stays current without touching this file) at the right, then the rule
+ * beneath. The typed lab identity is only printed when no letterhead artwork
+ * has been uploaded at all, so the sheet is never anonymous.
+ *
+ * Returns the y coordinate where body content may begin.
+ */
 export const drawAckHeader = (d: jsPDF, o: ReceptionAckOptions, images: AdminImages): number => {
   const MARGIN = RECEPTION_ACK_MARGIN;
   const PAGE_W = RECEPTION_ACK_PAGE_W;
+  const imgW = 62;
+  const imgH = 20;
   let y = MARGIN;
+
   if (images.logo) {
     try {
-      const match = /^(data:image\/(\w+);base64,)(.+)$/.exec(images.logo);
-      const format = (match?.[2]?.toUpperCase() === "JPG" ? "JPEG" : match?.[2]?.toUpperCase() ?? "PNG") as "PNG" | "JPEG";
-      d.addImage(match?.[3] ?? images.logo, format, MARGIN, y - 2, 26, 16);
+      const { base64, format } = imageParts(images.logo);
+      d.addImage(base64, format, MARGIN, y, imgW, imgH, undefined, "FAST");
     } catch { /* logo optional */ }
   }
-  d.setFont("times", "bold");
-  d.setFontSize(13);
-  d.text((o.labName || "CRANSFIELD MATERIALS TESTING CENTER").toUpperCase(), MARGIN + 30, y + 3);
-  d.setFont("times", "normal");
-  d.setFontSize(8);
-    d.text(o.labAddress || "Ruiru Business Park, Kamiti Road : P.O. Box 59401-00200, Nairobi", MARGIN + 30, y + 8);
-  d.text(`Tel ${o.labPhone || "[phone]"} · ${o.labEmail || "[email]"}`, MARGIN + 30, y + 12);
-  y += 18;
+  if (images.contacts) {
+    try {
+      const { base64, format } = imageParts(images.contacts);
+      d.addImage(base64, format, PAGE_W - MARGIN - imgW, y, imgW, imgH, undefined, "FAST");
+    } catch { /* contacts artwork optional */ }
+  }
+  if (!images.logo && !images.contacts) {
+    d.setFont("times", "bold");
+    d.setFontSize(13);
+    d.text((o.labName || "CRANSFIELD MATERIALS TESTING CENTER").toUpperCase(), MARGIN, y + 7);
+    d.setFont("times", "normal");
+    d.setFontSize(8);
+    d.text(o.labAddress || "Ruiru Business Park, Kamiti Road · P.O. Box 59401-00200, Nairobi", MARGIN, y + 12);
+    d.text(`Tel ${o.labPhone || "[phone]"} · ${o.labEmail || "[email]"}`, MARGIN, y + 16);
+  }
+
+  y += imgH;
   d.setDrawColor(0, 110, 110);
   d.setLineWidth(0.6);
   d.line(MARGIN, y, PAGE_W - MARGIN, y);
@@ -97,21 +126,26 @@ const MARGIN = RECEPTION_ACK_MARGIN;
 const PAGE_W = RECEPTION_ACK_PAGE_W;
 
 const drawIdBlock = (d: jsPDF, o: ReceptionAckOptions, y: number): number => {
-  const block: Array<[string, string]> = [
-    [`Client: ${ackText(o.client)}`, `Job no.: ${ackText(o.jobNo)}`],
-    [`Project: ${ackText(o.project)}`, `Client request ref.: ${ackText(o.clientRef)}`],
-    [`Received: ${formatReceivedAt(o.receivedAt)}`, `Method set: ${ackText(o.methodSet)}`],
+  const block: Array<Array<[string, string]>> = [
+    [["Client:", ackText(o.client)], ["Job no.:", ackText(o.jobNo)]],
+    [["Project:", ackText(o.project)], ["Client request ref.:", ackText(o.clientRef)]],
+    [["Received:", formatReceivedAt(o.receivedAt)], ["Method set:", ackText(o.methodSet)]],
   ];
   const colW = (PAGE_W - MARGIN * 2) / 2;
   d.setFontSize(8.5);
-  for (const [left, right] of block) {
-    d.setFont("helvetica", "normal");
+  for (const row of block) {
     d.setDrawColor(0, 0, 0);
     d.setLineWidth(0.2);
     d.rect(MARGIN, y, colW, 7);
     d.rect(MARGIN + colW, y, colW, 7);
-    d.text(left, MARGIN + 2, y + 4.8);
-    d.text(right, MARGIN + colW + 2, y + 4.8);
+    const xs = [MARGIN + 2, MARGIN + colW + 2];
+    row.forEach(([label, value], i) => {
+      d.setFont("helvetica", "bold");
+      d.text(label, xs[i], y + 4.8);
+      const labelW = d.getTextWidth(label);
+      d.setFont("helvetica", "normal");
+      d.text(value, xs[i] + labelW, y + 4.8);
+    });
     y += 7;
   }
   return y + 4;
@@ -120,36 +154,43 @@ const drawIdBlock = (d: jsPDF, o: ReceptionAckOptions, y: number): number => {
 const drawSamplesTable = (d: jsPDF, o: ReceptionAckOptions, y: number): number => {
   const cols = [22, 22, 28, 42, 24, 44];
   const headers = ["Lab ID", "Client mark", "Location · depth (m)", "Sample type", "Condition", "Tests requested"];
+  const LINE_H = 3.6;
   d.setFont("helvetica", "bold");
   d.setFontSize(8);
+  d.setFillColor(232, 237, 233);
   let x = MARGIN;
   headers.forEach((h, i) => {
-    d.rect(x, y, cols[i], 7);
+    d.rect(x, y, cols[i], 7, "FD");
     d.text(h, x + 1.5, y + 4.8);
     x += cols[i];
   });
   y += 7;
-  d.setFont("helvetica", "normal");
   d.setFontSize(7.5);
   o.samples.forEach((sample) => {
+    const held = isSampleOnHold(sample.condition);
     const cells = [
       sample.labId,
       sample.clientMark,
       `${sample.location}${sample.depthLabel ? ` · ${sample.depthLabel}` : ""}`,
       receiptSampleType(sample),
-      sample.condition,
+      // The mockup spells the hold state out in the cell, in bold.
+      held ? `${sample.condition} — on hold` : sample.condition,
       sample.tests.map((code) => RECEIPT_TEST_LABELS[code] ?? code).join(", "),
     ];
     const lines = cells.map((cell, i) => d.splitTextToSize(ackText(cell, ""), cols[i] - 3));
-    const rowH = Math.max(7, ...lines.map((l) => l.length * 3.6 + 3));
+    const rowH = Math.max(7, ...lines.map((l) => l.length * LINE_H + 3));
     if (y + rowH > 270) {
       d.addPage();
       y = MARGIN;
     }
     x = MARGIN;
-    lines.forEach((line, i) => {
+    lines.forEach((cellLines, i) => {
       d.rect(x, y, cols[i], rowH);
-      d.text(line, x + 1.5, y + 4.5);
+      // Held samples read in bold so the reader cannot miss the nonconformance.
+      d.setFont("helvetica", i === 4 && held ? "bold" : "normal");
+      cellLines.forEach((line, lineIndex) => {
+        d.text(line, x + 1.5, y + 4.5 + lineIndex * LINE_H);
+      });
       x += cols[i];
     });
     y += rowH;
@@ -182,8 +223,8 @@ const drawHoldBox = (d: jsPDF, o: ReceptionAckOptions, tableW: number, y: number
     y = MARGIN;
   }
   d.rect(MARGIN, y, tableW, boxH);
-  d.setFont("helvetica", "bold");
-  d.setFontSize(8);
+  d.setFont("times", "bold");
+  d.setFontSize(9);
   d.text(wrapped[0], MARGIN + 3, y + 5);
   d.setFont("helvetica", "normal");
   d.setFontSize(7.5);
