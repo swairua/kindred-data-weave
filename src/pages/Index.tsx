@@ -224,7 +224,7 @@ const Index = ({ initialTab }: IndexProps) => {
   const isReportsPage = location.pathname === "/reports";
   const isAdminPage = location.pathname === "/admin";
   const [view, setView] = useState<NavigationView>(
-    isAdminPage ? "admin" : isReportsPage ? "results" : isTestsPage ? "tests" : "dashboard",
+    isAdminPage ? "admin" : isReportsPage ? "reports" : isTestsPage ? "tests" : "dashboard",
   );
   const [projectName, setProjectName] = useState("");
   const [clientName, setClientName] = useState("");
@@ -334,7 +334,7 @@ const Index = ({ initialTab }: IndexProps) => {
     if (isAdminPage) {
       setView("admin");
     } else if (isReportsPage) {
-      setView("results");
+      setView("reports");
     } else if (isTestsPage) {
       setView("tests");
     } else {
@@ -891,7 +891,17 @@ const Index = ({ initialTab }: IndexProps) => {
                   <SidebarTrigger className="h-9 w-9" />
                   <div className="hidden sm:block">
                     <h1 className="text-base font-semibold text-foreground tracking-tight leading-tight">
-                      {view === "dashboard" ? "Dashboard" : view === "tests" ? "Record test" : view === "results" ? "Test results" : view === "projects" ? "Projects" : "Admin"}
+                      {view === "dashboard"
+                        ? "Dashboard"
+                        : view === "tests"
+                          ? "Record test"
+                          : view === "reports"
+                            ? "Reports"
+                            : view === "results"
+                              ? "Test results"
+                              : view === "projects"
+                                ? "Projects"
+                                : "Admin"}
                     </h1>
                     <p className="text-xs text-muted-foreground leading-tight">
                       Cransfield Geotechnical Laboratory
@@ -920,6 +930,8 @@ const Index = ({ initialTab }: IndexProps) => {
               <div className="px-4 md:px-0">
                 {view === "dashboard" ? (
                   <Dashboard />
+                ) : view === "reports" ? (
+                  <Reports />
                 ) : view === "results" ? (
                   <Reports />
                 ) : view === "admin" ? (

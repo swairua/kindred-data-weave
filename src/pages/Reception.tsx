@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import TopNavbar from "@/components/TopNavbar";
+import Navigation from "@/components/Navigation";
+import { useSession } from "@/context/SessionContext";
 import { listReceptionConsignments, processReceptionToProject } from "@/lib/api";
 import { toast } from "sonner";
 import {
@@ -52,6 +54,13 @@ const STATUS_STYLES: Record<ReceptionConsignmentInput["status"], string> = {
 
 const Reception = () => {
   const navigate = useNavigate();
+  const { user, logout } = useSession();
+
+  const handleLogout = async () => {
+    await logout();
+    toast.success("Logged out");
+  };
+
   const [consignments, setConsignments] = useState<ReceptionConsignmentInput[]>([]);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<ConsignmentFilter>("open");
@@ -210,8 +219,9 @@ const Reception = () => {
   return (<>
     <SidebarProvider>
       <TopNavbar currentView="reception" onViewChange={() => {}} />
+      <Navigation currentView="reception" onViewChange={() => {}} onLogout={handleLogout} userName={user.name} userEmail={user.email} />
       <SidebarInset>
-        <div className="min-h-screen bg-muted/30">
+        <div className="min-h-screen bg-muted/30 pt-16">
           <header className="flex flex-wrap items-center gap-3 px-6 pt-5">
             <SidebarTrigger />
             <div className="mr-auto">
