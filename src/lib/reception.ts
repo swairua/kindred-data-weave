@@ -257,6 +257,25 @@ export const deriveConsignmentStatus = (
 };
 
 /** Material column of the dashboard table, derived from the sample types. */
+export const consignmentMaterial = (consignment: ReceptionConsignmentInput): string => {
+  const types = new Set<string>();
+  for (const sample of consignment.samples) {
+    const tag = sampleTypeTag(sample.sampleType);
+    if (tag !== "Sample") types.add(tag);
+  }
+  if (types.size === 0) return "—";
+  if (types.has("Cube")) return "Concrete cubes 150 mm";
+  const hasWater = types.has("Water");
+  const rest = Array.from(types)
+    .filter((tag) => tag !== "Water")
+    .map((tag) => (tag === "Bulk" ? "bulk" : tag));
+  const body = rest.join(", ");
+  if (hasWater && body) return `Soil: ${body}; water`;
+  if (hasWater) return "Soil: water";
+  return `Soil: ${body}`;
+};
+
+/** Material column of the dashboard table, derived from the sample types. */
 export const receptionTestCodeToTestType = (code: string): "compressive" | "atterberg" | "grading" | "proctor" | null => {
   switch (code) {
     case "CMP":

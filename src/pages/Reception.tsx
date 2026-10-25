@@ -207,7 +207,7 @@ const Reception = () => {
     navigate(`/record?${params.toString()}`);
   };
 
-  return (
+  return (<>
     <SidebarProvider>
       <TopNavbar currentView="reception" onViewChange={() => {}} />
       <SidebarInset>
@@ -543,7 +543,7 @@ const Reception = () => {
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
+  </>);
 };
 
 export default Reception;

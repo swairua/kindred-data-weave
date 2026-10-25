@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Flask, Package, FileText, Layers, Wrench, ChevronRight } from "lucide-react";
+import { FlaskConical, Package, FileText, Layers, Wrench, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/context/SessionContext";
 import { toast } from "sonner";
@@ -57,7 +57,7 @@ const TopNavbar = ({ currentView, onViewChange, userName, userEmail, onLogout }:
         {/* Brand */}
         <div className="flex items-center gap-2">
           <div className="flex items-center justify-center h-8 w-8 rounded bg-teal-500 text-white">
-            <Flask className="h-5 w-5" />
+            <FlaskConical className="h-5 w-5" />
           </div>
           <span className="font-semibold text-lg tracking-tight">Cransfield LIMS</span>
         </div>

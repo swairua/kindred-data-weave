@@ -1166,6 +1166,8 @@ export const processReceptionToProject = async (consignment: ReceptionConsignmen
   await saveReceptionConsignment(processedConsignment);
   return { projectId, testResultIds };
 };
+
+export const logoutUser = async () => {
   const timestamp = new Date().toISOString();
   console.log(`[API] ${timestamp} === LOGOUT REQUEST START ===`);
   console.log("[API] Current session token:", getSessionToken() ? "✓ Present" : "✗ Not found");
@@ -1185,6 +1187,7 @@ export const processReceptionToProject = async (consignment: ReceptionConsignmen
     setSessionToken(null);
     throw error;
   }
+};
 
 // Compressive Strength Test API helpers
 export interface CompressiveCubeApiRow {
