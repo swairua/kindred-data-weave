@@ -1189,6 +1189,12 @@ export const logoutUser = async () => {
   }
 };
 
+export const logout = async () => {
+  const response = await apiRequest<LogoutResponse>({ method: "POST" }, { action: "logout" });
+  setSessionToken(null);
+  return response;
+};
+
 // Compressive Strength Test API helpers
 export interface CompressiveCubeApiRow {
   id: number;
