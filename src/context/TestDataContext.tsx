@@ -249,21 +249,25 @@ export const TestDataProvider = ({ children }: { children: ReactNode }) => {
       const definitions = Array.isArray(response?.data) ? response.data : [];
       setTestDefinitions(definitions);
 
-      const loadedTests: Record<string, TestSummary> = { ...defaultTests };
+      // Build tests dictionary from all loaded definitions (not just defaults)
+      const loadedTests: Record<string, TestSummary> = {};
       for (const record of definitions) {
         const testKey = record.test_key;
-        if (testKey && loadedTests[testKey]) {
+        if (testKey) {
           loadedTests[testKey] = {
-            ...loadedTests[testKey],
-            name: record.name || loadedTests[testKey].name,
-            category: record.category || loadedTests[testKey].category,
+            id: testKey,
+            name: record.name,
+            category: record.category,
+            status: "not-started" as const,
+            dataPoints: 0,
+            keyResults: [],
             enabled: record.enabled !== false && record.enabled !== 0,
             sortOrder: record.sort_order || 0,
           };
         }
       }
       setTests(loadedTests);
-      console.log("[TestData] Successfully loaded test definitions from API");
+      console.log("[TestData] Successfully loaded test definitions from API. Tests count:", Object.keys(loadedTests).length);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setTestDefinitionsError(message);
