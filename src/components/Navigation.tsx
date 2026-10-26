@@ -97,7 +97,7 @@ const Navigation = ({
                 relative h-10 rounded-full px-3 transition-colors
                 ${isActive
                   ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  : "bg-sidebar-background text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 }
               `}
             >
