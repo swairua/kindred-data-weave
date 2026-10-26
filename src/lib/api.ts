@@ -1132,6 +1132,17 @@ export const processReceptionToProject = async (consignment: ReceptionConsignmen
         name: `${testType} - ${sample.labId}`,
         category: testType === "compressive" ? "concrete" : "soil",
         status: "in-progress",
+export const updateTestDefinitions = async (definitions: Partial<TestDefinition>[]): Promise<TestDefinition[] | null> => {
+  try {
+    const response = await apiRequest<ApiWriteResponse<TestDefinition[]>>(
+      { method: "PUT", body: JSON.stringify({ table: "test_definitions", data: definitions }) },
+      { action: "bulkUpdate", table: "test_definitions" }
+    );
+    return response.data ? response.data.map(row => coerceNumericColumns(row) as TestDefinition) : null;
+  } catch {
+    return null;
+  }
+};
         data_points: 0,
       });
       if (tr.data?.id) testResultIds[sample.labId] = tr.data.id;

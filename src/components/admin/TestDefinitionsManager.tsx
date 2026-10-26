@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Loader2, RefreshCw, Save, X } from "lucide-react";
+import { Loader2, RefreshCw, Save, X, CheckCircle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -45,6 +45,34 @@ export const TestDefinitionsManager = () => {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingTest, setEditingTest] = useState<EditingTest | null>(null);
+  const handleEnableAllTests = async () => {
+    try {
+      const timestamp = new Date().toISOString();
+      console.log(`[TestDefs] ${timestamp} Attempting to enable all tests...`);
+
+      const response = await listRecords<TestDefinition>("test_definitions", { limit: 1000 });
+      if (!response?.data || !Array.isArray(response.data)) {
+        toast.error("No test definitions found");
+        return;
+      }
+
+      const updates = response.data.map(test => ({
+        id: test.id,
+        enabled: true,
+        updated_at: new Date().toISOString(),
+      }));
+
+      const result = await updateTestDefinitions(updates);
+      if (result) {
+        toast.success(`Enabled ${result.length} tests`);
+        setTests(result);
+      } else {
+        toast.error("Failed to enable tests");
+      }
+    } catch (error) {
+      toast.error("Failed to enable tests");
+    }
+  };
   const [showDialog, setShowDialog] = useState(false);
 
   const loadTestDefinitions = useCallback(async () => {
@@ -159,6 +187,18 @@ export const TestDefinitionsManager = () => {
           </Button>
         </CardHeader>
         <CardContent>
+          <div className="flex justify-end mb-4">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleEnableAllTests}
+              disabled={loading}
+              className="gap-2"
+            >
+              <CheckCircle className="h-4 w-4" />
+              Enable All Tests
+            </Button>
+          </div>
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
