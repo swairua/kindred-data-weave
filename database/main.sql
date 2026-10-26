@@ -3715,20 +3715,20 @@ INSERT INTO `test_definitions` (`id`, `test_key`, `name`, `category`, `sort_orde
 (1, 'atterberg', 'Atterberg Limits', 'soil', 1, 1, '2026-04-10 07:50:35', '2026-09-24 19:39:59'),
 (2, 'grading', 'Particle Size Distribution', 'soil', 2, 1, '2026-04-10 07:50:35', '2026-09-24 19:39:59'),
 (3, 'proctor', 'Density/Moisture Content Relationship', 'soil', 3, 1, '2026-04-10 07:50:35', '2026-09-24 19:39:59'),
-(4, 'cbr', 'CBR Test', 'soil', 99, 0, '2026-04-10 07:50:35', '2026-09-24 19:39:59'),
-(5, 'shear', 'Shear Test', 'soil', 99, 0, '2026-04-10 07:50:35', '2026-09-24 19:39:59'),
-(6, 'consolidation', 'Consolidation Test', 'soil', 99, 0, '2026-04-10 07:50:35', '2026-09-24 19:39:59'),
-(7, 'upvt', 'UPVT Test', 'concrete', 99, 0, '2026-04-10 07:50:35', '2026-09-24 19:39:59'),
+(4, 'cbr', 'CBR Test', 'soil', 99, 1, '2026-04-10 07:50:35', '2026-09-24 19:39:59'),
+(5, 'shear', 'Shear Test', 'soil', 99, 1, '2026-04-10 07:50:35', '2026-09-24 19:39:59'),
+(6, 'consolidation', 'Consolidation Test', 'soil', 99, 1, '2026-04-10 07:50:35', '2026-09-24 19:39:59'),
+(7, 'upvt', 'UPVT Test', 'concrete', 99, 1, '2026-04-10 07:50:35', '2026-09-24 19:39:59'),
 (8, 'schmidt', 'Schmidt Hammer', 'rock', 3, 1, '2026-04-10 07:50:35', '2026-09-24 22:02:47'),
-(9, 'coring', 'Coring Test', 'concrete', 99, 0, '2026-04-10 07:50:35', '2026-09-24 19:39:59'),
-(10, 'cubes', 'Concrete Cubes Test', 'concrete', 99, 0, '2026-04-10 07:50:35', '2026-09-24 19:39:59'),
+(9, 'coring', 'Coring Test', 'concrete', 99, 1, '2026-04-10 07:50:35', '2026-09-24 19:39:59'),
+(10, 'cubes', 'Concrete Cubes Test', 'concrete', 99, 1, '2026-04-10 07:50:35', '2026-09-24 19:39:59'),
 (11, 'slump', 'Slump Test', 'concrete', 2, 1, '2026-04-10 07:50:35', '2026-09-24 19:39:59'),
 (12, 'compressive', 'Compressive Strength Test', 'concrete', 1, 1, '2026-04-10 07:50:35', '2026-09-24 19:39:59'),
 (13, 'ucs', 'UCS Test', 'rock', 1, 1, '2026-04-10 07:50:35', '2026-09-24 19:39:59'),
 (14, 'pointload', 'Point Load Test', 'rock', 2, 1, '2026-04-10 07:50:35', '2026-09-24 19:39:59'),
-(15, 'porosity', 'Porosity Test', 'rock', 99, 0, '2026-04-10 07:50:35', '2026-09-24 19:40:00'),
+(15, 'porosity', 'Porosity Test', 'rock', 99, 1, '2026-04-10 07:50:35', '2026-09-24 19:40:00'),
 (16, 'spt', 'SPT Test', 'soil', 4, 1, '2026-04-10 07:50:35', '2026-09-24 19:39:59'),
-(17, 'dcp', 'DCP Test', 'special', 99, 0, '2026-04-10 07:50:35', '2026-09-24 19:40:00'),
+(17, 'dcp', 'DCP Test', 'special', 99, 1, '2026-04-10 07:50:35', '2026-09-24 19:40:00'),
 (18, 'cpt', 'Cone Penetration Test (CPT)', 'soil', 5, 1, '2026-09-24 19:40:00', '2026-09-24 20:07:35'),
 (19, 'ndt', 'NDT (Rebound Hammer)', 'concrete', 3, 1, '2026-04-10 07:50:35', '2026-09-24 22:03:19');
 
@@ -4288,3 +4288,4 @@ COMMIT;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+
