@@ -16,11 +16,20 @@
 
 export type FormulaSourceModule =
   | "atterbergCalculations"
-  | "gradingCalculations"
-  | "proctorRecords"
+  | "cbrCalculations"
+  | "consolidationCalculations"
   | "compressiveCalculations"
+  | "compressivePdfGenerator"
+  | "coringCalculations"
+  | "gradingCalculations"
+  | "pointLoadCalculations"
+  | "porosityCalculations"
+  | "proctorRecords"
+  | "schmidtCalculations"
+  | "shearCalculations"
   | "soilClassification"
-  | "compressivePdfGenerator";
+  | "ucsCalculations"
+  | "upvtCalculations";
 
 export interface FormulaVariable {
   symbol: string;
@@ -513,6 +522,321 @@ export const FORMULA_SECTIONS: FormulaSection[] = [
         ],
         sourceModule: "compressiveCalculations",
         sourceFunctions: ["strengthOf", "densityOf", "ageOf"],
+      },
+    ],
+  },
+  {
+    testKey: "cbr",
+    title: "California Bearing Ratio (CBR)",
+    standard: "BS 1377-4:1990 / ASTM D1883",
+    entries: [
+      {
+        heading: "CBR at 2.5 mm and 5.0 mm penetration",
+        formulas: [
+          "CBR_2.5 = (load_2.5 / 13.24) * 100  (%)",
+          "CBR_5.0 = (load_5.0 / 19.96) * 100  (%)",
+          "reported CBR = max(CBR_2.5, CBR_5.0)",
+        ],
+        variables: [
+          { symbol: "load_2.5", meaning: "load at 2.5 mm penetration (kN)" },
+          { symbol: "load_5.0", meaning: "load at 5.0 mm penetration (kN)" },
+          { symbol: "13.24", meaning: "standard load at 2.5 mm (kN)" },
+          { symbol: "19.96", meaning: "standard load at 5.0 mm (kN)" },
+        ],
+        notes: [
+          "Standard loads are 13.24 kN at 2.5 mm and 19.96 kN at 5.0 mm penetration.",
+          "The reported CBR is the greater of the two values.",
+        ],
+        sourceModule: "cbrCalculations",
+        sourceFunctions: ["calculateCBR", "calculateCBRRows", "reportCBR", "STANDARD_LOAD_2_5", "STANDARD_LOAD_5_0"],
+      },
+    ],
+  },
+  {
+    testKey: "shear",
+    title: "Direct Shear Test",
+    standard: "BS 1377-7:1990 / ASTM D3080",
+    entries: [
+      {
+        heading: "Mohr-Coulomb failure envelope",
+        formulas: [
+          "tau = c + sigma * tan(phi)",
+          "slope = (n * SUM(x*y) - SUM(x) * SUM(y)) / (n * SUM(x^2) - SUM(x)^2)",
+          "intercept = (SUM(y) - slope * SUM(x)) / n",
+          "phi = atan(slope) * 180 / PI  (degrees)",
+          "c = intercept  (cohesion, kPa)",
+        ],
+        variables: [
+          { symbol: "tau", meaning: "shear stress at failure (kPa)" },
+          { symbol: "c", meaning: "cohesion / intercept of failure envelope (kPa)" },
+          { symbol: "sigma", meaning: "normal stress (kPa)" },
+          { symbol: "phi", meaning: "angle of internal friction (degrees)" },
+          { symbol: "x", meaning: "normal stress data points" },
+          { symbol: "y", meaning: "shear stress data points" },
+          { symbol: "n", meaning: "number of shear boxes" },
+        ],
+        notes: [
+          "Requires at least two shear boxes with different normal stresses.",
+          "Linear regression fits tau = c + sigma * tan(phi) to the (normal, shear) pairs.",
+          "The slope gives tan(phi); the intercept gives cohesion c.",
+        ],
+        sourceModule: "shearCalculations",
+        sourceFunctions: ["calculateShearEnvelope", "shearStrength"],
+      },
+    ],
+  },
+  {
+    testKey: "consolidation",
+    title: "Consolidation Test",
+    standard: "BS 1377-6:1990 / ASTM D2435",
+    entries: [
+      {
+        heading: "Time-settlement relationship",
+        formulas: [
+          "settlement_i = reading_i  (mm)",
+          "max_settlement = MAX(settlement_1 ... settlement_n)",
+        ],
+        variables: [
+          { symbol: "settlement_i", meaning: "settlement reading at time i (mm)" },
+          { symbol: "time_i", meaning: "elapsed time since load application (min)" },
+          { symbol: "max_settlement", meaning: "maximum settlement observed (mm)" },
+        ],
+        notes: [
+          "Plots settlement vs time to determine consolidation behavior.",
+          "Maximum settlement is the largest recorded settlement value.",
+        ],
+        sourceModule: "consolidationCalculations",
+        sourceFunctions: ["calculateConsolidationPoints", "maxSettlement"],
+      },
+    ],
+  },
+  {
+    testKey: "ucs",
+    title: "Unconfined Compressive Strength (UCS)",
+    standard: "BS 1377-7:1990 / ASTM D2166",
+    entries: [
+      {
+        heading: "Unconfined compressive strength",
+        formulas: [
+          "qu = (P * 1000) / A   (MPa = N/mm^2)",
+        ],
+        variables: [
+          { symbol: "qu", meaning: "unconfined compressive strength (MPa)" },
+          { symbol: "P", meaning: "maximum load at failure (kN)" },
+          { symbol: "A", meaning: "cross-sectional area of specimen (mm^2)" },
+          { symbol: "1000", meaning: "converts kN to N" },
+        ],
+        notes: [
+          "Specimen is cylindrical with no confining pressure.",
+          "Strength is computed per specimen; average is reported across specimens.",
+        ],
+        sourceModule: "ucsCalculations",
+        sourceFunctions: ["calculateUCSStrength", "calculateUCSRows", "averageUCS"],
+      },
+    ],
+  },
+  {
+    testKey: "pointload",
+    title: "Point Load Test",
+    standard: "ISRM / ASTM D5731",
+    entries: [
+      {
+        heading: "Point load strength index",
+        formulas: [
+          "Is = (P * 1000) / (De^2)   (MPa)",
+        ],
+        variables: [
+          { symbol: "Is", meaning: "point load strength index (MPa)" },
+          { symbol: "P", meaning: "failure load (kN)" },
+          { symbol: "De", meaning: "equivalent core diameter (mm)" },
+          { symbol: "1000", meaning: "converts kN to N" },
+        ],
+        notes: [
+          "De = D for diametral tests; De = sqrt(4*A/pi) for axial/lump tests.",
+          "The index is reported as Is(50) when normalized to 50 mm diameter.",
+        ],
+        sourceModule: "pointLoadCalculations",
+        sourceFunctions: ["calculatePointLoadIndex", "calculatePointLoadRows", "averagePointLoadIndex"],
+      },
+    ],
+  },
+  {
+    testKey: "porosity",
+    title: "Porosity Test",
+    standard: "BS 1377-2:1990",
+    entries: [
+      {
+        heading: "Porosity from mass and volume",
+        formulas: [
+          "n = ((W_sat - W_dry) / V) * 100  (%)",
+        ],
+        variables: [
+          { symbol: "n", meaning: "porosity (%)" },
+          { symbol: "W_sat", meaning: "saturated (wet) mass of sample (g)" },
+          { symbol: "W_dry", meaning: "oven-dry mass of sample (g)" },
+          { symbol: "V", meaning: "volume of sample (cm^3)" },
+        ],
+        notes: [
+          "(W_sat - W_dry) is the mass of water in the pores; numerically equal to pore volume in cm^3 (water density = 1 g/cm^3).",
+          "Requires dry weight, saturated weight and volume all to be positive.",
+        ],
+        sourceModule: "porosityCalculations",
+        sourceFunctions: ["calculatePorosity", "calculatePorosityResult"],
+      },
+    ],
+  },
+  {
+    testKey: "upvt",
+    title: "Ultrasonic Pulse Velocity Test (UPVT)",
+    standard: "BS EN 12504-4:2004 / ASTM C597",
+    entries: [
+      {
+        heading: "Pulse velocity",
+        formulas: [
+          "V = L / T   (km/s)",
+        ],
+        variables: [
+          { symbol: "V", meaning: "ultrasonic pulse velocity (km/s)" },
+          { symbol: "L", meaning: "path length between transducers (mm)" },
+          { symbol: "T", meaning: "transit time of the pulse (microseconds)" },
+        ],
+        notes: [
+          "1 mm / 1 microsecond = 1 km/s, so V = L / T directly.",
+          "Quality classification: >=4.5 Excellent, >=3.5 Good, >=3.0 Medium, >=2.0 Poor, <2.0 Very Poor.",
+        ],
+        sourceModule: "upvtCalculations",
+        sourceFunctions: ["calculateVelocity", "calculateUPVTRows", "averageVelocity", "qualityFromVelocity"],
+      },
+    ],
+  },
+  {
+    testKey: "schmidt",
+    title: "Schmidt Hammer / Rebound Hammer",
+    standard: "BS EN 12504-2:2001 / ASTM C805",
+    entries: [
+      {
+        heading: "Rebound number and estimated strength",
+        formulas: [
+          "R_avg = SUM(readings) / count(readings)",
+          "f_c approx = 1.2 * R_avg - 13.5   (MPa, empirical)",
+        ],
+        variables: [
+          { symbol: "R_avg", meaning: "average rebound number" },
+          { symbol: "f_c", meaning: "estimated compressive strength (MPa)" },
+          { symbol: "1.2", meaning: "empirical slope" },
+          { symbol: "13.5", meaning: "empirical intercept (MPa)" },
+        ],
+        notes: [
+          "Uses 5 rebound readings per location; invalid (zero/negative) readings are excluded.",
+          "The strength formula is an empirical correlation; verify by cube testing.",
+        ],
+        sourceModule: "schmidtCalculations",
+        sourceFunctions: ["getValidReadings", "calculateAverageRebound", "estimateStrengthFromRebound", "calculateSchmidtRows", "averageRebound"],
+      },
+    ],
+  },
+  {
+    testKey: "coring",
+    title: "Concrete Coring Test",
+    standard: "BS EN 12504-1:2009",
+    entries: [
+      {
+        heading: "Core strength and L/D correction",
+        formulas: [
+          "Area = pi * (d / 2)^2   (mm^2)",
+          "strength = (P * 1000) / Area   (MPa)",
+          "L/D = length / diameter",
+          "factor = 1.0  when L/D >= 2.0",
+          "factor = 0.87 + 0.065 * (L/D)  when L/D < 2.0",
+          "corrected = strength * factor",
+        ],
+        variables: [
+          { symbol: "d", meaning: "core diameter (mm)" },
+          { symbol: "length", meaning: "core length (mm)" },
+          { symbol: "P", meaning: "failure load (kN)" },
+          { symbol: "Area", meaning: "loaded cross-sectional area (mm^2)" },
+          { symbol: "L/D", meaning: "length-to-diameter ratio" },
+          { symbol: "corrected", meaning: "L/D-corrected core strength (MPa)" },
+        ],
+        notes: [
+          "Cores with L/D < 2.0 are strength-reduced; the correction factor raises the result.",
+          "Cores with L/D >= 2.0 use the uncorrected strength.",
+          "Average corrected strength is reported across all cores.",
+        ],
+        sourceModule: "coringCalculations",
+        sourceFunctions: ["calculateLDRatio", "calculateCoreStrength", "lDCorrectionFactor", "calculateCorrectedStrength", "calculateCoringRows", "averageCorrectedStrength"],
+      },
+    ],
+  },
+  {
+    testKey: "classification",
+    title: "Soil Classification",
+    standard: "BS 5930 / ASTM D2487 / AASHTO M 145",
+    entries: [
+      {
+        heading: "BS plasticity chart classification",
+        formulas: [
+          "PI = LL - PL",
+          "A-line: PI = 0.73 * (LL - 20)",
+          "U-line: PI = 0.90 * (LL - 8)",
+          "BS code = first letter + second letter (e.g. CI = Clay of Intermediate Plasticity)",
+        ],
+        variables: [
+          { symbol: "LL", meaning: "liquid limit (%)" },
+          { symbol: "PL", meaning: "plastic limit (%)" },
+          { symbol: "PI", meaning: "plasticity index (%)" },
+        ],
+        notes: [
+          "At or above the A-line: clay (C); below: silt (M). LL = 50 splits low (L) from high (H) plasticity.",
+          "PI above U-line is suspect data (withhold). PI = 0 -> Non-plastic (skip classification).",
+          "BS example: LL = 48, PI = 26 -> above A-line (PI_A = 20.4), LL < 50 -> CI.",
+        ],
+        sourceModule: "soilClassification",
+        sourceFunctions: ["classifyAtterberg", "getALinePI", "getULinePI"],
+      },
+      {
+        heading: "USCS grain-size route",
+        formulas: [
+          "fines = % passing No. 200 (0.075 mm)",
+          "gravel = 100 - % passing No. 4 (4.75 mm)",
+          "sand = % passing No. 4 - % passing No. 200",
+          "fines >= 50% -> fine-grained; else sand family if sand > gravel, gravel family otherwise",
+          "clean (fines <= 12%): SP/SW or GP/GW; fines > 12%: A-line decides silty (M) vs clayey (C)",
+        ],
+        variables: [],
+        notes: [
+          "Gravel + sand + fines must total 100%; otherwise classification is withheld as invalid.",
+          "LL < 50 -> CL/ML, LL >= 50 -> CH/MH on the A-line split.",
+          "Hatched zone LL < 50, 4 <= PI <= 7, at/above A-line -> dual symbol CL-ML.",
+        ],
+        sourceModule: "soilClassification",
+        sourceFunctions: ["classifySoilUSCS", "validateClassificationData"],
+      },
+      {
+        heading: "AASHTO M 145 groups",
+        formulas: [
+          "P200 <= 35% -> granular soils, else silt-clay soils",
+          "A-1-a: P10 <= 50, P40 <= 30, P200 <= 15, PI <= 6",
+          "A-1-b: P40 <= 50, P200 <= 25, PI <= 6",
+          "A-3: P40 >= 51, P200 <= 10, non-plastic",
+          "A-2-4: P200 <= 35, LL <= 40, PI <= 10 / A-2-5: LL > 40, PI <= 10",
+          "A-2-6: P200 <= 35, LL <= 40, PI > 10 / A-2-7: LL > 40, PI > 10",
+          "A-4: P200 > 35, LL <= 40, PI <= 10 / A-5: LL > 40, PI <= 10 / A-6: LL <= 40, PI > 10",
+          "A-7-5: P200 > 35, LL > 40, PI <= LL - 30 / A-7-6: PI > LL - 30",
+          "GI = (F - 35) * (0.2 + 0.005 * (LL - 40)) + 0.01 * (F - 15) * (PI - 10)",
+        ],
+        variables: [
+          { symbol: "P10/P40/P200", meaning: "% passing No. 10 / No. 40 / No. 200 sieve" },
+          { symbol: "F", meaning: "% passing No. 200 for Group Index" },
+          { symbol: "GI", meaning: "group index (whole number >= 0)" },
+        ],
+        notes: [
+          "LL and PI are measured on fraction passing No. 40; LL plays no role in A-1-a, A-1-b or A-3.",
+          "Ratings: A-1/A-2/A-3 Excellent-Good (GI 0-4); A-4..A-7 Fair-Poor.",
+          "All three sieve values required for granular soils; without P10/P40 app shows best-effort flagged unverified.",
+        ],
+        sourceModule: "soilClassification",
+        sourceFunctions: ["classifySoilAASHTO", "calculateAashtoGroupIndex", "getAashtoEvidenceWarnings"],
       },
     ],
   },

@@ -12,11 +12,20 @@ import {
 
 const MODULE_LOADERS: Record<FormulaSourceModule, () => Promise<Record<string, unknown>>> = {
   atterbergCalculations: () => import("@/lib/atterbergCalculations"),
-  gradingCalculations: () => import("@/lib/gradingCalculations"),
-  proctorRecords: () => import("@/lib/proctorRecords"),
+  cbrCalculations: () => import("@/lib/cbrCalculations"),
+  consolidationCalculations: () => import("@/lib/consolidationCalculations"),
   compressiveCalculations: () => import("@/lib/compressiveCalculations"),
-  soilClassification: () => import("@/lib/soilClassification"),
   compressivePdfGenerator: () => import("@/lib/compressivePdfGenerator"),
+  coringCalculations: () => import("@/lib/coringCalculations"),
+  gradingCalculations: () => import("@/lib/gradingCalculations"),
+  pointLoadCalculations: () => import("@/lib/pointLoadCalculations"),
+  porosityCalculations: () => import("@/lib/porosityCalculations"),
+  proctorRecords: () => import("@/lib/proctorRecords"),
+  schmidtCalculations: () => import("@/lib/schmidtCalculations"),
+  shearCalculations: () => import("@/lib/shearCalculations"),
+  soilClassification: () => import("@/lib/soilClassification"),
+  ucsCalculations: () => import("@/lib/ucsCalculations"),
+  upvtCalculations: () => import("@/lib/upvtCalculations"),
 };
 
 const collectStrings = (value: unknown): string[] => {
@@ -27,13 +36,23 @@ const collectStrings = (value: unknown): string[] => {
 };
 
 describe("formulas reference content", () => {
-  it("covers grading, atterberg, classification, proctor and compressive sections", () => {
-    expect(FORMULA_SECTIONS.map((section) => section.testKey)).toEqual([
-      "grading",
+  it("covers all test sections in the formulas reference", () => {
+    const testKeys = FORMULA_SECTIONS.map((section) => section.testKey).sort();
+    expect(testKeys).toEqual([
       "atterberg",
+      "cbr",
       "classification",
-      "proctor",
       "compressive",
+      "consolidation",
+      "coring",
+      "grading",
+      "pointload",
+      "porosity",
+      "proctor",
+      "schmidt",
+      "shear",
+      "ucs",
+      "upvt",
     ]);
     for (const section of FORMULA_SECTIONS) {
       expect(section.title.trim()).not.toBe("");

@@ -193,9 +193,22 @@ const TestsViewContent = ({
     return <TestComponent testKey={testKey} />;
   }
 
-  // Normal mode: hide content area (only show when navigating with fragments like #testname)
-  console.log(`[Index] ✓ NORMAL TEST VIEW - hiding content area (no fragment in URL)`);
-  return <div />;
+  const activeTab = getActiveTab() as TestCategory;
+
+  return (
+    <Tabs value={activeTab}>
+      <TabsList>
+        <TabsTrigger value="soil">Soil</TabsTrigger>
+        <TabsTrigger value="concrete">Concrete</TabsTrigger>
+        <TabsTrigger value="rock">Rock</TabsTrigger>
+        <TabsTrigger value="special">Special</TabsTrigger>
+      </TabsList>
+      {renderTestsByCategory("soil")}
+      {renderTestsByCategory("concrete")}
+      {renderTestsByCategory("rock")}
+      {renderTestsByCategory("special")}
+    </Tabs>
+  );
 };
 
 // Component to render tests dynamically from registry
