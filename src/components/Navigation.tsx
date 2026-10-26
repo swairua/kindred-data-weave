@@ -16,7 +16,7 @@ import { useProject } from "@/context/ProjectContext";
 import { generateFormulasReferencePDF } from "@/lib/formulasReferencePdfGenerator";
 import { toast } from "sonner";
 
-export type NavigationView = "dashboard" | "tests" | "results" | "projects" | "admin" | "users" | "settings" | "reception" | "reports" | "storage" | "equipment";
+export type NavigationView = "dashboard" | "tests" | "results" | "projects" | "admin" | "users" | "settings" | "reception" | "reports";
 
 interface NavigationProps {
   currentView: NavigationView;
@@ -62,11 +62,9 @@ const Navigation = ({
   };
   const labItems: NavItem[] = [
     { id: "reception", label: "Reception", icon: PackageOpen, path: "/reception" },
-    { id: "tests", label: "Testing", icon: FlaskConical, path: "/record" },
+    { id: "tests", label: "Testing", icon: FlaskConical, path: project.currentProjectId ? `/tests?projectId=${project.currentProjectId}` : "/record" },
+    { id: "projects", label: "Projects", icon: Layers, path: project.currentProjectId ? `/projects/${project.currentProjectId}` : "/projects" },
     { id: "reports", label: "Reports", icon: ClipboardList, path: "/reports" },
-    { id: "projects", label: "Jobs & clients", icon: Layers, path: "/projects" },
-    { id: "storage", label: "Storage", icon: Package, path: "/storage" },
-    { id: "equipment", label: "Equipment", icon: Wrench, path: "/equipment" },
   ];
 
   const systemItems: NavItem[] = [
