@@ -187,7 +187,7 @@ const defaultTests: Record<string, TestSummary> = {
   grading: { id: "grading", name: "Particle Size Distribution", category: "soil", status: "not-started", dataPoints: 0, keyResults: [] },
   atterberg: { id: "atterberg", name: "Atterberg Limits", category: "soil", status: "not-started", dataPoints: 0, keyResults: [] },
   proctor: { id: "proctor", name: "Density/Moisture Content Relationship", category: "soil", status: "not-started", dataPoints: 0, keyResults: [] },
-  cpt: { id: "cpt", name: "Cone Penetration Test (CPT)", category: "soil", status: "not-started", dataPoints: 0, keyResults: [], enabled: false },
+  cpt: { id: "cpt", name: "Cone Penetration Test (CPT)", category: "soil", status: "not-started", dataPoints: 0, keyResults: [], enabled: true },
   cbr: { id: "cbr", name: "CBR", category: "soil", status: "not-started", dataPoints: 0, keyResults: [] },
   shear: { id: "shear", name: "Shear Test", category: "soil", status: "not-started", dataPoints: 0, keyResults: [] },
   consolidation: { id: "consolidation", name: "Consolidation", category: "soil", status: "not-started", dataPoints: 0, keyResults: [] },
