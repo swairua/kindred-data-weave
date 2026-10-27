@@ -43,6 +43,7 @@ export function registerAllTests(): void {
   registry.registerTest("compressive", CompressiveStrengthTest);
   registry.registerTest("upvt", UPVTTest);
   registry.registerTest("schmidt", SchmidtHammerTest);
+  registry.registerTest("ndt", SchmidtHammerTest);
   registry.registerTest("coring", CoringTest);
   registry.registerTest("cubes", ConcreteCubesTest);
 
