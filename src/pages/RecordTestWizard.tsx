@@ -132,9 +132,9 @@ const emptyState: WizardState = {
 };
 
 
-const filterProjectsByTestType = (projects: ApiProjectRow[], expectedTestType: string | null): ApiProjectRow[] => {
-  if (!expectedTestType) return projects;
-  return projects.filter(p => !p.test_type || p.test_type === expectedTestType);
+const filterProjectsByTestType = (projects: ApiProjectRow[], testKey: string | null): ApiProjectRow[] => {
+  if (!testKey) return projects;
+  return projects.filter(p => p.test_type === testKey);
 };
 
 const RecordTestWizard = () => {
@@ -405,12 +405,12 @@ const RecordTestWizard = () => {
     projectsAttemptedKey.current = projectLoadKey;
     setLoadingProjects(true);
     setProjectsLoadError(null);
-    const expectedTestType = getExpectedTestType(state.testKey);
-    listRecords<ApiProjectRow>("projects", { limit: 100 })
-      .then((res) => {
-        if (!active) return;
-        const allProjects = res.data || [];
-        const filteredProjects = filterProjectsByTestType(allProjects, expectedTestType);
+     const expectedTestType = getExpectedTestType(state.testKey);
+     listRecords<ApiProjectRow>("projects", { limit: 100 })
+       .then((res) => {
+         if (!active) return;
+         const allProjects = res.data || [];
+         const filteredProjects = filterProjectsByTestType(allProjects, state.testKey);
         if (active) {
           setProjects(filteredProjects);
           projectsLoadedKey.current = projectLoadKey;
