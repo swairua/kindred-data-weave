@@ -6,33 +6,62 @@ import { ChevronRight, Search, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import FormCard from "./FormCard";
 
-interface ProjectSelectionProps {
-  onNext: () => void;
-  onPrev: () => void;
-}
+// Mapping of test types to project categories
+const testTypeToCategory: Record<string, string> = {
+  attesterbergLimits: "atterberg",
+  compaction: "soil",
+  cbr: "soil",
+  compressiveStrength: "concrete",
+  pointLoad: "rock",
+  slump: "concrete",
+  schmidt: "rock",
+  schmidt_rock: "rock",
+  ucs: "rock",
+};
 
-// Mock projects - in a real app, this would come from the API
+// Mock projects with test_type - in a real app, this would come from the API
+// with test_type field indicating the project's category
 const MOCK_PROJECTS = [
-  { id: 1, name: "Highway Expansion Project", clientName: "Department of Transport" },
-  { id: 2, name: "Commercial Development", clientName: "ABC Developers" },
-  { id: 3, name: "Residential Complex", clientName: "XYZ Construction" },
-  { id: 4, name: "Port Authority Works", clientName: "Port Authority" },
+  { id: 1, name: "Highway Expansion Project", clientName: "Department of Transport", test_type: "atterberg" },
+  { id: 2, name: "Commercial Development", clientName: "ABC Developers", test_type: "concrete" },
+  { id: 3, name: "Residential Complex", clientName: "XYZ Construction", test_type: "soil" },
+  { id: 4, name: "Port Authority Works", clientName: "Port Authority", test_type: "rock" },
 ];
+
+interface ProjectWithCategory extends Record<string, unknown> {
+  test_type?: string;
+}
 
 const ProjectSelection: React.FC<ProjectSelectionProps> = ({ onNext, onPrev }) => {
   const { state, setProject } = useWizard();
+  const { material, testType } = state;
   const [searchQuery, setSearchQuery] = useState("");
   const [showNewProject, setShowNewProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
 
+  // Determine the category based on the selected test type
+  const selectedCategory = useMemo(() => {
+    if (!testType) return undefined;
+    return testTypeToCategory[testType];
+  }, [testType]);
+
   const filteredProjects = useMemo(() => {
     const query = searchQuery.toLowerCase();
+    
+    // If we have a selected category (from test type), filter projects by category
+    if (selectedCategory) {
+      return MOCK_PROJECTS.filter(
+        (p) => (p.test_type as string) === selectedCategory
+      );
+    }
+    
+    // No category filter - show all projects matching search query
     return MOCK_PROJECTS.filter(
       (p) =>
         p.name.toLowerCase().includes(query) ||
         p.clientName.toLowerCase().includes(query),
     );
-  }, [searchQuery]);
+  }, [searchQuery, selectedCategory]);
 
   const handleSelectProject = (projectId: number, projectName: string) => {
     setProject(projectId, projectName);
