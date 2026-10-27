@@ -3,8 +3,8 @@ import type { RecordMetadata } from "@/context/TestDataContext";
 export type Material = "soil" | "concrete" | "rock" | "special";
 
 const ALLOWED_TEST_KEYS: Partial<Record<Material, ReadonlySet<string>>> = {
-  soil: new Set(["atterberg", "grading", "proctor", "cpt", "cbr", "shear", "consolidation", "schmidt"]),
-  concrete: new Set(["compressive", "slump", "upvt", "schmidt"]),
+  soil: new Set(["atterberg", "grading", "proctor", "cpt", "spt", "cbr", "shear", "consolidation", "schmidt"]),
+  concrete: new Set(["compressive", "slump", "upvt", "schmidt", "ndt"]),
   rock: new Set(["coring", "ucs", "pointload", "porosity", "schmidt_rock"]),
   special: new Set(["dcp"]),
 };
