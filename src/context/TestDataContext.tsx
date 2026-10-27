@@ -189,6 +189,8 @@ const defaultTests: Record<string, TestSummary> = {
   proctor: { id: "proctor", name: "Density/Moisture Content Relationship", category: "soil", status: "not-started", dataPoints: 0, keyResults: [] },
   cpt: { id: "cpt", name: "Cone Penetration Test (CPT)", category: "soil", status: "not-started", dataPoints: 0, keyResults: [], enabled: true },
   cbr: { id: "cbr", name: "CBR", category: "soil", status: "not-started", dataPoints: 0, keyResults: [] },
+  schmidt_rock: { id: "schmidt_rock", name: "Schmidt Hammer Test", category: "rock", status: "not-started", dataPoints: 0, keyResults: [] },
+  ndt: { id: "ndt", name: "NDT (Rebound Hammer)", category: "rock", status: "not-started", dataPoints: 0, keyResults: [] },
   schmidt: { id: "schmidt", name: "NDT (Rebound Hammer)", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [] },
   shear: { id: "shear", name: "Shear Test", category: "soil", status: "not-started", dataPoints: 0, keyResults: [] },
   consolidation: { id: "consolidation", name: "Consolidation", category: "soil", status: "not-started", dataPoints: 0, keyResults: [] },
