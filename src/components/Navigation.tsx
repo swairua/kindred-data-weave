@@ -63,7 +63,6 @@ const Navigation = ({
   const labItems: NavItem[] = [
     { id: "reception", label: "Reception", icon: PackageOpen, path: "/reception" },
     { id: "testing", label: "Testing", icon: FlaskConical, path: project.currentProjectId ? `/tests?projectId=${project.currentProjectId}` : "/record" },
-    { id: "tests", label: "Tests", icon: FlaskConical, path: "/tests" },
     { id: "results", label: "Test Results", icon: FileText, path: "/results" },
     { id: "projects", label: "Projects", icon: Layers, path: project.currentProjectId ? `/projects/${project.currentProjectId}` : "/projects" },
     { id: "reports", label: "Reports", icon: ClipboardList, path: "/reports" },
