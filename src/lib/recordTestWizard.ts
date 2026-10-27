@@ -23,6 +23,8 @@ export const getExpectedTestType = (testKey: string | null): string | null => {
   if (testKey === "grading") return "grading";
   if (testKey === "proctor") return "proctor";
   if (testKey === "compressive") return "compressive";
+  if (testKey === "spt") return "spt";
+  if (testKey === "cpt") return "cpt";
   return null;
 };
 

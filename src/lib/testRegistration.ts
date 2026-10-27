@@ -3,6 +3,7 @@ import GradingTest from "@/components/soil/GradingTest";
 import AtterbergTest from "@/components/soil/AtterbergTest";
 import ProctorTest from "@/components/soil/ProctorTest";
 import CBRTest from "@/components/soil/CBRTest";
+import CPTTest from "@/components/soil/CPTTest";
 import ShearTest from "@/components/soil/ShearTest";
 import ConsolidationTest from "@/components/soil/ConsolidationTest";
 
@@ -32,6 +33,7 @@ export function registerAllTests(): void {
   registry.registerTest("atterberg", AtterbergTest);
   registry.registerTest("proctor", ProctorTest);
   registry.registerTest("cbr", CBRTest);
+  registry.registerTest("cpt", CPTTest);
   registry.registerTest("spt", SPTTest);
   registry.registerTest("shear", ShearTest);
   registry.registerTest("consolidation", ConsolidationTest);

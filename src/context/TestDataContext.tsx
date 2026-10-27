@@ -201,7 +201,7 @@ const defaultTests: Record<string, TestSummary> = {
   ucs: { id: "ucs", name: "Unconfined Compressive Strength", category: "rock", status: "not-started", dataPoints: 0, keyResults: [] },
   pointload: { id: "pointload", name: "Point Load Index", category: "rock", status: "not-started", dataPoints: 0, keyResults: [] },
   porosity: { id: "porosity", name: "Porosity", category: "rock", status: "not-started", dataPoints: 0, keyResults: [] },
-  spt: { id: "spt", name: "Standard Penetration Test (SPT)", category: "soil", status: "not-started", dataPoints: 0, keyResults: [] },
+  spt: { id: "spt", name: "Standard Penetration Test (SPT)", category: "soil", status: "not-started", dataPoints: 0, keyResults: [], enabled: true },
   dcp: { id: "dcp", name: "DCP", category: "special", status: "not-started", dataPoints: 0, keyResults: [] },
 };
 
