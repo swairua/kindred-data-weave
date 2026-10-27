@@ -266,12 +266,21 @@ export const TestDataProvider = ({ children }: { children: ReactNode }) => {
           };
         }
       }
-      setTests(loadedTests);
-      console.log("[TestData] Successfully loaded test definitions from API. Tests count:", Object.keys(loadedTests).length);
+
+      // Fall back to default tests if API returned none (e.g. DB empty or unreachable)
+      if (Object.keys(loadedTests).length === 0) {
+        console.warn("[TestData] No test definitions from API, falling back to defaultTests");
+        setTests(defaultTests);
+      } else {
+        setTests(loadedTests);
+        console.log("[TestData] Successfully loaded test definitions from API. Tests count:", Object.keys(loadedTests).length);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setTestDefinitionsError(message);
       console.warn("[TestData] Failed to load test definitions from API:", message);
+      // Fall back to default tests so the page still renders
+      setTests(defaultTests);
     } finally {
       setTestDefinitionsLoading(false);
     }
