@@ -30,6 +30,14 @@ export const getExpectedTestType = (testKey: string | null): string | null => {
   if (testKey === "ucs") return "rock";
   if (testKey === "pointload") return "rock";
   if (testKey === "ndt") return "rock";
+  if (testKey === "cbr") return "soil";
+  if (testKey === "shear") return "soil";
+  if (testKey === "consolidation") return "soil";
+  if (testKey === "upvt") return "concrete";
+  if (testKey === "coring") return "rock";
+  if (testKey === "porosity") return "rock";
+  if (testKey === "schmidt_rock") return "rock";
+  if (testKey === "dcp") return "special";
   return null;
 };
 
