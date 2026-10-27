@@ -25,6 +25,11 @@ export const getExpectedTestType = (testKey: string | null): string | null => {
   if (testKey === "compressive") return "compressive";
   if (testKey === "spt") return "spt";
   if (testKey === "cpt") return "cpt";
+  if (testKey === "slump") return "concrete";
+  if (testKey === "schmidt") return "concrete";
+  if (testKey === "ucs") return "rock";
+  if (testKey === "pointload") return "rock";
+  if (testKey === "ndt") return "rock";
   return null;
 };
 
