@@ -5,7 +5,7 @@ export type Material = "soil" | "concrete" | "rock" | "special";
 const ALLOWED_TEST_KEYS: Partial<Record<Material, ReadonlySet<string>>> = {
   soil: new Set(["atterberg", "grading", "proctor", "cpt", "spt", "cbr", "shear", "consolidation", "schmidt"]),
   concrete: new Set(["compressive", "slump", "upvt", "schmidt", "ndt"]),
-  rock: new Set(["coring", "ucs", "pointload", "porosity", "schmidt_rock"]),
+  rock: new Set(["coring", "ucs", "pointload", "porosity", "schmidt_rock", "ndt"]),
   special: new Set(["dcp"]),
 };
 
