@@ -361,7 +361,7 @@ function db(): mysqli
     }
 
     // Support environment variables for remote database configuration
-    $host = getenv('DB_HOST') ?: (dbConfigValue('host') ?: '127.0.0.1');
+    $host = getenv('DB_HOST') ?: (dbConfigValue('host') ?: 'localhost');
     $user = getenv('DB_USER') ?: (dbConfigValue('user') ?: 'wayrusc1_labdatacraft');
     $pass = getenv('DB_PASS') ?: (dbConfigValue('pass') ?: 'Sirgeorge.12');
     $name = getenv('DB_NAME') ?: (dbConfigValue('name') ?: 'wayrusc1_labdatacraft');
@@ -379,7 +379,7 @@ function db(): mysqli
     );
     $port = (int) (getenv('DB_PORT') ?: 0);
     if ($port <= 0) {
-        $port = (int) (dbConfigValue('port') ?: ($isLocalHost ? 3308 : 3306));
+        $port = (int) (dbConfigValue('port') ?: 3306);
     }
 
     try {
