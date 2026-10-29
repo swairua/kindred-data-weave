@@ -13,6 +13,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Label } from "@/components/ui/label";
 import { useTestReport } from "@/hooks/useTestReport";
 import { captureChartAsBase64 } from "@/lib/chartCapture";
+import { loadCBRResult, saveCBRResult } from "@/lib/cbrPersistence";
 
 const STANDARD_LOAD_2_5 = 13.24;
 const STANDARD_LOAD_5_0 = 19.96;
@@ -60,9 +61,26 @@ const CBRTest = ({ testKey }: CBRTestProps) => {
   ], [cbr25, cbr50]);
   useTestReport("cbr", filledCBR, cbrResults);
 
+  const projectId = project.currentProjectId ?? null;
+  const [recordId, setRecordId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!projectId) return;
+    let active = true;
+    loadCBRResult(projectId)
+      .then((result) => {
+        if (!active || !result) return;
+        setRecordId(result.id);
+        const savedRows = (result.payload_json as { rows?: Row[] } | null)?.rows;
+        if (Array.isArray(savedRows) && savedRows.length > 0) setRows(savedRows);
+      })
+      .catch((error) => console.error("Failed to load CBR result", error));
+    return () => { active = false; };
+  }, [projectId]);
+
   const chartConfig = { load: { label: "Load (kN)", color: "hsl(var(--primary))" } };
 
-  const exportPDF = async () => {
+  const buildPDF = async (skipDownload: boolean) => {
     let chartImages = {};
     if (chartData.length >= 2) {
       const chartBase64 = await captureChartAsBase64("cbr-chart");
@@ -71,17 +89,43 @@ const CBRTest = ({ testKey }: CBRTestProps) => {
       }
     }
 
-    generateTestPDF({
+    return generateTestPDF({
       title: "CBR (California Bearing Ratio)", ...project,
       tables: [{ headers: ["Penetration (mm)", "Load (kN)", "CBR (%)"], rows: rows.map(r => [r.penetration, r.load || "—", getCBR(r.penetration, r.load) || "—"]) }],
       chartImages,
+      skipDownload,
     });
+  };
+
+  const exportPDF = async () => {
+    await buildPDF(false);
+  };
+
+  const printPDF = async () => {
+    const doc = await buildPDF(true);
+    doc.autoPrint();
+    const printWindow = window.open(doc.output("bloburl"), "_blank");
+    if (printWindow) printWindow.onload = () => printWindow.print();
   };
 
   const status = filledCBR === 0 ? "No data" : filledCBR < rows.length ? "In progress" : "Complete";
 
+  const save = async () => {
+    if (!projectId) throw new Error("Select a project before saving this CBR test");
+    const savedId = await saveCBRResult(projectId, recordId, {
+      test_key: "cbr",
+      name: "CBR (California Bearing Ratio)",
+      category: "soil",
+      status: filledCBR === 0 ? "not-started" : filledCBR < rows.length ? "in-progress" : "completed",
+      data_points: filledCBR,
+      key_results_json: cbrResults.filter((result) => result.value),
+      payload_json: { rows },
+    });
+    setRecordId(savedId);
+  };
+
   return (
-    <TestSection title="CBR (California Bearing Ratio)" testKey={testKey} onSave={() => {}} onClear={() => setRows([{ penetration: "", load: "" }])} onExportPDF={exportPDF}>
+    <TestSection title="CBR (California Bearing Ratio)" testKey={testKey} onSave={save} onClear={() => setRows([{ penetration: "", load: "" }])} onExportPDF={exportPDF} onPrint={printPDF}>
       <div className="space-y-4">
         {/* Overview metrics card */}
         <Card className="border bg-muted/20 shadow-none">

@@ -84,11 +84,9 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
-/** Opens the export menu and picks PDF. */
-const choosePdfExport = async (menuName: string) => {
-  fireEvent.keyDown(screen.getByRole("button", { name: menuName }), { key: "Enter" });
-  const pdfItem = await screen.findByText("PDF");
-  fireEvent.click(pdfItem);
+/** Clicks the direct PDF button. */
+const choosePdfExport = async () => {
+  fireEvent.click(await screen.findByRole("button", { name: "PDF" }));
 };
 
 describe("Proctor PDF export", () => {
@@ -149,7 +147,7 @@ describe("Proctor PDF export", () => {
 
     fillPoints(["50", "70", "90"], ["3000", "3100", "3200"], ["140", "142", "145"], ["130", "132", "135"]);
 
-    await choosePdfExport("Export");
+    await choosePdfExport();
 
     await waitFor(() => expect(exportState.mcPdfPayloads).toHaveLength(1));
     const payload = exportState.mcPdfPayloads[0];
@@ -184,7 +182,7 @@ describe("Proctor PDF export", () => {
     fillPoints(["50", "70", "90"], ["3000", "3100", "3200"], ["140", "142", "145"], ["130", "132", "135"]);
     fireEvent.change(screen.getByLabelText("Specific gravity"), { target: { value: "2.7" } });
 
-    await choosePdfExport("Export");
+    await choosePdfExport();
 
     await waitFor(() => expect(exportState.mcPdfPayloads).toHaveLength(1));
     const voidLines = exportState.mcPdfPayloads[0].voidLines as Array<{ percent: number; points: unknown[] }>;
@@ -197,9 +195,7 @@ describe("Proctor PDF export", () => {
     render(createElement(MemoryRouter, null, createElement(ProctorTest, { testKey: "proctor" })));
     expect(await screen.findByText(/Record results/)).toBeInTheDocument();
 
-    fireEvent.keyDown(screen.getByRole("button", { name: "Export" }), { key: "Enter" });
-
-    expect(await screen.findByText("PDF")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "PDF" })).toBeInTheDocument();
     expect(screen.queryByText("Excel")).not.toBeInTheDocument();
     expect(screen.queryByText("CSV")).not.toBeInTheDocument();
   });
@@ -236,7 +232,7 @@ describe("Particle Size Distribution PDF export", () => {
     expect(await screen.findByText(/Record results/)).toBeInTheDocument();
     expect(document.getElementById("grading-chart")).not.toBeNull();
 
-    await choosePdfExport("Export options");
+    await choosePdfExport();
 
     await waitFor(() => expect(exportState.psdPdfPayloads).toHaveLength(1));
     const payload = exportState.psdPdfPayloads[0];

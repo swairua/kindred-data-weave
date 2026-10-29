@@ -1,7 +1,7 @@
 import { ReactNode, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, CheckCircle2, ChevronDown, ChevronRight, FileDown, FlaskConical, Loader2, Plus, Save } from "lucide-react";
+import { AlertCircle, CheckCircle2, ChevronDown, ChevronRight, FileDown, FlaskConical, Loader2, Plus, Printer, Save, Sheet, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import ProjectHeader from "@/components/ProjectHeader";
@@ -27,6 +27,7 @@ interface TestSectionProps {
   onFinalSave?: () => void | Promise<void>;
   onClear?: () => void;
   onExportPDF?: () => boolean | void | Promise<boolean | void>;
+  onPrint?: () => void | Promise<void>;
   onExportXLSX?: () => boolean | void | Promise<boolean | void>;
   onExportSmokeCheck?: () => boolean | void | Promise<boolean | void>;
   exportSmokeCheckDisabled?: boolean;
@@ -38,7 +39,7 @@ interface TestSectionProps {
   onRecordClick?: () => void;
 }
 
-const TestSection = ({ title, testKey, tooltip, children, onSave, onFinalSave, onClear, onExportPDF, onExportXLSX, onExportSmokeCheck, exportSmokeCheckDisabled, smokeCheckStatus, saveStatus = "idle", lastSavedAt, lastSaveError, recordButtonLabel, onRecordClick }: TestSectionProps) => {
+const TestSection = ({ title, testKey, tooltip, children, onSave, onFinalSave, onClear, onExportPDF, onPrint, onExportXLSX, onExportSmokeCheck, exportSmokeCheckDisabled, smokeCheckStatus, saveStatus = "idle", lastSavedAt, lastSaveError, recordButtonLabel, onRecordClick }: TestSectionProps) => {
   const [localOpen, setLocalOpen] = useState(false);
   const accordion = useTestAccordion();
 
@@ -151,6 +152,28 @@ const TestSection = ({ title, testKey, tooltip, children, onSave, onFinalSave, o
                 </TooltipTrigger>
                 <TooltipContent side="top">
                   Export test data as PDF document
+                </TooltipContent>
+              </Tooltip>
+            )}
+            {onPrint && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        await onPrint();
+                      } catch {
+                        toast.error(`${title} print failed`);
+                      }
+                    }}
+                  >
+                    <Printer className="h-3.5 w-3.5 mr-1" /> Print
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  Open the report PDF in a print dialog
                 </TooltipContent>
               </Tooltip>
             )}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ChevronRight, Plus, Trash2, AlertTriangle, Printer } from "lucide-react";
+import { ChevronRight, FileDown, Plus, Printer, Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { type ApiProjectRow } from "@/types/api";
 
@@ -18,8 +18,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -1382,9 +1380,7 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
     };
   }, []);
 
-  // ===== Print after save =====
-  const [printDialogOpen, setPrintDialogOpen] = useState(false);
-  const [printSelection, setPrintSelection] = useState<Set<string>>(new Set());
+  // ===== Print =====
 
   const runBrowserPrint = useCallback((recordIds: string[]) => {
     const ids = new Set(recordIds);
@@ -1457,11 +1453,9 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
         return;
       }
 
-      const recordIds = computedRecords.length === 1
-        ? [computedRecords[0].id]
-        : undefined;
+      const recordIds = computedRecords.map((r) => r.id);
 
-      if (recordIds) {
+      if (recordIds.length > 0) {
         setPrintProcessing("processing");
 
         const performPrint = async () => {
@@ -1522,9 +1516,6 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
         };
 
         performPrint();
-      } else {
-        setPrintSelection(new Set(computedRecords.map((r) => r.id)));
-        setPrintDialogOpen(true);
       }
     } catch (error) {
       console.error("Error in print flow:", error);
@@ -1895,7 +1886,6 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
     }
 
     setIsExporting("pdf");
-    setIsPreviewLoading(true);
     // The chart of every record is captured from the DOM, so all of them are mounted for the
     // duration of the export even though the screen shows one at a time.
     setRenderAllRecords(true);
@@ -1914,33 +1904,15 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
       const chartImages = await captureAllChartImages(recordIds, ensureRecordsExpanded);
       console.log(`[Export PDF] Captured ${Object.keys(chartImages).length} charts out of ${recordIds.length}`);
 
-      const blob = await generateAtterbergPDF({
+      await generateAtterbergPDF({
         projectName: project.projectName,
         clientName: project.clientName || projectState.clientName,
         date: project.date,
         projectState,
         records: computedRecords,
-        skipDownload: true,
         chartImages: Object.keys(chartImages).length > 0 ? chartImages : undefined,
       });
-
-      if (blob) {
-        setPreviewData({
-          type: "pdf",
-          fileName: `Atterberg_Limits_${(project.projectName || "export").replace(/\s+/g, "_")}.pdf`,
-          blob,
-          summary: {
-            title: "Atterberg Limits Testing",
-            projectName: project.projectName,
-            clientName: project.clientName || projectState.clientName,
-            date: project.date,
-            pageCount: computedRecords.length,
-          },
-        });
-        setPreviewModalOpen(true);
-      }
     } finally {
-      setIsPreviewLoading(false);
       setIsExporting(null);
       setRenderAllRecords(false);
     }
@@ -2192,6 +2164,8 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
         title="Atterberg Limits Testing"
         testKey={testKey}
         onClear={handleClearRequest}
+        onExportPDF={handleExportPDF}
+        onPrint={handlePrintSaved}
         saveStatus={saveStatus}
         lastSavedAt={lastSavedAt}
         lastSaveError={lastSaveError}
@@ -2285,8 +2259,26 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
               {saveStatus === "error" && (lastSaveError || "Save failed")}
               {saveStatus === "idle" && `${computedRecords.length} record${computedRecords.length === 1 ? "" : "s"} ready`}
             </div>
-            {saveStatus === "saved" ? (
-              <div className="flex gap-2">
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleExportPDF}
+                disabled={isExporting !== null || printProcessing !== "idle"}
+              >
+                <FileDown className="mr-1.5 h-3.5 w-3.5" />PDF
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handlePrintSaved}
+                disabled={isExporting !== null || printProcessing !== "idle"}
+              >
+                <Printer className="mr-1.5 h-3.5 w-3.5" />Print
+              </Button>
+              {saveStatus === "saved" ? (
                 <Button
                   type="button"
                   variant="outline"
@@ -2296,168 +2288,23 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
                 >
                   <Plus className="h-4 w-4" /> Add Record
                 </Button>
+              ) : (
                 <Button
                   type="button"
                   size="sm"
-                  onClick={handlePrintSaved}
-                  disabled={printProcessing !== "idle"}
-                  className="gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+                  onClick={handleSaveOnly}
+                  disabled={saveStatus === "saving" || printProcessing !== "idle"}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
                 >
-                  {printProcessing === "processing" ? (
-                    <>Generating PDF…</>
-                  ) : (
-                    <><Printer className="h-4 w-4" /> Print</>
-                  )}
+                  {saveStatus === "saving" ? "Saving…" : "Save"}
                 </Button>
-              </div>
-            ) : (
-              <Button
-                type="button"
-                size="sm"
-                onClick={handleSaveOnly}
-                disabled={saveStatus === "saving" || printProcessing !== "idle"}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
-              >
-                {saveStatus === "saving" ? "Saving…" : "Save"}
-              </Button>
-            )}
+              )}
+            </div>
           </div>
         )}
       </div>
       </TestSection>
 
-      {/* Print selection dialog */}
-      <Dialog open={printDialogOpen} onOpenChange={setPrintDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Print records</DialogTitle>
-            <DialogDescription>Select which records to print. A professional PDF will open with the print dialog.</DialogDescription>
-          </DialogHeader>
-          <div className="flex items-center justify-between text-xs">
-            <button
-              type="button"
-              className="underline text-muted-foreground hover:text-foreground"
-              onClick={() => setPrintSelection(new Set(computedRecords.map((r) => r.id)))}
-            >
-              Select all
-            </button>
-            <button
-              type="button"
-              className="underline text-muted-foreground hover:text-foreground"
-              onClick={() => setPrintSelection(new Set())}
-            >
-              Clear
-            </button>
-          </div>
-          <div className="max-h-72 overflow-y-auto space-y-1.5">
-            {computedRecords.map((r, i) => {
-              const id = r.id;
-              const checked = printSelection.has(id);
-              return (
-                <label key={id} className="flex items-center gap-2 rounded-md border p-2 cursor-pointer hover:bg-muted/30">
-                  <Checkbox
-                    checked={checked}
-                    onCheckedChange={(v) => {
-                      const next = new Set(printSelection);
-                      if (v) next.add(id);
-                      else next.delete(id);
-                      setPrintSelection(next);
-                    }}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">{r.title || `Record ${i + 1}`}</div>
-                    <div className="text-xs text-muted-foreground truncate">
-                      {r.label ? `Sample ${r.label}` : "—"}
-                      {r.results.liquidLimit !== undefined ? ` · LL ${r.results.liquidLimit}%` : ""}
-                    </div>
-                  </div>
-                </label>
-              );
-            })}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPrintDialogOpen(false)}>Cancel</Button>
-            <Button
-              disabled={printSelection.size === 0}
-              onClick={async () => {
-                const ids = Array.from(printSelection);
-                setPrintDialogOpen(false);
-                // Generate and print PDF
-                if (ids.length > 0) {
-                  setPrintProcessing("processing");
-                  // The selected samples are captured from the DOM, so they are all mounted
-                  // for the print even though the screen shows one at a time.
-                  setRenderAllRecords(true);
-                  try {
-                    console.log(`[Print PDF] Starting PDF generation for ${ids.length} records`);
-
-                    // Get the records to print
-                    const recordsToPrint = computedRecords.filter((r) => ids.includes(r.id));
-                    if (recordsToPrint.length === 0) {
-                      toast.error("No records found to print");
-                      setPrintProcessing("idle");
-                      return;
-                    }
-
-                    // Expand records to make charts visible
-                    ensureRecordsExpanded(ids);
-
-                    // Wait for charts to be fully rendered
-                    await waitForChartsToBeFullyRendered(ids);
-
-                    // Capture all chart images
-                    const chartImages = await captureAllChartImages(ids, ensureRecordsExpanded);
-                    console.log(`[Print PDF] Captured ${Object.keys(chartImages).length} charts out of ${ids.length}`);
-
-                    // Generate PDF using the same function as PDF export
-                    const blob = await generateAtterbergPDF({
-                      projectName: project.projectName,
-                      clientName: project.clientName || projectState.clientName,
-                      date: project.date,
-                      projectState,
-                      records: recordsToPrint,
-                      skipDownload: true,
-                      chartImages: Object.keys(chartImages).length > 0 ? chartImages : undefined,
-                    });
-
-                    if (blob) {
-                      console.log(`[Print PDF] PDF generated successfully, opening print dialog`);
-                      // Open the PDF in a new window and trigger print dialog
-                      const pdfUrl = URL.createObjectURL(blob);
-                      const printWindow = window.open(pdfUrl, "_blank");
-                      if (printWindow) {
-                        // Trigger print dialog when the PDF is loaded
-                        printWindow.addEventListener("load", () => {
-                          printWindow.print();
-                        });
-                        // Fallback in case load event doesn't fire
-                        setTimeout(() => {
-                          printWindow.print();
-                        }, 500);
-                      } else {
-                        toast.error("Failed to open print dialog. Pop-ups may be blocked.");
-                      }
-                    } else {
-                      toast.error("Failed to generate PDF");
-                    }
-                    setPrintProcessing("idle");
-                  } catch (error) {
-                    console.error("Error in print flow:", error);
-                    toast.error("Error during print");
-                    setPrintProcessing("idle");
-                  } finally {
-                    setRenderAllRecords(false);
-                  }
-                }
-              }}
-            >
-              {printSelection.size === computedRecords.length
-                ? `Print all (${printSelection.size})`
-                : `Print ${printSelection.size} selected`}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <AlertDialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
         <AlertDialogContent>
