@@ -38,10 +38,10 @@ export const calculateLDRatio = (diameter: string, length: string): number | nul
 
 export const calculateCoreStrength = (diameter: string, load: string): number | null => {
   const d = parseFloat(diameter);
-  const load = parseFloat(load);
-  if (!d || !load) return null;
+  const loadKn = parseFloat(load);
+  if (!d || !loadKn) return null;
   const area = Math.PI * (d / 2) ** 2;
-  return (load * 1000) / area;
+  return (loadKn * 1000) / area;
 };
 
 export const lDCorrectionFactor = (ldRatio: number): number => {
