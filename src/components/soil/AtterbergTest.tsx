@@ -1886,7 +1886,6 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
     }
 
     setIsExporting("pdf");
-    setIsPreviewLoading(true);
     // The chart of every record is captured from the DOM, so all of them are mounted for the
     // duration of the export even though the screen shows one at a time.
     setRenderAllRecords(true);
@@ -1905,33 +1904,15 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
       const chartImages = await captureAllChartImages(recordIds, ensureRecordsExpanded);
       console.log(`[Export PDF] Captured ${Object.keys(chartImages).length} charts out of ${recordIds.length}`);
 
-      const blob = await generateAtterbergPDF({
+      await generateAtterbergPDF({
         projectName: project.projectName,
         clientName: project.clientName || projectState.clientName,
         date: project.date,
         projectState,
         records: computedRecords,
-        skipDownload: true,
         chartImages: Object.keys(chartImages).length > 0 ? chartImages : undefined,
       });
-
-      if (blob) {
-        setPreviewData({
-          type: "pdf",
-          fileName: `Atterberg_Limits_${(project.projectName || "export").replace(/\s+/g, "_")}.pdf`,
-          blob,
-          summary: {
-            title: "Atterberg Limits Testing",
-            projectName: project.projectName,
-            clientName: project.clientName || projectState.clientName,
-            date: project.date,
-            pageCount: computedRecords.length,
-          },
-        });
-        setPreviewModalOpen(true);
-      }
     } finally {
-      setIsPreviewLoading(false);
       setIsExporting(null);
       setRenderAllRecords(false);
     }

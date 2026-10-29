@@ -179,17 +179,13 @@ describe("GradingTest selected record", () => {
     expect(screen.getByText("Particle size distribution graph")).toBeInTheDocument();
     expect(screen.getByText("Hydrometer analysis to BS 1377-2:1990:9.5")).toBeInTheDocument();
 
-    // Delete, Export, Print and Save share one right-aligned row under TESTED BY.
-    // Asserted before the export menu opens: while a Radix menu is open the
-    // underlying page is aria-hidden, so its roles are invisible to getByRole.
+    // PDF, Print and Save share one right-aligned row under TESTED BY.
+    expect(screen.getByRole("button", { name: "PDF" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Print" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Delete/ })).toBeInTheDocument();
-
-    window.addEventListener("error", (e) => { console.warn("[window-error]", e.message); });
-    fireEvent.keyDown(screen.getByRole("button", { name: "Export options" }), { key: "Enter" });
+    expect(screen.queryByRole("button", { name: /Delete/ })).not.toBeInTheDocument();
     // The grading report is issued as a PDF sheet only; no spreadsheet formats are offered.
-    expect(await screen.findByText("PDF")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Export/ })).not.toBeInTheDocument();
     expect(screen.queryByText("Excel")).not.toBeInTheDocument();
     expect(screen.queryByText("CSV")).not.toBeInTheDocument();
   });

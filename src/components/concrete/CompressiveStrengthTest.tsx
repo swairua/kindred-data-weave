@@ -135,7 +135,6 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   const testData = useTestData();
   const location = useLocation();
   const [rows, setRows] = useState<Row[]>(() => [emptyCubeRow()]);
-  const [isPrinting, setIsPrinting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const tableRef = useRef<HTMLTableElement | null>(null);
 
@@ -171,7 +170,6 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   const [resolvedTestId, setResolvedTestId] = useState<number | null>(null);
   const activeTestId = existingTestId ?? resolvedTestId;
   const [isSaving, setIsSaving] = useState(false);
-  const [saveCompleted, setSaveCompleted] = useState(false);
   const [editingRemarksIndex, setEditingRemarksIndex] = useState<number | null>(null);
   const [highlightedRowIndex, setHighlightedRowIndex] = useState<number | null>(null);
   const [passFailThreshold, setPassFailThreshold] = useState(25);
@@ -519,7 +517,6 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
       }
 
       toast.success("Compressive strength test saved successfully");
-      setSaveCompleted(true);
       // Keep the shared context in step with what was just persisted, so a
       // reopen (or another view) reads the saved details instead of stale ones.
       testData.updateConcreteTestMetadata({ ...testDetails });
@@ -936,9 +933,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
           <Button size="sm" variant="outline" onClick={() => void printPDF()}>
             <Printer className="h-3.5 w-3.5 mr-1" /> Print
           </Button>
-          {saveCompleted ? (
-            <Button size="sm" variant="default" onClick={handlePrint}><Printer className="h-3.5 w-3.5 mr-1" /> Print to Browser</Button>
-          ) : isSaving ? (
+          {isSaving ? (
             <Button size="sm" variant="default" disabled><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Saving...</Button>
           ) : (
             <Button size="sm" variant="default" onClick={handleSave}><SaveIcon className="h-3.5 w-3.5 mr-1" /> Save</Button>
