@@ -743,7 +743,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     <div className="flex flex-col gap-4">
       <div className="mb-6 p-4 bg-gradient-to-r from-amber-50 to-amber-100 rounded-lg border border-amber-200">
         <h3 className="text-sm font-semibold text-gray-800 mb-3">Test Details</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           {([
             { label: "Cement", field: "cement", placeholder: "e.g. CEM I 42.5R" },
             { label: "Fine Aggregate", field: "fineAggregate", placeholder: "e.g. River sand" },
@@ -911,13 +911,13 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
           </tbody>
         </table>
       </div>
-       <div className="flex items-center justify-between mt-3">
-        <div className="flex items-center gap-2">
+       <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setRows([...rows, emptyCubeRow()])}><Plus className="h-3.5 w-3.5 mr-1" /> Add row</Button>
           <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>Import from field log</Button>
           <input ref={fileInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleImportFieldLog} />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
           <Button
             size="sm"
             variant="outline"
