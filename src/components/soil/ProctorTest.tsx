@@ -412,7 +412,7 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
         <div className="sm:text-right"><span className="text-muted-foreground">STATUS</span><div className="font-semibold">{status} · {filledRows}/{rows.length} {type} points</div></div>
       </section>
 
-      <div className="sticky bottom-0 z-20 -mx-3 flex items-center justify-between gap-2 border-t bg-background/95 px-3 py-2 backdrop-blur print:hidden">
+      <div className="sticky bottom-0 z-20 -mx-3 flex items-center justify-end gap-2 border-t bg-background/95 px-3 py-2 backdrop-blur print:hidden">
         <div className="flex items-center justify-end gap-2">
           <Button variant="outline" size="sm" onClick={() => void exportPDF("download").catch(() => toast.error("Proctor report download failed"))}><FileDown className="mr-1.5 h-3.5 w-3.5" />PDF</Button>
           <Button variant="outline" size="sm" onClick={() => void exportPDF("print").catch(() => toast.error("Proctor report print failed"))}><Printer className="mr-1.5 h-3.5 w-3.5" />Print</Button>
