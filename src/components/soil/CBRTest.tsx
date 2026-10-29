@@ -62,7 +62,7 @@ const CBRTest = ({ testKey }: CBRTestProps) => {
 
   const chartConfig = { load: { label: "Load (kN)", color: "hsl(var(--primary))" } };
 
-  const exportPDF = async () => {
+  const buildPDF = async (skipDownload: boolean) => {
     let chartImages = {};
     if (chartData.length >= 2) {
       const chartBase64 = await captureChartAsBase64("cbr-chart");
@@ -71,17 +71,29 @@ const CBRTest = ({ testKey }: CBRTestProps) => {
       }
     }
 
-    generateTestPDF({
+    return generateTestPDF({
       title: "CBR (California Bearing Ratio)", ...project,
       tables: [{ headers: ["Penetration (mm)", "Load (kN)", "CBR (%)"], rows: rows.map(r => [r.penetration, r.load || "—", getCBR(r.penetration, r.load) || "—"]) }],
       chartImages,
+      skipDownload,
     });
+  };
+
+  const exportPDF = async () => {
+    await buildPDF(false);
+  };
+
+  const printPDF = async () => {
+    const doc = await buildPDF(true);
+    doc.autoPrint();
+    const printWindow = window.open(doc.output("bloburl"), "_blank");
+    if (printWindow) printWindow.onload = () => printWindow.print();
   };
 
   const status = filledCBR === 0 ? "No data" : filledCBR < rows.length ? "In progress" : "Complete";
 
   return (
-    <TestSection title="CBR (California Bearing Ratio)" testKey={testKey} onSave={() => {}} onClear={() => setRows([{ penetration: "", load: "" }])} onExportPDF={exportPDF}>
+    <TestSection title="CBR (California Bearing Ratio)" testKey={testKey} onSave={() => {}} onClear={() => setRows([{ penetration: "", load: "" }])} onExportPDF={exportPDF} onPrint={printPDF}>
       <div className="space-y-4">
         {/* Overview metrics card */}
         <Card className="border bg-muted/20 shadow-none">

@@ -22,6 +22,7 @@ interface PDFData {
     rows: string[][];
   }[];
   chartImages?: { [key: string]: string }; // Base64 encoded chart images
+  skipDownload?: boolean;
 }
 
 const COLORS = {
@@ -348,5 +349,8 @@ export const generateTestPDF = async (data: PDFData) => {
   }
 
   addFooter(doc, data, images);
-  doc.save(`${data.title.replace(/\s+/g, "_")}_Report.pdf`);
+  if (!data.skipDownload) {
+    doc.save(`${data.title.replace(/\s+/g, "_")}_Report.pdf`);
+  }
+  return doc;
 };

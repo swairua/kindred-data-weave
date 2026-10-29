@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Check, ChevronDown, Download, FileDown, HelpCircle, Loader2, Printer, Save } from "lucide-react";
+import { Check, ChevronDown, FileDown, HelpCircle, Loader2, Printer, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import ParticleSizeDistributionChart from "@/components/soil/ParticleSizeDistributionChart";
@@ -774,10 +773,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
 
       <section className="record-card flex flex-col gap-3 px-4 py-3 text-[10px] sm:flex-row sm:items-center sm:justify-between"><div><span className="text-muted-foreground">TESTED BY</span><div className="font-semibold uppercase">{record.testedBy || "—"}</div></div><div><span className="text-muted-foreground">DATE REPORTED</span><div className="font-semibold">{project.dateReported || "—"}</div></div></section>
       <div className="flex flex-wrap items-center justify-end gap-2 print:hidden">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild><Button variant="outline" size="sm" aria-label="Export options"><Download className="mr-1.5 h-3.5 w-3.5" />Export<ChevronDown className="ml-1 h-3 w-3" /></Button></DropdownMenuTrigger>
-          <DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => void exportFiles("pdf")}><FileDown className="mr-2 h-4 w-4" />PDF</DropdownMenuItem></DropdownMenuContent>
-        </DropdownMenu>
+        <Button variant="outline" size="sm" onClick={() => void exportFiles("pdf")}><FileDown className="mr-1.5 h-3.5 w-3.5" />PDF</Button>
         <Button variant="outline" size="sm" onClick={() => void handlePrint()}><Printer className="mr-1.5 h-3.5 w-3.5" />Print</Button>
         <Button size="sm" onClick={handleSave} disabled={saveStatus === "saving"}>{saveStatus === "saving" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : saveStatus === "saved" ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}{saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved" : "Save"}</Button>
       </div>
