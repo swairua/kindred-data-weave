@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ChevronRight, Plus, Trash2, AlertTriangle } from "lucide-react";
+import { ChevronRight, FileDown, Plus, Printer, Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { type ApiProjectRow } from "@/types/api";
 
@@ -2259,27 +2259,47 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
               {saveStatus === "error" && (lastSaveError || "Save failed")}
               {saveStatus === "idle" && `${computedRecords.length} record${computedRecords.length === 1 ? "" : "s"} ready`}
             </div>
-            {saveStatus === "saved" ? (
+            <div className="flex items-center justify-end gap-2">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={handleAddRecordAfterSave}
-                className="gap-2"
+                onClick={handleExportPDF}
+                disabled={isExporting !== null || printProcessing !== "idle"}
               >
-                <Plus className="h-4 w-4" /> Add Record
+                <FileDown className="mr-1.5 h-3.5 w-3.5" />PDF
               </Button>
-            ) : (
               <Button
                 type="button"
+                variant="outline"
                 size="sm"
-                onClick={handleSaveOnly}
-                disabled={saveStatus === "saving" || printProcessing !== "idle"}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                onClick={handlePrintSaved}
+                disabled={isExporting !== null || printProcessing !== "idle"}
               >
-                {saveStatus === "saving" ? "Saving…" : "Save"}
+                <Printer className="mr-1.5 h-3.5 w-3.5" />Print
               </Button>
-            )}
+              {saveStatus === "saved" ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddRecordAfterSave}
+                  className="gap-2"
+                >
+                  <Plus className="h-4 w-4" /> Add Record
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleSaveOnly}
+                  disabled={saveStatus === "saving" || printProcessing !== "idle"}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  {saveStatus === "saving" ? "Saving…" : "Save"}
+                </Button>
+              )}
+            </div>
           </div>
         )}
       </div>
