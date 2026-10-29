@@ -1,21 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Check, ChevronDown, Download, FileDown, Loader2, Save, Trash2 } from "lucide-react";
+import { Check, ChevronDown, FileDown, Loader2, Printer, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import MoistureDensityChart from "@/components/soil/MoistureDensityChart";
 import { useProject } from "@/context/ProjectContext";
 import { useGridArrowNavigation } from "@/hooks/useGridArrowNavigation";
@@ -36,7 +24,7 @@ import {
   type ProctorRow,
 } from "@/lib/proctorRecords";
 import type { McVoidLine } from "@/lib/mcChartGeometry";
-import { clearProctorResults, loadProctorResult, saveProctorResult } from "@/lib/proctorPersistence";
+import { loadProctorResult, saveProctorResult } from "@/lib/proctorPersistence";
 import { toast } from "sonner";
 import { useTestReport } from "@/hooks/useTestReport";
 import { generateMoistureDensityPDF } from "@/lib/mcPdfGenerator";
@@ -80,7 +68,6 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
   const [isLoading, setIsLoading] = useState(Boolean(projectId));
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
   // Arrow keys walk the weighing grid instead of leaving the technician to drag
   // the pointer across a table this wide.
   const gridNav = useGridArrowNavigation<HTMLDivElement>();
@@ -262,37 +249,18 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
     }
   };
 
-  const clear = async () => {
-    if (!projectId) return;
-    await clearProctorResults(projectId);
-    setRecord(emptyProctorRecord(metadata));
-    setRecordId(null);
-    setSaveStatus("idle");
-    setError(null);
-    setIsDeleting(false);
-    toast.success("Proctor record deleted");
-  };
-
   const handleSave = () => {
     void save().catch((saveError) => toast.error(saveError instanceof Error ? saveError.message : "Unable to save this record"));
   };
 
-  const handleDelete = () => {
-    void clear().catch((clearError) => {
-      const message = clearError instanceof Error ? clearError.message : "Unable to delete this record";
-      setError(message);
-      setIsDeleting(false);
-      toast.error(message);
-    });
-  };
 
   const captureChart = async () => {
     if (measuredPoints.length < 2) return null;
     return captureChartAsBase64("proctor-chart");
   };
 
-  const exportPDF = async () => {
-    await generateMoistureDensityPDF({
+  const exportPDF = async (action: "print" | "download") => {
+    const doc = await generateMoistureDensityPDF({
       projectName: project.projectName,
       clientName: project.clientName,
       date: project.projectDate || project.date,
@@ -321,7 +289,13 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
       fitted: fittedPoints,
       voidLines,
       chartImage: await captureChart(),
+      skipDownload: action === "print",
     });
+    if (action === "print") {
+      doc.autoPrint();
+      const printWindow = window.open(doc.output("bloburl"), "_blank");
+      if (printWindow) printWindow.onload = () => printWindow.print();
+    }
   };
 
   if (isLoading) {
@@ -439,29 +413,9 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
       </section>
 
       <div className="sticky bottom-0 z-20 -mx-3 flex items-center justify-between gap-2 border-t bg-background/95 px-3 py-2 backdrop-blur print:hidden">
-        <AlertDialog open={isDeleting} onOpenChange={setIsDeleting}>
-          <AlertDialogTrigger asChild>
-            <Button variant="outline" size="sm" className="border-destructive/30 text-destructive hover:bg-destructive/10"><Trash2 className="mr-1.5 h-3.5 w-3.5" />Delete</Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete this Proctor record?</AlertDialogTitle>
-              <AlertDialogDescription>This removes the saved Proctor result for this project and clears the current readings.</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete record</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
         <div className="flex items-center justify-end gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild><Button variant="outline" size="sm"><Download className="h-3.5 w-3.5" />Export<ChevronDown className="h-3 w-3" /></Button></DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {/* This report is issued as the printed sheet only; no spreadsheet formats. */}
-              <DropdownMenuItem onSelect={() => void exportPDF()}><FileDown className="mr-2 h-4 w-4" />PDF</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button variant="outline" size="sm" onClick={() => void exportPDF("print").catch(() => toast.error("Proctor report print failed"))}><Printer className="mr-1.5 h-3.5 w-3.5" />Print</Button>
+          <Button variant="outline" size="sm" onClick={() => void exportPDF("download").catch(() => toast.error("Proctor report download failed"))}><FileDown className="mr-1.5 h-3.5 w-3.5" />PDF</Button>
           <Button size="sm" className="min-w-20" onClick={handleSave} disabled={saveStatus === "saving" || isLoading}>
             {saveStatus === "saving" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : saveStatus === "saved" ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}
             {saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved" : "Save"}
