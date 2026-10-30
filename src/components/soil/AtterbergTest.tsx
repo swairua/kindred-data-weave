@@ -18,6 +18,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -705,6 +714,8 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
     records: [],
   });
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
+  const [printDialogOpen, setPrintDialogOpen] = useState(false);
+  const [printSelection, setPrintSelection] = useState<Set<string>>(new Set());
   const [smokeCheckStatus, setSmokeCheckStatus] = useState<SmokeCheckStatus | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
@@ -1442,19 +1453,20 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
     });
   }, []);
 
-  const handlePrintSaved = useCallback(async () => {
+  const openPrintDialog = useCallback(() => {
     if (printProcessing !== "idle") {
       return;
     }
+    if (computedRecords.length === 0) {
+      toast.info("Nothing to print");
+      return;
+    }
+    setPrintSelection(new Set(computedRecords.map((r) => r.id)));
+    setPrintDialogOpen(true);
+  }, [computedRecords, printProcessing]);
 
+  const printRecords = useCallback((recordIds: string[]) => {
     try {
-      if (computedRecords.length === 0) {
-        toast.info("Nothing to print");
-        return;
-      }
-
-      const recordIds = computedRecords.map((r) => r.id);
-
       if (recordIds.length > 0) {
         setPrintProcessing("processing");
 
@@ -1522,7 +1534,13 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
       toast.error("Error during print");
       setPrintProcessing("idle");
     }
-  }, [computedRecords, printProcessing]);
+  }, [computedRecords, projectState, project]);
+
+  const confirmPrintSelection = useCallback(() => {
+    const ids = computedRecords.filter((r) => printSelection.has(r.id)).map((r) => r.id);
+    setPrintDialogOpen(false);
+    printRecords(ids);
+  }, [computedRecords, printSelection, printRecords]);
 
   const handleAddRecordAfterSave = useCallback(() => {
     addRecord();
@@ -2165,7 +2183,7 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
         testKey={testKey}
         onClear={handleClearRequest}
         onExportPDF={handleExportPDF}
-        onPrint={handlePrintSaved}
+        onPrint={openPrintDialog}
         saveStatus={saveStatus}
         lastSavedAt={lastSavedAt}
         lastSaveError={lastSaveError}
@@ -2273,7 +2291,7 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={handlePrintSaved}
+                onClick={openPrintDialog}
                 disabled={isExporting !== null || printProcessing !== "idle"}
               >
                 <Printer className="mr-1.5 h-3.5 w-3.5" />Print
@@ -2320,6 +2338,49 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={printDialogOpen} onOpenChange={setPrintDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Print records</DialogTitle>
+            <DialogDescription>Select which records to print. A professional PDF will open with the print dialog.</DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center justify-between text-xs">
+            <button type="button" className="text-primary hover:underline" onClick={() => setPrintSelection(new Set(computedRecords.map((r) => r.id)))}>
+              Select all
+            </button>
+            <button type="button" className="text-primary hover:underline" onClick={() => setPrintSelection(new Set())}>
+              Clear
+            </button>
+          </div>
+          <div className="max-h-72 space-y-2 overflow-y-auto">
+            {computedRecords.map((record, index) => (
+              <label key={record.id} className="flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2 text-sm">
+                <Checkbox
+                  checked={printSelection.has(record.id)}
+                  onCheckedChange={(checked) => {
+                    setPrintSelection((prev) => {
+                      const next = new Set(prev);
+                      if (checked === true) next.add(record.id);
+                      else next.delete(record.id);
+                      return next;
+                    });
+                  }}
+                />
+                <span className="font-medium">{index + 1}. {record.label || record.title}</span>
+              </label>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPrintDialogOpen(false)}>Cancel</Button>
+            <Button disabled={printSelection.size === 0} onClick={confirmPrintSelection}>
+              {printSelection.size === computedRecords.length
+                ? `Print all (${printSelection.size})`
+                : `Print ${printSelection.size} selected`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ExportPreviewModal
         open={previewModalOpen}
