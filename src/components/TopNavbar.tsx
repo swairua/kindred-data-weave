@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { FlaskConical, Package, FileText, Layers, Wrench, ChevronRight } from "lucide-react";
+import { FlaskConical, Package, FileText, Layers, Wrench, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/context/SessionContext";
 import { toast } from "sonner";
@@ -105,9 +105,7 @@ const TopNavbar = ({ currentView, onViewChange, userName, userEmail, onLogout }:
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Menu"
           >
-            <span className="h-0.5 w-6 bg-white/50"></span>
-            <span className="h-0.5 w-6 bg-white/50"></span>
-            <span className="h-0.5 w-6 bg-white/50"></span>
+            <Menu className="h-6 w-6" />
           </button>
         </div>
       </div>
