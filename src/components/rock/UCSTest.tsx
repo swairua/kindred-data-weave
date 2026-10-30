@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import TestSection from "@/components/TestSection";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Plus, X } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
 import { generateTestPDF } from "@/lib/pdfGenerator";
 import { useTestReport } from "@/hooks/useTestReport";
+import { loadTestResult, saveTestResult } from "@/lib/testResultPersistence";
 
 interface Row { sampleId: string; load: string; area: string }
 
@@ -15,6 +16,8 @@ const UCSTest = () => {
   const defaultRows: Row[] = [{ sampleId: "R1", load: "", area: "" }];
   const [rows, setRows] = useState<Row[]>(project.currentProjectId ? defaultRows : []);
   const hasProjectSelected = !!project.currentProjectId;
+  const projectId = project.currentProjectId ?? null;
+  const [recordId, setRecordId] = useState<number | null>(null);
 
   const getStrength = (row: Row) => { const l = parseFloat(row.load); const a = parseFloat(row.area); if (!l || !a) return ""; return ((l * 1000) / a).toFixed(2); };
   const update = (i: number, field: keyof Row, val: string) => { const next = [...rows]; next[i] = { ...next[i], [field]: val }; setRows(next); };
@@ -26,12 +29,40 @@ const UCSTest = () => {
   ], [avgUCS]);
   useTestReport("ucs", strengths.length, ucsResults);
 
+  useEffect(() => {
+    if (!projectId) return;
+    let active = true;
+    loadTestResult(projectId, "ucs")
+      .then((result) => {
+        if (!active || !result) return;
+        setRecordId(result.id);
+        const savedRows = (result.payload_json as { rows?: Row[] } | null)?.rows;
+        if (Array.isArray(savedRows) && savedRows.length > 0) setRows(savedRows);
+      })
+      .catch((error) => console.error("Failed to load UCS result", error));
+    return () => { active = false; };
+  }, [projectId]);
+
+  const save = async () => {
+    if (!projectId) throw new Error("Select a project before saving this UCS test");
+    const savedId = await saveTestResult(projectId, recordId, {
+      test_key: "ucs",
+      name: "UCS (Unconfined Compressive Strength)",
+      category: "rock",
+      status: strengths.length === 0 ? "not-started" : strengths.length < rows.length ? "in-progress" : "completed",
+      data_points: strengths.length,
+      key_results_json: ucsResults.filter((result) => result.value),
+      payload_json: { rows },
+    });
+    setRecordId(savedId);
+  };
+
   const exportPDF = () => {
     generateTestPDF({ title: "UCS (Unconfined Compressive Strength)", ...project, tables: [{ headers: ["Sample ID", "Load (kN)", "Area (mm²)", "Strength (MPa)"], rows: rows.map(r => [r.sampleId, r.load || "—", r.area || "—", getStrength(r) || "—"]) }] });
   };
 
   return (
-    <TestSection title="UCS (Unconfined Compressive Strength)" onSave={() => {}} onClear={() => setRows([{ sampleId: "", load: "", area: "" }])} onExportPDF={exportPDF}>
+    <TestSection title="UCS (Unconfined Compressive Strength)" onSave={save} onClear={() => setRows([{ sampleId: "", load: "", area: "" }])} onExportPDF={exportPDF}>
       {!hasProjectSelected && rows.length === 0 ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">

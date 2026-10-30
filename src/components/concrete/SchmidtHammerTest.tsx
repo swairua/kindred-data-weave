@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import TestSection from "@/components/TestSection";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Label } from "@/components/ui/label";
 import { useTestReport } from "@/hooks/useTestReport";
 import { captureChartAsBase64 } from "@/lib/chartCapture";
+import { loadTestResult, saveTestResult } from "@/lib/testResultPersistence";
 
 interface Row { location: string; r1: string; r2: string; r3: string; r4: string; r5: string }
 
@@ -22,6 +23,8 @@ const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
     { location: "L1", r1: "", r2: "", r3: "", r4: "", r5: "" },
     { location: "L2", r1: "", r2: "", r3: "", r4: "", r5: "" },
   ]);
+  const projectId = project.currentProjectId ?? null;
+  const [recordId, setRecordId] = useState<number | null>(null);
 
   const getAvgRebound = (row: Row) => {
     const vals = [row.r1, row.r2, row.r3, row.r4, row.r5].map(Number).filter(Boolean);
@@ -55,6 +58,34 @@ const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
   ], [avgRebound]);
   useTestReport(testKey, rebounds.length, results);
 
+  useEffect(() => {
+    if (!projectId) return;
+    let active = true;
+    loadTestResult(projectId, testKey)
+      .then((result) => {
+        if (!active || !result) return;
+        setRecordId(result.id);
+        const savedRows = (result.payload_json as { rows?: Row[] } | null)?.rows;
+        if (Array.isArray(savedRows) && savedRows.length > 0) setRows(savedRows);
+      })
+      .catch((error) => console.error(`Failed to load ${testName} result`, error));
+    return () => { active = false; };
+  }, [projectId, testKey, testName]);
+
+  const save = async () => {
+    if (!projectId) throw new Error(`Select a project before saving this ${testName} test`);
+    const savedId = await saveTestResult(projectId, recordId, {
+      test_key: testKey,
+      name: testName,
+      category: testKey === "schmidt_rock" ? "rock" : "concrete",
+      status: rebounds.length === 0 ? "not-started" : rebounds.length < rows.length ? "in-progress" : "completed",
+      data_points: rebounds.length,
+      key_results_json: results.filter((result) => result.value),
+      payload_json: { rows },
+    });
+    setRecordId(savedId);
+  };
+
   const tableData = { headers: ["Location", "R1", "R2", "R3", "R4", "R5", "Avg Rebound", "Est. Strength (MPa)"], rows: rows.map(r => { const avg = getAvgRebound(r); return [r.location, r.r1 || "—", r.r2 || "—", r.r3 || "—", r.r4 || "—", r.r5 || "—", avg || "—", avg ? getEstStrength(avg) : "—"]; }) };
 
   const exportPDF = async () => {
@@ -70,7 +101,7 @@ const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
   };
 
   return (
-    <TestSection title={testName} onSave={() => {}} onClear={() => setRows([{ location: "L1", r1: "", r2: "", r3: "", r4: "", r5: "" }])} onExportPDF={exportPDF}>
+    <TestSection title={testName} onSave={save} onClear={() => setRows([{ location: "L1", r1: "", r2: "", r3: "", r4: "", r5: "" }])} onExportPDF={exportPDF}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Location</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R1</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R2</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R3</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R4</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R5</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Avg R</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Est. MPa</th><th className="w-10"></th></tr></thead>

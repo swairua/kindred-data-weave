@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import TestSection from "@/components/TestSection";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -7,12 +7,15 @@ import { Plus, X } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
 import { generateTestPDF } from "@/lib/pdfGenerator";
 import { useTestReport } from "@/hooks/useTestReport";
+import { loadTestResult, saveTestResult } from "@/lib/testResultPersistence";
 
 interface Row { sampleId: string; failureLoad: string; de: string }
 
 const PointLoadTest = () => {
   const project = useProject();
   const [rows, setRows] = useState<Row[]>([{ sampleId: "P1", failureLoad: "", de: "" }]);
+  const projectId = project.currentProjectId ?? null;
+  const [recordId, setRecordId] = useState<number | null>(null);
 
   const getIndex = (row: Row) => { const p = parseFloat(row.failureLoad); const de = parseFloat(row.de); if (!p || !de) return ""; return ((p * 1000) / (de * de)).toFixed(3); };
   const update = (i: number, field: keyof Row, val: string) => { const next = [...rows]; next[i] = { ...next[i], [field]: val }; setRows(next); };
@@ -24,6 +27,34 @@ const PointLoadTest = () => {
   ], [avgIndex]);
   useTestReport("pointload", indices.length, plResults);
 
+  useEffect(() => {
+    if (!projectId) return;
+    let active = true;
+    loadTestResult(projectId, "pointload")
+      .then((result) => {
+        if (!active || !result) return;
+        setRecordId(result.id);
+        const savedRows = (result.payload_json as { rows?: Row[] } | null)?.rows;
+        if (Array.isArray(savedRows) && savedRows.length > 0) setRows(savedRows);
+      })
+      .catch((error) => console.error("Failed to load point load result", error));
+    return () => { active = false; };
+  }, [projectId]);
+
+  const save = async () => {
+    if (!projectId) throw new Error("Select a project before saving this point load test");
+    const savedId = await saveTestResult(projectId, recordId, {
+      test_key: "pointload",
+      name: "Point Load Test",
+      category: "rock",
+      status: indices.length === 0 ? "not-started" : indices.length < rows.length ? "in-progress" : "completed",
+      data_points: indices.length,
+      key_results_json: plResults.filter((result) => result.value),
+      payload_json: { rows },
+    });
+    setRecordId(savedId);
+  };
+
   const tableData = { headers: ["Sample ID", "Failure Load (kN)", "De (mm)", "Is(50) (MPa)"], rows: rows.map(r => [r.sampleId, r.failureLoad || "—", r.de || "—", getIndex(r) || "—"]) };
 
   const exportPDF = () => {
@@ -31,7 +62,7 @@ const PointLoadTest = () => {
   };
 
   return (
-    <TestSection title="Point Load Test" onSave={() => {}} onClear={() => setRows([{ sampleId: "", failureLoad: "", de: "" }])} onExportPDF={exportPDF}>
+    <TestSection title="Point Load Test" onSave={save} onClear={() => setRows([{ sampleId: "", failureLoad: "", de: "" }])} onExportPDF={exportPDF}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Sample ID</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Failure Load (kN)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">De (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Is(50) (MPa)</th><th className="w-10"></th></tr></thead>
