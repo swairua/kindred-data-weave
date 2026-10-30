@@ -15,7 +15,6 @@ type NavItem = {
 const labItems: NavItem[] = [
   { id: "reception", label: "Reception", icon: Package, path: "/reception" },
   { id: "tests", label: "Testing", icon: FileText, path: "/testing" },
-  { id: "reports", label: "Reports", icon: FileText, path: "/reports" },
   { id: "projects", label: "Jobs & clients", icon: Layers, path: "/projects" },
   { id: "storage", label: "Storage", icon: Package, path: "/storage" },
   { id: "equipment", label: "Equipment", icon: Wrench, path: "/equipment" },
@@ -55,28 +54,28 @@ const TopNavbar = ({ currentView, onViewChange, userName, userEmail, onLogout }:
     <nav className="fixed top-0 left-0 right-0 z-50 bg-gray-900 text-white shadow-lg">
       <div className="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
         {/* Brand */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center justify-center h-8 w-8 rounded bg-teal-500 text-white">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="flex shrink-0 items-center justify-center h-8 w-8 rounded bg-teal-500 text-white">
             <FlaskConical className="h-5 w-5" />
           </div>
-          <span className="font-semibold text-lg tracking-tight">Cransfield LIMS</span>
+          <span className="font-semibold text-base sm:text-lg tracking-tight leading-tight truncate">Cransfield LIMS</span>
         </div>
 
         {/* Tabs */}
-        <div className="hidden md:flex items-center gap-1">
+        <div className="hidden lg:flex items-center gap-1 xl:gap-2">
           {labItems.map((item) => {
             const isActive = item.id === currentView;
             return (
               <button
                 key={item.id}
                 onClick={() => handleViewChange(item)}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`inline-flex items-center whitespace-nowrap px-3 xl:px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   isActive
                     ? "bg-teal-600 text-white shadow-md"
                     : "text-gray-300 hover:text-white hover:bg-gray-800"
                 }`}
               >
-                <item.icon className={`h-4 w-4 mr-2 ${isActive ? "text-white" : "text-gray-400"}`} />
+                <item.icon className={`h-4 w-4 shrink-0 mr-2 ${isActive ? "text-white" : "text-gray-400"}`} />
                 {item.label}
               </button>
             );
@@ -86,23 +85,23 @@ const TopNavbar = ({ currentView, onViewChange, userName, userEmail, onLogout }:
         {/* Right side - user context + actions */}
         <div className="flex items-center gap-3">
           {user || (userName || userEmail) ? (
-            <div className="hidden md:flex items-center gap-2 text-right">
-              <div>
-                <p className="text-sm font-medium text-white leading-tight">{user?.name || userName}</p>
-                <p className="text-xs text-gray-400 leading-tight">{user?.email || userEmail}</p>
+            <div className="hidden lg:flex items-center gap-3 xl:gap-4">
+              <div className="text-right">
+                <p className="text-sm font-medium text-white leading-tight whitespace-nowrap">{user?.name || userName}</p>
+                <p className="hidden xl:block text-xs text-gray-400 leading-tight whitespace-nowrap">{user?.email || userEmail}</p>
               </div>
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
               >
                 <span className="h-3 w-3 text-gray-400">⏻</span>
-                <span className="hidden sm:inline">Logout</span>
+                <span>Logout</span>
               </button>
             </div>
           ) : null}
 
           <button
-            className="md:hidden p-2 text-gray-300 hover:text-white"
+            className="lg:hidden p-2 text-gray-300 hover:text-white"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Menu"
           >
@@ -115,7 +114,7 @@ const TopNavbar = ({ currentView, onViewChange, userName, userEmail, onLogout }:
 
       {/* Mobile menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-gray-900 border-t border-gray-800">
+        <div className="lg:hidden bg-gray-900 border-t border-gray-800 max-h-[calc(100vh-4rem)] overflow-y-auto">
           <div className="px-4 py-4 space-y-2">
             {labItems.map((item) => {
               const isActive = item.id === currentView;
@@ -141,6 +140,12 @@ const TopNavbar = ({ currentView, onViewChange, userName, userEmail, onLogout }:
               );
             })}
             <div className="pt-4 border-t border-gray-800">
+              {(user || userName || userEmail) && (
+                <div className="px-3 pb-3">
+                  <p className="text-sm font-medium text-white">{user?.name || userName}</p>
+                  <p className="text-xs text-gray-400 break-all">{user?.email || userEmail}</p>
+                </div>
+              )}
               <button
                 onClick={handleLogout}
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
