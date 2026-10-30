@@ -70,7 +70,7 @@ const PointLoadTest = ({ testKey }: { testKey?: string }) => {
   const printPDF = async () => printPDFDocument(await buildPDF(true));
 
   return (
-    <TestSection title="Point Load Test" testKey={testKey} onSave={save} onClear={() => setRows([{ sampleId: "", failureLoad: "", de: "" }])} onExportPDF={exportPDF} onPrint={printPDF}>
+    <TestSection title="Point Load Test" testKey={testKey} onSave={save} onClear={() => setRows([{ sampleId: "", failureLoad: "", de: "" }])} onExportPDF={exportPDF} onPrint={printPDF} actionsPlacement="footer">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Sample ID</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Failure Load (kN)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">De (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Is(50) (MPa)</th><th className="w-10"></th></tr></thead>
