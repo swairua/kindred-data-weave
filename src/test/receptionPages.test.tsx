@@ -248,7 +248,7 @@ describe("Log consignment wizard", () => {
     customAreas.forEach((area) => {
       fireEvent.click(screen.getByRole("button", { name: `Add ${area} custom input` }));
       fireEvent.change(screen.getByLabelText(`${area[0].toUpperCase()}${area.slice(1)} custom field name`), {
-        target: { value: `${area.replaceAll(" ", "_")}_note` },
+        target: { value: `${area.replace(/ /g, "_")}_note` },
       });
       fireEvent.change(screen.getByLabelText(`${area[0].toUpperCase()}${area.slice(1)} custom field value`), {
         target: { value: `${area} value` },
