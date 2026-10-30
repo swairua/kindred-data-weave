@@ -13,7 +13,11 @@ interface Row { sampleId: string; load: string; area: string }
 
 const UCSTest = () => {
   const project = useProject();
-  const defaultRows: Row[] = [{ sampleId: "R1", load: "", area: "" }];
+  const defaultRows: Row[] = [
+    { sampleId: "R1", load: "103", area: "2290" },
+    { sampleId: "R2", load: "118", area: "2290" },
+    { sampleId: "R3", load: "96", area: "2290" },
+  ];
   const [rows, setRows] = useState<Row[]>(project.currentProjectId ? defaultRows : []);
   const hasProjectSelected = !!project.currentProjectId;
   const projectId = project.currentProjectId ?? null;

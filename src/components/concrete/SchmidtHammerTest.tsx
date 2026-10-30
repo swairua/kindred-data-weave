@@ -20,8 +20,8 @@ const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
   const testName = testKey === "schmidt_rock" ? "Schmidt Hammer" : "NDT (Rebound Hammer)";
   const chartId = testKey === "schmidt_rock" ? "schmidt-rock-chart" : "schmidt-chart";
   const [rows, setRows] = useState<Row[]>([
-    { location: "L1", r1: "", r2: "", r3: "", r4: "", r5: "" },
-    { location: "L2", r1: "", r2: "", r3: "", r4: "", r5: "" },
+    { location: "L1", r1: "42", r2: "44", r3: "40", r4: "43", r5: "45" },
+    { location: "L2", r1: "41", r2: "43", r3: "42", r4: "44", r5: "40" },
   ]);
   const projectId = project.currentProjectId ?? null;
   const [recordId, setRecordId] = useState<number | null>(null);

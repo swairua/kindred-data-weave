@@ -13,7 +13,11 @@ interface Row { sampleId: string; failureLoad: string; de: string }
 
 const PointLoadTest = () => {
   const project = useProject();
-  const [rows, setRows] = useState<Row[]>([{ sampleId: "P1", failureLoad: "", de: "" }]);
+  const [rows, setRows] = useState<Row[]>([
+    { sampleId: "P1", failureLoad: "1.2", de: "50" },
+    { sampleId: "P2", failureLoad: "2.5", de: "54" },
+    { sampleId: "P3", failureLoad: "1.8", de: "52" },
+  ]);
   const projectId = project.currentProjectId ?? null;
   const [recordId, setRecordId] = useState<number | null>(null);
 
