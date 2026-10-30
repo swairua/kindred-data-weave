@@ -4,13 +4,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Plus, X } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
-import { generateTestPDF } from "@/lib/pdfGenerator";
+import { generateTestPDF, printPDFDocument } from "@/lib/pdfGenerator";
 import { useTestReport } from "@/hooks/useTestReport";
 import { loadTestResult, saveTestResult } from "@/lib/testResultPersistence";
 
 interface Row { depth: string; coneResistance: string; frictionRatio: string }
 
-const CPTTest = () => {
+const CPTTest = ({ testKey }: { testKey?: string }) => {
   const project = useProject();
   const [rows, setRows] = useState<Row[]>([
     { depth: "1.0", coneResistance: "2.5", frictionRatio: "25" },
@@ -57,12 +57,16 @@ const CPTTest = () => {
     setRecordId(savedId);
   };
 
-  const exportPDF = () => {
-    generateTestPDF({ title: "CPT (Cone Penetration Test)", ...project, tables: [{ headers: ["Depth (m)", "Cone Resistance qc (MPa)", "Friction Ratio fs (kPa)"], rows: rows.map(r => [r.depth || "—", r.coneResistance || "—", r.frictionRatio || "—"]) }] });
+  const buildPDF = (skipDownload: boolean) => generateTestPDF({ title: "CPT (Cone Penetration Test)", ...project, skipDownload, tables: [{ headers: ["Depth (m)", "Cone Resistance qc (MPa)", "Friction Ratio fs (kPa)"], rows: rows.map(r => [r.depth || "—", r.coneResistance || "—", r.frictionRatio || "—"]) }] });
+
+  const exportPDF = async () => {
+    await buildPDF(false);
   };
 
+  const printPDF = async () => printPDFDocument(await buildPDF(true));
+
   return (
-    <TestSection title="CPT (Cone Penetration Test)" onSave={save} onClear={() => setRows([{ depth: "", coneResistance: "", frictionRatio: "" }])} onExportPDF={exportPDF}>
+    <TestSection title="CPT (Cone Penetration Test)" testKey={testKey} onSave={save} onClear={() => setRows([{ depth: "", coneResistance: "", frictionRatio: "" }])} onExportPDF={exportPDF} onPrint={printPDF}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Depth (m)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Cone Resistance qc (MPa)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Friction Ratio fs (kPa)</th><th className="w-10"></th></tr></thead>

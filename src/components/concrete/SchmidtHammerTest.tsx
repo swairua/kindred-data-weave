@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import CalculatedInput from "@/components/CalculatedInput";
 import { Plus, X } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
-import { generateTestPDF } from "@/lib/pdfGenerator";
+import { generateTestPDF, printPDFDocument } from "@/lib/pdfGenerator";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Label } from "@/components/ui/label";
@@ -88,7 +88,7 @@ const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
 
   const tableData = { headers: ["Location", "R1", "R2", "R3", "R4", "R5", "Avg Rebound", "Est. Strength (MPa)"], rows: rows.map(r => { const avg = getAvgRebound(r); return [r.location, r.r1 || "—", r.r2 || "—", r.r3 || "—", r.r4 || "—", r.r5 || "—", avg || "—", avg ? getEstStrength(avg) : "—"]; }) };
 
-  const exportPDF = async () => {
+  const buildPDF = async (skipDownload: boolean) => {
     let chartImages = {};
     if (chartData.length >= 1) {
       const chartBase64 = await captureChartAsBase64(chartId);
@@ -97,11 +97,17 @@ const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
       }
     }
 
-    generateTestPDF({ title: testName, ...project, tables: [tableData], chartImages });
+    return generateTestPDF({ title: testName, ...project, skipDownload, tables: [tableData], chartImages });
   };
 
+  const exportPDF = async () => {
+    await buildPDF(false);
+  };
+
+  const printPDF = async () => printPDFDocument(await buildPDF(true));
+
   return (
-    <TestSection title={testName} onSave={save} onClear={() => setRows([{ location: "L1", r1: "", r2: "", r3: "", r4: "", r5: "" }])} onExportPDF={exportPDF}>
+    <TestSection title={testName} testKey={testKey} onSave={save} onClear={() => setRows([{ location: "L1", r1: "", r2: "", r3: "", r4: "", r5: "" }])} onExportPDF={exportPDF} onPrint={printPDF}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Location</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R1</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R2</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R3</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R4</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R5</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Avg R</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Est. MPa</th><th className="w-10"></th></tr></thead>
