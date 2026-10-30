@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import Reception from "@/pages/Reception";
 import LogConsignment from "@/pages/LogConsignment";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import type { ReceptionConsignmentInput } from "@/lib/reception";
 
 const receptionMocks = vi.hoisted(() => ({
@@ -91,10 +92,12 @@ const LocationProbe = () => {
 
 const renderReception = () =>
   render(
-    <MemoryRouter initialEntries={["/reception"]}>
-      <Reception />
-      <LocationProbe />
-    </MemoryRouter>,
+    <SidebarProvider>
+      <MemoryRouter initialEntries={["/reception"]}>
+        <Reception />
+        <LocationProbe />
+      </MemoryRouter>
+    </SidebarProvider>,
   );
 
 const renderLogConsignment = (entry = "/reception/new") =>
@@ -245,7 +248,7 @@ describe("Log consignment wizard", () => {
     customAreas.forEach((area) => {
       fireEvent.click(screen.getByRole("button", { name: `Add ${area} custom input` }));
       fireEvent.change(screen.getByLabelText(`${area[0].toUpperCase()}${area.slice(1)} custom field name`), {
-        target: { value: `${area.replaceAll(" ", "_")}_note` },
+        target: { value: `${area.replace(/ /g, "_")}_note` },
       });
       fireEvent.change(screen.getByLabelText(`${area[0].toUpperCase()}${area.slice(1)} custom field value`), {
         target: { value: `${area} value` },

@@ -12,8 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import Navigation from "@/components/Navigation";
 import { listReceptionConsignments, listReceptionFieldDefinitions, listReceptionPhotos, saveReceptionConsignment } from "@/lib/api";
 import {
   RECEPTION_TEST_CODES,
@@ -256,10 +254,7 @@ const LogConsignment = () => {
   const heldSamples = draft.samples.filter((s) => isSampleOnHold(s.condition));
 
   return (
-    <SidebarProvider>
-      <Navigation currentView="reception" onViewChange={() => {}} />
-      <SidebarInset>
-        <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-muted/30">
           <header className="flex flex-col items-start gap-2 bg-[#1d2b26] px-4 py-3 text-white sm:flex-row sm:items-center sm:gap-3">
             <Button variant="ghost" size="sm" className="text-white hover:bg-white/10 w-full sm:w-auto" onClick={() => navigate("/reception")}>
               <ArrowLeft className="h-4 w-4" /> Reception
@@ -784,9 +779,7 @@ className={`inline-flex h-7 w-7 items-center justify-center rounded border trans
               </Card>
             </aside>
           </main>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+    </div>
   );
 };
 

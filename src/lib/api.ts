@@ -1,6 +1,6 @@
 import type { ReceptionConsignmentInput, ReceptionFieldArea, ReceptionFieldDefinition, ReceptionPhoto } from "@/lib/reception";
 import { consignmentIsOnHold, getPrimaryTestTypeFromConsignment, type ReceptionSampleInput } from "@/lib/reception";
-import { type ApiCompressiveTestRow } from "@/types/api";
+import { type ApiCompressiveTestRow, type ApiTestDefinitionRow } from "@/types/api";
 
 const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
 
@@ -195,13 +195,13 @@ export const debugAuthState = () => {
 
   console.log("[API] Storage status:");
   console.log("[API]   - localStorage token:", localStorageToken ? `✓ Present (${localStorageToken.substring(0, 20)}...)` : "✗ Empty");
-  console.log("[API]   - memory token:", (window as any).__sessionTokenMemory ? `✓ Present` : "✗ Empty");
+  console.log("[API]   - memory token:", (window as unknown as { __sessionTokenMemory?: unknown }).__sessionTokenMemory ? `✓ Present` : "✗ Empty");
   console.log("[API] For next request, X-Session-Token will be:", token ? `✓ Sent (${token.substring(0, 20)}...)` : "✗ Not sent");
   console.log("[API] If you see '✗ Not sent', the token was lost. Try logging in again.");
 };
 
 // Make debug auth available globally on window
-(window as any).__debugAuth = debugAuthState;
+(window as unknown as { __debugAuth?: typeof debugAuthState }).__debugAuth = debugAuthState;
 
 // Debug function to check API connectivity - can be called from browser console
 // Connectivity check utility
@@ -435,7 +435,7 @@ export const apiRequest = async <T>(
 
     // Handle abort errors with specific messaging
     if (error instanceof DOMException && error.name === "AbortError") {
-      const reason = (error as any).reason?.message || "Request timeout";
+      const reason = (error as DOMException & { reason?: { message?: string } }).reason?.message || "Request timeout";
       if (isAborted) {
         console.warn(`[API] Request timeout for action: ${params?.action || 'unknown'}`);
         throw new Error(`Request timeout: The server took too long to respond (>${timeoutMs / 1000}s). Please check your network connection and try again.`);
@@ -697,6 +697,8 @@ export const listRecords = async <T>(table: string, params?: Record<string, stri
 /** Reception consignments persist server-side once the table ships, localStorage until then. */
 const RECEPTION_STORAGE_KEY = "cransfield_reception_consignments_v1";
 
+type ConsignmentLegacyFields = { project_id?: number | null; _compressiveTestId?: number };
+
 export const listReceptionConsignments = async (): Promise<ReceptionConsignmentInput[]> => {
   try {
     const stored = await listRecords<{ id?: number; rc_no?: string; job_no?: string; status?: string; project_id?: number | null; payload_json?: unknown; processed_at?: string | null }>("reception_consignments", { limit: 500 });
@@ -709,17 +711,17 @@ export const listReceptionConsignments = async (): Promise<ReceptionConsignmentI
         if (parsed && typeof parsed === "object" && "rcNo" in (parsed as Record<string, unknown>)) {
           const c = parsed as ReceptionConsignmentInput;
           if (row.project_id !== undefined && row.project_id !== null) c.projectId = row.project_id;
-          else if ((c as any).project_id !== undefined) c.projectId = (c as any).project_id;
+          else if ((c as ReceptionConsignmentInput & ConsignmentLegacyFields).project_id !== undefined) c.projectId = (c as ReceptionConsignmentInput & ConsignmentLegacyFields).project_id;
           if (row.processed_at) c.processedAt = row.processed_at;
           consignments.push(c);
         } else if (parsed && typeof parsed === "object") {
-          const c = parsed as any;
+          const c = parsed as { rcNo?: string; jobNo?: string; status?: string; projectId?: number | null; processedAt?: string | null };
           c.rcNo = c.rcNo || row.rc_no;
           c.jobNo = c.jobNo || row.job_no;
           c.status = c.status || row.status;
           if (row.project_id) c.projectId = row.project_id;
           if (row.processed_at) c.processedAt = row.processed_at;
-          consignments.push(c);
+          consignments.push(c as ReceptionConsignmentInput);
         }
       }
       if (consignments.length > 0) return consignments;
@@ -750,7 +752,7 @@ export const saveReceptionConsignment = async (consignment: ReceptionConsignment
         rc_no: consignment.rcNo,
         job_no: consignment.jobNo,
         status: consignment.status,
-        project_id: consignment.projectId ?? (consignment as any).project_id ?? null,
+        project_id: consignment.projectId ?? (consignment as ReceptionConsignmentInput & ConsignmentLegacyFields).project_id ?? null,
         processed_at: consignment.processedAt ?? null,
         payload_json: JSON.stringify(consignment) 
       });
@@ -1032,13 +1034,13 @@ export const updateRecord = async <T>(table: string, id: string | number, data: 
 export const deleteRecord = async <T>(table: string, id: string | number) =>
   apiRequest<ApiWriteResponse<T>>({ method: "DELETE", body: JSON.stringify({ table, id }) }, { action: "delete" });
 
-export const updateTestDefinitions = async (definitions: Partial<TestDefinition>[]): Promise<TestDefinition[] | null> => {
+export const updateTestDefinitions = async (definitions: Partial<ApiTestDefinitionRow>[]): Promise<ApiTestDefinitionRow[] | null> => {
   try {
-    const response = await apiRequest<ApiWriteResponse<TestDefinition[]>>(
+    const response = await apiRequest<ApiWriteResponse<ApiTestDefinitionRow[]>>(
       { method: "PUT", body: JSON.stringify({ table: "test_definitions", data: definitions }) },
       { action: "bulkUpdate", table: "test_definitions" }
     );
-    return response.data ? response.data.map(row => coerceNumericColumns(row) as TestDefinition) : null;
+    return response.data ? response.data.map(row => coerceNumericColumns(row) as ApiTestDefinitionRow) : null;
   } catch {
     return null;
   }
@@ -1111,7 +1113,7 @@ export const processReceptionToProject = async (consignment: ReceptionConsignmen
   testResultIds: Record<string, number>;
 }> => {
   if (!consignment) throw new Error("No consignment provided");
-  if (consignment.projectId || (consignment as any).processedAt) {
+  if (consignment.projectId || consignment.processedAt) {
     throw new Error("This consignment has already been processed into a project");
   }
 
@@ -1161,7 +1163,7 @@ export const processReceptionToProject = async (consignment: ReceptionConsignmen
         lab_ref: consignment.rcNo,
         status: "not-started",
       });
-      (consignment as any)._compressiveTestId = ct.data?.id;
+      (consignment as ReceptionConsignmentInput & ConsignmentLegacyFields)._compressiveTestId = ct.data?.id;
     } catch (e) {
       console.warn("[API] Failed to create compressive_tests", e);
     }
@@ -1171,7 +1173,7 @@ export const processReceptionToProject = async (consignment: ReceptionConsignmen
     ...consignment,
     projectId,
     projectIds: [projectId],
-    status: "processed" as any,
+    status: "processed",
     processedAt: new Date().toISOString(),
   };
 

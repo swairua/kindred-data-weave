@@ -8,17 +8,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import WizardStepper, { type WizardStep } from "@/components/WizardStepper";
 import FormCard from "@/components/wizard/FormCard";
 import { listRecords, fetchFullProject, createRecord, listCompressiveTests, isRecordNotFoundError } from "@/lib/api";
-import { useSession } from "@/context/SessionContext";
 import { type ApiCompressiveTestRow, type ApiProjectRow } from "@/types/api";
 import { getExpectedTestType, hasRequiredSoilSampleMetadata, isInitialTestValid, isTestAllowed, toRecordMetadata, type Material } from "@/lib/recordTestWizard";
 import { cn } from "@/lib/utils";
-import { useTestData } from "@/context/TestDataContext";
+import { useTestData, type ConcreteTestMetadata, type ProjectMetadata } from "@/context/TestDataContext";
 import { registry } from "@/lib/testRegistry";
-import Navigation from "@/components/Navigation";
 import { toast } from "sonner";
 
 interface TestOption {
@@ -148,7 +146,6 @@ const RecordTestWizard = () => {
   // pre-fills the cube details so the lab reference matches the logged sample.
   const labIdFromParam = searchParams.get("labId") || searchParams.get("labRef");
   const testData = useTestData();
-  const { user, logout } = useSession();
 
   useEffect(() => {
     void testData.refreshTestDefinitions();
@@ -178,7 +175,9 @@ const RecordTestWizard = () => {
         }
         return restored;
       }
-    } catch {}
+    } catch {
+      // Unreadable or unavailable session storage: start from the defaults.
+    }
     return defaults;
   });
 
@@ -202,7 +201,9 @@ const RecordTestWizard = () => {
   useEffect(() => {
     try {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch {}
+    } catch {
+      // Storage can be full or disabled; the draft simply is not persisted.
+    }
   }, [state]);
 
   // Preload project from URL parameter when component mounts
@@ -224,8 +225,8 @@ const RecordTestWizard = () => {
           projectName: fullProject.name,
           clientName: fullProject.client_name || "",
           projectDate: fullProject.project_date || prev.projectDate,
-          contractor: (fullProject as any).contractor || prev.contractor,
-          county: (fullProject as any).county || prev.county,
+          contractor: fullProject.contractor || prev.contractor,
+          county: fullProject.county || prev.county,
           submittedBy: fullProject.submitted_by || prev.submittedBy,
           dateSubmitted: fullProject.date_submitted || prev.dateSubmitted,
           customFields: Array.isArray(fullProject.custom_fields) ? fullProject.custom_fields : prev.customFields,
@@ -239,8 +240,8 @@ const RecordTestWizard = () => {
           labOrganization: fullProject.lab_organization || "",
           dateReported: fullProject.date_reported || "",
           checkedBy: fullProject.checked_by || "",
-          contractor: (fullProject as any).contractor || "",
-          county: (fullProject as any).county || "",
+          contractor: fullProject.contractor || "",
+          county: fullProject.county || "",
           submittedBy: fullProject.submitted_by || "",
           dateSubmitted: fullProject.date_submitted || "",
           customFields: Array.isArray(fullProject.custom_fields) ? fullProject.custom_fields : [],
@@ -609,7 +610,7 @@ const RecordTestWizard = () => {
     }
 
     // Push project info into TestDataContext so the test screens have it
-    const projectMetadata: any = {
+    const projectMetadata: Partial<ProjectMetadata> = {
       projectName: state.projectName,
       clientName: state.clientName,
       projectDate: state.projectDate,
@@ -630,7 +631,7 @@ const RecordTestWizard = () => {
     // If concrete material, also push concrete test details to context.
     // The reception Lab ID doubles as the lab reference on the cube sheet.
     if (isCompressiveStrengthTest) {
-      const concreteMetadata: any = {
+      const concreteMetadata: ConcreteTestMetadata = {
         cement: state.cement,
         fineAggregate: state.fineAggregate,
         coarseAggregate: state.coarseAggregate,
@@ -714,7 +715,7 @@ const RecordTestWizard = () => {
           projectDate: fullProject.project_date || "",
           currentProjectId: fullProject.id,
           contractor: test.contractor,
-          county: (fullProject as any).county || "",
+          county: fullProject.county || "",
         });
       } catch (error) {
         console.warn("[RecordTestWizard] Failed to load project for selected test:", error);
@@ -793,8 +794,8 @@ const RecordTestWizard = () => {
           projectName: fullProject.name,
           clientName: fullProject.client_name || "",
           projectDate: fullProject.project_date || prev.projectDate,
-          contractor: (fullProject as any).contractor || prev.contractor,
-          county: (fullProject as any).county || prev.county,
+          contractor: fullProject.contractor || prev.contractor,
+          county: fullProject.county || prev.county,
           submittedBy: fullProject.submitted_by || prev.submittedBy,
           dateSubmitted: fullProject.date_submitted || prev.dateSubmitted,
           customFields: Array.isArray(fullProject.custom_fields) ? fullProject.custom_fields : prev.customFields,
@@ -806,8 +807,8 @@ const RecordTestWizard = () => {
           labOrganization: fullProject.lab_organization || "",
           dateReported: fullProject.date_reported || "",
           checkedBy: fullProject.checked_by || "",
-          contractor: (fullProject as any).contractor || "",
-          county: (fullProject as any).county || "",
+          contractor: fullProject.contractor || "",
+          county: fullProject.county || "",
           submittedBy: fullProject.submitted_by || "",
           dateSubmitted: fullProject.date_submitted || "",
           customFields: Array.isArray(fullProject.custom_fields) ? fullProject.custom_fields : [],
@@ -818,21 +819,8 @@ const RecordTestWizard = () => {
     })();
   };
 
-  const handleLogout = async () => {
-    await logout();
-    toast.success("Logged out");
-  };
-
   return (
-    <SidebarProvider>
-      <Navigation
-        currentView="tests"
-        onViewChange={() => {}}
-        onLogout={handleLogout}
-        userName={user.name}
-        userEmail={user.email}
-      />
-      <SidebarInset className="flex flex-col min-h-svh">
+    <div className="flex flex-col min-h-svh">
         {/* Header */}
         <header className="border-b sticky top-0 z-10" style={{ borderColor: "#E3E1D9", backgroundColor: "#FFFFFF" }}>
           <div className="px-4 md:px-6 py-3">
@@ -1592,8 +1580,7 @@ const RecordTestWizard = () => {
           </DialogContent>
         </Dialog>
 
-      </SidebarInset>
-    </SidebarProvider>
+    </div>
   );
 };
 

@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { TestDataProvider } from "@/context/TestDataContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SessionGuard } from "@/components/SessionGuard";
+import ProtectedLayout from "@/components/ProtectedLayout";
 import Index from "./pages/Index.tsx";
 import Login from "./pages/Login.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -36,16 +37,18 @@ const App = () => {
                 <Routes>
                   <Route path="/login" element={<Login />} />
                   <Route element={<SessionGuard />}>
-                    <Route path="/" element={<RecordTestWizard />} />
-                    <Route path="/projects" element={<Projects />} />
-                    <Route path="/projects/:projectId" element={<ProjectOverview />} />
-                    <Route path="/record" element={<RecordTestWizard />} />
-                    <Route path="/testing" element={<RecordTestWizard />} />
-                    <Route path="/reception" element={<Reception />} />
-                    <Route path="/reception/new" element={<LogConsignment />} />
-                    <Route path="/reception/:rcNo" element={<LogConsignment />} />
-                    <Route path="/storage" element={<Storage />} />
-                    <Route path="/equipment" element={<Equipment />} />
+                    <Route element={<ProtectedLayout />}>
+                      <Route path="/" element={<RecordTestWizard />} />
+                      <Route path="/projects" element={<Projects />} />
+                      <Route path="/projects/:projectId" element={<ProjectOverview />} />
+                      <Route path="/record" element={<RecordTestWizard />} />
+                      <Route path="/testing" element={<RecordTestWizard />} />
+                      <Route path="/reception" element={<Reception />} />
+                      <Route path="/reception/new" element={<LogConsignment />} />
+                      <Route path="/reception/:rcNo" element={<LogConsignment />} />
+                      <Route path="/storage" element={<Storage />} />
+                      <Route path="/equipment" element={<Equipment />} />
+                    </Route>
                   </Route>
                   <Route path="/tests" element={<Index initialTab="soil" />} />
                   <Route path="/tests/:projectId" element={<Index initialTab="soil" />} />

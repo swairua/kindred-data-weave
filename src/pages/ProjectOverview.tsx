@@ -7,9 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import Navigation from "@/components/Navigation";
-import { useSession } from "@/context/SessionContext";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useTestData } from "@/context/TestDataContext";
 import { fetchFullProject, listRecords, updateRecord } from "@/lib/api";
 import { generateTestExcel } from "@/lib/genericExcelExporter";
@@ -80,7 +78,6 @@ const formatDate = (value?: string | null) => {
 const ProjectOverview = () => {
   const { projectId: projectIdParam } = useParams();
   const navigate = useNavigate();
-  const { user, logout } = useSession();
   const { updateProjectMetadata } = useTestData();
   const projectId = Number(projectIdParam);
   const [project, setProject] = useState<ProjectDetails | null>(null);
@@ -242,10 +239,6 @@ const ProjectOverview = () => {
     setIsEditing(false);
   };
 
-  const handleLogout = async () => {
-    await logout();
-    toast.success("Logged out");
-  };
 
   // test_results holds one row per (project, test_key, sample_key). The list is newest-first, so
   // keeping one row per test_key collapses the samples of a multi-sample test into a single entry
@@ -300,16 +293,7 @@ const ProjectOverview = () => {
   })();
 
   return (
-    <SidebarProvider>
-      <Navigation
-        currentView="projects"
-        onViewChange={() => {}}
-        onLogout={handleLogout}
-        userName={user.name}
-        userEmail={user.email}
-      />
-      <SidebarInset>
-        <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex min-h-screen flex-col bg-background">
           <header className="sticky top-0 z-10 border-b bg-card">
             <div className="flex h-14 items-center gap-3 px-4">
               <SidebarTrigger />
@@ -493,9 +477,7 @@ const ProjectOverview = () => {
               )}
             </div>
           </main>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+    </div>
   );
 };
 

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
-import { listRecords, updateRecord } from "@/lib/api";
+import { listRecords, updateRecord, updateTestDefinitions } from "@/lib/api";
+import type { ApiTestDefinitionRow as TestDefinition } from "@/types/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,17 +22,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
-interface TestDefinition {
-  id: number;
-  test_key: string;
-  name: string;
-  category: "soil" | "concrete" | "rock" | "special";
-  sort_order: number;
-  enabled: boolean | number;
-  created_at?: string;
-  updated_at?: string;
-}
 
 interface EditingTest extends Omit<TestDefinition, "enabled"> {
   enabled: boolean;

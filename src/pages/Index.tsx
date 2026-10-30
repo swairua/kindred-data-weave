@@ -58,6 +58,15 @@ type AuthStatus = "authenticated" | "unauthenticated";
 
 type TestCategory = "soil" | "concrete" | "rock" | "special";
 
+// Project row plus the optional metadata columns the projects table may return.
+type ProjectRecord = ApiProjectRow & {
+  lab_organization?: string | null;
+  date_reported?: string | null;
+  checked_by?: string | null;
+  contractor?: string | null;
+  county?: string | null;
+};
+
 // Inner component that uses the accordion context
 const TestsViewContent = ({
   initialTab,
@@ -280,10 +289,10 @@ const Index = ({ initialTab }: IndexProps) => {
 
   // Enable debug logging via URL param (?debug=1)
   const debugMode = new URLSearchParams(location.search).get("debug") === "1";
-  const log = (msg: string, ...args: any[]) => {
+  const log = (msg: string, ...args: unknown[]) => {
     if (debugMode) console.log(msg, ...args);
   };
-  const warn = (msg: string, ...args: any[]) => {
+  const warn = (msg: string, ...args: unknown[]) => {
     if (debugMode) console.warn(msg, ...args);
   };
 
@@ -415,7 +424,7 @@ const Index = ({ initialTab }: IndexProps) => {
         }
 
         // Fetch full project data from API for complete metadata
-        let fullProject;
+        let fullProject: ProjectRecord | undefined;
         try {
           log(`[Index] Fetching full project data for ID ${projectIdToLoad}...`);
           fullProject = await fetchFullProject(projectIdToLoad);
@@ -443,11 +452,11 @@ const Index = ({ initialTab }: IndexProps) => {
             projectName: fullProject.name,
             clientName: fullProject.client_name || "",
             projectDate: fullProject.project_date || "",
-            labOrganization: (fullProject as any).lab_organization || "",
-            dateReported: (fullProject as any).date_reported || "",
-            checkedBy: (fullProject as any).checked_by || "",
-            contractor: (fullProject as any).contractor || "",
-            county: (fullProject as any).county || "",
+            labOrganization: fullProject.lab_organization || "",
+            dateReported: fullProject.date_reported || "",
+            checkedBy: fullProject.checked_by || "",
+            contractor: fullProject.contractor || "",
+            county: fullProject.county || "",
           });
           toast.success(`Loaded project: ${fullProject.name}`);
           log(`[Index] Successfully loaded project: ${fullProject.name}`);
@@ -507,8 +516,8 @@ const Index = ({ initialTab }: IndexProps) => {
             projectName: project.name,
             clientName: project.client_name || "",
             projectDate: project.project_date || "",
-            contractor: (project as any).contractor || "",
-            county: (project as any).county || "",
+            contractor: (project as ProjectRecord).contractor || "",
+            county: (project as ProjectRecord).county || "",
           });
           toast.success(`Loaded project: ${project.name}`);
           log(`[Index] Successfully loaded project: ${project.name}`);
@@ -641,8 +650,8 @@ const Index = ({ initialTab }: IndexProps) => {
       projectName: project.name,
       clientName: project.client_name || "",
       projectDate: project.project_date || "",
-      contractor: (project as any).contractor || "",
-      county: (project as any).county || "",
+      contractor: (project as ProjectRecord).contractor || "",
+      county: (project as ProjectRecord).county || "",
     });
     toast.success(`Loaded project: ${project.name}`);
   };

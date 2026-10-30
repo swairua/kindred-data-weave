@@ -2,10 +2,12 @@ import { describe, it, expect, vi } from "vitest";
 import {
   extractAtterbergPayload,
   type AtterbergExportPayload,
+  type AtterbergRecord,
 } from "@/lib/jsonExporter";
 
-// NOTE: Tests use loose record shapes (`as any`) — they exercise the persistence
+// NOTE: Tests use loose record shapes (`as unknown as AtterbergRecord`) — they exercise the persistence
 // flow and payload schema, not the full AtterbergRecord type contract.
+type LooseRecord = Partial<AtterbergRecord> & { name?: string };
 
 describe("Atterberg Multi-Record Persistence", () => {
   function createMockPayload(recordCount: number): AtterbergExportPayload {
@@ -22,7 +24,7 @@ describe("Atterberg Multi-Record Persistence", () => {
           result: {},
         },
       ],
-    })) as any;
+    })) as unknown as AtterbergRecord[];
 
     return {
       exportDate: new Date().toISOString(),
@@ -53,8 +55,8 @@ describe("Atterberg Multi-Record Persistence", () => {
       const deserialized = JSON.parse(serialized) as AtterbergExportPayload;
 
       expect(deserialized.project.records).toHaveLength(2);
-      expect((deserialized.project.records[0] as any).name).toBe("Sample 1");
-      expect((deserialized.project.records[1] as any).name).toBe("Sample 2");
+      expect((deserialized.project.records[0] as LooseRecord).name).toBe("Sample 1");
+      expect((deserialized.project.records[1] as LooseRecord).name).toBe("Sample 2");
     });
 
     it("should correctly serialize and deserialize a payload with 3 records", () => {
@@ -64,7 +66,7 @@ describe("Atterberg Multi-Record Persistence", () => {
 
       expect(deserialized.project.records).toHaveLength(3);
       deserialized.project.records.forEach((record, index) => {
-        expect((record as any).name).toBe(`Sample ${index + 1}`);
+        expect((record as LooseRecord).name).toBe(`Sample ${index + 1}`);
       });
     });
 
@@ -75,7 +77,7 @@ describe("Atterberg Multi-Record Persistence", () => {
 
       originalPayload.project.records.forEach((originalRecord, index) => {
         expect(deserialized.project.records[index].id).toBe(originalRecord.id);
-        expect((deserialized.project.records[index] as any).name).toBe((originalRecord as any).name);
+        expect((deserialized.project.records[index] as LooseRecord).name).toBe((originalRecord as LooseRecord).name);
       });
     });
   });
@@ -101,7 +103,7 @@ describe("Atterberg Multi-Record Persistence", () => {
             result: {},
           },
         ],
-      } as any;
+      } as unknown as AtterbergRecord;
 
       const updatedPayload: AtterbergExportPayload = {
         ...loadedPayload,
@@ -118,7 +120,7 @@ describe("Atterberg Multi-Record Persistence", () => {
 
       const reloadedPayload = newDbRow.payload_json;
       expect(reloadedPayload.project.records).toHaveLength(3);
-      expect((reloadedPayload.project.records[2] as any).name).toBe("Sample 3");
+      expect((reloadedPayload.project.records[2] as LooseRecord).name).toBe("Sample 3");
     });
 
     it("should handle accumulating records across multiple saves", () => {
@@ -144,7 +146,7 @@ describe("Atterberg Multi-Record Persistence", () => {
                   result: {},
                 },
               ],
-            } as any,
+            } as unknown as AtterbergRecord,
           ],
         },
       };
@@ -169,13 +171,13 @@ describe("Atterberg Multi-Record Persistence", () => {
                   result: {},
                 },
               ],
-            } as any,
+            } as unknown as AtterbergRecord,
           ],
         },
       };
       expect(currentPayload.project.records).toHaveLength(3);
 
-      expect(currentPayload.project.records.map((r: any) => r.name)).toEqual([
+      expect(currentPayload.project.records.map((r: LooseRecord) => r.name)).toEqual([
         "Sample 1",
         "Sample 2",
         "Sample 3",
@@ -251,7 +253,7 @@ describe("Atterberg Multi-Record Persistence", () => {
           title: "Test",
           clientName: undefined,
           date: new Date().toISOString(),
-          records: [null, { id: "valid", name: "Valid Record", tests: [] }, undefined] as any[],
+          records: [null, { id: "valid", name: "Valid Record", tests: [] }, undefined] as unknown[],
         },
       };
 
@@ -273,7 +275,7 @@ describe("Atterberg Multi-Record Persistence", () => {
           ...initialPayload.project,
           records: [
             ...initialPayload.project.records,
-            { id: "record-2", name: "Sample 2", date: new Date().toISOString(), tests: [] } as any,
+            { id: "record-2", name: "Sample 2", date: new Date().toISOString(), tests: [] } as unknown as AtterbergRecord,
           ],
         },
       };
@@ -285,7 +287,7 @@ describe("Atterberg Multi-Record Persistence", () => {
           ...initialPayload.project,
           records: [
             ...initialPayload.project.records,
-            { id: "record-3", name: "Sample 3", date: new Date().toISOString(), tests: [] } as any,
+            { id: "record-3", name: "Sample 3", date: new Date().toISOString(), tests: [] } as unknown as AtterbergRecord,
           ],
         },
       };
@@ -302,7 +304,7 @@ describe("Atterberg Multi-Record Persistence", () => {
       for (let i = 0; i < 3; i++) {
         const payload = createMockPayload(1);
         for (let j = 0; j < i; j++) {
-          (payload.project.records as any).push({
+          (payload.project.records as LooseRecord[]).push({
             id: `record-${j + 2}`,
             name: `Sample ${j + 2}`,
           });
@@ -503,16 +505,16 @@ describe("Atterberg Multi-Record Persistence", () => {
       const initialPayload = createMockPayload(2);
 
       const userAPayload = { ...initialPayload, project: { ...initialPayload.project, records: [...initialPayload.project.records] } };
-      (userAPayload.project.records as any).push({ id: "record-3-a", name: "Sample 3 (User A)" });
+      (userAPayload.project.records as LooseRecord[]).push({ id: "record-3-a", name: "Sample 3 (User A)" });
 
       const userBPayload = { ...initialPayload, project: { ...initialPayload.project, records: [...initialPayload.project.records] } };
-      (userBPayload.project.records as any).push({ id: "record-3-b", name: "Sample 3 (User B)" });
+      (userBPayload.project.records as LooseRecord[]).push({ id: "record-3-b", name: "Sample 3 (User B)" });
 
       let databaseRecords = [{ id: 101, projectId, payload: userAPayload }];
       databaseRecords = [{ id: 102, projectId, payload: userBPayload }];
 
       expect(databaseRecords[0].payload.project.records).toHaveLength(3);
-      expect((databaseRecords[0].payload.project.records[2] as any).name).toContain("User B");
+      expect((databaseRecords[0].payload.project.records[2] as LooseRecord).name).toContain("User B");
     });
 
     it("should maintain data integrity during concurrent cleanup operations", () => {

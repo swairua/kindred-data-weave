@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import TestSection from "@/components/TestSection";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -6,12 +6,19 @@ import { Plus, X } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
 import { generateTestPDF } from "@/lib/pdfGenerator";
 import { useTestReport } from "@/hooks/useTestReport";
+import { loadTestResult, saveTestResult } from "@/lib/testResultPersistence";
 
 interface Row { depth: string; coneResistance: string; frictionRatio: string }
 
 const CPTTest = () => {
   const project = useProject();
-  const [rows, setRows] = useState<Row[]>([{ depth: "", coneResistance: "", frictionRatio: "" },{ depth: "", coneResistance: "", frictionRatio: "" },{ depth: "", coneResistance: "", frictionRatio: "" }]);
+  const [rows, setRows] = useState<Row[]>([
+    { depth: "1.0", coneResistance: "2.5", frictionRatio: "25" },
+    { depth: "2.0", coneResistance: "4.8", frictionRatio: "40" },
+    { depth: "3.0", coneResistance: "7.2", frictionRatio: "55" },
+  ]);
+  const projectId = project.currentProjectId ?? null;
+  const [recordId, setRecordId] = useState<number | null>(null);
   const update = (i: number, field: keyof Row, val: string) => { const next = [...rows]; next[i] = { ...next[i], [field]: val }; setRows(next); };
 
   const filledCPT = rows.filter(r => r.depth && r.coneResistance).length;
@@ -22,12 +29,40 @@ const CPTTest = () => {
   }, [rows]);
   useTestReport("cpt", filledCPT, cptResults);
 
+  useEffect(() => {
+    if (!projectId) return;
+    let active = true;
+    loadTestResult(projectId, "cpt")
+      .then((result) => {
+        if (!active || !result) return;
+        setRecordId(result.id);
+        const savedRows = (result.payload_json as { rows?: Row[] } | null)?.rows;
+        if (Array.isArray(savedRows) && savedRows.length > 0) setRows(savedRows);
+      })
+      .catch((error) => console.error("Failed to load CPT result", error));
+    return () => { active = false; };
+  }, [projectId]);
+
+  const save = async () => {
+    if (!projectId) throw new Error("Select a project before saving this CPT test");
+    const savedId = await saveTestResult(projectId, recordId, {
+      test_key: "cpt",
+      name: "CPT (Cone Penetration Test)",
+      category: "soil",
+      status: filledCPT === 0 ? "not-started" : filledCPT < rows.length ? "in-progress" : "completed",
+      data_points: filledCPT,
+      key_results_json: cptResults.filter((result) => result.value),
+      payload_json: { rows },
+    });
+    setRecordId(savedId);
+  };
+
   const exportPDF = () => {
     generateTestPDF({ title: "CPT (Cone Penetration Test)", ...project, tables: [{ headers: ["Depth (m)", "Cone Resistance qc (MPa)", "Friction Ratio fs (kPa)"], rows: rows.map(r => [r.depth || "—", r.coneResistance || "—", r.frictionRatio || "—"]) }] });
   };
 
   return (
-    <TestSection title="CPT (Cone Penetration Test)" onSave={() => {}} onClear={() => setRows([{ depth: "", coneResistance: "", frictionRatio: "" }])} onExportPDF={exportPDF}>
+    <TestSection title="CPT (Cone Penetration Test)" onSave={save} onClear={() => setRows([{ depth: "", coneResistance: "", frictionRatio: "" }])} onExportPDF={exportPDF}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Depth (m)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Cone Resistance qc (MPa)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Friction Ratio fs (kPa)</th><th className="w-10"></th></tr></thead>

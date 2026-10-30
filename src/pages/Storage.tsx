@@ -11,11 +11,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Package, Thermometer, Flame, Trash2, Plus, RefreshCw } from "lucide-react";
-import Navigation from "@/components/Navigation";
 import { listRecords } from "@/lib/api";
-import { useSession } from "@/context/SessionContext";
 import { toast } from "sonner";
 
 interface StorageLocation {
@@ -45,7 +43,6 @@ const STORAGE_TYPE_LABELS: Record<string, string> = {
 
 const Storage = () => {
   const navigate = useNavigate();
-  const { user, logout } = useSession();
   const [searchQuery, setSearchQuery] = useState("");
   const [locations, setLocations] = useState<StorageLocation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -79,10 +76,6 @@ const Storage = () => {
     });
   }, [locations, searchQuery]);
 
-  const handleLogout = async () => {
-    await logout();
-    toast.success("Logged out");
-  };
 
   const handleRefresh = async () => {
     try {
@@ -106,16 +99,7 @@ const Storage = () => {
   };
 
   return (
-    <SidebarProvider>
-      <Navigation
-        currentView="reception"
-        onViewChange={() => {}}
-        onLogout={handleLogout}
-        userName={user.name}
-        userEmail={user.email}
-      />
-      <SidebarInset>
-        <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col min-h-screen bg-background">
           <header className="border-b bg-card sticky top-0 z-10">
             <div className="flex items-center justify-between h-11 px-3 sm:px-4 gap-2">
               <div className="flex items-center gap-2">
@@ -269,9 +253,7 @@ const Storage = () => {
               </Card>
             </div>
           </main>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+    </div>
   );
 };
 

@@ -15,7 +15,7 @@ function readZipEntry(filePath: string, entryName: string): string | null {
     // Find entry in ZIP file
     // ZIP format has Central Directory at end, but we can scan for local file headers
     // Local file header signature: 0x04034b50
-    let pos = 0;
+    const pos = 0;
     const searchStr = Buffer.from(entryName);
     
     // For simplicity, try to find theentry name in the file

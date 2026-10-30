@@ -11,12 +11,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Layers, Plus, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
-import Navigation from "@/components/Navigation";
 import { type ApiProjectRow } from "@/types/api";
 import { listRecords } from "@/lib/api";
-import { useSession } from "@/context/SessionContext";
 import { toast } from "sonner";
 
 interface ApiTestResult {
@@ -69,7 +67,6 @@ const formatTestType = (testType: string | null | undefined): string => {
 
 const Projects = () => {
   const navigate = useNavigate();
-  const { user, logout } = useSession();
   const [searchQuery, setSearchQuery] = useState("");
   const [apiProjects, setApiProjects] = useState<ApiProjectRow[]>([]);
   const [apiTestResults, setApiTestResults] = useState<ApiTestResult[]>([]);
@@ -155,10 +152,6 @@ const Projects = () => {
   const endIndex = startIndex + itemsPerPage;
   const paginatedProjects = filteredProjects.slice(startIndex, endIndex);
 
-  const handleLogout = async () => {
-    await logout();
-    toast.success("Logged out");
-  };
 
   const handleNewProject = () => {
     navigate("/record");
@@ -199,16 +192,7 @@ const Projects = () => {
   };
 
   return (
-    <SidebarProvider>
-      <Navigation
-        currentView="projects"
-        onViewChange={() => {}}
-        onLogout={handleLogout}
-        userName={user.name}
-        userEmail={user.email}
-      />
-      <SidebarInset>
-        <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col min-h-screen bg-background">
           {/* Header */}
           <header className="border-b bg-card sticky top-0 z-10">
             <div className="flex items-center justify-between h-11 px-3 sm:px-4 gap-2">
@@ -397,9 +381,7 @@ const Projects = () => {
               </Card>
             </div>
           </main>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+    </div>
   );
 };
 

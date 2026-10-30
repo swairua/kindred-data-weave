@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import TestSection from "@/components/TestSection";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -6,12 +6,19 @@ import { Plus, X } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
 import { generateTestPDF } from "@/lib/pdfGenerator";
 import { useTestReport } from "@/hooks/useTestReport";
+import { loadTestResult, saveTestResult } from "@/lib/testResultPersistence";
 
 interface Row { depth: string; blowCount: string }
 
 const SPTTest = () => {
   const project = useProject();
-  const [rows, setRows] = useState<Row[]>([{ depth: "", blowCount: "" },{ depth: "", blowCount: "" },{ depth: "", blowCount: "" }]);
+  const [rows, setRows] = useState<Row[]>([
+    { depth: "1.5", blowCount: "8" },
+    { depth: "3.0", blowCount: "14" },
+    { depth: "4.5", blowCount: "22" },
+  ]);
+  const projectId = project.currentProjectId ?? null;
+  const [recordId, setRecordId] = useState<number | null>(null);
   const update = (i: number, field: keyof Row, val: string) => { const next = [...rows]; next[i] = { ...next[i], [field]: val }; setRows(next); };
 
   const filledSPT = rows.filter(r => r.depth && r.blowCount).length;
@@ -22,12 +29,40 @@ const SPTTest = () => {
   }, [rows]);
   useTestReport("spt", filledSPT, sptResults);
 
+  useEffect(() => {
+    if (!projectId) return;
+    let active = true;
+    loadTestResult(projectId, "spt")
+      .then((result) => {
+        if (!active || !result) return;
+        setRecordId(result.id);
+        const savedRows = (result.payload_json as { rows?: Row[] } | null)?.rows;
+        if (Array.isArray(savedRows) && savedRows.length > 0) setRows(savedRows);
+      })
+      .catch((error) => console.error("Failed to load SPT result", error));
+    return () => { active = false; };
+  }, [projectId]);
+
+  const save = async () => {
+    if (!projectId) throw new Error("Select a project before saving this SPT test");
+    const savedId = await saveTestResult(projectId, recordId, {
+      test_key: "spt",
+      name: "SPT (Standard Penetration Test)",
+      category: "soil",
+      status: filledSPT === 0 ? "not-started" : filledSPT < rows.length ? "in-progress" : "completed",
+      data_points: filledSPT,
+      key_results_json: sptResults.filter((result) => result.value),
+      payload_json: { rows },
+    });
+    setRecordId(savedId);
+  };
+
   const exportPDF = () => {
     generateTestPDF({ title: "SPT (Standard Penetration Test)", ...project, tables: [{ headers: ["Depth (m)", "Blow Count (N-value)"], rows: rows.map(r => [r.depth || "—", r.blowCount || "—"]) }] });
   };
 
   return (
-    <TestSection title="SPT (Standard Penetration Test)" onSave={() => {}} onClear={() => setRows([{ depth: "", blowCount: "" }])} onExportPDF={exportPDF}>
+    <TestSection title="SPT (Standard Penetration Test)" onSave={save} onClear={() => setRows([{ depth: "", blowCount: "" }])} onExportPDF={exportPDF}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Depth (m)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Blow Count (N-value)</th><th className="w-10"></th></tr></thead>

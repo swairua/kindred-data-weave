@@ -7,6 +7,17 @@ export interface ApiProjectRow {
   sample_count?: number;
 }
 
+export interface ApiTestDefinitionRow {
+  id: number;
+  test_key: string;
+  name: string;
+  category: "soil" | "concrete" | "rock" | "special";
+  sort_order: number;
+  enabled: boolean | number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export type TestType = 'atterberg' | 'compressive' | 'rock' | 'concrete' | 'soil' | 'special';
 
 /** One row of the compressive_tests table, as the wizard lists and edits them. */

@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import RecordTestWizard from "@/pages/RecordTestWizard";
+import { SidebarProvider } from "@/components/ui/sidebar";
 
 const wizardMocks = vi.hoisted(() => ({
   listRecords: vi.fn(),
@@ -50,9 +51,11 @@ vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 import { toast } from "sonner";
 
 const renderWizard = (initialEntry = "/record?material=soil&test=proctor") => render(
-  <MemoryRouter initialEntries={[initialEntry]}>
-    <RecordTestWizard />
-  </MemoryRouter>,
+  <SidebarProvider>
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <RecordTestWizard />
+    </MemoryRouter>
+  </SidebarProvider>,
 );
 
 /** Mirrors the URL the wizard lands on so navigation assertions can read it. */
@@ -499,10 +502,12 @@ describe("RecordTestWizard existing-project clone", () => {
     });
 
     render(
-      <MemoryRouter initialEntries={["/record?material=soil&test=proctor"]}>
-        <RecordTestWizard />
-        <LocationProbe />
-      </MemoryRouter>,
+      <SidebarProvider>
+        <MemoryRouter initialEntries={["/record?material=soil&test=proctor"]}>
+          <RecordTestWizard />
+          <LocationProbe />
+        </MemoryRouter>
+      </SidebarProvider>,
     );
 
     const selector = await screen.findByRole("combobox", { name: "Project" });

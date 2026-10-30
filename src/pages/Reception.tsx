@@ -6,10 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import TopNavbar from "@/components/TopNavbar";
-import Navigation from "@/components/Navigation";
-import { useSession } from "@/context/SessionContext";
 import { listReceptionConsignments, processReceptionToProject } from "@/lib/api";
 import { toast } from "sonner";
 import {
@@ -25,6 +23,9 @@ import {
 import { AlertTriangle, CalendarClock, Plus, Search } from "lucide-react";
 
 type ConsignmentFilter = "open" | "to-log" | "on-hold" | "all";
+
+/** Consignment as held in the page; the stored row may still carry the snake_case project link. */
+type ReceptionConsignmentRow = ReceptionConsignmentInput & { project_id?: number | null };
 
 /** Formats an ISO timestamp as "Today 09:58" / "Fri 16 Oct", like the dashboard. */
 const formatReceived = (value: string): string => {
@@ -54,24 +55,18 @@ const STATUS_STYLES: Record<ReceptionConsignmentInput["status"], string> = {
 
 const Reception = () => {
   const navigate = useNavigate();
-  const { user, logout } = useSession();
 
-  const handleLogout = async () => {
-    await logout();
-    toast.success("Logged out");
-  };
-
-  const [consignments, setConsignments] = useState<ReceptionConsignmentInput[]>([]);
+  const [consignments, setConsignments] = useState<ReceptionConsignmentRow[]>([]);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<ConsignmentFilter>("open");
   const [processing, setProcessing] = useState<string | null>(null);
   const [processDialogOpen, setProcessDialogOpen] = useState(false);
-  const [selectedForProcess, setSelectedForProcess] = useState<ReceptionConsignmentInput | null>(null);
+  const [selectedForProcess, setSelectedForProcess] = useState<ReceptionConsignmentRow | null>(null);
   const [selectedTestType, setSelectedTestType] = useState<string>("");
 
-  const openProcessDialog = (e: React.MouseEvent, consignment: ReceptionConsignmentInput) => {
+  const openProcessDialog = (e: React.MouseEvent, consignment: ReceptionConsignmentRow) => {
     e.stopPropagation();
-    if (consignment.projectId || (consignment as any).project_id || (consignment as any).processedAt) {
+    if (consignment.projectId || consignment.project_id || consignment.processedAt) {
       toast.info("Already processed to project");
       return;
     }
@@ -97,7 +92,7 @@ const Reception = () => {
     }
   };
 
-  const handleProcessToProject = async (e: React.MouseEvent, consignment: ReceptionConsignmentInput) => {
+  const handleProcessToProject = async (e: React.MouseEvent, consignment: ReceptionConsignmentRow) => {
     openProcessDialog(e, consignment);
   };
 
@@ -217,11 +212,8 @@ const Reception = () => {
   };
 
   return (<>
-    <SidebarProvider>
-      <TopNavbar currentView="reception" onViewChange={() => {}} />
-      <Navigation currentView="reception" onViewChange={() => {}} onLogout={handleLogout} userName={user.name} userEmail={user.email} />
-      <SidebarInset>
-        <div className="min-h-screen bg-muted/30 pt-16">
+    <TopNavbar currentView="reception" onViewChange={() => {}} />
+    <div className="min-h-screen bg-muted/30 pt-16">
           <header className="flex flex-wrap items-center gap-3 px-6 pt-5">
             <SidebarTrigger />
             <div className="mr-auto">
@@ -396,9 +388,9 @@ const Reception = () => {
                                   <span className="h-1.5 w-1.5 rounded-full bg-current" />
                                   {RECEPTION_STATUS_LABELS[consignment.status]}
                                 </span>
-                                {(consignment.projectId || (consignment as any).project_id) && (
+                                {(consignment.projectId || consignment.project_id) && (
                                   <p className="mt-1 text-xs text-muted-foreground">
-                                    Project #{consignment.projectId || (consignment as any).project_id}
+                                    Project #{consignment.projectId || consignment.project_id}
                                   </p>
                                 )}
                                 {held.length > 0 && (
@@ -406,7 +398,7 @@ const Reception = () => {
                                     {held.length} sample{held.length === 1 ? "" : "s"} held (seal broken)
                                   </p>
                                 )}
-                                {!consignment.projectId && !(consignment as any).project_id && (consignment.status === "logged" || consignment.status === "on-hold" || consignment.status === "in-testing") && (
+                                {!consignment.projectId && !consignment.project_id && (consignment.status === "logged" || consignment.status === "on-hold" || consignment.status === "in-testing") && (
                                   <Button
                                     variant="outline"
                                     size="sm"
@@ -509,9 +501,7 @@ const Reception = () => {
               </Card>
             </aside>
           </div>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+    </div>
     <Dialog open={processDialogOpen} onOpenChange={setProcessDialogOpen}>
       <DialogContent>
         <DialogHeader>

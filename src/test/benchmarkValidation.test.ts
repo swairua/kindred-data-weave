@@ -8,12 +8,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Benchmark tests can be flaky in some environments (ExcelJS anchors). Skip if file not available.
-let _benchmarkFilePath = path.join(__dirname, "..", "..", "ATTERTEST.xlsx");
+const _benchmarkFilePath = path.join(__dirname, "..", "..", "ATTERTEST.xlsx");
 let _benchmarkFileExists = false;
 try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const fsModule = require("fs");
-  _benchmarkFileExists = fsModule.existsSync(_benchmarkFilePath);
+  _benchmarkFileExists = fs.existsSync(_benchmarkFilePath);
 } catch {
   _benchmarkFileExists = false;
 }
@@ -145,4 +143,3 @@ if (!_benchmarkFileExists) {
   });
 });
 }
-
