@@ -1,6 +1,6 @@
 import type { ReceptionConsignmentInput, ReceptionFieldArea, ReceptionFieldDefinition, ReceptionPhoto } from "@/lib/reception";
 import { consignmentIsOnHold, getPrimaryTestTypeFromConsignment, type ReceptionSampleInput } from "@/lib/reception";
-import { type ApiCompressiveTestRow } from "@/types/api";
+import { type ApiCompressiveTestRow, type ApiTestDefinitionRow } from "@/types/api";
 
 const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
 
@@ -1032,13 +1032,13 @@ export const updateRecord = async <T>(table: string, id: string | number, data: 
 export const deleteRecord = async <T>(table: string, id: string | number) =>
   apiRequest<ApiWriteResponse<T>>({ method: "DELETE", body: JSON.stringify({ table, id }) }, { action: "delete" });
 
-export const updateTestDefinitions = async (definitions: Partial<TestDefinition>[]): Promise<TestDefinition[] | null> => {
+export const updateTestDefinitions = async (definitions: Partial<ApiTestDefinitionRow>[]): Promise<ApiTestDefinitionRow[] | null> => {
   try {
-    const response = await apiRequest<ApiWriteResponse<TestDefinition[]>>(
+    const response = await apiRequest<ApiWriteResponse<ApiTestDefinitionRow[]>>(
       { method: "PUT", body: JSON.stringify({ table: "test_definitions", data: definitions }) },
       { action: "bulkUpdate", table: "test_definitions" }
     );
-    return response.data ? response.data.map(row => coerceNumericColumns(row) as TestDefinition) : null;
+    return response.data ? response.data.map(row => coerceNumericColumns(row) as ApiTestDefinitionRow) : null;
   } catch {
     return null;
   }

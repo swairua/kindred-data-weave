@@ -382,7 +382,7 @@ const drawSieveTable = (d: jsPDF, x: number, y: number, w: number, o: ParticleSi
     { w: widths[3], text: DASH, align: "center" },
   ]);
   if (targetBottom !== undefined && cy < targetBottom) {
-    const fillerCells = [
+    const fillerCells: Cell[] = [
       { w: widths[0], text: "", align: "center" },
       { w: widths[1], text: "", align: "center" },
       { w: widths[2], text: "", align: "center" },

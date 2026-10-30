@@ -32,6 +32,11 @@ interface ProjectWithCategory extends Record<string, unknown> {
   test_type?: string;
 }
 
+interface ProjectSelectionProps {
+  onNext: () => void;
+  onPrev: () => void;
+}
+
 const ProjectSelection: React.FC<ProjectSelectionProps> = ({ onNext, onPrev }) => {
   const { state, setProject } = useWizard();
   const { material, testType } = state;
