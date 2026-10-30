@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import Reception from "@/pages/Reception";
 import LogConsignment from "@/pages/LogConsignment";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import type { ReceptionConsignmentInput } from "@/lib/reception";
 
 const receptionMocks = vi.hoisted(() => ({
@@ -91,10 +92,12 @@ const LocationProbe = () => {
 
 const renderReception = () =>
   render(
-    <MemoryRouter initialEntries={["/reception"]}>
-      <Reception />
-      <LocationProbe />
-    </MemoryRouter>,
+    <SidebarProvider>
+      <MemoryRouter initialEntries={["/reception"]}>
+        <Reception />
+        <LocationProbe />
+      </MemoryRouter>
+    </SidebarProvider>,
   );
 
 const renderLogConsignment = (entry = "/reception/new") =>

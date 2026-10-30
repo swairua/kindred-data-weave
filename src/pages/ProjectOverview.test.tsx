@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import Projects from "@/pages/Projects";
 import ProjectOverview from "@/pages/ProjectOverview";
+import { SidebarProvider } from "@/components/ui/sidebar";
 
 const overviewMocks = vi.hoisted(() => ({
   fetchFullProject: vi.fn(),
@@ -44,14 +45,16 @@ const Location = () => {
 };
 
 const renderOverview = (initialEntry = "/projects/42") => render(
-  <MemoryRouter initialEntries={[initialEntry]}>
-    <Location />
-    <Routes>
-      <Route path="/projects" element={<Projects />} />
-      <Route path="/projects/:projectId" element={<ProjectOverview />} />
-      <Route path="/tests" element={<div>Test editor</div>} />
-    </Routes>
-  </MemoryRouter>,
+  <SidebarProvider>
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <Location />
+      <Routes>
+        <Route path="/projects" element={<Projects />} />
+        <Route path="/projects/:projectId" element={<ProjectOverview />} />
+        <Route path="/tests" element={<div>Test editor</div>} />
+      </Routes>
+    </MemoryRouter>
+  </SidebarProvider>,
 );
 
 afterEach(cleanup);

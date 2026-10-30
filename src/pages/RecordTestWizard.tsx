@@ -8,17 +8,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import WizardStepper, { type WizardStep } from "@/components/WizardStepper";
 import FormCard from "@/components/wizard/FormCard";
 import { listRecords, fetchFullProject, createRecord, listCompressiveTests, isRecordNotFoundError } from "@/lib/api";
-import { useSession } from "@/context/SessionContext";
 import { type ApiCompressiveTestRow, type ApiProjectRow } from "@/types/api";
 import { getExpectedTestType, hasRequiredSoilSampleMetadata, isInitialTestValid, isTestAllowed, toRecordMetadata, type Material } from "@/lib/recordTestWizard";
 import { cn } from "@/lib/utils";
 import { useTestData } from "@/context/TestDataContext";
 import { registry } from "@/lib/testRegistry";
-import Navigation from "@/components/Navigation";
 import { toast } from "sonner";
 
 interface TestOption {
@@ -148,7 +146,6 @@ const RecordTestWizard = () => {
   // pre-fills the cube details so the lab reference matches the logged sample.
   const labIdFromParam = searchParams.get("labId") || searchParams.get("labRef");
   const testData = useTestData();
-  const { user, logout } = useSession();
 
   useEffect(() => {
     void testData.refreshTestDefinitions();
@@ -818,21 +815,8 @@ const RecordTestWizard = () => {
     })();
   };
 
-  const handleLogout = async () => {
-    await logout();
-    toast.success("Logged out");
-  };
-
   return (
-    <SidebarProvider>
-      <Navigation
-        currentView="tests"
-        onViewChange={() => {}}
-        onLogout={handleLogout}
-        userName={user.name}
-        userEmail={user.email}
-      />
-      <SidebarInset className="flex flex-col min-h-svh">
+    <div className="flex flex-col min-h-svh">
         {/* Header */}
         <header className="border-b sticky top-0 z-10" style={{ borderColor: "#E3E1D9", backgroundColor: "#FFFFFF" }}>
           <div className="px-4 md:px-6 py-3">
@@ -1592,8 +1576,7 @@ const RecordTestWizard = () => {
           </DialogContent>
         </Dialog>
 
-      </SidebarInset>
-    </SidebarProvider>
+    </div>
   );
 };
 
