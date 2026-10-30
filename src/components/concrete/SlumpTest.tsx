@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useProject } from "@/context/ProjectContext";
-import { generateTestPDF } from "@/lib/pdfGenerator";
+import { generateTestPDF, printPDFDocument } from "@/lib/pdfGenerator";
 import { useTestReport } from "@/hooks/useTestReport";
 import { loadTestResult, saveTestResult } from "@/lib/testResultPersistence";
 
@@ -57,12 +57,16 @@ const SlumpTest = ({ testKey }: SlumpTestProps) => {
     setRecordId(savedId);
   };
 
-  const exportPDF = () => {
-    generateTestPDF({ title: "Slump Test", ...project, fields: [{ label: "Slump Value (mm)", value: slump }, { label: "Remarks", value: remarks }] });
+  const buildPDF = (skipDownload: boolean) => generateTestPDF({ title: "Slump Test", ...project, skipDownload, fields: [{ label: "Slump Value (mm)", value: slump }, { label: "Remarks", value: remarks }] });
+
+  const exportPDF = async () => {
+    await buildPDF(false);
   };
 
+  const printPDF = async () => printPDFDocument(await buildPDF(true));
+
   return (
-    <TestSection title="Slump Test" testKey={testKey} onSave={save} onClear={() => { setSlump(""); setRemarks(""); }} onExportPDF={exportPDF}>
+    <TestSection title="Slump Test" testKey={testKey} onSave={save} onClear={() => { setSlump(""); setRemarks(""); }} onExportPDF={exportPDF} onPrint={printPDF}>
       {!hasProjectSelected && !slump ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">

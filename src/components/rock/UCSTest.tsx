@@ -5,13 +5,13 @@ import { Button } from "@/components/ui/button";
 import CalculatedInput from "@/components/CalculatedInput";
 import { Plus, X } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
-import { generateTestPDF } from "@/lib/pdfGenerator";
+import { generateTestPDF, printPDFDocument } from "@/lib/pdfGenerator";
 import { useTestReport } from "@/hooks/useTestReport";
 import { loadTestResult, saveTestResult } from "@/lib/testResultPersistence";
 
 interface Row { sampleId: string; load: string; area: string }
 
-const UCSTest = () => {
+const UCSTest = ({ testKey }: { testKey?: string }) => {
   const project = useProject();
   const defaultRows: Row[] = [
     { sampleId: "R1", load: "103", area: "2290" },
@@ -61,12 +61,16 @@ const UCSTest = () => {
     setRecordId(savedId);
   };
 
-  const exportPDF = () => {
-    generateTestPDF({ title: "UCS (Unconfined Compressive Strength)", ...project, tables: [{ headers: ["Sample ID", "Load (kN)", "Area (mm²)", "Strength (MPa)"], rows: rows.map(r => [r.sampleId, r.load || "—", r.area || "—", getStrength(r) || "—"]) }] });
+  const buildPDF = (skipDownload: boolean) => generateTestPDF({ title: "UCS (Unconfined Compressive Strength)", ...project, skipDownload, tables: [{ headers: ["Sample ID", "Load (kN)", "Area (mm²)", "Strength (MPa)"], rows: rows.map(r => [r.sampleId, r.load || "—", r.area || "—", getStrength(r) || "—"]) }] });
+
+  const exportPDF = async () => {
+    await buildPDF(false);
   };
 
+  const printPDF = async () => printPDFDocument(await buildPDF(true));
+
   return (
-    <TestSection title="UCS (Unconfined Compressive Strength)" onSave={save} onClear={() => setRows([{ sampleId: "", load: "", area: "" }])} onExportPDF={exportPDF}>
+    <TestSection title="UCS (Unconfined Compressive Strength)" testKey={testKey} onSave={save} onClear={() => setRows([{ sampleId: "", load: "", area: "" }])} onExportPDF={exportPDF} onPrint={printPDF}>
       {!hasProjectSelected && rows.length === 0 ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">

@@ -4,13 +4,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Plus, X } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
-import { generateTestPDF } from "@/lib/pdfGenerator";
+import { generateTestPDF, printPDFDocument } from "@/lib/pdfGenerator";
 import { useTestReport } from "@/hooks/useTestReport";
 import { loadTestResult, saveTestResult } from "@/lib/testResultPersistence";
 
 interface Row { depth: string; blowCount: string }
 
-const SPTTest = () => {
+const SPTTest = ({ testKey }: { testKey?: string }) => {
   const project = useProject();
   const [rows, setRows] = useState<Row[]>([
     { depth: "1.5", blowCount: "8" },
@@ -57,12 +57,16 @@ const SPTTest = () => {
     setRecordId(savedId);
   };
 
-  const exportPDF = () => {
-    generateTestPDF({ title: "SPT (Standard Penetration Test)", ...project, tables: [{ headers: ["Depth (m)", "Blow Count (N-value)"], rows: rows.map(r => [r.depth || "—", r.blowCount || "—"]) }] });
+  const buildPDF = (skipDownload: boolean) => generateTestPDF({ title: "SPT (Standard Penetration Test)", ...project, skipDownload, tables: [{ headers: ["Depth (m)", "Blow Count (N-value)"], rows: rows.map(r => [r.depth || "—", r.blowCount || "—"]) }] });
+
+  const exportPDF = async () => {
+    await buildPDF(false);
   };
 
+  const printPDF = async () => printPDFDocument(await buildPDF(true));
+
   return (
-    <TestSection title="SPT (Standard Penetration Test)" onSave={save} onClear={() => setRows([{ depth: "", blowCount: "" }])} onExportPDF={exportPDF}>
+    <TestSection title="SPT (Standard Penetration Test)" testKey={testKey} onSave={save} onClear={() => setRows([{ depth: "", blowCount: "" }])} onExportPDF={exportPDF} onPrint={printPDF}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Depth (m)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Blow Count (N-value)</th><th className="w-10"></th></tr></thead>

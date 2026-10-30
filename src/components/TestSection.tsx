@@ -37,9 +37,10 @@ interface TestSectionProps {
   lastSaveError?: string | null;
   recordButtonLabel?: string;
   onRecordClick?: () => void;
+  actionsPlacement?: "header" | "footer";
 }
 
-const TestSection = ({ title, testKey, tooltip, children, onSave, onFinalSave, onClear, onExportPDF, onPrint, onExportXLSX, onExportSmokeCheck, exportSmokeCheckDisabled, smokeCheckStatus, saveStatus = "idle", lastSavedAt, lastSaveError, recordButtonLabel, onRecordClick }: TestSectionProps) => {
+const TestSection = ({ title, testKey, tooltip, children, onSave, onFinalSave, onClear, onExportPDF, onPrint, onExportXLSX, onExportSmokeCheck, exportSmokeCheckDisabled, smokeCheckStatus, saveStatus = "idle", lastSavedAt, lastSaveError, recordButtonLabel, onRecordClick, actionsPlacement = "header" }: TestSectionProps) => {
   const [localOpen, setLocalOpen] = useState(false);
   const accordion = useTestAccordion();
 
@@ -54,6 +55,193 @@ const TestSection = ({ title, testKey, tooltip, children, onSave, onFinalSave, o
     !!project.onLoadProject &&
     !!project.onStartNewProject &&
     !!project.onMetadataChange;
+
+  const actions = (
+    <div className="flex flex-wrap gap-1 sm:gap-1.5 justify-start sm:justify-end w-full sm:w-auto" onClick={(e) => e.stopPropagation()}>
+      {recordButtonLabel && onRecordClick && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="sm"
+              variant="default"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={onRecordClick}
+            >
+              <Plus className="h-3.5 w-3.5 mr-1" /> {recordButtonLabel}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            Start recording a new test
+          </TooltipContent>
+        </Tooltip>
+      )}
+      {onExportSmokeCheck && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="text-xs sm:text-sm"
+              disabled={exportSmokeCheckDisabled}
+              onClick={async () => {
+                await onExportSmokeCheck();
+              }}
+            >
+              <FlaskConical className="h-3.5 w-3.5 mr-1" /> Smoke Check
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            Run diagnostic checks on test data
+          </TooltipContent>
+        </Tooltip>
+      )}
+      {onExportXLSX && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={async () => {
+                const exported = await onExportXLSX();
+                if (exported !== false) toast.success(`${title} Excel downloaded`);
+              }}
+            >
+              <Sheet className="h-3.5 w-3.5 mr-1" /> Excel
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            Export test data as Excel file
+          </TooltipContent>
+        </Tooltip>
+      )}
+      {onExportPDF && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={async () => {
+                try {
+                  const exported = await onExportPDF();
+                  if (exported !== false) toast.success(`${title} PDF downloaded`);
+                } catch {
+                  toast.error(`${title} PDF download failed`);
+                }
+              }}
+            >
+              <FileDown className="h-3.5 w-3.5 mr-1" /> PDF
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            Export test data as PDF document
+          </TooltipContent>
+        </Tooltip>
+      )}
+      {onPrint && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={async () => {
+                try {
+                  await onPrint();
+                } catch {
+                  toast.error(`${title} print failed`);
+                }
+              }}
+            >
+              <Printer className="h-3.5 w-3.5 mr-1" /> Print
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            Open the report PDF in a print dialog
+          </TooltipContent>
+        </Tooltip>
+      )}
+      {onSave && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="sm"
+              variant={saveStatus === "error" ? "destructive" : "default"}
+              disabled={saveStatus === "saving"}
+              onClick={async () => {
+                try {
+                  const result = await onSave();
+                  if (result !== false) {
+                    toast.success(`${title} saved`);
+                  }
+                } catch (error) {
+                  const errorMsg = error instanceof Error ? error.message : `${title} save failed`;
+                  toast.error(errorMsg);
+                }
+              }}
+            >
+              {saveStatus === "saving" ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Saving...
+                </>
+              ) : saveStatus === "saved" ? (
+                <>
+                  <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-green-600" /> Saved
+                </>
+              ) : saveStatus === "error" ? (
+                <>
+                  <AlertCircle className="h-3.5 w-3.5 mr-1" /> Error
+                </>
+              ) : (
+                <>
+                  <Save className="h-3.5 w-3.5 mr-1" /> Save
+                </>
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            Save changes without closing
+          </TooltipContent>
+        </Tooltip>
+      )}
+      {onFinalSave && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="sm"
+              variant="default"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              disabled={saveStatus === "saving"}
+              onClick={async (e) => {
+                e.stopPropagation();
+                try {
+                  await onFinalSave();
+                } catch (error) {
+                  const errorMsg = error instanceof Error ? error.message : "Final save failed";
+                  toast.error(errorMsg);
+                }
+              }}
+            >
+              <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> {"Save & Close"}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            Save changes and close this section
+          </TooltipContent>
+        </Tooltip>
+      )}
+      {onClear && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button size="sm" variant="outline" onClick={onClear}>
+              <Trash2 className="h-3.5 w-3.5 mr-1" /> Clear
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            Clear all data in this section
+          </TooltipContent>
+        </Tooltip>
+      )}
+    </div>
+  );
 
   return (
     <Card className="shadow-sm">
@@ -75,190 +263,7 @@ const TestSection = ({ title, testKey, tooltip, children, onSave, onFinalSave, o
             </span>
             <span className="min-w-0">{title}</span>
           </CardTitle>
-          <div className="flex flex-wrap gap-1 sm:gap-1.5 justify-start sm:justify-end w-full sm:w-auto" onClick={(e) => e.stopPropagation()}>
-            {recordButtonLabel && onRecordClick && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="default"
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                    onClick={onRecordClick}
-                  >
-                    <Plus className="h-3.5 w-3.5 mr-1" /> {recordButtonLabel}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  Start recording a new test
-                </TooltipContent>
-              </Tooltip>
-            )}
-            {onExportSmokeCheck && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="text-xs sm:text-sm"
-                    disabled={exportSmokeCheckDisabled}
-                    onClick={async () => {
-                      await onExportSmokeCheck();
-                    }}
-                  >
-                    <FlaskConical className="h-3.5 w-3.5 mr-1" /> Smoke Check
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  Run diagnostic checks on test data
-                </TooltipContent>
-              </Tooltip>
-            )}
-            {onExportXLSX && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={async () => {
-                      const exported = await onExportXLSX();
-                      if (exported !== false) toast.success(`${title} Excel downloaded`);
-                    }}
-                  >
-                    <Sheet className="h-3.5 w-3.5 mr-1" /> Excel
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  Export test data as Excel file
-                </TooltipContent>
-              </Tooltip>
-            )}
-            {onExportPDF && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={async () => {
-                      try {
-                        const exported = await onExportPDF();
-                        if (exported !== false) toast.success(`${title} PDF downloaded`);
-                      } catch {
-                        toast.error(`${title} PDF download failed`);
-                      }
-                    }}
-                  >
-                    <FileDown className="h-3.5 w-3.5 mr-1" /> PDF
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  Export test data as PDF document
-                </TooltipContent>
-              </Tooltip>
-            )}
-            {onPrint && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={async () => {
-                      try {
-                        await onPrint();
-                      } catch {
-                        toast.error(`${title} print failed`);
-                      }
-                    }}
-                  >
-                    <Printer className="h-3.5 w-3.5 mr-1" /> Print
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  Open the report PDF in a print dialog
-                </TooltipContent>
-              </Tooltip>
-            )}
-            {onSave && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant={saveStatus === "error" ? "destructive" : "default"}
-                    disabled={saveStatus === "saving"}
-                    onClick={async () => {
-                      try {
-                        const result = await onSave();
-                        if (result !== false) {
-                          toast.success(`${title} saved`);
-                        }
-                      } catch (error) {
-                        const errorMsg = error instanceof Error ? error.message : `${title} save failed`;
-                        toast.error(errorMsg);
-                      }
-                    }}
-                  >
-                    {saveStatus === "saving" ? (
-                      <>
-                        <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Saving...
-                      </>
-                    ) : saveStatus === "saved" ? (
-                      <>
-                        <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-green-600" /> Saved
-                      </>
-                    ) : saveStatus === "error" ? (
-                      <>
-                        <AlertCircle className="h-3.5 w-3.5 mr-1" /> Error
-                      </>
-                    ) : (
-                      <>
-                        <Save className="h-3.5 w-3.5 mr-1" /> Save
-                      </>
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  Save changes without closing
-                </TooltipContent>
-              </Tooltip>
-            )}
-            {onFinalSave && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="default"
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                    disabled={saveStatus === "saving"}
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      try {
-                        await onFinalSave();
-                      } catch (error) {
-                        const errorMsg = error instanceof Error ? error.message : "Final save failed";
-                        toast.error(errorMsg);
-                      }
-                    }}
-                  >
-                    <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> {"Save & Close"}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  Save changes and close this section
-                </TooltipContent>
-              </Tooltip>
-            )}
-            {onClear && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button size="sm" variant="outline" onClick={onClear}>
-                    <Trash2 className="h-3.5 w-3.5 mr-1" /> Clear
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  Clear all data in this section
-                </TooltipContent>
-              </Tooltip>
-            )}
-          </div>
+          {actionsPlacement !== "footer" && actions}
         </div>
         {saveStatus && saveStatus !== "idle" && (
           <Tooltip>
@@ -388,6 +393,7 @@ const TestSection = ({ title, testKey, tooltip, children, onSave, onFinalSave, o
             </div>
           )}
           {children}
+          {actionsPlacement === "footer" && <div className="pt-2">{actions}</div>}
         </CardContent>
       )}
     </Card>

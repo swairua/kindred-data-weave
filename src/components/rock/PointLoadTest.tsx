@@ -5,13 +5,13 @@ import { Button } from "@/components/ui/button";
 import CalculatedInput from "@/components/CalculatedInput";
 import { Plus, X } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
-import { generateTestPDF } from "@/lib/pdfGenerator";
+import { generateTestPDF, printPDFDocument } from "@/lib/pdfGenerator";
 import { useTestReport } from "@/hooks/useTestReport";
 import { loadTestResult, saveTestResult } from "@/lib/testResultPersistence";
 
 interface Row { sampleId: string; failureLoad: string; de: string }
 
-const PointLoadTest = () => {
+const PointLoadTest = ({ testKey }: { testKey?: string }) => {
   const project = useProject();
   const [rows, setRows] = useState<Row[]>([
     { sampleId: "P1", failureLoad: "1.2", de: "50" },
@@ -61,12 +61,16 @@ const PointLoadTest = () => {
 
   const tableData = { headers: ["Sample ID", "Failure Load (kN)", "De (mm)", "Is(50) (MPa)"], rows: rows.map(r => [r.sampleId, r.failureLoad || "—", r.de || "—", getIndex(r) || "—"]) };
 
-  const exportPDF = () => {
-    generateTestPDF({ title: "Point Load Test", ...project, tables: [tableData] });
+  const buildPDF = (skipDownload: boolean) => generateTestPDF({ title: "Point Load Test", ...project, skipDownload, tables: [tableData] });
+
+  const exportPDF = async () => {
+    await buildPDF(false);
   };
 
+  const printPDF = async () => printPDFDocument(await buildPDF(true));
+
   return (
-    <TestSection title="Point Load Test" onSave={save} onClear={() => setRows([{ sampleId: "", failureLoad: "", de: "" }])} onExportPDF={exportPDF}>
+    <TestSection title="Point Load Test" testKey={testKey} onSave={save} onClear={() => setRows([{ sampleId: "", failureLoad: "", de: "" }])} onExportPDF={exportPDF} onPrint={printPDF} actionsPlacement="footer">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Sample ID</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Failure Load (kN)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">De (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Is(50) (MPa)</th><th className="w-10"></th></tr></thead>

@@ -24,6 +24,15 @@ type ProjectDetails = ApiProjectRow & {
   county?: string | null;
 };
 
+const ADDABLE_TESTS: Record<string, { key: string; name: string; phrase: string }> = {
+  atterberg: { key: "atterberg", name: "Atterberg", phrase: "Atterberg" },
+  grading: { key: "grading", name: "Grading", phrase: "grading" },
+  proctor: { key: "proctor", name: "Proctor", phrase: "Proctor" },
+  compressive: { key: "compressive", name: "Compressive", phrase: "compressive" },
+  spt: { key: "spt", name: "SPT", phrase: "SPT" },
+  cpt: { key: "cpt", name: "CPT", phrase: "CPT" },
+};
+
 type ProjectDraft = {
   name: string;
   client_name: string;
@@ -271,26 +280,7 @@ const ProjectOverview = () => {
       (b.updated_at || b.created_at || "").localeCompare(a.updated_at || a.created_at || ""),
     );
   })();
-  const addTestKey = (() => {
-    if (!project) return "atterberg";
-    const keyMap: Record<string, string> = {
-      grading: "grading",
-      proctor: "proctor",
-      compressive: "compressive",
-      atterberg: "atterberg",
-    };
-    return keyMap[project.test_type ?? ""] ?? "atterberg";
-  })();
-  const addTestLabel = (() => {
-    if (!project) return "Add Atterberg";
-    const labelMap: Record<string, string> = {
-      grading: "Add Grading",
-      proctor: "Add Proctor",
-      compressive: "Add Compressive",
-      atterberg: "Add Atterberg",
-    };
-    return labelMap[project.test_type ?? ""] ?? "Add Atterberg";
-  })();
+  const addableTest = ADDABLE_TESTS[project?.test_type ?? "atterberg"] ?? null;
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -339,9 +329,11 @@ const ProjectOverview = () => {
                           <Button variant="outline" onClick={() => setIsEditing(true)} className="gap-2" disabled={isSaving}>
                             <Edit2 className="h-4 w-4" /> Edit project
                           </Button>
-                          <Button onClick={() => openTest(addTestKey)} className="gap-2">
-                            <Plus className="h-4 w-4" /> {addTestLabel}
-                          </Button>
+                          {addableTest && (
+                            <Button onClick={() => openTest(addableTest.key)} className="gap-2">
+                              <Plus className="h-4 w-4" /> Add {addableTest.name}
+                            </Button>
+                          )}
                         </div>
                       ) : (
                         <div className="flex gap-2">
@@ -445,7 +437,7 @@ const ProjectOverview = () => {
                           <FlaskConical className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
                           <p className="font-medium">No tests recorded yet</p>
                           <p className="mt-1 text-sm text-muted-foreground">
-                            Add a {project.test_type === "grading" ? "grading" : project.test_type === "proctor" ? "Proctor" : project.test_type === "compressive" ? "compressive" : "Atterberg"} test or choose a saved test from the project list.
+                            {addableTest ? `Add a ${addableTest.phrase} test or choose` : "Choose"} a saved test from the project list.
                           </p>
                         </div>
                       ) : (

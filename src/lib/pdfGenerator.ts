@@ -354,3 +354,9 @@ export const generateTestPDF = async (data: PDFData) => {
   }
   return doc;
 };
+
+export const printPDFDocument = (doc: jsPDF) => {
+  doc.autoPrint();
+  const printWindow = window.open(doc.output("bloburl"), "_blank");
+  if (printWindow) printWindow.onload = () => printWindow.print();
+};
