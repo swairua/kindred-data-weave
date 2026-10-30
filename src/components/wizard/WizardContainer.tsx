@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { useWizard } from "@/context/WizardContext";
+import { useWizard, type WizardStep } from "@/context/WizardContext";
 import MaterialSelection from "./MaterialSelection";
 import TestTypeSelection from "./TestTypeSelection";
 import ProjectSelection from "./ProjectSelection";
@@ -17,7 +17,7 @@ interface WizardContainerProps {
 const WizardContainer: React.FC<WizardContainerProps> = ({ onComplete, onCancel }) => {
   const { state, goToStep } = useWizard();
 
-  const steps = useMemo(
+  const steps = useMemo<{ id: WizardStep; label: string; order: number }[]>(
     () => [
       { id: "material", label: "Material", order: 1 },
       { id: "testType", label: "Test type", order: 2 },
@@ -33,13 +33,13 @@ const WizardContainer: React.FC<WizardContainerProps> = ({ onComplete, onCancel 
 
   const handleNext = () => {
     if (currentStepIndex < steps.length - 1) {
-      goToStep(steps[currentStepIndex + 1].id as any);
+      goToStep(steps[currentStepIndex + 1].id);
     }
   };
 
   const handlePrev = () => {
     if (currentStepIndex > 0) {
-      goToStep(steps[currentStepIndex - 1].id as any);
+      goToStep(steps[currentStepIndex - 1].id);
     }
   };
 

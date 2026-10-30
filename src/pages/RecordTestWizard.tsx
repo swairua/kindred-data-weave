@@ -15,7 +15,7 @@ import { listRecords, fetchFullProject, createRecord, listCompressiveTests, isRe
 import { type ApiCompressiveTestRow, type ApiProjectRow } from "@/types/api";
 import { getExpectedTestType, hasRequiredSoilSampleMetadata, isInitialTestValid, isTestAllowed, toRecordMetadata, type Material } from "@/lib/recordTestWizard";
 import { cn } from "@/lib/utils";
-import { useTestData } from "@/context/TestDataContext";
+import { useTestData, type ConcreteTestMetadata, type ProjectMetadata } from "@/context/TestDataContext";
 import { registry } from "@/lib/testRegistry";
 import { toast } from "sonner";
 
@@ -175,7 +175,9 @@ const RecordTestWizard = () => {
         }
         return restored;
       }
-    } catch {}
+    } catch {
+      // Unreadable or unavailable session storage: start from the defaults.
+    }
     return defaults;
   });
 
@@ -199,7 +201,9 @@ const RecordTestWizard = () => {
   useEffect(() => {
     try {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch {}
+    } catch {
+      // Storage can be full or disabled; the draft simply is not persisted.
+    }
   }, [state]);
 
   // Preload project from URL parameter when component mounts
@@ -221,8 +225,8 @@ const RecordTestWizard = () => {
           projectName: fullProject.name,
           clientName: fullProject.client_name || "",
           projectDate: fullProject.project_date || prev.projectDate,
-          contractor: (fullProject as any).contractor || prev.contractor,
-          county: (fullProject as any).county || prev.county,
+          contractor: fullProject.contractor || prev.contractor,
+          county: fullProject.county || prev.county,
           submittedBy: fullProject.submitted_by || prev.submittedBy,
           dateSubmitted: fullProject.date_submitted || prev.dateSubmitted,
           customFields: Array.isArray(fullProject.custom_fields) ? fullProject.custom_fields : prev.customFields,
@@ -236,8 +240,8 @@ const RecordTestWizard = () => {
           labOrganization: fullProject.lab_organization || "",
           dateReported: fullProject.date_reported || "",
           checkedBy: fullProject.checked_by || "",
-          contractor: (fullProject as any).contractor || "",
-          county: (fullProject as any).county || "",
+          contractor: fullProject.contractor || "",
+          county: fullProject.county || "",
           submittedBy: fullProject.submitted_by || "",
           dateSubmitted: fullProject.date_submitted || "",
           customFields: Array.isArray(fullProject.custom_fields) ? fullProject.custom_fields : [],
@@ -606,7 +610,7 @@ const RecordTestWizard = () => {
     }
 
     // Push project info into TestDataContext so the test screens have it
-    const projectMetadata: any = {
+    const projectMetadata: Partial<ProjectMetadata> = {
       projectName: state.projectName,
       clientName: state.clientName,
       projectDate: state.projectDate,
@@ -627,7 +631,7 @@ const RecordTestWizard = () => {
     // If concrete material, also push concrete test details to context.
     // The reception Lab ID doubles as the lab reference on the cube sheet.
     if (isCompressiveStrengthTest) {
-      const concreteMetadata: any = {
+      const concreteMetadata: ConcreteTestMetadata = {
         cement: state.cement,
         fineAggregate: state.fineAggregate,
         coarseAggregate: state.coarseAggregate,
@@ -711,7 +715,7 @@ const RecordTestWizard = () => {
           projectDate: fullProject.project_date || "",
           currentProjectId: fullProject.id,
           contractor: test.contractor,
-          county: (fullProject as any).county || "",
+          county: fullProject.county || "",
         });
       } catch (error) {
         console.warn("[RecordTestWizard] Failed to load project for selected test:", error);
@@ -790,8 +794,8 @@ const RecordTestWizard = () => {
           projectName: fullProject.name,
           clientName: fullProject.client_name || "",
           projectDate: fullProject.project_date || prev.projectDate,
-          contractor: (fullProject as any).contractor || prev.contractor,
-          county: (fullProject as any).county || prev.county,
+          contractor: fullProject.contractor || prev.contractor,
+          county: fullProject.county || prev.county,
           submittedBy: fullProject.submitted_by || prev.submittedBy,
           dateSubmitted: fullProject.date_submitted || prev.dateSubmitted,
           customFields: Array.isArray(fullProject.custom_fields) ? fullProject.custom_fields : prev.customFields,
@@ -803,8 +807,8 @@ const RecordTestWizard = () => {
           labOrganization: fullProject.lab_organization || "",
           dateReported: fullProject.date_reported || "",
           checkedBy: fullProject.checked_by || "",
-          contractor: (fullProject as any).contractor || "",
-          county: (fullProject as any).county || "",
+          contractor: fullProject.contractor || "",
+          county: fullProject.county || "",
           submittedBy: fullProject.submitted_by || "",
           dateSubmitted: fullProject.date_submitted || "",
           customFields: Array.isArray(fullProject.custom_fields) ? fullProject.custom_fields : [],

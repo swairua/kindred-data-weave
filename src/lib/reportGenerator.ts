@@ -182,7 +182,8 @@ export function generateProjectSummaryReport(
       margin: { left: 14, right: 14 },
       styles: { cellPadding: 2.5 },
     });
-    y = (doc as any).lastAutoTable?.finalY ? (doc as any).lastAutoTable.finalY + 10 : y + 10;
+    const lastTable = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable;
+    y = lastTable?.finalY ? lastTable.finalY + 10 : y + 10;
   }
 
   addFooter(doc);
@@ -195,7 +196,7 @@ export function generateDashboardReport(
   tests: Record<string, TestSummary>
 ) {
   const doc = new jsPDF();
-  let y = addHeader(doc, "Dashboard Export", project);
+  const y = addHeader(doc, "Dashboard Export", project);
 
   const testList = Object.values(tests);
   const allRows = testList.map(t => [

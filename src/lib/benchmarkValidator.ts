@@ -22,7 +22,7 @@ import {
 
 export interface BenchmarkResult {
   testType: "liquidLimit" | "plasticLimit" | "shrinkageLimit";
-  extractedTrials: any[];
+  extractedTrials: unknown[];
   excelExpectedValue: number | null;
   calculatedValue: number | null;
   match: boolean;
@@ -337,11 +337,12 @@ export const validateAgainstExcel = async (file: File | Buffer): Promise<Benchma
       if (!ws.pageSetup) {
         ws.pageSetup = {};
       }
-      if (!(ws as any).margins) {
-        (ws as any).margins = {};
+      const sheetProps = ws as unknown as { margins?: unknown; printArea?: unknown };
+      if (!sheetProps.margins) {
+        sheetProps.margins = {};
       }
-      if (!(ws as any).printArea) {
-        (ws as any).printArea = null;
+      if (!sheetProps.printArea) {
+        sheetProps.printArea = null;
       }
     } catch (e) {
       // Some worksheets might not allow property initialization

@@ -8,8 +8,12 @@ import "./lib/debugImageLoading";
 import { debugAuthState, debugApiConnectivity } from "./lib/api";
 
 // Expose debug functions globally for console access
-(window as any).__debugAuth = debugAuthState;
-(window as any).__debugApi = debugApiConnectivity;
+const debugWindow = window as Window & {
+  __debugAuth?: typeof debugAuthState;
+  __debugApi?: typeof debugApiConnectivity;
+};
+debugWindow.__debugAuth = debugAuthState;
+debugWindow.__debugApi = debugApiConnectivity;
 
 // Add error handler for unhandled rejections
 window.addEventListener('error', (event) => {

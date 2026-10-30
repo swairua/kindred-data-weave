@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Upload, Loader2, X, Copy, Check } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { buildApiUrl, listRecords, uploadFile } from "@/lib/api";
+import type { ApiProjectRow } from "@/types/api";
 import { makeStampTransparent } from "@/lib/stampUtils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -33,8 +34,8 @@ interface StoredImage {
 }
 
 interface DebugInfo {
-  projects: any[];
-  localStorage: Record<string, any>;
+  projects: ApiProjectRow[];
+  localStorage: Record<string, unknown>;
   sessionToken: string | null;
   apiUrl: string;
   timestamp: string;
@@ -59,9 +60,9 @@ const Admin = () => {
   const loadDebugInfo = useCallback(async () => {
     setDebugLoading(true);
     try {
-      const projects = await listRecords("projects", { limit: 100 });
+      const projects = await listRecords<ApiProjectRow>("projects", { limit: 100 });
 
-      const localStorageData: Record<string, any> = {};
+      const localStorageData: Record<string, unknown> = {};
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
         if (key) {

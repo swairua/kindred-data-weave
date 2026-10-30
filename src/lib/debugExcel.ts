@@ -19,7 +19,7 @@ export const debugExcelFile = async (filePath: string) => {
     }
     
     console.log(`\nFirst worksheet: "${ws.name}"`);
-    console.log(`  Dimensions: ${ws.dimensions ? (ws.dimensions as any).ref || ws.dimensions : "unknown"}`);
+    console.log(`  Dimensions: ${ws.dimensions ? (ws.dimensions as unknown as { ref?: string }).ref || ws.dimensions : "unknown"}`);
     console.log(`  Rows: ${ws.actualRowCount}, Columns: ${ws.actualColumnCount}`);
     
     // Sample first 50 rows, first 15 columns
