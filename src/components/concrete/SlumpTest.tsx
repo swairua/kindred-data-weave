@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import TestSection from "@/components/TestSection";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useProject } from "@/context/ProjectContext";
 import { generateTestPDF } from "@/lib/pdfGenerator";
 import { useTestReport } from "@/hooks/useTestReport";
+import { loadTestResult, saveTestResult } from "@/lib/testResultPersistence";
 
 interface SlumpTestProps {
   testKey?: string;
@@ -13,9 +14,11 @@ interface SlumpTestProps {
 
 const SlumpTest = ({ testKey }: SlumpTestProps) => {
   const project = useProject();
-  const [slump, setSlump] = useState("");
-  const [remarks, setRemarks] = useState("");
+  const [slump, setSlump] = useState("75");
+  const [remarks, setRemarks] = useState("True slump");
   const hasProjectSelected = !!project.currentProjectId;
+  const projectId = project.currentProjectId ?? null;
+  const [recordId, setRecordId] = useState<number | null>(null);
 
   const dataPoints = slump ? 1 : 0;
   const slumpResults = useMemo(() => [
@@ -23,12 +26,43 @@ const SlumpTest = ({ testKey }: SlumpTestProps) => {
   ], [slump]);
   useTestReport("slump", dataPoints, slumpResults);
 
+  useEffect(() => {
+    if (!projectId) return;
+    let active = true;
+    loadTestResult(projectId, "slump")
+      .then((result) => {
+        if (!active || !result) return;
+        setRecordId(result.id);
+        const saved = result.payload_json as { slump?: string; remarks?: string } | null;
+        if (saved) {
+          setSlump(saved.slump ?? "");
+          setRemarks(saved.remarks ?? "");
+        }
+      })
+      .catch((error) => console.error("Failed to load slump result", error));
+    return () => { active = false; };
+  }, [projectId]);
+
+  const save = async () => {
+    if (!projectId) throw new Error("Select a project before saving this slump test");
+    const savedId = await saveTestResult(projectId, recordId, {
+      test_key: "slump",
+      name: "Slump Test",
+      category: "concrete",
+      status: slump ? "completed" : "not-started",
+      data_points: dataPoints,
+      key_results_json: slumpResults.filter((result) => result.value),
+      payload_json: { slump, remarks },
+    });
+    setRecordId(savedId);
+  };
+
   const exportPDF = () => {
     generateTestPDF({ title: "Slump Test", ...project, fields: [{ label: "Slump Value (mm)", value: slump }, { label: "Remarks", value: remarks }] });
   };
 
   return (
-    <TestSection title="Slump Test" testKey={testKey} onSave={() => {}} onClear={() => { setSlump(""); setRemarks(""); }} onExportPDF={exportPDF}>
+    <TestSection title="Slump Test" testKey={testKey} onSave={save} onClear={() => { setSlump(""); setRemarks(""); }} onExportPDF={exportPDF}>
       {!hasProjectSelected && !slump ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
