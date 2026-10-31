@@ -345,6 +345,7 @@ const RecordTestWizard = () => {
   const isCompressiveStrengthTest = state.testKey === "compressive";
   const isGradingTest = state.testKey === "grading";
   const isProctorTest = state.testKey === "proctor";
+  const isCptTest = state.testKey === "cpt";
   const isAtterbergTest = state.testKey === "atterberg";
   const steps = useMemo(() => getSteps(state.testKey), [state.testKey]);
   const projectLoadKey = `${state.material ?? ""}:${state.testKey ?? ""}:${projectsReloadKey}`;
@@ -624,7 +625,7 @@ const RecordTestWizard = () => {
 
     testData.updateProjectMetadata(projectMetadata);
 
-    if (isGradingTest || isProctorTest) {
+    if (isGradingTest || isProctorTest || isCptTest) {
       testData.updateRecordMetadata(state.testKey!, toRecordMetadata(state));
     }
 
