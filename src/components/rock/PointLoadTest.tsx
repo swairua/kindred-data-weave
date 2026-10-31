@@ -11,15 +11,13 @@ import { loadTestResult, saveTestResult } from "@/lib/testResultPersistence";
 
 interface Row { sampleId: string; failureLoad: string; de: string }
 
+const emptyRow = (sampleId: string): Row => ({ sampleId, failureLoad: "", de: "" });
+
 const PointLoadTest = ({ testKey }: { testKey?: string }) => {
   const project = useProject();
-  const [rows, setRows] = useState<Row[]>([
-    { sampleId: "P1", failureLoad: "1.2", de: "50" },
-    { sampleId: "P2", failureLoad: "2.5", de: "54" },
-    { sampleId: "P3", failureLoad: "1.8", de: "52" },
-  ]);
   const projectId = project.currentProjectId ?? null;
   const [recordId, setRecordId] = useState<number | null>(null);
+  const [rows, setRows] = useState<Row[]>(projectId ? [emptyRow("P1")] : []);
 
   const getIndex = (row: Row) => { const p = parseFloat(row.failureLoad); const de = parseFloat(row.de); if (!p || !de) return ""; return ((p * 1000) / (de * de)).toFixed(3); };
   const update = (i: number, field: keyof Row, val: string) => { const next = [...rows]; next[i] = { ...next[i], [field]: val }; setRows(next); };
@@ -32,6 +30,8 @@ const PointLoadTest = ({ testKey }: { testKey?: string }) => {
   useTestReport("pointload", indices.length, plResults);
 
   useEffect(() => {
+    setRecordId(null);
+    setRows(projectId ? [emptyRow("P1")] : []);
     if (!projectId) return;
     let active = true;
     loadTestResult(projectId, "pointload")

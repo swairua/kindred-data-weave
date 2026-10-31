@@ -11,17 +11,14 @@ import { loadTestResult, saveTestResult } from "@/lib/testResultPersistence";
 
 interface Row { sampleId: string; load: string; area: string }
 
+const emptyRow = (sampleId: string): Row => ({ sampleId, load: "", area: "" });
+
 const UCSTest = ({ testKey }: { testKey?: string }) => {
   const project = useProject();
-  const defaultRows: Row[] = [
-    { sampleId: "R1", load: "103", area: "2290" },
-    { sampleId: "R2", load: "118", area: "2290" },
-    { sampleId: "R3", load: "96", area: "2290" },
-  ];
-  const [rows, setRows] = useState<Row[]>(project.currentProjectId ? defaultRows : []);
   const hasProjectSelected = !!project.currentProjectId;
   const projectId = project.currentProjectId ?? null;
   const [recordId, setRecordId] = useState<number | null>(null);
+  const [rows, setRows] = useState<Row[]>(hasProjectSelected ? [emptyRow("R1")] : []);
 
   const getStrength = (row: Row) => { const l = parseFloat(row.load); const a = parseFloat(row.area); if (!l || !a) return ""; return ((l * 1000) / a).toFixed(2); };
   const update = (i: number, field: keyof Row, val: string) => { const next = [...rows]; next[i] = { ...next[i], [field]: val }; setRows(next); };
@@ -34,6 +31,8 @@ const UCSTest = ({ testKey }: { testKey?: string }) => {
   useTestReport("ucs", strengths.length, ucsResults);
 
   useEffect(() => {
+    setRecordId(null);
+    setRows(projectId ? [emptyRow("R1")] : []);
     if (!projectId) return;
     let active = true;
     loadTestResult(projectId, "ucs")
