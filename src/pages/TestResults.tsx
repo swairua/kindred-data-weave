@@ -122,6 +122,12 @@ const TestResults = () => {
     return testTypeMap[testKey] || testKey.charAt(0).toUpperCase() + testKey.slice(1);
   };
 
+  // Get test name from testDefinitions (frontend UI definition) if available, fallback to formatted test_key
+  const getTestName = useCallback((testKey: string): string => {
+    const def = testDefinitions.find((d: TestDefinition) => d.test_key === testKey);
+    return def?.name || formatTestType(testKey);
+  }, [testDefinitions]);
+
   // A test_results row holds one or more samples. After migrate_atterberg_samples.sql
   // each sample is its own row, and before it several samples shared one row. collectSamples
   // handles both, drops any legacy project-level row left behind by the migration, and keeps
@@ -162,7 +168,7 @@ const TestResults = () => {
       const depth = depthFrom || depthTo ? `${depthFrom || "—"} to ${depthTo || "—"}` : sample.depth;
       const testedBy = recordField(record, "sampledSubmittedBy") || recordField(record, "testedBy") || "-";
       const projectName = result.project_name || `Project #${result.project_id}`;
-      const testType = formatTestType(result.test_key);
+      const testType = getTestName(result.test_key);
       const dateCreated = result.created_at || result.updated_at || new Date().toISOString();
 
       return {
@@ -186,7 +192,7 @@ const TestResults = () => {
     // Other soil tests (grading, proctor, spt, cpt, cbr, shear, etc.) - one display row per result row
     const otherSoilRows = otherSoilResults.map((result) => {
       const projectName = result.project_name || `Project #${result.project_id}`;
-      const testType = formatTestType(result.test_key);
+      const testType = getTestName(result.test_key);
       const dateCreated = result.created_at || result.updated_at || new Date().toISOString();
       // For non-atterberg tests, sample_label/depth come from the row directly
       const sampleId = typeof result.sample_label === "string" && result.sample_label.trim() !== "" ? result.sample_label : "-";
@@ -211,9 +217,9 @@ const TestResults = () => {
     });
 
     return [...atterbergRows, ...otherSoilRows].sort((a, b) => b.sort_stamp.localeCompare(a.sort_stamp));
-  }, [atterbergResults, otherSoilResults]);
+  }, [atterbergResults, otherSoilResults, getTestName]);
 
-  // Compressive mirror rows (see saveCompressiveTest): one display row per
+// Compressive mirror rows (see saveCompressiveTest): one display row per
   // result row, newest first. Sorted together with the soil rows below.
   const compressiveTests = useMemo(() => {
     const rows = (apiTestResults || [])
@@ -228,7 +234,7 @@ const TestResults = () => {
           project_id: row.project_id,
           test_key: row.test_key,
           project_name: row.project_name || `Project #${row.project_id}`,
-          test_type: formatTestType(row.test_key),
+          test_type: getTestName(row.test_key),
           sample_id:
             (typeof row.sample_label === "string" && row.sample_label.trim() !== "" && row.sample_label) ||
             (typeof payloadTest?.compressiveTestId === "number" ? `Cubes ${payloadTest.compressiveTestId}` : "-"),
@@ -241,7 +247,7 @@ const TestResults = () => {
         };
       });
     return rows.sort((a, b) => b.sort_stamp.localeCompare(a.sort_stamp));
-  }, [apiTestResults]);
+  }, [apiTestResults, getTestName]);
 
   const tests = useMemo(
     () => [...soilTests, ...compressiveTests].sort((a, b) => b.sort_stamp.localeCompare(a.sort_stamp)),
