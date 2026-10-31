@@ -334,6 +334,7 @@ const RecordTestWizard = () => {
     if (!state.material) return [];
     return testData.testDefinitions
       .filter((definition) => definition.category === state.material && definition.enabled !== false && definition.enabled !== 0)
+      .filter((definition) => isTestAllowed(state.material, definition.test_key))
       .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name))
       .map((definition) => ({
         key: definition.test_key,
