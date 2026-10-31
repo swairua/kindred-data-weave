@@ -346,6 +346,7 @@ const RecordTestWizard = () => {
   const isGradingTest = state.testKey === "grading";
   const isProctorTest = state.testKey === "proctor";
   const isCptTest = state.testKey === "cpt";
+  const isSlumpTest = state.testKey === "slump";
   const isAtterbergTest = state.testKey === "atterberg";
   const steps = useMemo(() => getSteps(state.testKey), [state.testKey]);
   const projectLoadKey = `${state.material ?? ""}:${state.testKey ?? ""}:${projectsReloadKey}`;
@@ -392,6 +393,7 @@ const RecordTestWizard = () => {
         if (isGradingTest || isProctorTest) {
           return hasRequiredSoilSampleMetadata(state);
         }
+        if (isSlumpTest) return state.sampleId.trim().length > 0;
         return state.sampleId.trim().length > 0 && state.sampleDepthFrom.trim().length > 0 && state.sampleDepthTo.trim().length > 0;
       case "entry": return true;
       default: return false;
@@ -625,7 +627,7 @@ const RecordTestWizard = () => {
 
     testData.updateProjectMetadata(projectMetadata);
 
-    if (isGradingTest || isProctorTest || isCptTest) {
+    if (isGradingTest || isProctorTest || isCptTest || isSlumpTest) {
       testData.updateRecordMetadata(state.testKey!, toRecordMetadata(state));
     }
 
@@ -1325,7 +1327,7 @@ const RecordTestWizard = () => {
                         placeholder="e.g. BH-01 / S-3"
                       />
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {!isSlumpTest && <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-2">
                         <Label htmlFor="depth-from">Depth from *</Label>
                         <Input
@@ -1344,7 +1346,7 @@ const RecordTestWizard = () => {
                           placeholder="e.g. 2.0"
                         />
                       </div>
-                    </div>
+                    </div>}
                     <div className="space-y-2">
                       <Label htmlFor="notes">Notes (optional)</Label>
                       <Textarea
