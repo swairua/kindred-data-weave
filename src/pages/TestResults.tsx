@@ -27,6 +27,9 @@ import { listRecords } from "@/lib/api";
 import { collectSamples, recordField } from "@/lib/testResultSamples";
 import { toast } from "sonner";
 
+const ATTERBERG_TEST_KEYS = ["atterberg"] as const;
+const COMPRESSIVE_TEST_KEYS = ["compressive"] as const;
+
 interface ApiTestResult {
   id: number;
   project_id: number;
@@ -124,12 +127,21 @@ const TestResults = () => {
   // Compressive saves mirror into test_results with payload {test:{compressiveTestId}}
   // and carry no Atterberg records[], so collectSamples would drop them. They are
   // excluded from that path and listed as one display row per result row.
-  const samples = useMemo(
-    () => collectSamples(apiTestResults.filter((row) => row.test_key !== "compressive")),
+  //
+  // Atterberg uses payload_json.project.records[] format. Other soil tests (grading, proctor,
+  // spt, cpt, cbr, shear, etc.) store data directly in payload_json. We process them separately.
+
+  const atterbergResults = useMemo(
+    () => collectSamples(apiTestResults.filter((row) => ATTERBERG_TEST_KEYS.includes(row.test_key))),
     [apiTestResults],
   );
 
-  // Convert API test results to display format - one row per sample, so a project with
+  const otherSoilResults = useMemo(
+    () => apiTestResults.filter((row) => !ATTERBERG_TEST_KEYS.includes(row.test_key) && !COMPRESSIVE_TEST_KEYS.includes(row.test_key)),
+    [apiTestResults],
+  );
+
+// Convert API test results to display format - one row per sample, so a project with
   // several boreholes and depths appears once per sample rather than once in total.
   //
   // collectSamples returns rows grouped by project in sort_order, because that is the
@@ -138,7 +150,8 @@ const TestResults = () => {
   // alone. The sort is stable, so samples of one project stay adjacent and keep their
   // stored order: they inherit the parent row's timestamps, so nothing separates them.
   const soilTests = useMemo(() => {
-    const rows = samples.map((sample, index) => {
+    // Atterberg samples (from collectSamples - one row per sample in records[])
+    const atterbergRows = atterbergResults.map((sample, index) => {
       const result = sample.row;
       const record = sample.record;
       const depthFrom = recordField(record, "sampleDepthFrom");
@@ -150,11 +163,8 @@ const TestResults = () => {
       const dateCreated = result.created_at || result.updated_at || new Date().toISOString();
 
       return {
-        // A row can still carry several samples, so the key needs the sample too.
         id: `${result.id}::${sample.sampleKey || index}`,
         resultId: Number(result.id),
-        // The record id, so the form can open that exact sample even when several samples
-        // still share one row.
         sampleKey: sample.sampleKey,
         project_id: result.project_id,
         test_key: result.test_key,
@@ -164,15 +174,41 @@ const TestResults = () => {
         depth: depth || "-",
         date_created: dateCreated,
         created_by: testedBy,
-         material_type: result.category || "Soil",
-         status: result.status || "-",
-        // Most recently touched first, falling back to the creation date.
+        material_type: result.category || "Soil",
+        status: result.status || "-",
         sort_stamp: result.updated_at || result.created_at || "",
       };
     });
 
-    return rows.sort((a, b) => b.sort_stamp.localeCompare(a.sort_stamp));
-  }, [samples]);
+    // Other soil tests (grading, proctor, spt, cpt, cbr, shear, etc.) - one display row per result row
+    const otherSoilRows = otherSoilResults.map((result) => {
+      const projectName = result.project_name || `Project #${result.project_id}`;
+      const testType = formatTestType(result.test_key);
+      const dateCreated = result.created_at || result.updated_at || new Date().toISOString();
+      // For non-atterberg tests, sample_label/depth come from the row directly
+      const sampleId = typeof result.sample_label === "string" && result.sample_label.trim() !== "" ? result.sample_label : "-";
+      const depth = typeof result.sample_depth === "string" && result.sample_depth.trim() !== "" ? result.sample_depth : "-";
+
+      return {
+        id: `${result.id}::${result.sample_key || "0"}`,
+        resultId: Number(result.id),
+        sampleKey: result.sample_key,
+        project_id: result.project_id,
+        test_key: result.test_key,
+        project_name: projectName,
+        test_type: testType,
+        sample_id: sampleId,
+        depth: depth,
+        date_created: dateCreated,
+        created_by: "-",
+        material_type: result.category || "Soil",
+        status: result.status || "-",
+        sort_stamp: result.updated_at || result.created_at || "",
+      };
+    });
+
+    return [...atterbergRows, ...otherSoilRows].sort((a, b) => b.sort_stamp.localeCompare(a.sort_stamp));
+  }, [atterbergResults, otherSoilResults]);
 
   // Compressive mirror rows (see saveCompressiveTest): one display row per
   // result row, newest first. Sorted together with the soil rows below.
