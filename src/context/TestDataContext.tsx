@@ -201,7 +201,7 @@ const defaultTests: Record<string, TestSummary> = {
   pointload: { id: "pointload", name: "Point Load Index", category: "rock", status: "not-started", dataPoints: 0, keyResults: [] },
   porosity: { id: "porosity", name: "Porosity", category: "rock", status: "not-started", dataPoints: 0, keyResults: [] },
   schmidt_rock: { id: "schmidt_rock", name: "Schmidt Hammer", category: "rock", status: "not-started", dataPoints: 0, keyResults: [], enabled: true },
-  ndt: { id: "ndt", name: "NDT (Rebound Hammer)", category: "rock", status: "not-started", dataPoints: 0, keyResults: [], enabled: true },
+  ndt: { id: "ndt", name: "NDT (Rebound Hammer)", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [], enabled: true },
   spt: { id: "spt", name: "Standard Penetration Test (SPT)", category: "soil", status: "not-started", dataPoints: 0, keyResults: [], enabled: true },
   dcp: { id: "dcp", name: "DCP", category: "special", status: "not-started", dataPoints: 0, keyResults: [] },
 };
