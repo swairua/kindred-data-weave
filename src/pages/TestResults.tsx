@@ -21,7 +21,7 @@ import {
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { Layers, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import Navigation from "@/components/Navigation";
-import { useTestData } from "@/context/TestDataContext";
+import { useTestData, type TestDefinition } from "@/context/TestDataContext";
 import { useProject } from "@/context/ProjectContext";
 import { listRecords } from "@/lib/api";
 import { collectSamples, recordField } from "@/lib/testResultSamples";
@@ -209,17 +209,17 @@ const TestResults = () => {
     [soilTests, compressiveTests],
   );
 
-  // Get unique material types from the test data
+  // Get unique material types from test definitions (all possible test types, not just those with results)
   const materialTypes = useMemo(() => {
-    const types = new Set(tests.map((t) => t.material_type).filter(Boolean));
+    const types = new Set(testDefinitions.map((t: TestDefinition) => t.category).filter(Boolean));
     return Array.from(types).sort();
-  }, [tests]);
+  }, []);
 
-  // Get unique test types from the test data
+  // Get unique test types from test definitions (all possible test types, not just those with results)
   const testTypes = useMemo(() => {
-    const types = new Set(tests.map((t) => t.test_type).filter(Boolean));
+    const types = new Set(testDefinitions.map((t: TestDefinition) => formatTestType(t.test_key)).filter(Boolean));
     return Array.from(types).sort();
-  }, [tests]);
+  }, []);
 
   const numberedTests = useMemo(
     () => {
