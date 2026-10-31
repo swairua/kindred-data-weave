@@ -61,7 +61,7 @@ interface ApiTestResult {
 }
 
 const TestResults = () => {
-  const { tests: testDataMap } = useTestData();
+  const { tests: testDataMap, testDefinitions } = useTestData();
   const testData = useTestData();
   const project = useProject();
   const navigate = useNavigate();
@@ -213,13 +213,14 @@ const TestResults = () => {
   const materialTypes = useMemo(() => {
     const types = new Set(testDefinitions.map((t: TestDefinition) => t.category).filter(Boolean));
     return Array.from(types).sort();
-  }, []);
+  }, [testDefinitions]);
 
-  // Get unique test types from test definitions (all possible test types, not just those with results)
+// Get unique test types from test definitions (all possible test types, not just those with results)
   const testTypes = useMemo(() => {
-    const types = new Set(testDefinitions.map((t: TestDefinition) => formatTestType(t.test_key)).filter(Boolean));
+    const mapped = testDefinitions.map((t: TestDefinition) => formatTestType(t.test_key));
+    const types = new Set(mapped.filter(Boolean));
     return Array.from(types).sort();
-  }, []);
+  }, [testDefinitions]);
 
   const numberedTests = useMemo(
     () => {
