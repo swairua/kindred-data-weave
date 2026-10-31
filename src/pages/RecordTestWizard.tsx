@@ -39,6 +39,8 @@ const MATERIAL_PRESENTATION: Record<Material, { label: string; Icon: LucideIcon 
 const isTemplateCloneTestKey = (testKey: string | null): boolean =>
   testKey === "grading" || testKey === "proctor" || testKey === "atterberg";
 
+const ROCK_SAMPLE_TEST_KEYS: ReadonlySet<string> = new Set(["ucs", "pointload", "porosity", "coring", "schmidt_rock"]);
+
 const getSteps = (testKey: string | null): WizardStep[] => {
   const isCompressiveStrengthTest = testKey === "compressive";
 
@@ -132,7 +134,8 @@ const emptyState: WizardState = {
 
 const filterProjectsByTestType = (projects: ApiProjectRow[], testKey: string | null): ApiProjectRow[] => {
   if (!testKey) return projects;
-  return projects.filter(p => p.test_type === testKey);
+  const expectedType = getExpectedTestType(testKey) ?? testKey;
+  return projects.filter(p => p.test_type === expectedType);
 };
 
 const RecordTestWizard = () => {
@@ -333,6 +336,7 @@ const RecordTestWizard = () => {
     if (!state.material) return [];
     return testData.testDefinitions
       .filter((definition) => definition.category === state.material && definition.enabled !== false && definition.enabled !== 0)
+      .filter((definition) => isTestAllowed(state.material, definition.test_key))
       .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name))
       .map((definition) => ({
         key: definition.test_key,
@@ -345,6 +349,10 @@ const RecordTestWizard = () => {
   const isCompressiveStrengthTest = state.testKey === "compressive";
   const isGradingTest = state.testKey === "grading";
   const isProctorTest = state.testKey === "proctor";
+  const isCptTest = state.testKey === "cpt";
+  const isSlumpTest = state.testKey === "slump";
+  const isReboundTest = state.testKey === "ndt" || state.testKey === "schmidt";
+  const isRockTest = ROCK_SAMPLE_TEST_KEYS.has(state.testKey ?? "");
   const isAtterbergTest = state.testKey === "atterberg";
   const steps = useMemo(() => getSteps(state.testKey), [state.testKey]);
   const projectLoadKey = `${state.material ?? ""}:${state.testKey ?? ""}:${projectsReloadKey}`;
@@ -391,6 +399,7 @@ const RecordTestWizard = () => {
         if (isGradingTest || isProctorTest) {
           return hasRequiredSoilSampleMetadata(state);
         }
+        if (isSlumpTest || isReboundTest) return state.sampleId.trim().length > 0;
         return state.sampleId.trim().length > 0 && state.sampleDepthFrom.trim().length > 0 && state.sampleDepthTo.trim().length > 0;
       case "entry": return true;
       default: return false;
@@ -624,7 +633,7 @@ const RecordTestWizard = () => {
 
     testData.updateProjectMetadata(projectMetadata);
 
-    if (isGradingTest || isProctorTest) {
+    if (isGradingTest || isProctorTest || isCptTest || isSlumpTest || isReboundTest || isRockTest) {
       testData.updateRecordMetadata(state.testKey!, toRecordMetadata(state));
     }
 
@@ -1324,7 +1333,7 @@ const RecordTestWizard = () => {
                         placeholder="e.g. BH-01 / S-3"
                       />
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {!(isSlumpTest || isReboundTest) && <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-2">
                         <Label htmlFor="depth-from">Depth from *</Label>
                         <Input
@@ -1343,7 +1352,7 @@ const RecordTestWizard = () => {
                           placeholder="e.g. 2.0"
                         />
                       </div>
-                    </div>
+                    </div>}
                     <div className="space-y-2">
                       <Label htmlFor="notes">Notes (optional)</Label>
                       <Textarea

@@ -5,23 +5,23 @@ import { Button } from "@/components/ui/button";
 import CalculatedInput from "@/components/CalculatedInput";
 import { Plus, X } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
+import { useTestData } from "@/context/TestDataContext";
 import { generateTestPDF, printPDFDocument } from "@/lib/pdfGenerator";
 import { useTestReport } from "@/hooks/useTestReport";
 import { loadTestResult, saveTestResult } from "@/lib/testResultPersistence";
 
 interface Row { sampleId: string; load: string; area: string }
 
+const emptyRow = (sampleId: string): Row => ({ sampleId, load: "", area: "" });
+
 const UCSTest = ({ testKey }: { testKey?: string }) => {
   const project = useProject();
-  const defaultRows: Row[] = [
-    { sampleId: "R1", load: "103", area: "2290" },
-    { sampleId: "R2", load: "118", area: "2290" },
-    { sampleId: "R3", load: "96", area: "2290" },
-  ];
-  const [rows, setRows] = useState<Row[]>(project.currentProjectId ? defaultRows : []);
+  const testData = useTestData();
+  const sample = useMemo(() => testData.recordMetadata.ucs || {}, [testData.recordMetadata.ucs]);
   const hasProjectSelected = !!project.currentProjectId;
   const projectId = project.currentProjectId ?? null;
   const [recordId, setRecordId] = useState<number | null>(null);
+  const [rows, setRows] = useState<Row[]>(hasProjectSelected ? [emptyRow("R1")] : []);
 
   const getStrength = (row: Row) => { const l = parseFloat(row.load); const a = parseFloat(row.area); if (!l || !a) return ""; return ((l * 1000) / a).toFixed(2); };
   const update = (i: number, field: keyof Row, val: string) => { const next = [...rows]; next[i] = { ...next[i], [field]: val }; setRows(next); };
@@ -34,6 +34,8 @@ const UCSTest = ({ testKey }: { testKey?: string }) => {
   useTestReport("ucs", strengths.length, ucsResults);
 
   useEffect(() => {
+    setRecordId(null);
+    setRows(projectId ? [emptyRow("R1")] : []);
     if (!projectId) return;
     let active = true;
     loadTestResult(projectId, "ucs")
@@ -61,7 +63,21 @@ const UCSTest = ({ testKey }: { testKey?: string }) => {
     setRecordId(savedId);
   };
 
-  const buildPDF = (skipDownload: boolean) => generateTestPDF({ title: "UCS (Unconfined Compressive Strength)", ...project, skipDownload, tables: [{ headers: ["Sample ID", "Load (kN)", "Area (mm²)", "Strength (MPa)"], rows: rows.map(r => [r.sampleId, r.load || "—", r.area || "—", getStrength(r) || "—"]) }] });
+  const buildPDF = (skipDownload: boolean) => generateTestPDF({
+    title: "UCS (Unconfined Compressive Strength)",
+    ...project,
+    dateTested: sample.dateTested,
+    testedBy: sample.testedBy,
+    skipDownload,
+    fields: [
+      { label: "Sample ID", value: sample.sampleId || "—" },
+      { label: "Sample No.", value: sample.sampleNumber || "—" },
+      { label: "Sample Depth From (m)", value: sample.sampleDepthFrom || "—" },
+      { label: "Sample Depth To (m)", value: sample.sampleDepthTo || "—" },
+      ...ucsResults.map(result => ({ label: result.label, value: result.value || "—" })),
+    ],
+    tables: [{ headers: ["Sample ID", "Load (kN)", "Area (mm²)", "Strength (MPa)"], rows: rows.map(r => [r.sampleId, r.load || "—", r.area || "—", getStrength(r) || "—"]) }],
+  });
 
   const exportPDF = async () => {
     await buildPDF(false);
@@ -71,6 +87,12 @@ const UCSTest = ({ testKey }: { testKey?: string }) => {
 
   return (
     <TestSection title="UCS (Unconfined Compressive Strength)" testKey={testKey} onSave={save} onClear={() => setRows([{ sampleId: "", load: "", area: "" }])} onExportPDF={exportPDF} onPrint={printPDF}>
+      {sample.sampleId && (
+        <p className="mb-3 text-xs text-muted-foreground">
+          Sample ID: <strong className="text-foreground">{sample.sampleId}</strong> · Depth{" "}
+          <strong className="text-foreground">{sample.sampleDepthFrom || "—"} to {sample.sampleDepthTo || "—"} m</strong>
+        </p>
+      )}
       {!hasProjectSelected && rows.length === 0 ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">

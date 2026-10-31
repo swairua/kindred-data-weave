@@ -1,16 +1,18 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import TestSection from "@/components/TestSection";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import CalculatedInput from "@/components/CalculatedInput";
 import { Plus, X } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
+import { useTestData } from "@/context/TestDataContext";
 import { generateTestPDF } from "@/lib/pdfGenerator";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Label } from "@/components/ui/label";
 import { useTestReport } from "@/hooks/useTestReport";
 import { captureChartAsBase64 } from "@/lib/chartCapture";
+import { loadTestResult, saveTestResult } from "@/lib/testResultPersistence";
 
 interface Row { coreId: string; diameter: string; length: string; load: string }
 
@@ -18,12 +20,18 @@ interface CoringTestProps {
   testKey?: string;
 }
 
+const defaultRows = (): Row[] => [
+  { coreId: "CR1", diameter: "75", length: "", load: "" },
+  { coreId: "CR2", diameter: "75", length: "", load: "" },
+];
+
 const CoringTest = ({ testKey }: CoringTestProps) => {
   const project = useProject();
-  const [rows, setRows] = useState<Row[]>([
-    { coreId: "CR1", diameter: "75", length: "", load: "" },
-    { coreId: "CR2", diameter: "75", length: "", load: "" },
-  ]);
+  const testData = useTestData();
+  const sample = useMemo(() => testData.recordMetadata.coring || {}, [testData.recordMetadata.coring]);
+  const projectId = project.currentProjectId ?? null;
+  const [recordId, setRecordId] = useState<number | null>(null);
+  const [rows, setRows] = useState<Row[]>(defaultRows);
 
   const getLDRatio = (row: Row) => {
     const d = parseFloat(row.diameter); const l = parseFloat(row.length);
@@ -67,6 +75,36 @@ const CoringTest = ({ testKey }: CoringTestProps) => {
   ], [avgStrength, strengths.length]);
   useTestReport("coring", strengths.length, results);
 
+  useEffect(() => {
+    setRecordId(null);
+    setRows(defaultRows());
+    if (!projectId) return;
+    let active = true;
+    loadTestResult(projectId, "coring")
+      .then((result) => {
+        if (!active || !result) return;
+        setRecordId(result.id);
+        const savedRows = (result.payload_json as { rows?: Row[] } | null)?.rows;
+        if (Array.isArray(savedRows) && savedRows.length > 0) setRows(savedRows);
+      })
+      .catch((error) => console.error("Failed to load coring result", error));
+    return () => { active = false; };
+  }, [projectId]);
+
+  const save = async () => {
+    if (!projectId) throw new Error("Select a project before saving this coring test");
+    const savedId = await saveTestResult(projectId, recordId, {
+      test_key: "coring",
+      name: "Coring Test",
+      category: "rock",
+      status: strengths.length === 0 ? "not-started" : strengths.length < rows.length ? "in-progress" : "completed",
+      data_points: strengths.length,
+      key_results_json: results.filter((result) => result.value),
+      payload_json: { rows },
+    });
+    setRecordId(savedId);
+  };
+
   const tableData = { headers: ["Core ID", "Diameter (mm)", "Length (mm)", "L/D", "Load (kN)", "Core Strength (MPa)", "Corrected (MPa)"], rows: rows.map(r => [r.coreId, r.diameter, r.length || "—", getLDRatio(r) || "—", r.load || "—", getCoreStrength(r) || "—", getCorrectedStrength(r) || "—"]) };
 
   const exportPDF = async () => {
@@ -78,11 +116,31 @@ const CoringTest = ({ testKey }: CoringTestProps) => {
       }
     }
 
-    generateTestPDF({ title: "Coring Test", ...project, tables: [tableData], chartImages });
+    generateTestPDF({
+      title: "Coring Test",
+      ...project,
+      dateTested: sample.dateTested,
+      testedBy: sample.testedBy,
+      fields: [
+        { label: "Sample ID", value: sample.sampleId || "—" },
+        { label: "Sample No.", value: sample.sampleNumber || "—" },
+        { label: "Sample Depth From (m)", value: sample.sampleDepthFrom || "—" },
+        { label: "Sample Depth To (m)", value: sample.sampleDepthTo || "—" },
+        ...results.map(result => ({ label: result.label, value: result.value || "—" })),
+      ],
+      tables: [tableData],
+      chartImages,
+    });
   };
 
   return (
-    <TestSection title="Coring Test" testKey={testKey} onSave={() => {}} onClear={() => setRows([{ coreId: "CR1", diameter: "75", length: "", load: "" }])} onExportPDF={exportPDF}>
+    <TestSection title="Coring Test" testKey={testKey} onSave={save} onClear={() => setRows(defaultRows())} onExportPDF={exportPDF}>
+      {sample.sampleId && (
+        <p className="mb-3 text-xs text-muted-foreground">
+          Sample ID: <strong className="text-foreground">{sample.sampleId}</strong> · Depth{" "}
+          <strong className="text-foreground">{sample.sampleDepthFrom || "—"} to {sample.sampleDepthTo || "—"} m</strong>
+        </p>
+      )}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Core ID</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Dia (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Length (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">L/D</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Load (kN)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Strength</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Corrected</th><th className="w-10"></th></tr></thead>

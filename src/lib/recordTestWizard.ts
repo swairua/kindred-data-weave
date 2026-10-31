@@ -5,7 +5,7 @@ export type Material = "soil" | "concrete" | "rock" | "special";
 const ALLOWED_TEST_KEYS: Partial<Record<Material, ReadonlySet<string>>> = {
   soil: new Set(["atterberg", "grading", "proctor", "cpt", "spt", "cbr", "shear", "consolidation", "schmidt"]),
   concrete: new Set(["compressive", "slump", "upvt", "schmidt", "ndt"]),
-  rock: new Set(["coring", "ucs", "pointload", "porosity", "schmidt", "schmidt_rock", "ndt"]),
+  rock: new Set(["coring", "ucs", "pointload", "porosity", "schmidt_rock"]),
   special: new Set(["dcp"]),
 };
 
@@ -29,7 +29,7 @@ export const getExpectedTestType = (testKey: string | null): string | null => {
   if (testKey === "schmidt") return "concrete";
   if (testKey === "ucs") return "rock";
   if (testKey === "pointload") return "rock";
-  if (testKey === "ndt") return "rock";
+  if (testKey === "ndt") return "concrete";
   if (testKey === "cbr") return "soil";
   if (testKey === "shear") return "soil";
   if (testKey === "consolidation") return "soil";

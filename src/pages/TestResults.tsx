@@ -105,6 +105,7 @@ const TestResults = () => {
       slump: "Slump Test",
       upvt: "UPVT Test",
       schmidt: "Rebound Hammer Test",
+      ndt: "Rebound Hammer Test",
       coring: "Coring Test",
       cubes: "Concrete Cubes",
       ucs: "UCS Test",

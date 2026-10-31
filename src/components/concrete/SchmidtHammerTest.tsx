@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import CalculatedInput from "@/components/CalculatedInput";
 import { Plus, X } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
+import { useTestData } from "@/context/TestDataContext";
 import { generateTestPDF, printPDFDocument } from "@/lib/pdfGenerator";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
@@ -15,14 +16,15 @@ import { loadTestResult, saveTestResult } from "@/lib/testResultPersistence";
 
 interface Row { location: string; r1: string; r2: string; r3: string; r4: string; r5: string }
 
+const emptyRow = (location: string): Row => ({ location, r1: "", r2: "", r3: "", r4: "", r5: "" });
+
 const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
   const project = useProject();
+  const testData = useTestData();
+  const sample = useMemo(() => testData.recordMetadata[testKey] || {}, [testData.recordMetadata, testKey]);
   const testName = testKey === "schmidt_rock" ? "Schmidt Hammer" : "NDT (Rebound Hammer)";
   const chartId = testKey === "schmidt_rock" ? "schmidt-rock-chart" : "schmidt-chart";
-  const [rows, setRows] = useState<Row[]>([
-    { location: "L1", r1: "42", r2: "44", r3: "40", r4: "43", r5: "45" },
-    { location: "L2", r1: "41", r2: "43", r3: "42", r4: "44", r5: "40" },
-  ]);
+  const [rows, setRows] = useState<Row[]>([emptyRow("L1")]);
   const projectId = project.currentProjectId ?? null;
   const [recordId, setRecordId] = useState<number | null>(null);
 
@@ -54,11 +56,13 @@ const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
 
   const results = useMemo(() => [
     { label: "Avg Rebound", value: avgRebound || "" },
-    { label: "Est. Strength", value: avgRebound ? `${getEstStrength(avgRebound)} MPa` : "" },
+    { label: "Est. Strength (indicative)", value: avgRebound ? `${getEstStrength(avgRebound)} MPa` : "" },
   ], [avgRebound]);
   useTestReport(testKey, rebounds.length, results);
 
   useEffect(() => {
+    setRecordId(null);
+    setRows([emptyRow("L1")]);
     if (!projectId) return;
     let active = true;
     loadTestResult(projectId, testKey)
@@ -81,7 +85,7 @@ const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
       status: rebounds.length === 0 ? "not-started" : rebounds.length < rows.length ? "in-progress" : "completed",
       data_points: rebounds.length,
       key_results_json: results.filter((result) => result.value),
-      payload_json: { rows },
+      payload_json: { testKey, dataPoints: rebounds.length, sample, rows },
     });
     setRecordId(savedId);
   };
@@ -97,7 +101,20 @@ const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
       }
     }
 
-    return generateTestPDF({ title: testName, ...project, skipDownload, tables: [tableData], chartImages });
+    return generateTestPDF({
+      title: testName,
+      ...project,
+      dateTested: sample.dateTested,
+      testedBy: sample.testedBy,
+      skipDownload,
+      fields: [
+        { label: "Sample ID", value: sample.sampleId || "—" },
+        { label: "Sample No.", value: sample.sampleNumber || "—" },
+        ...results.map(result => ({ label: result.label, value: result.value || "—" })),
+      ],
+      tables: [tableData],
+      chartImages,
+    });
   };
 
   const exportPDF = async () => {
@@ -107,7 +124,12 @@ const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
   const printPDF = async () => printPDFDocument(await buildPDF(true));
 
   return (
-    <TestSection title={testName} testKey={testKey} onSave={save} onClear={() => setRows([{ location: "L1", r1: "", r2: "", r3: "", r4: "", r5: "" }])} onExportPDF={exportPDF} onPrint={printPDF}>
+    <TestSection title={testName} testKey={testKey} onSave={save} onClear={() => setRows([emptyRow("L1")])} onExportPDF={exportPDF} onPrint={printPDF}>
+      {sample.sampleId && (
+        <p className="mb-3 text-xs text-muted-foreground">
+          Sample ID: <strong className="text-foreground">{sample.sampleId}</strong>
+        </p>
+      )}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Location</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R1</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R2</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R3</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R4</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R5</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Avg R</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Est. MPa</th><th className="w-10"></th></tr></thead>
@@ -118,7 +140,7 @@ const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
                 <tr key={i} className="border-b border-border/50">
                   <td className="py-1.5 px-2"><Input value={row.location} onChange={(e) => update(i, "location", e.target.value)} className="h-8" /></td>
                   {(["r1","r2","r3","r4","r5"] as const).map(f => (
-                    <td key={f} className="py-1.5 px-2"><Input type="number" value={row[f]} onChange={(e) => update(i, f, e.target.value)} className="h-8 w-16" placeholder="0" /></td>
+                    <td key={f} className="py-1.5 px-2"><Input type="number" min="0" max="100" step="any" value={row[f]} onChange={(e) => update(i, f, e.target.value)} className="h-8 w-16" placeholder="0" /></td>
                   ))}
                   <td className="py-1.5 px-2"><CalculatedInput value={avg} /></td>
                   <td className="py-1.5 px-2"><CalculatedInput value={avg ? getEstStrength(avg) : ""} /></td>
@@ -129,7 +151,7 @@ const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
           </tbody>
         </table>
       </div>
-      <Button variant="outline" size="sm" className="mt-3" onClick={() => setRows([...rows, { location: `L${rows.length + 1}`, r1: "", r2: "", r3: "", r4: "", r5: "" }])}><Plus className="h-3.5 w-3.5 mr-1" /> Add Row</Button>
+      <Button variant="outline" size="sm" className="mt-3" onClick={() => setRows([...rows, emptyRow(`L${rows.length + 1}`)])}><Plus className="h-3.5 w-3.5 mr-1" /> Add Row</Button>
 
       {chartData.length >= 1 && (
         <div className="mt-6">

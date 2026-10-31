@@ -52,7 +52,7 @@ const SPTTest = ({ testKey }: { testKey?: string }) => {
       status: filledSPT === 0 ? "not-started" : filledSPT < rows.length ? "in-progress" : "completed",
       data_points: filledSPT,
       key_results_json: sptResults.filter((result) => result.value),
-      payload_json: { rows },
+      payload_json: { testKey: "spt", dataPoints: filledSPT, rows },
     });
     setRecordId(savedId);
   };
