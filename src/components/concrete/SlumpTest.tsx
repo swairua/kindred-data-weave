@@ -19,6 +19,7 @@ const SlumpTest = ({ testKey }: SlumpTestProps) => {
   const hasProjectSelected = !!project.currentProjectId;
   const projectId = project.currentProjectId ?? null;
   const [recordId, setRecordId] = useState<number | null>(null);
+  const [isSaved, setIsSaved] = useState(false);
 
   const dataPoints = slump ? 1 : 0;
   const slumpResults = useMemo(() => [
@@ -33,6 +34,7 @@ const SlumpTest = ({ testKey }: SlumpTestProps) => {
       .then((result) => {
         if (!active || !result) return;
         setRecordId(result.id);
+        setIsSaved(true);
         const saved = result.payload_json as { slump?: string; remarks?: string } | null;
         if (saved) {
           setSlump(saved.slump ?? "");
@@ -55,6 +57,7 @@ const SlumpTest = ({ testKey }: SlumpTestProps) => {
       payload_json: { slump, remarks },
     });
     setRecordId(savedId);
+    setIsSaved(true);
   };
 
   const buildPDF = (skipDownload: boolean) => generateTestPDF({ title: "Slump Test", ...project, skipDownload, fields: [{ label: "Slump Value (mm)", value: slump }, { label: "Remarks", value: remarks }] });
@@ -65,8 +68,10 @@ const SlumpTest = ({ testKey }: SlumpTestProps) => {
 
   const printPDF = async () => printPDFDocument(await buildPDF(true));
 
+  const canExport = hasProjectSelected || isSaved;
+
   return (
-    <TestSection title="Slump Test" testKey={testKey} onSave={save} onClear={() => { setSlump(""); setRemarks(""); }} onExportPDF={exportPDF} onPrint={printPDF}>
+    <TestSection title="Slump Test" testKey={testKey} onSave={save} onClear={() => { setSlump(""); setRemarks(""); }} onExportPDF={exportPDF} onPrint={printPDF} canExport={canExport}>
       {!hasProjectSelected && !slump ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">

@@ -12,6 +12,7 @@ const PorosityTest = () => {
   const [dryWeight, setDryWeight] = useState("");
   const [satWeight, setSatWeight] = useState("");
   const [volume, setVolume] = useState("");
+  const [isSaved, setIsSaved] = useState(false);
 
   const porosity = (() => {
     const dw = parseFloat(dryWeight); const sw = parseFloat(satWeight); const v = parseFloat(volume);
@@ -31,8 +32,10 @@ const PorosityTest = () => {
     generateTestPDF({ title: "Porosity Test", ...project, fields });
   };
 
+  const canExport = !!project.currentProjectId || isSaved;
+
   return (
-    <TestSection title="Porosity" onSave={() => {}} onClear={() => { setDryWeight(""); setSatWeight(""); setVolume(""); }} onExportPDF={exportPDF}>
+    <TestSection title="Porosity" onSave={() => setIsSaved(true)} onClear={() => { setDryWeight(""); setSatWeight(""); setVolume(""); }} onExportPDF={exportPDF} canExport={canExport}>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="space-y-1.5"><Label className="text-xs text-muted-foreground">Dry Weight (g)</Label><Input type="number" value={dryWeight} onChange={(e) => setDryWeight(e.target.value)} placeholder="0" /></div>
         <div className="space-y-1.5"><Label className="text-xs text-muted-foreground">Saturated Weight (g)</Label><Input type="number" value={satWeight} onChange={(e) => setSatWeight(e.target.value)} placeholder="0" /></div>

@@ -17,6 +17,7 @@ const UCSTest = ({ testKey }: { testKey?: string }) => {
   const hasProjectSelected = !!project.currentProjectId;
   const projectId = project.currentProjectId ?? null;
   const [recordId, setRecordId] = useState<number | null>(null);
+  const [isSaved, setIsSaved] = useState(false);
 
   const getStrength = (row: Row) => { const l = parseFloat(row.load); const a = parseFloat(row.area); if (!l || !a) return ""; return ((l * 1000) / a).toFixed(2); };
   const update = (i: number, field: keyof Row, val: string) => { const next = [...rows]; next[i] = { ...next[i], [field]: val }; setRows(next); };
@@ -35,6 +36,7 @@ const UCSTest = ({ testKey }: { testKey?: string }) => {
       .then((result) => {
         if (!active || !result) return;
         setRecordId(result.id);
+        setIsSaved(true);
         const savedRows = (result.payload_json as { rows?: Row[] } | null)?.rows;
         if (Array.isArray(savedRows) && savedRows.length > 0) setRows(savedRows);
       })
@@ -54,6 +56,7 @@ const UCSTest = ({ testKey }: { testKey?: string }) => {
       payload_json: { rows },
     });
     setRecordId(savedId);
+    setIsSaved(true);
   };
 
   const buildPDF = (skipDownload: boolean) => generateTestPDF({ title: "UCS (Unconfined Compressive Strength)", ...project, skipDownload, tables: [{ headers: ["Sample ID", "Load (kN)", "Area (mm²)", "Strength (MPa)"], rows: rows.map(r => [r.sampleId, r.load || "—", r.area || "—", getStrength(r) || "—"]) }] });
@@ -64,8 +67,10 @@ const UCSTest = ({ testKey }: { testKey?: string }) => {
 
   const printPDF = async () => printPDFDocument(await buildPDF(true));
 
+  const canExport = hasProjectSelected || isSaved;
+
   return (
-    <TestSection title="UCS (Unconfined Compressive Strength)" testKey={testKey} onSave={save} onClear={() => setRows([{ sampleId: "", load: "", area: "" }])} onExportPDF={exportPDF} onPrint={printPDF}>
+    <TestSection title="UCS (Unconfined Compressive Strength)" testKey={testKey} onSave={save} onClear={() => setRows([{ sampleId: "", load: "", area: "" }])} onExportPDF={exportPDF} onPrint={printPDF} canExport={canExport}>
       {!hasProjectSelected && rows.length === 0 ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">

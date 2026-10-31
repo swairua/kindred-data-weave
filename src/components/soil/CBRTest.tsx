@@ -33,6 +33,7 @@ const CBRTest = ({ testKey }: CBRTestProps) => {
   ];
   const [rows, setRows] = useState<Row[]>(project.currentProjectId ? defaultRows : []);
   const hasProjectSelected = !!project.currentProjectId;
+  const [isSaved, setIsSaved] = useState(false);
 
   const getCBR = (pen: string, load: string) => {
     const p = parseFloat(pen); const l = parseFloat(load);
@@ -71,6 +72,7 @@ const CBRTest = ({ testKey }: CBRTestProps) => {
       .then((result) => {
         if (!active || !result) return;
         setRecordId(result.id);
+        setIsSaved(true);
         const savedRows = (result.payload_json as { rows?: Row[] } | null)?.rows;
         if (Array.isArray(savedRows) && savedRows.length > 0) setRows(savedRows);
       })
@@ -122,10 +124,13 @@ const CBRTest = ({ testKey }: CBRTestProps) => {
       payload_json: { rows },
     });
     setRecordId(savedId);
+    setIsSaved(true);
   };
 
+  const canExport = hasProjectSelected || isSaved;
+
   return (
-    <TestSection title="CBR (California Bearing Ratio)" testKey={testKey} onSave={save} onClear={() => setRows([{ penetration: "", load: "" }])} onExportPDF={exportPDF} onPrint={printPDF}>
+    <TestSection title="CBR (California Bearing Ratio)" testKey={testKey} onSave={save} onClear={() => setRows([{ penetration: "", load: "" }])} onExportPDF={exportPDF} onPrint={printPDF} canExport={canExport}>
       <div className="space-y-4">
         {/* Overview metrics card */}
         <Card className="border bg-muted/20 shadow-none">

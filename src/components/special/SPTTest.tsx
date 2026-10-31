@@ -15,6 +15,7 @@ const SPTTest = ({ testKey }: { testKey?: string }) => {
   const [rows, setRows] = useState<Row[]>([{ depth: "", blowCount: "" }]);
   const projectId = project.currentProjectId ?? null;
   const [recordId, setRecordId] = useState<number | null>(null);
+  const [isSaved, setIsSaved] = useState(false);
   const update = (i: number, field: keyof Row, val: string) => { const next = [...rows]; next[i] = { ...next[i], [field]: val }; setRows(next); };
 
   const filledSPT = rows.filter(r => r.depth && r.blowCount).length;
@@ -32,6 +33,7 @@ const SPTTest = ({ testKey }: { testKey?: string }) => {
       .then((result) => {
         if (!active || !result) return;
         setRecordId(result.id);
+        setIsSaved(true);
         const savedRows = (result.payload_json as { rows?: Row[] } | null)?.rows;
         if (Array.isArray(savedRows) && savedRows.length > 0) setRows(savedRows);
       })
@@ -51,6 +53,7 @@ const SPTTest = ({ testKey }: { testKey?: string }) => {
       payload_json: { rows },
     });
     setRecordId(savedId);
+    setIsSaved(true);
   };
 
   const buildPDF = (skipDownload: boolean) => generateTestPDF({ title: "SPT (Standard Penetration Test)", ...project, skipDownload, tables: [{ headers: ["Depth (m)", "Blow Count (N-value)"], rows: rows.map(r => [r.depth || "—", r.blowCount || "—"]) }] });
@@ -61,8 +64,10 @@ const SPTTest = ({ testKey }: { testKey?: string }) => {
 
   const printPDF = async () => printPDFDocument(await buildPDF(true));
 
+  const canExport = !!projectId || isSaved;
+
   return (
-    <TestSection title="SPT (Standard Penetration Test)" testKey={testKey} onSave={save} onClear={() => setRows([{ depth: "", blowCount: "" }])} onExportPDF={exportPDF} onPrint={printPDF}>
+    <TestSection title="SPT (Standard Penetration Test)" testKey={testKey} onSave={save} onClear={() => setRows([{ depth: "", blowCount: "" }])} onExportPDF={exportPDF} onPrint={printPDF} canExport={canExport}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Depth (m)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Blow Count (N-value)</th><th className="w-10"></th></tr></thead>

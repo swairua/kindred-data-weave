@@ -16,6 +16,7 @@ const PointLoadTest = ({ testKey }: { testKey?: string }) => {
   const [rows, setRows] = useState<Row[]>([{ sampleId: "", failureLoad: "", de: "" }]);
   const projectId = project.currentProjectId ?? null;
   const [recordId, setRecordId] = useState<number | null>(null);
+  const [isSaved, setIsSaved] = useState(false);
 
   const getIndex = (row: Row) => { const p = parseFloat(row.failureLoad); const de = parseFloat(row.de); if (!p || !de) return ""; return ((p * 1000) / (de * de)).toFixed(3); };
   const update = (i: number, field: keyof Row, val: string) => { const next = [...rows]; next[i] = { ...next[i], [field]: val }; setRows(next); };
@@ -34,6 +35,7 @@ const PointLoadTest = ({ testKey }: { testKey?: string }) => {
       .then((result) => {
         if (!active || !result) return;
         setRecordId(result.id);
+        setIsSaved(true);
         const savedRows = (result.payload_json as { rows?: Row[] } | null)?.rows;
         if (Array.isArray(savedRows) && savedRows.length > 0) setRows(savedRows);
       })
@@ -53,6 +55,7 @@ const PointLoadTest = ({ testKey }: { testKey?: string }) => {
       payload_json: { rows },
     });
     setRecordId(savedId);
+    setIsSaved(true);
   };
 
   const tableData = { headers: ["Sample ID", "Failure Load (kN)", "De (mm)", "Is(50) (MPa)"], rows: rows.map(r => [r.sampleId, r.failureLoad || "—", r.de || "—", getIndex(r) || "—"]) };
@@ -65,8 +68,10 @@ const PointLoadTest = ({ testKey }: { testKey?: string }) => {
 
   const printPDF = async () => printPDFDocument(await buildPDF(true));
 
+  const canExport = !!projectId || isSaved;
+
   return (
-    <TestSection title="Point Load Test" testKey={testKey} onSave={save} onClear={() => setRows([{ sampleId: "", failureLoad: "", de: "" }])} onExportPDF={exportPDF} onPrint={printPDF} actionsPlacement="footer">
+    <TestSection title="Point Load Test" testKey={testKey} onSave={save} onClear={() => setRows([{ sampleId: "", failureLoad: "", de: "" }])} onExportPDF={exportPDF} onPrint={printPDF} canExport={canExport} actionsPlacement="footer">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Sample ID</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Failure Load (kN)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">De (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Is(50) (MPa)</th><th className="w-10"></th></tr></thead>

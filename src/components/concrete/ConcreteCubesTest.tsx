@@ -27,6 +27,7 @@ const ConcreteCubesTest = ({ testKey }: ConcreteCubesTestProps) => {
     { cubeId: "C2", age: "7", load: "", size: "150", mass: "" },
     { cubeId: "C3", age: "28", load: "", size: "150", mass: "" },
   ]);
+  const [isSaved, setIsSaved] = useState(false);
 
   const getStrength = (row: Row) => {
     const load = parseFloat(row.load); const s = parseFloat(row.size);
@@ -79,8 +80,10 @@ const ConcreteCubesTest = ({ testKey }: ConcreteCubesTestProps) => {
     generateTestPDF({ title: "Concrete Cubes", ...project, tables: [tableData], chartImages });
   };
 
+  const canExport = !!project.currentProjectId || isSaved;
+
   return (
-    <TestSection title="Concrete Cubes" testKey={testKey} onSave={() => {}} onClear={() => setRows([{ cubeId: "C1", age: "7", load: "", size: "150", mass: "" }])} onExportPDF={exportPDF}>
+    <TestSection title="Concrete Cubes" testKey={testKey} onSave={() => setIsSaved(true)} onClear={() => setRows([{ cubeId: "C1", age: "7", load: "", size: "150", mass: "" }])} onExportPDF={exportPDF} canExport={canExport}>
       <div className="flex items-center gap-3 mb-4">
         <Label className="text-xs text-muted-foreground whitespace-nowrap">Target Grade (MPa)</Label>
         <Select value={gradeTarget} onValueChange={setGradeTarget}>

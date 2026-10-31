@@ -15,6 +15,7 @@ const CPTTest = ({ testKey }: { testKey?: string }) => {
   const [rows, setRows] = useState<Row[]>([{ depth: "", coneResistance: "", frictionRatio: "" }]);
   const projectId = project.currentProjectId ?? null;
   const [recordId, setRecordId] = useState<number | null>(null);
+  const [isSaved, setIsSaved] = useState(false);
   const update = (i: number, field: keyof Row, val: string) => { const next = [...rows]; next[i] = { ...next[i], [field]: val }; setRows(next); };
 
   const filledCPT = rows.filter(r => r.depth && r.coneResistance).length;
@@ -32,6 +33,7 @@ const CPTTest = ({ testKey }: { testKey?: string }) => {
       .then((result) => {
         if (!active || !result) return;
         setRecordId(result.id);
+        setIsSaved(true);
         const savedRows = (result.payload_json as { rows?: Row[] } | null)?.rows;
         if (Array.isArray(savedRows) && savedRows.length > 0) setRows(savedRows);
       })
@@ -51,6 +53,7 @@ const CPTTest = ({ testKey }: { testKey?: string }) => {
       payload_json: { rows },
     });
     setRecordId(savedId);
+    setIsSaved(true);
   };
 
   const buildPDF = (skipDownload: boolean) => generateTestPDF({ title: "CPT (Cone Penetration Test)", ...project, skipDownload, tables: [{ headers: ["Depth (m)", "Cone Resistance qc (MPa)", "Friction Ratio fs (kPa)"], rows: rows.map(r => [r.depth || "—", r.coneResistance || "—", r.frictionRatio || "—"]) }] });
@@ -61,8 +64,10 @@ const CPTTest = ({ testKey }: { testKey?: string }) => {
 
   const printPDF = async () => printPDFDocument(await buildPDF(true));
 
+  const canExport = !!projectId || isSaved;
+
   return (
-    <TestSection title="CPT (Cone Penetration Test)" testKey={testKey} onSave={save} onClear={() => setRows([{ depth: "", coneResistance: "", frictionRatio: "" }])} onExportPDF={exportPDF} onPrint={printPDF}>
+    <TestSection title="CPT (Cone Penetration Test)" testKey={testKey} onSave={save} onClear={() => setRows([{ depth: "", coneResistance: "", frictionRatio: "" }])} onExportPDF={exportPDF} onPrint={printPDF} canExport={canExport}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Depth (m)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Cone Resistance qc (MPa)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Friction Ratio fs (kPa)</th><th className="w-10"></th></tr></thead>

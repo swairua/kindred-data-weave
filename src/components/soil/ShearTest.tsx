@@ -23,6 +23,7 @@ const ShearTest = ({ testKey }: ShearTestProps) => {
   const defaultRows: Row[] = [{ normalStress: "", shearStress: "" },{ normalStress: "", shearStress: "" },{ normalStress: "", shearStress: "" }];
   const [rows, setRows] = useState<Row[]>(project.currentProjectId ? defaultRows : []);
   const hasProjectSelected = !!project.currentProjectId;
+  const [isSaved, setIsSaved] = useState(false);
   const update = (i: number, field: keyof Row, val: string) => { const next = [...rows]; next[i] = { ...next[i], [field]: val }; setRows(next); };
 
   const chartData = useMemo(() =>
@@ -83,8 +84,10 @@ const ShearTest = ({ testKey }: ShearTestProps) => {
 
   const status = filledShear === 0 ? "No data" : filledShear < rows.length ? "In progress" : "Complete";
 
+  const canExport = hasProjectSelected || isSaved;
+
   return (
-    <TestSection title="Shear Test" testKey={testKey} onSave={() => {}} onClear={() => setRows([{ normalStress: "", shearStress: "" }])} onExportPDF={exportPDF}>
+    <TestSection title="Shear Test" testKey={testKey} onSave={() => setIsSaved(true)} onClear={() => setRows([{ normalStress: "", shearStress: "" }])} onExportPDF={exportPDF} canExport={canExport}>
       <div className="space-y-4">
         {/* Overview metrics card */}
         <Card className="border bg-muted/20 shadow-none">

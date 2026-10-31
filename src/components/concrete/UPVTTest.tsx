@@ -21,6 +21,7 @@ const UPVTTest = () => {
     { id: "U2", pathLength: "", transitTime: "" },
     { id: "U3", pathLength: "", transitTime: "" },
   ]);
+  const [isSaved, setIsSaved] = useState(false);
 
   const getVelocity = (row: Row) => {
     const L = parseFloat(row.pathLength);
@@ -70,8 +71,10 @@ const UPVTTest = () => {
     generateTestPDF({ title: "UPVT", ...project, tables: [tableData], chartImages });
   };
 
+  const canExport = !!project.currentProjectId || isSaved;
+
   return (
-    <TestSection title="Ultrasonic Pulse Velocity Test (UPVT)" onSave={() => {}} onClear={() => setRows([{ id: "U1", pathLength: "", transitTime: "" }])} onExportPDF={exportPDF}>
+    <TestSection title="Ultrasonic Pulse Velocity Test (UPVT)" onSave={() => setIsSaved(true)} onClear={() => setRows([{ id: "U1", pathLength: "", transitTime: "" }])} onExportPDF={exportPDF} canExport={canExport}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">ID</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Path Length (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Transit Time (µs)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Velocity (km/s)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Quality</th><th className="w-10"></th></tr></thead>

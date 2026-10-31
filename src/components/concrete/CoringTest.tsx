@@ -24,6 +24,7 @@ const CoringTest = ({ testKey }: CoringTestProps) => {
     { coreId: "CR1", diameter: "75", length: "", load: "" },
     { coreId: "CR2", diameter: "75", length: "", load: "" },
   ]);
+  const [isSaved, setIsSaved] = useState(false);
 
   const getLDRatio = (row: Row) => {
     const d = parseFloat(row.diameter); const l = parseFloat(row.length);
@@ -81,8 +82,10 @@ const CoringTest = ({ testKey }: CoringTestProps) => {
     generateTestPDF({ title: "Coring Test", ...project, tables: [tableData], chartImages });
   };
 
+  const canExport = !!project.currentProjectId || isSaved;
+
   return (
-    <TestSection title="Coring Test" testKey={testKey} onSave={() => {}} onClear={() => setRows([{ coreId: "CR1", diameter: "75", length: "", load: "" }])} onExportPDF={exportPDF}>
+    <TestSection title="Coring Test" testKey={testKey} onSave={() => setIsSaved(true)} onClear={() => setRows([{ coreId: "CR1", diameter: "75", length: "", load: "" }])} onExportPDF={exportPDF} canExport={canExport}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Core ID</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Dia (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Length (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">L/D</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Load (kN)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Strength</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Corrected</th><th className="w-10"></th></tr></thead>

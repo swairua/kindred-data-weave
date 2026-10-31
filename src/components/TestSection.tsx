@@ -38,9 +38,11 @@ interface TestSectionProps {
   recordButtonLabel?: string;
   onRecordClick?: () => void;
   actionsPlacement?: "header" | "footer";
+  canExport?: boolean;
+  exportIndicator?: string;
 }
 
-const TestSection = ({ title, testKey, tooltip, children, onSave, onFinalSave, onClear, onExportPDF, onPrint, onExportXLSX, onExportSmokeCheck, exportSmokeCheckDisabled, smokeCheckStatus, saveStatus = "idle", lastSavedAt, lastSaveError, recordButtonLabel, onRecordClick, actionsPlacement = "header" }: TestSectionProps) => {
+const TestSection = ({ title, testKey, tooltip, children, onSave, onFinalSave, onClear, onExportPDF, onPrint, onExportXLSX, onExportSmokeCheck, exportSmokeCheckDisabled, smokeCheckStatus, saveStatus = "idle", lastSavedAt, lastSaveError, recordButtonLabel, onRecordClick, actionsPlacement = "header", canExport = true, exportIndicator = "Document available after saving" }: TestSectionProps) => {
   const [localOpen, setLocalOpen] = useState(false);
   const accordion = useTestAccordion();
 
@@ -120,7 +122,9 @@ const TestSection = ({ title, testKey, tooltip, children, onSave, onFinalSave, o
             <Button
               size="sm"
               variant="outline"
+              disabled={!canExport}
               onClick={async () => {
+                if (!canExport) return;
                 try {
                   const exported = await onExportPDF();
                   if (exported !== false) toast.success(`${title} PDF downloaded`);
@@ -133,7 +137,7 @@ const TestSection = ({ title, testKey, tooltip, children, onSave, onFinalSave, o
             </Button>
           </TooltipTrigger>
           <TooltipContent side="top">
-            Export test data as PDF document
+            {canExport ? "Export test data as PDF document" : exportIndicator}
           </TooltipContent>
         </Tooltip>
       )}
@@ -143,7 +147,9 @@ const TestSection = ({ title, testKey, tooltip, children, onSave, onFinalSave, o
             <Button
               size="sm"
               variant="outline"
+              disabled={!canExport}
               onClick={async () => {
+                if (!canExport) return;
                 try {
                   await onPrint();
                 } catch {
@@ -155,7 +161,7 @@ const TestSection = ({ title, testKey, tooltip, children, onSave, onFinalSave, o
             </Button>
           </TooltipTrigger>
           <TooltipContent side="top">
-            Open the report PDF in a print dialog
+            {canExport ? "Open the report PDF in a print dialog" : exportIndicator}
           </TooltipContent>
         </Tooltip>
       )}
