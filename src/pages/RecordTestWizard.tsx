@@ -39,6 +39,8 @@ const MATERIAL_PRESENTATION: Record<Material, { label: string; Icon: LucideIcon 
 const isTemplateCloneTestKey = (testKey: string | null): boolean =>
   testKey === "grading" || testKey === "proctor" || testKey === "atterberg";
 
+const ROCK_SAMPLE_TEST_KEYS: ReadonlySet<string> = new Set(["ucs", "pointload", "porosity", "coring", "schmidt_rock"]);
+
 const getSteps = (testKey: string | null): WizardStep[] => {
   const isCompressiveStrengthTest = testKey === "compressive";
 
@@ -350,6 +352,7 @@ const RecordTestWizard = () => {
   const isCptTest = state.testKey === "cpt";
   const isSlumpTest = state.testKey === "slump";
   const isReboundTest = state.testKey === "ndt" || state.testKey === "schmidt";
+  const isRockTest = ROCK_SAMPLE_TEST_KEYS.has(state.testKey ?? "");
   const isAtterbergTest = state.testKey === "atterberg";
   const steps = useMemo(() => getSteps(state.testKey), [state.testKey]);
   const projectLoadKey = `${state.material ?? ""}:${state.testKey ?? ""}:${projectsReloadKey}`;
@@ -630,7 +633,7 @@ const RecordTestWizard = () => {
 
     testData.updateProjectMetadata(projectMetadata);
 
-    if (isGradingTest || isProctorTest || isCptTest || isSlumpTest || isReboundTest) {
+    if (isGradingTest || isProctorTest || isCptTest || isSlumpTest || isReboundTest || isRockTest) {
       testData.updateRecordMetadata(state.testKey!, toRecordMetadata(state));
     }
 

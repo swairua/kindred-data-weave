@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import CalculatedInput from "@/components/CalculatedInput";
 import { useProject } from "@/context/ProjectContext";
+import { useTestData } from "@/context/TestDataContext";
 import { generateTestPDF } from "@/lib/pdfGenerator";
 import { useTestReport } from "@/hooks/useTestReport";
 import { loadTestResult, saveTestResult } from "@/lib/testResultPersistence";
@@ -12,6 +13,8 @@ interface PorosityPayload { dryWeight?: string; satWeight?: string; volume?: str
 
 const PorosityTest = ({ testKey }: { testKey?: string }) => {
   const project = useProject();
+  const testData = useTestData();
+  const sample = useMemo(() => testData.recordMetadata.porosity || {}, [testData.recordMetadata.porosity]);
   const projectId = project.currentProjectId ?? null;
   const [recordId, setRecordId] = useState<number | null>(null);
   const [dryWeight, setDryWeight] = useState("");
@@ -64,14 +67,33 @@ const PorosityTest = ({ testKey }: { testKey?: string }) => {
     setRecordId(savedId);
   };
 
-  const fields = [{ label: "Dry Weight (g)", value: dryWeight }, { label: "Saturated Weight (g)", value: satWeight }, { label: "Volume (cm³)", value: volume }, { label: "Porosity (%)", value: porosity }];
-
   const exportPDF = () => {
-    generateTestPDF({ title: "Porosity Test", ...project, fields });
+    generateTestPDF({
+      title: "Porosity Test",
+      ...project,
+      dateTested: sample.dateTested,
+      testedBy: sample.testedBy,
+      fields: [
+        { label: "Sample ID", value: sample.sampleId || "—" },
+        { label: "Sample No.", value: sample.sampleNumber || "—" },
+        { label: "Sample Depth From (m)", value: sample.sampleDepthFrom || "—" },
+        { label: "Sample Depth To (m)", value: sample.sampleDepthTo || "—" },
+        { label: "Dry Weight (g)", value: dryWeight },
+        { label: "Saturated Weight (g)", value: satWeight },
+        { label: "Volume (cm³)", value: volume },
+        { label: "Porosity (%)", value: porosity },
+      ],
+    });
   };
 
   return (
     <TestSection title="Porosity" testKey={testKey} onSave={save} onClear={() => { setDryWeight(""); setSatWeight(""); setVolume(""); }} onExportPDF={exportPDF}>
+      {sample.sampleId && (
+        <p className="mb-3 text-xs text-muted-foreground">
+          Sample ID: <strong className="text-foreground">{sample.sampleId}</strong> · Depth{" "}
+          <strong className="text-foreground">{sample.sampleDepthFrom || "—"} to {sample.sampleDepthTo || "—"} m</strong>
+        </p>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="space-y-1.5"><Label className="text-xs text-muted-foreground">Dry Weight (g)</Label><Input type="number" min="0" step="any" value={dryWeight} onChange={(e) => setDryWeight(e.target.value)} placeholder="0" /></div>
         <div className="space-y-1.5"><Label className="text-xs text-muted-foreground">Saturated Weight (g)</Label><Input type="number" min="0" step="any" value={satWeight} onChange={(e) => setSatWeight(e.target.value)} placeholder="0" /></div>

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import CalculatedInput from "@/components/CalculatedInput";
 import { Plus, X } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
+import { useTestData } from "@/context/TestDataContext";
 import { generateTestPDF, printPDFDocument } from "@/lib/pdfGenerator";
 import { useTestReport } from "@/hooks/useTestReport";
 import { loadTestResult, saveTestResult } from "@/lib/testResultPersistence";
@@ -15,6 +16,8 @@ const emptyRow = (sampleId: string): Row => ({ sampleId, failureLoad: "", de: ""
 
 const PointLoadTest = ({ testKey }: { testKey?: string }) => {
   const project = useProject();
+  const testData = useTestData();
+  const sample = useMemo(() => testData.recordMetadata.pointload || {}, [testData.recordMetadata.pointload]);
   const projectId = project.currentProjectId ?? null;
   const [recordId, setRecordId] = useState<number | null>(null);
   const [rows, setRows] = useState<Row[]>(projectId ? [emptyRow("P1")] : []);
@@ -61,7 +64,21 @@ const PointLoadTest = ({ testKey }: { testKey?: string }) => {
 
   const tableData = { headers: ["Sample ID", "Failure Load (kN)", "De (mm)", "Is(50) (MPa)"], rows: rows.map(r => [r.sampleId, r.failureLoad || "—", r.de || "—", getIndex(r) || "—"]) };
 
-  const buildPDF = (skipDownload: boolean) => generateTestPDF({ title: "Point Load Test", ...project, skipDownload, tables: [tableData] });
+  const buildPDF = (skipDownload: boolean) => generateTestPDF({
+    title: "Point Load Test",
+    ...project,
+    dateTested: sample.dateTested,
+    testedBy: sample.testedBy,
+    skipDownload,
+    fields: [
+      { label: "Sample ID", value: sample.sampleId || "—" },
+      { label: "Sample No.", value: sample.sampleNumber || "—" },
+      { label: "Sample Depth From (m)", value: sample.sampleDepthFrom || "—" },
+      { label: "Sample Depth To (m)", value: sample.sampleDepthTo || "—" },
+      ...plResults.map(result => ({ label: result.label, value: result.value || "—" })),
+    ],
+    tables: [tableData],
+  });
 
   const exportPDF = async () => {
     await buildPDF(false);
@@ -71,6 +88,12 @@ const PointLoadTest = ({ testKey }: { testKey?: string }) => {
 
   return (
     <TestSection title="Point Load Test" testKey={testKey} onSave={save} onClear={() => setRows([{ sampleId: "", failureLoad: "", de: "" }])} onExportPDF={exportPDF} onPrint={printPDF} actionsPlacement="footer">
+      {sample.sampleId && (
+        <p className="mb-3 text-xs text-muted-foreground">
+          Sample ID: <strong className="text-foreground">{sample.sampleId}</strong> · Depth{" "}
+          <strong className="text-foreground">{sample.sampleDepthFrom || "—"} to {sample.sampleDepthTo || "—"} m</strong>
+        </p>
+      )}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Sample ID</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Failure Load (kN)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">De (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Is(50) (MPa)</th><th className="w-10"></th></tr></thead>
