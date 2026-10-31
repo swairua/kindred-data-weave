@@ -14,8 +14,8 @@ interface SlumpTestProps {
 
 const SlumpTest = ({ testKey }: SlumpTestProps) => {
   const project = useProject();
-  const [slump, setSlump] = useState("75");
-  const [remarks, setRemarks] = useState("True slump");
+  const [slump, setSlump] = useState("");
+  const [remarks, setRemarks] = useState("");
   const hasProjectSelected = !!project.currentProjectId;
   const projectId = project.currentProjectId ?? null;
   const [recordId, setRecordId] = useState<number | null>(null);

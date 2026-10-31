@@ -265,11 +265,15 @@ const TestResults = () => {
   const paginatedTests = filteredTests.slice(startIndex, endIndex);
 
   const handleOpenTest = (test: (typeof filteredTests)[0]) => {
-    // Preload project metadata into TestDataContext
-    testData.updateProjectMetadata({
-      projectName: test.project_name,
-      projectDate: test.date_created,
-    });
+  // Preload project metadata into TestDataContext so test components load
+  // immediately without waiting for Index.tsx to fetch the full project.
+  // Index.tsx will overwrite with richer metadata once its effect runs, but
+  // setting currentProjectId here lets the form's load-on-mount effect fire right away.
+  testData.updateProjectMetadata({
+    projectName: test.project_name,
+    projectDate: test.date_created,
+    currentProjectId: test.project_id,
+  });
 
     toast.success(`Opened ${test.project_name}`);
 

@@ -12,11 +12,7 @@ interface Row { depth: string; coneResistance: string; frictionRatio: string }
 
 const CPTTest = ({ testKey }: { testKey?: string }) => {
   const project = useProject();
-  const [rows, setRows] = useState<Row[]>([
-    { depth: "1.0", coneResistance: "2.5", frictionRatio: "25" },
-    { depth: "2.0", coneResistance: "4.8", frictionRatio: "40" },
-    { depth: "3.0", coneResistance: "7.2", frictionRatio: "55" },
-  ]);
+  const [rows, setRows] = useState<Row[]>([{ depth: "", coneResistance: "", frictionRatio: "" }]);
   const projectId = project.currentProjectId ?? null;
   const [recordId, setRecordId] = useState<number | null>(null);
   const update = (i: number, field: keyof Row, val: string) => { const next = [...rows]; next[i] = { ...next[i], [field]: val }; setRows(next); };

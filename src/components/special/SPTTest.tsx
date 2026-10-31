@@ -12,11 +12,7 @@ interface Row { depth: string; blowCount: string }
 
 const SPTTest = ({ testKey }: { testKey?: string }) => {
   const project = useProject();
-  const [rows, setRows] = useState<Row[]>([
-    { depth: "1.5", blowCount: "8" },
-    { depth: "3.0", blowCount: "14" },
-    { depth: "4.5", blowCount: "22" },
-  ]);
+  const [rows, setRows] = useState<Row[]>([{ depth: "", blowCount: "" }]);
   const projectId = project.currentProjectId ?? null;
   const [recordId, setRecordId] = useState<number | null>(null);
   const update = (i: number, field: keyof Row, val: string) => { const next = [...rows]; next[i] = { ...next[i], [field]: val }; setRows(next); };
