@@ -495,9 +495,24 @@ const drawHydrometerTable = (d: jsPDF, x: number, y: number, w: number, o: Parti
     ...(index === 6 ? { postDraw: drawDiameterHeader } : {}),
   })));
 
-  o.hydrometer.results.forEach((result) => {
+  const results = o.hydrometer.results;
+  const resultCount = results.length;
+
+  // If a targetBottom is provided, distribute extra space across data rows
+  // instead of adding filler rows, so the table naturally reaches the same height.
+  let dataRowH = rowH;
+  if (targetBottom !== undefined && resultCount > 0) {
+    const fixedOverhead = HYDRO_CAP_H + 4 * HYDRO_PARAM_H + HYDRO_HEAD_H;
+    const availableForData = targetBottom - y - fixedOverhead;
+    if (availableForData > resultCount * rowH) {
+      // Spread the extra space evenly across all data rows
+      dataRowH = availableForData / resultCount;
+    }
+  }
+
+  results.forEach((result) => {
     const actual = o.record.hydrometerRows.find((row) => row.time === String(result.time))?.actualHydrometer;
-    cy = drawCells(d, x, cy, rowH, [
+    cy = drawCells(d, x, cy, dataRowH, [
       timeText(result.time),
       text(actual, DASH),
       num(result.adjustedReading, 1, DASH),
@@ -509,17 +524,7 @@ const drawHydrometerTable = (d: jsPDF, x: number, y: number, w: number, o: Parti
       num(result.finesByHydrometer, 1, DASH),
     ].map((value, index) => ({ w: widths[index], text: value, align: "center" as const })));
   });
-  if (targetBottom !== undefined && cy < targetBottom) {
-    const fillerCells = widths.map((w) => ({ w, text: "", align: "center" as const }));
-    while (cy + rowH <= targetBottom) {
-      cy = drawCells(d, x, cy, rowH, fillerCells);
-    }
-    if (cy < targetBottom) {
-      const remaining = targetBottom - cy;
-      const partialCells = fillerCells.map(c => ({ ...c, h: remaining }));
-      cy = drawCells(d, x, cy, remaining, partialCells);
-    }
-  }
+
   return cy;
 };
 
