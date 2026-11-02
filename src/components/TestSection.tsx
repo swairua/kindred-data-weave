@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, isValidElement } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, CheckCircle2, ChevronDown, ChevronRight, FileDown, FlaskConical, Loader2, Plus, Printer, Save, Sheet, Trash2 } from "lucide-react";
@@ -57,6 +57,17 @@ const TestSection = ({ title, testKey, tooltip, children, onSave, onFinalSave, o
     !!project.onLoadProject &&
     !!project.onStartNewProject &&
     !!project.onMetadataChange;
+
+  // Safety check: ensure children is a valid React node to prevent "Objects are not valid as a React child" errors
+  const safeChildren = (() => {
+    if (children === null || children === undefined) return null;
+    if (typeof children === "string" || typeof children === "number") return children;
+    if (Array.isArray(children)) return children;
+    if (isValidElement(children)) return children;
+    // Fallback: render nothing if children is an invalid object
+    console.warn("[TestSection] Invalid children prop received, rendering fallback");
+    return null;
+  })();
 
   const actions = (
     <div className="flex flex-wrap gap-1 sm:gap-1.5 justify-start sm:justify-end w-full sm:w-auto" onClick={(e) => e.stopPropagation()}>
@@ -398,7 +409,7 @@ const TestSection = ({ title, testKey, tooltip, children, onSave, onFinalSave, o
               />
             </div>
           )}
-          {children}
+          {safeChildren}
           {actionsPlacement === "footer" && <div className="pt-2">{actions}</div>}
         </CardContent>
       )}
