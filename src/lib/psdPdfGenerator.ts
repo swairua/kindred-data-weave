@@ -496,23 +496,10 @@ const drawHydrometerTable = (d: jsPDF, x: number, y: number, w: number, o: Parti
   })));
 
   const results = o.hydrometer.results;
-  const resultCount = results.length;
-
-  // If a targetBottom is provided, distribute extra space across data rows
-  // instead of adding filler rows, so the table naturally reaches the same height.
-  let dataRowH = rowH;
-  if (targetBottom !== undefined && resultCount > 0) {
-    const fixedOverhead = HYDRO_CAP_H + 4 * HYDRO_PARAM_H + HYDRO_HEAD_H;
-    const availableForData = targetBottom - y - fixedOverhead;
-    if (availableForData > resultCount * rowH) {
-      // Spread the extra space evenly across all data rows
-      dataRowH = availableForData / resultCount;
-    }
-  }
 
   results.forEach((result) => {
     const actual = o.record.hydrometerRows.find((row) => row.time === String(result.time))?.actualHydrometer;
-    cy = drawCells(d, x, cy, dataRowH, [
+    cy = drawCells(d, x, cy, rowH, [
       timeText(result.time),
       text(actual, DASH),
       num(result.adjustedReading, 1, DASH),
@@ -808,12 +795,14 @@ export const generateParticleSizeDistributionPDF = async (options: ParticleSizeD
   cursor = drawClassification(doc, x, cursor, options, rowH);
   cursor = drawSpacer(doc, x, cursor);
 
+  // Side-by-side tables: use the same rowH for both, no filler rows.
+  // The frame (side rails + bottom rule) closes at the max natural height.
   const sieveHeight = SIEVE_CAP_H + SIEVE_HEAD_H + (sieveCount + 1) * rowH;
   const hydroHeight = HYDRO_CAP_H + 4 * HYDRO_PARAM_H + HYDRO_HEAD_H + hydroCount * rowH;
   const tableBottom = cursor + Math.max(sieveHeight, hydroHeight);
 
-  drawSieveTable(doc, x, cursor, SIEVE_W, options, rowH, tableBottom);
-  drawHydrometerTable(doc, x + SIEVE_W, cursor, CONTENT_W - SIEVE_W, options, rowH, tableBottom);
+  drawSieveTable(doc, x, cursor, SIEVE_W, options, rowH, undefined);
+  drawHydrometerTable(doc, x + SIEVE_W, cursor, CONTENT_W - SIEVE_W, options, rowH, undefined);
 
   // Side rails close at the foot of the report, above the footer, and a bottom
   // rule seals the report box so the footer reads as separate from it.
