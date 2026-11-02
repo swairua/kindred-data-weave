@@ -19,6 +19,8 @@ interface ProjectContextType {
   labOrganization?: string;
   dateReported?: string;
   checkedBy?: string;
+  dateTested?: string;
+  testedBy?: string;
   // Header plumbing (lifted from Index.tsx)
   projectHistory?: ApiProjectRow[];
   isLoadingProjects?: boolean;
@@ -27,7 +29,7 @@ interface ProjectContextType {
   onClientNameChange?: (value: string) => void;
   onLoadProject?: (projectId: string) => void;
   onStartNewProject?: () => void;
-  onMetadataChange?: (key: "labOrganization" | "dateReported" | "checkedBy", value: string) => void;
+  onMetadataChange?: (key: "labOrganization" | "dateReported" | "checkedBy" | "dateTested" | "testedBy", value: string) => void;
 }
 
 export const ProjectContext = createContext<ProjectContextType>({
@@ -39,6 +41,11 @@ export const ProjectContext = createContext<ProjectContextType>({
   logoUrl: undefined,
   contactsImageUrl: undefined,
   stampImageUrl: undefined,
+  labOrganization: undefined,
+  dateReported: undefined,
+  checkedBy: undefined,
+  dateTested: undefined,
+  testedBy: undefined,
   projectHistory: [],
   isLoadingProjects: false,
   projectMetadata: {},

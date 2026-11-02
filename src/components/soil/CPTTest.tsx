@@ -10,9 +10,17 @@ import { loadTestResult, saveTestResult } from "@/lib/testResultPersistence";
 
 interface Row { depth: string; coneResistance: string; frictionRatio: string }
 
+interface SavedPayload {
+  rows: Row[];
+  testedBy?: string;
+  dateTested?: string;
+}
+
 const CPTTest = ({ testKey }: { testKey?: string }) => {
   const project = useProject();
   const [rows, setRows] = useState<Row[]>([{ depth: "", coneResistance: "", frictionRatio: "" }]);
+  const [testedBy, setTestedBy] = useState("");
+  const [dateTested, setDateTested] = useState("");
   const projectId = project.currentProjectId ?? null;
   const [recordId, setRecordId] = useState<number | null>(null);
   const [isSaved, setIsSaved] = useState(false);
@@ -34,8 +42,10 @@ const CPTTest = ({ testKey }: { testKey?: string }) => {
         if (!active || !result) return;
         setRecordId(result.id);
         setIsSaved(true);
-        const savedRows = (result.payload_json as { rows?: Row[] } | null)?.rows;
-        if (Array.isArray(savedRows) && savedRows.length > 0) setRows(savedRows);
+        const payload = (result.payload_json as SavedPayload | null) ?? {};
+        if (Array.isArray(payload.rows) && payload.rows.length > 0) setRows(payload.rows);
+        if (payload.testedBy) setTestedBy(payload.testedBy);
+        if (payload.dateTested) setDateTested(payload.dateTested);
       })
       .catch((error) => console.error("Failed to load CPT result", error));
     return () => { active = false; };
@@ -50,13 +60,21 @@ const CPTTest = ({ testKey }: { testKey?: string }) => {
       status: filledCPT === 0 ? "not-started" : filledCPT < rows.length ? "in-progress" : "completed",
       data_points: filledCPT,
       key_results_json: cptResults.filter((result) => result.value),
-      payload_json: { rows },
+      payload_json: { rows, testedBy, dateTested },
     });
     setRecordId(savedId);
     setIsSaved(true);
   };
 
-  const buildPDF = (skipDownload: boolean) => generateTestPDF({ title: "CPT (Cone Penetration Test)", ...project, skipDownload, tables: [{ headers: ["Depth (m)", "Cone Resistance qc (MPa)", "Friction Ratio fs (kPa)"], rows: rows.map(r => [r.depth || "—", r.coneResistance || "—", r.frictionRatio || "—"]) }] });
+  const buildPDF = (skipDownload: boolean) => generateTestPDF({
+    title: "CPT (Cone Penetration Test)",
+    standard: "ISO 22476-1",
+    ...project,
+    dateTested: dateTested || project.projectDate,
+    testedBy,
+    skipDownload,
+    tables: [{ headers: ["Depth (m)", "Cone Resistance qc (MPa)", "Friction Ratio fs (kPa)"], rows: rows.map(r => [r.depth || "—", r.coneResistance || "—", r.frictionRatio || "—"]) }]
+  });
 
   const exportPDF = async () => {
     await buildPDF(false);
@@ -67,7 +85,7 @@ const CPTTest = ({ testKey }: { testKey?: string }) => {
   const canExport = !!projectId || isSaved;
 
   return (
-    <TestSection title="CPT (Cone Penetration Test)" testKey={testKey} onSave={save} onClear={() => setRows([{ depth: "", coneResistance: "", frictionRatio: "" }])} onExportPDF={exportPDF} onPrint={printPDF} canExport={canExport}>
+    <TestSection title="CPT (Cone Penetration Test)" testKey={testKey} onSave={save} onClear={() => { setRows([{ depth: "", coneResistance: "", frictionRatio: "" }]); setTestedBy(""); setDateTested(""); }} onExportPDF={exportPDF} onPrint={printPDF} canExport={canExport}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Depth (m)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Cone Resistance qc (MPa)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Friction Ratio fs (kPa)</th><th className="w-10"></th></tr></thead>
@@ -82,6 +100,16 @@ const CPTTest = ({ testKey }: { testKey?: string }) => {
             ))}
           </tbody>
         </table>
+      </div>
+      <div className="grid grid-cols-2 gap-4 mt-3">
+        <div className="space-y-1.5">
+          <label className="text-xs text-muted-foreground">Tested By</label>
+          <Input value={testedBy} onChange={(e) => setTestedBy(e.target.value)} placeholder="Technician name" className="h-8" />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs text-muted-foreground">Date Tested</label>
+          <Input type="date" value={dateTested} onChange={(e) => setDateTested(e.target.value)} className="h-8" />
+        </div>
       </div>
       <Button variant="outline" size="sm" className="mt-3" onClick={() => setRows([...rows, { depth: "", coneResistance: "", frictionRatio: "" }])}><Plus className="h-3.5 w-3.5 mr-1" /> Add Row</Button>
     </TestSection>

@@ -2,7 +2,6 @@ import { useState, useMemo, useEffect } from "react";
 import TestSection from "@/components/TestSection";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { useProject } from "@/context/ProjectContext";
 import { generateTestPDF, printPDFDocument } from "@/lib/pdfGenerator";
 import { useTestReport } from "@/hooks/useTestReport";
@@ -12,10 +11,19 @@ interface SlumpTestProps {
   testKey?: string;
 }
 
+interface SavedPayload {
+  slump?: string;
+  remarks?: string;
+  testedBy?: string;
+  dateTested?: string;
+}
+
 const SlumpTest = ({ testKey }: SlumpTestProps) => {
   const project = useProject();
   const [slump, setSlump] = useState("");
   const [remarks, setRemarks] = useState("");
+  const [testedBy, setTestedBy] = useState("");
+  const [dateTested, setDateTested] = useState("");
   const hasProjectSelected = !!project.currentProjectId;
   const projectId = project.currentProjectId ?? null;
   const [recordId, setRecordId] = useState<number | null>(null);
@@ -35,10 +43,12 @@ const SlumpTest = ({ testKey }: SlumpTestProps) => {
         if (!active || !result) return;
         setRecordId(result.id);
         setIsSaved(true);
-        const saved = result.payload_json as { slump?: string; remarks?: string } | null;
+        const saved = result.payload_json as SavedPayload | null;
         if (saved) {
           setSlump(saved.slump ?? "");
           setRemarks(saved.remarks ?? "");
+          if (saved.testedBy) setTestedBy(saved.testedBy);
+          if (saved.dateTested) setDateTested(saved.dateTested);
         }
       })
       .catch((error) => console.error("Failed to load slump result", error));
@@ -54,13 +64,24 @@ const SlumpTest = ({ testKey }: SlumpTestProps) => {
       status: slump ? "completed" : "not-started",
       data_points: dataPoints,
       key_results_json: slumpResults.filter((result) => result.value),
-      payload_json: { slump, remarks },
+      payload_json: { slump, remarks, testedBy, dateTested },
     });
     setRecordId(savedId);
     setIsSaved(true);
   };
 
-  const buildPDF = (skipDownload: boolean) => generateTestPDF({ title: "Slump Test", ...project, skipDownload, fields: [{ label: "Slump Value (mm)", value: slump }, { label: "Remarks", value: remarks }] });
+  const buildPDF = (skipDownload: boolean) => generateTestPDF({
+    title: "Slump Test",
+    standard: "ASTM C143 / AASHTO T 119",
+    ...project,
+    dateTested: dateTested || project.projectDate,
+    testedBy,
+    skipDownload,
+    tables: [{ headers: ["Property", "Value"], rows: [
+      ["Slump Value (mm)", slump || "—"],
+      ["Remarks", remarks || "—"],
+    ] }]
+  });
 
   const exportPDF = async () => {
     await buildPDF(false);
@@ -68,10 +89,10 @@ const SlumpTest = ({ testKey }: SlumpTestProps) => {
 
   const printPDF = async () => printPDFDocument(await buildPDF(true));
 
-  const canExport = hasProjectSelected || isSaved;
+  const canExport = !!projectId || isSaved;
 
   return (
-    <TestSection title="Slump Test" testKey={testKey} onSave={save} onClear={() => { setSlump(""); setRemarks(""); }} onExportPDF={exportPDF} onPrint={printPDF} canExport={canExport}>
+    <TestSection title="Slump Test" testKey={testKey} onSave={save} onClear={() => { setSlump(""); setRemarks(""); setTestedBy(""); setDateTested(""); }} onExportPDF={exportPDF} onPrint={printPDF} canExport={canExport}>
       {!hasProjectSelected && !slump ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
@@ -87,7 +108,15 @@ const SlumpTest = ({ testKey }: SlumpTestProps) => {
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Remarks</Label>
-            <Textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} placeholder="e.g. True slump, collapse..." className="resize-none h-9 min-h-[36px]" />
+            <Input value={remarks} onChange={(e) => setRemarks(e.target.value)} placeholder="e.g. True slump, collapse..." className="h-9 min-h-[36px]" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Tested By</Label>
+            <Input value={testedBy} onChange={(e) => setTestedBy(e.target.value)} placeholder="Technician name" className="h-8" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Date Tested</Label>
+            <Input type="date" value={dateTested} onChange={(e) => setDateTested(e.target.value)} className="h-8" />
           </div>
         </div>
       )}

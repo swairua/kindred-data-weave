@@ -11,9 +11,17 @@ import { loadTestResult, saveTestResult } from "@/lib/testResultPersistence";
 
 interface Row { sampleId: string; load: string; area: string }
 
+interface SavedPayload {
+  rows: Row[];
+  testedBy?: string;
+  dateTested?: string;
+}
+
 const UCSTest = ({ testKey }: { testKey?: string }) => {
   const project = useProject();
   const [rows, setRows] = useState<Row[]>([{ sampleId: "", load: "", area: "" }]);
+  const [testedBy, setTestedBy] = useState("");
+  const [dateTested, setDateTested] = useState("");
   const hasProjectSelected = !!project.currentProjectId;
   const projectId = project.currentProjectId ?? null;
   const [recordId, setRecordId] = useState<number | null>(null);
@@ -37,8 +45,10 @@ const UCSTest = ({ testKey }: { testKey?: string }) => {
         if (!active || !result) return;
         setRecordId(result.id);
         setIsSaved(true);
-        const savedRows = (result.payload_json as { rows?: Row[] } | null)?.rows;
-        if (Array.isArray(savedRows) && savedRows.length > 0) setRows(savedRows);
+        const payload = (result.payload_json as SavedPayload | null) ?? {};
+        if (Array.isArray(payload.rows) && payload.rows.length > 0) setRows(payload.rows);
+        if (payload.testedBy) setTestedBy(payload.testedBy);
+        if (payload.dateTested) setDateTested(payload.dateTested);
       })
       .catch((error) => console.error("Failed to load UCS result", error));
     return () => { active = false; };
@@ -53,13 +63,21 @@ const UCSTest = ({ testKey }: { testKey?: string }) => {
       status: strengths.length === 0 ? "not-started" : strengths.length < rows.length ? "in-progress" : "completed",
       data_points: strengths.length,
       key_results_json: ucsResults.filter((result) => result.value),
-      payload_json: { rows },
+      payload_json: { rows, testedBy, dateTested },
     });
     setRecordId(savedId);
     setIsSaved(true);
   };
 
-  const buildPDF = (skipDownload: boolean) => generateTestPDF({ title: "UCS (Unconfined Compressive Strength)", ...project, skipDownload, tables: [{ headers: ["Sample ID", "Load (kN)", "Area (mm²)", "Strength (MPa)"], rows: rows.map(r => [r.sampleId, r.load || "—", r.area || "—", getStrength(r) || "—"]) }] });
+  const buildPDF = (skipDownload: boolean) => generateTestPDF({
+    title: "UCS (Unconfined Compressive Strength)",
+    standard: "ASTM D7012 / ISRM Suggested Method",
+    ...project,
+    dateTested: dateTested || project.projectDate,
+    testedBy,
+    skipDownload,
+    tables: [{ headers: ["Sample ID", "Load (kN)", "Area (mm²)", "Strength (MPa)"], rows: rows.map(r => [r.sampleId, r.load || "—", r.area || "—", getStrength(r) || "—"]) }]
+  });
 
   const exportPDF = async () => {
     await buildPDF(false);
@@ -67,10 +85,10 @@ const UCSTest = ({ testKey }: { testKey?: string }) => {
 
   const printPDF = async () => printPDFDocument(await buildPDF(true));
 
-  const canExport = hasProjectSelected || isSaved;
+  const canExport = !!projectId || isSaved;
 
   return (
-    <TestSection title="UCS (Unconfined Compressive Strength)" testKey={testKey} onSave={save} onClear={() => setRows([{ sampleId: "", load: "", area: "" }])} onExportPDF={exportPDF} onPrint={printPDF} canExport={canExport}>
+    <TestSection title="UCS (Unconfined Compressive Strength)" testKey={testKey} onSave={save} onClear={() => { setRows([{ sampleId: "", load: "", area: "" }]); setTestedBy(""); setDateTested(""); }} onExportPDF={exportPDF} onPrint={printPDF} canExport={canExport}>
       {!hasProjectSelected && rows.length === 0 ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
@@ -95,6 +113,16 @@ const UCSTest = ({ testKey }: { testKey?: string }) => {
                 ))}
               </tbody>
             </table>
+          </div>
+          <div className="grid grid-cols-2 gap-4 mt-3">
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground">Tested By</label>
+              <Input value={testedBy} onChange={(e) => setTestedBy(e.target.value)} placeholder="Technician name" className="h-8" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground">Date Tested</label>
+              <Input type="date" value={dateTested} onChange={(e) => setDateTested(e.target.value)} className="h-8" />
+            </div>
           </div>
           <Button variant="outline" size="sm" className="mt-3" onClick={() => setRows([...rows, { sampleId: `R${rows.length + 1}`, load: "", area: "" }])}><Plus className="h-3.5 w-3.5 mr-1" /> Add Row</Button>
         </>

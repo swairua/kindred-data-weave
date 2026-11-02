@@ -11,9 +11,17 @@ import { loadTestResult, saveTestResult } from "@/lib/testResultPersistence";
 
 interface Row { sampleId: string; failureLoad: string; de: string }
 
+interface SavedPayload {
+  rows: Row[];
+  testedBy?: string;
+  dateTested?: string;
+}
+
 const PointLoadTest = ({ testKey }: { testKey?: string }) => {
   const project = useProject();
   const [rows, setRows] = useState<Row[]>([{ sampleId: "", failureLoad: "", de: "" }]);
+  const [testedBy, setTestedBy] = useState("");
+  const [dateTested, setDateTested] = useState("");
   const projectId = project.currentProjectId ?? null;
   const [recordId, setRecordId] = useState<number | null>(null);
   const [isSaved, setIsSaved] = useState(false);
@@ -36,8 +44,10 @@ const PointLoadTest = ({ testKey }: { testKey?: string }) => {
         if (!active || !result) return;
         setRecordId(result.id);
         setIsSaved(true);
-        const savedRows = (result.payload_json as { rows?: Row[] } | null)?.rows;
-        if (Array.isArray(savedRows) && savedRows.length > 0) setRows(savedRows);
+        const payload = (result.payload_json as SavedPayload | null) ?? {};
+        if (Array.isArray(payload.rows) && payload.rows.length > 0) setRows(payload.rows);
+        if (payload.testedBy) setTestedBy(payload.testedBy);
+        if (payload.dateTested) setDateTested(payload.dateTested);
       })
       .catch((error) => console.error("Failed to load point load result", error));
     return () => { active = false; };
@@ -52,7 +62,7 @@ const PointLoadTest = ({ testKey }: { testKey?: string }) => {
       status: indices.length === 0 ? "not-started" : indices.length < rows.length ? "in-progress" : "completed",
       data_points: indices.length,
       key_results_json: plResults.filter((result) => result.value),
-      payload_json: { rows },
+      payload_json: { rows, testedBy, dateTested },
     });
     setRecordId(savedId);
     setIsSaved(true);
@@ -60,7 +70,15 @@ const PointLoadTest = ({ testKey }: { testKey?: string }) => {
 
   const tableData = { headers: ["Sample ID", "Failure Load (kN)", "De (mm)", "Is(50) (MPa)"], rows: rows.map(r => [r.sampleId, r.failureLoad || "—", r.de || "—", getIndex(r) || "—"]) };
 
-  const buildPDF = (skipDownload: boolean) => generateTestPDF({ title: "Point Load Test", ...project, skipDownload, tables: [tableData] });
+  const buildPDF = (skipDownload: boolean) => generateTestPDF({
+    title: "Point Load Test",
+    standard: "ASTM D5731 / ISRM Suggested Method",
+    ...project,
+    dateTested: dateTested || project.projectDate,
+    testedBy,
+    skipDownload,
+    tables: [tableData]
+  });
 
   const exportPDF = async () => {
     await buildPDF(false);
@@ -71,7 +89,7 @@ const PointLoadTest = ({ testKey }: { testKey?: string }) => {
   const canExport = !!projectId || isSaved;
 
   return (
-    <TestSection title="Point Load Test" testKey={testKey} onSave={save} onClear={() => setRows([{ sampleId: "", failureLoad: "", de: "" }])} onExportPDF={exportPDF} onPrint={printPDF} canExport={canExport} actionsPlacement="footer">
+    <TestSection title="Point Load Test" testKey={testKey} onSave={save} onClear={() => { setRows([{ sampleId: "", failureLoad: "", de: "" }]); setTestedBy(""); setDateTested(""); }} onExportPDF={exportPDF} onPrint={printPDF} canExport={canExport} actionsPlacement="footer">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Sample ID</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Failure Load (kN)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">De (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Is(50) (MPa)</th><th className="w-10"></th></tr></thead>
@@ -87,6 +105,16 @@ const PointLoadTest = ({ testKey }: { testKey?: string }) => {
             ))}
           </tbody>
         </table>
+      </div>
+      <div className="grid grid-cols-2 gap-4 mt-3">
+        <div className="space-y-1.5">
+          <label className="text-xs text-muted-foreground">Tested By</label>
+          <Input value={testedBy} onChange={(e) => setTestedBy(e.target.value)} placeholder="Technician name" className="h-8" />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs text-muted-foreground">Date Tested</label>
+          <Input type="date" value={dateTested} onChange={(e) => setDateTested(e.target.value)} className="h-8" />
+        </div>
       </div>
       <Button variant="outline" size="sm" className="mt-3" onClick={() => setRows([...rows, { sampleId: `P${rows.length + 1}`, failureLoad: "", de: "" }])}><Plus className="h-3.5 w-3.5 mr-1" /> Add Row</Button>
     </TestSection>

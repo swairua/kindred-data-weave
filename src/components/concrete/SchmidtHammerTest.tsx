@@ -15,6 +15,12 @@ import { loadTestResult, saveTestResult } from "@/lib/testResultPersistence";
 
 interface Row { location: string; r1: string; r2: string; r3: string; r4: string; r5: string }
 
+interface SavedPayload {
+  rows: Row[];
+  testedBy?: string;
+  dateTested?: string;
+}
+
 const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
   const project = useProject();
   const testName = testKey === "schmidt_rock" ? "Schmidt Hammer" : "NDT (Rebound Hammer)";
@@ -22,6 +28,8 @@ const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
   const [rows, setRows] = useState<Row[]>([
     { location: "L1", r1: "", r2: "", r3: "", r4: "", r5: "" },
   ]);
+  const [testedBy, setTestedBy] = useState("");
+  const [dateTested, setDateTested] = useState("");
   const projectId = project.currentProjectId ?? null;
   const [recordId, setRecordId] = useState<number | null>(null);
   const [isSaved, setIsSaved] = useState(false);
@@ -66,8 +74,10 @@ const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
         if (!active || !result) return;
         setRecordId(result.id);
         setIsSaved(true);
-        const savedRows = (result.payload_json as { rows?: Row[] } | null)?.rows;
-        if (Array.isArray(savedRows) && savedRows.length > 0) setRows(savedRows);
+        const payload = (result.payload_json as SavedPayload | null) ?? {};
+        if (Array.isArray(payload.rows) && payload.rows.length > 0) setRows(payload.rows);
+        if (payload.testedBy) setTestedBy(payload.testedBy);
+        if (payload.dateTested) setDateTested(payload.dateTested);
       })
       .catch((error) => console.error(`Failed to load ${testName} result`, error));
     return () => { active = false; };
@@ -82,7 +92,7 @@ const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
       status: rebounds.length === 0 ? "not-started" : rebounds.length < rows.length ? "in-progress" : "completed",
       data_points: rebounds.length,
       key_results_json: results.filter((result) => result.value),
-      payload_json: { rows },
+      payload_json: { rows, testedBy, dateTested },
     });
     setRecordId(savedId);
     setIsSaved(true);
@@ -99,7 +109,16 @@ const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
       }
     }
 
-    return generateTestPDF({ title: testName, ...project, skipDownload, tables: [tableData], chartImages });
+    return generateTestPDF({
+      title: testName,
+      standard: testKey === "schmidt_rock" ? "ASTM D5873" : "ASTM C805",
+      ...project,
+      dateTested: dateTested || project.projectDate,
+      testedBy,
+      skipDownload,
+      tables: [tableData],
+      chartImages
+    });
   };
 
   const exportPDF = async () => {
@@ -111,7 +130,7 @@ const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
   const canExport = !!projectId || isSaved;
 
   return (
-    <TestSection title={testName} testKey={testKey} onSave={save} onClear={() => setRows([{ location: "L1", r1: "", r2: "", r3: "", r4: "", r5: "" }])} onExportPDF={exportPDF} onPrint={printPDF} canExport={canExport}>
+    <TestSection title={testName} testKey={testKey} onSave={save} onClear={() => { setRows([{ location: "L1", r1: "", r2: "", r3: "", r4: "", r5: "" }]); setTestedBy(""); setDateTested(""); }} onExportPDF={exportPDF} onPrint={printPDF} canExport={canExport}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Location</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R1</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R2</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R3</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R4</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">R5</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Avg R</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Est. MPa</th><th className="w-10"></th></tr></thead>
@@ -132,6 +151,16 @@ const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
             })}
           </tbody>
         </table>
+      </div>
+      <div className="grid grid-cols-2 gap-4 mt-3">
+        <div className="space-y-1.5">
+          <label className="text-xs text-muted-foreground">Tested By</label>
+          <Input value={testedBy} onChange={(e) => setTestedBy(e.target.value)} placeholder="Technician name" className="h-8" />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs text-muted-foreground">Date Tested</label>
+          <Input type="date" value={dateTested} onChange={(e) => setDateTested(e.target.value)} className="h-8" />
+        </div>
       </div>
       <Button variant="outline" size="sm" className="mt-3" onClick={() => setRows([...rows, { location: `L${rows.length + 1}`, r1: "", r2: "", r3: "", r4: "", r5: "" }])}><Plus className="h-3.5 w-3.5 mr-1" /> Add Row</Button>
 
