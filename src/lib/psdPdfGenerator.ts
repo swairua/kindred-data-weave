@@ -369,24 +369,24 @@ const drawSieveTable = (d: jsPDF, x: number, y: number, w: number, o: ParticleSi
   o.record.sieveRows.forEach((row, index) => {
     const passing = o.grading.cumulativePassing[index];
     cy = drawCells(d, x, cy, rowH, [
-      { w: widths[0], text: row.sieveSize, align: "center", bold: true },
-      { w: widths[1], text: text(row.weightRetained, DASH), align: "center" },
-      { w: widths[2], text: num(o.grading.percentageRetained[index], 1, DASH), align: "center" },
-      { w: widths[3], text: passing === null ? DASH : num(passing, 1, DASH), align: "center" },
+      { w: widths[0], text: row.sieveSize, align: "left", bold: true },
+      { w: widths[1], text: text(row.weightRetained, DASH), align: "left" },
+      { w: widths[2], text: num(o.grading.percentageRetained[index], 1, DASH), align: "left" },
+      { w: widths[3], text: passing === null ? DASH : num(passing, 1, DASH), align: "left" },
     ]);
   });
   return drawCells(d, x, cy, rowH, [
-    { w: widths[0], text: "TOTAL", align: "center", bold: true },
-    { w: widths[1], text: num(o.grading.totalWeight), align: "center", bold: true },
-    { w: widths[2], text: DASH, align: "center" },
-    { w: widths[3], text: DASH, align: "center" },
+    { w: widths[0], text: "TOTAL", align: "left", bold: true },
+    { w: widths[1], text: num(o.grading.totalWeight), align: "left", bold: true },
+    { w: widths[2], text: DASH, align: "left" },
+    { w: widths[3], text: DASH, align: "left" },
   ]);
   if (targetBottom !== undefined && cy < targetBottom) {
     const fillerCells: Cell[] = [
-      { w: widths[0], text: "", align: "center" },
-      { w: widths[1], text: "", align: "center" },
-      { w: widths[2], text: "", align: "center" },
-      { w: widths[3], text: "", align: "center" },
+      { w: widths[0], text: "", align: "left" },
+      { w: widths[1], text: "", align: "left" },
+      { w: widths[2], text: "", align: "left" },
+      { w: widths[3], text: "", align: "left" },
     ];
     while (cy + rowH <= targetBottom) {
       cy = drawCells(d, x, cy, rowH, fillerCells);
@@ -509,12 +509,12 @@ const drawHydrometerTable = (d: jsPDF, x: number, y: number, w: number, o: Parti
       num(result.particleDiameter, 4, DASH),
       num(result.finesInSuspension, 1, DASH),
       num(result.finesByHydrometer, 1, DASH),
-    ].map((value, index) => ({ w: widths[index], text: value, align: "center" as const })));
+    ].map((value, index) => ({ w: widths[index], text: value, align: "left" as const })));
   });
 
   // Pad to common tableBottom so both tables visually meet the frame bottom
   if (targetBottom !== undefined && cy < targetBottom) {
-    const fillerCells = widths.map((w) => ({ w, text: "", align: "center" as const }));
+    const fillerCells = widths.map((w) => ({ w, text: "", align: "left" as const }));
     while (cy + rowH <= targetBottom) {
       cy = drawCells(d, x, cy, rowH, fillerCells);
     }
