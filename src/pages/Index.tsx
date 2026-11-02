@@ -365,9 +365,10 @@ const Index = ({ initialTab }: IndexProps) => {
     }
   }, [location.pathname, isAdminPage, isReportsPage, isTestsPage]);
 
+  const { updateProgress, completeNavigation } = useNavigationLoading();
+
   // Load project from query parameter or hash when on /tests page with numeric value
   useEffect(() => {
-    const { updateProgress, completeNavigation } = useNavigationLoading();
     // Only process on /tests page
     if (!isTestsPage) {
       return;
