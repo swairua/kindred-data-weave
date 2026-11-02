@@ -512,6 +512,19 @@ const drawHydrometerTable = (d: jsPDF, x: number, y: number, w: number, o: Parti
     ].map((value, index) => ({ w: widths[index], text: value, align: "center" as const })));
   });
 
+  // Pad to common tableBottom so both tables visually meet the frame bottom
+  if (targetBottom !== undefined && cy < targetBottom) {
+    const fillerCells = widths.map((w) => ({ w, text: "", align: "center" as const }));
+    while (cy + rowH <= targetBottom) {
+      cy = drawCells(d, x, cy, rowH, fillerCells);
+    }
+    if (cy < targetBottom) {
+      const remaining = targetBottom - cy;
+      const partialCells = fillerCells.map((c) => ({ ...c, h: remaining }));
+      cy = drawCells(d, x, cy, remaining, partialCells);
+    }
+  }
+
   return cy;
 };
 
@@ -795,14 +808,15 @@ export const generateParticleSizeDistributionPDF = async (options: ParticleSizeD
   cursor = drawClassification(doc, x, cursor, options, rowH);
   cursor = drawSpacer(doc, x, cursor);
 
-  // Side-by-side tables: use the same rowH for both, no filler rows.
-  // The frame (side rails + bottom rule) closes at the max natural height.
+  // Side-by-side tables: both target the same bottom; shorter table gets
+// a single subtle filler row to meet the frame, so content visually
+// aligns with the side rails.
   const sieveHeight = SIEVE_CAP_H + SIEVE_HEAD_H + (sieveCount + 1) * rowH;
   const hydroHeight = HYDRO_CAP_H + 4 * HYDRO_PARAM_H + HYDRO_HEAD_H + hydroCount * rowH;
   const tableBottom = cursor + Math.max(sieveHeight, hydroHeight);
 
-  drawSieveTable(doc, x, cursor, SIEVE_W, options, rowH, undefined);
-  drawHydrometerTable(doc, x + SIEVE_W, cursor, CONTENT_W - SIEVE_W, options, rowH, undefined);
+  drawSieveTable(doc, x, cursor, SIEVE_W, options, rowH, tableBottom);
+  drawHydrometerTable(doc, x + SIEVE_W, cursor, CONTENT_W - SIEVE_W, options, rowH, tableBottom);
 
   // Side rails close at the foot of the report, above the footer, and a bottom
   // rule seals the report box so the footer reads as separate from it.
