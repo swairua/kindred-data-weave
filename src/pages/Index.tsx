@@ -45,6 +45,7 @@ import Navigation, { type NavigationView } from "@/components/Navigation";
 import { fetchCurrentUser, loginUser, logoutUser, type ApiUser, listRecords, fetchFullProject, debugAuthState, debugApiConnectivity } from "@/lib/api";
 import { registerAllTests } from "@/lib/testRegistration";
 import { registry } from "@/lib/testRegistry";
+import { useNavigationLoading } from "@/context/NavigationLoadingContext";
 
 
 // Initialize test registry once on module load
@@ -366,6 +367,7 @@ const Index = ({ initialTab }: IndexProps) => {
 
   // Load project from query parameter or hash when on /tests page with numeric value
   useEffect(() => {
+    const { updateProgress, completeNavigation } = useNavigationLoading();
     // Only process on /tests page
     if (!isTestsPage) {
       return;
@@ -411,6 +413,7 @@ const Index = ({ initialTab }: IndexProps) => {
     // Load the project
     const loadProjectFromSource = async () => {
       try {
+        updateProgress(10);
         // Check if project data was already preloaded by RecordTestWizard
         // (it updates testData.projectMetadata immediately)
         const hasPreloadedData = testData.projectMetadata.projectName && currentProjectId === projectIdToLoad;
@@ -420,9 +423,11 @@ const Index = ({ initialTab }: IndexProps) => {
           // Data is already in state from RecordTestWizard, just mark as loaded
           log(`[Index] Successfully synced project from preload: ${testData.projectMetadata.projectName}`);
           loadedProjectIdRef.current = projectIdToLoad;
+          completeNavigation();
           return;
         }
 
+        updateProgress(30);
         // Fetch full project data from API for complete metadata
         let fullProject: ProjectRecord | undefined;
         try {
@@ -442,6 +447,8 @@ const Index = ({ initialTab }: IndexProps) => {
           }
           fullProject = project;
         }
+
+        updateProgress(80);
 
         if (fullProject) {
           setProjectName(fullProject.name);
@@ -465,8 +472,10 @@ const Index = ({ initialTab }: IndexProps) => {
         } else {
           warn(`[Index] Project ${projectIdToLoad} not found in API response`);
         }
+        completeNavigation();
       } catch (error) {
         warn(`[Index] Failed to load project ${projectIdToLoad}:`, error instanceof Error ? error.message : String(error));
+        completeNavigation();
       }
     };
 

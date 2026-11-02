@@ -5,6 +5,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { TestDataProvider } from "@/context/TestDataContext";
+import { NavigationLoadingProvider } from "@/context/NavigationLoadingContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SessionGuard } from "@/components/SessionGuard";
 import ProtectedLayout from "@/components/ProtectedLayout";
@@ -32,33 +33,35 @@ const App = () => {
           <QueryClientProvider client={queryClient}>
             <TooltipProvider>
               <TestDataProvider>
-                <Toaster />
-                <Sonner />
-                <Routes>
-                  <Route path="/login" element={<Login />} />
-                  <Route element={<SessionGuard />}>
-                    <Route element={<ProtectedLayout />}>
-                      <Route path="/" element={<RecordTestWizard />} />
-                      <Route path="/projects" element={<Projects />} />
-                      <Route path="/projects/:projectId" element={<ProjectOverview />} />
-                      <Route path="/record" element={<RecordTestWizard />} />
-                      <Route path="/testing" element={<RecordTestWizard />} />
-                      <Route path="/reception" element={<Reception />} />
-                      <Route path="/reception/new" element={<LogConsignment />} />
-                      <Route path="/reception/:rcNo" element={<LogConsignment />} />
-                      <Route path="/storage" element={<Storage />} />
-                      <Route path="/equipment" element={<Equipment />} />
+                <NavigationLoadingProvider>
+                  <Toaster />
+                  <Sonner />
+                  <Routes>
+                    <Route path="/login" element={<Login />} />
+                    <Route element={<SessionGuard />}>
+                      <Route element={<ProtectedLayout />}>
+                        <Route path="/" element={<RecordTestWizard />} />
+                        <Route path="/projects" element={<Projects />} />
+                        <Route path="/projects/:projectId" element={<ProjectOverview />} />
+                        <Route path="/record" element={<RecordTestWizard />} />
+                        <Route path="/testing" element={<RecordTestWizard />} />
+                        <Route path="/reception" element={<Reception />} />
+                        <Route path="/reception/new" element={<LogConsignment />} />
+                        <Route path="/reception/:rcNo" element={<LogConsignment />} />
+                        <Route path="/storage" element={<Storage />} />
+                        <Route path="/equipment" element={<Equipment />} />
+                      </Route>
                     </Route>
-                  </Route>
-                  <Route path="/tests" element={<Index initialTab="soil" />} />
-                  <Route path="/tests/:projectId" element={<Index initialTab="soil" />} />
-                  <Route path="/reports" element={<Index />} />
-                  <Route path="/results" element={<TestResults />} />
-                  <Route path="/admin" element={<Index />} />
-                  <Route path="/users" element={<UserManagement />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
+                    <Route path="/tests" element={<Index initialTab="soil" />} />
+                    <Route path="/tests/:projectId" element={<Index initialTab="soil" />} />
+                    <Route path="/reports" element={<Index />} />
+                    <Route path="/results" element={<TestResults />} />
+                    <Route path="/admin" element={<Index />} />
+                    <Route path="/users" element={<UserManagement />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </NavigationLoadingProvider>
               </TestDataProvider>
             </TooltipProvider>
           </QueryClientProvider>

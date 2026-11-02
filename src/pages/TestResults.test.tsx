@@ -17,6 +17,11 @@ vi.mock("@/context/TestDataContext", () => ({
     recordMetadata: {},
     projectMetadata: {},
     updateProjectMetadata: contextMocks.updateProjectMetadata,
+    testDefinitions: [
+      { test_key: "grading", name: "Particle Size Distribution", category: "soil", sort_order: 1, enabled: true },
+      { test_key: "proctor", name: "Proctor Test", category: "soil", sort_order: 2, enabled: true },
+      { test_key: "compressive", name: "Compressive Strength Test", category: "concrete", sort_order: 3, enabled: true },
+    ],
   }),
 }));
 
@@ -26,6 +31,11 @@ vi.mock("@/context/ProjectContext", () => ({
 
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
+}));
+
+vi.mock("@/context/NavigationLoadingContext", () => ({
+  NavigationLoadingProvider: ({ children }: { children: React.ReactNode }) => children,
+  useNavigationLoading: () => ({ isNavigating: false, navigationProgress: 0, startNavigation: vi.fn(), completeNavigation: vi.fn(), updateProgress: vi.fn() }),
 }));
 
 const LocationProbe = () => {
