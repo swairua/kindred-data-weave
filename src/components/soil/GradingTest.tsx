@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Check, ChevronDown, FileDown, HelpCircle, Loader2, Printer, Save } from "lucide-react";
+import { Check, FileDown, HelpCircle, Loader2, Printer, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -681,7 +681,6 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       <section className="record-card record-identity">
         <div className="flex items-start justify-between gap-3 border-b px-4 py-3">
           <div><h1 className="text-sm font-semibold">{project.projectName || "Particle Size Distribution"}</h1><p className="text-[11px] text-muted-foreground">{project.clientName || (record.sampleNumber ? `Sample ${record.sampleNumber}` : "Sample details")}</p></div>
-          <Button variant="outline" size="sm" className="h-7 text-[11px]" onClick={() => navigate(`/?material=soil&test=grading&projectId=${projectId}`)}>Change <ChevronDown className="ml-1 h-3 w-3" /></Button>
         </div>
         <div className="flex flex-wrap gap-x-2 gap-y-1 px-4 py-2 text-[10px] text-muted-foreground"><span>Material: <strong className="text-foreground">Soil</strong></span><span>·</span><span>Test type: <strong className="text-foreground">Particle Size Distribution</strong></span><span>·</span><span>Sample ID: <strong className="text-foreground">{record.label || "—"}</strong></span><span>·</span><span>Sample No.: <strong className="text-foreground">{record.sampleNumber || "—"}</strong></span><span>·</span><span>Sample Depth From (m): <strong className="text-foreground">{record.sampleDepthFrom || "—"}</strong></span><span>·</span><span>Sample Depth To (m): <strong className="text-foreground">{record.sampleDepthTo || "—"}</strong></span></div>
       </section>
