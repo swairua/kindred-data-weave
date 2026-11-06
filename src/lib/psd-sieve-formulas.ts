@@ -476,15 +476,3 @@ REMARKS: Generated via kindred framework with Excel-derived formulae
 `;
 };
 // ============================================================
-// 3. EXAMPLE USAGE
-// ============================================================
-
-/**
- * Example: Complete PSD test analysis from raw data
- * Usage: import { processSieveAnalysis, analyzeAtterbergLimits, formatPsdForPdf } from '@/lib/psd-sieve-formulas';
- * 
- * const result = processSieveAnalysis(sieveData, totalMass);
- * const atterberg = analyzeAtterbergLimits(ll, pl, w, fines);
- * const { headers, rowData } = formatPsdForPdf(result);
- */
-export { processSieveAnalysis, analyzeAtterbergLimits, formatPsdForPdf, generatePsdPdfSummary };

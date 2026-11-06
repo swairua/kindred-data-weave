@@ -180,8 +180,9 @@ import { makeStampTransparent } from "./stampUtils";
 
 const imagePathToBase64 = async (filePath: string, isStamp: boolean = false, sessionToken: string = ""): Promise<string | undefined> => {
   const imageUrl = getAdminImageUrl(filePath);
-  // sessionToken may be empty string on server (Node.js lacks localStorage); pass as-is to fetch headers
-  const response = await retryImageFetch(filePath, imageUrl, sessionToken);
+  try {
+    // sessionToken may be empty string on server (Node.js lacks localStorage); pass as-is to fetch headers
+    const response = await retryImageFetch(filePath, imageUrl, sessionToken);
 
     if (!response) {
       console.debug("[ImageConvert] Image not available, skipping", { filePath });
