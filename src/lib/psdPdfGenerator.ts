@@ -40,11 +40,10 @@ const MARGIN = 21.2;
 const CONTENT_W = 174.5;
 const ROW_H = 2.84;
 const SPACER_H = 2.86;
-const SIEVE_CAP_H = 2.9;
-const SIEVE_HEAD_H = 5.4;
-const HYDRO_CAP_H = 8.3;
+const TABLE_CAP_H = 8.3;
+const TABLE_HEAD_H = 8.7;
 const HYDRO_PARAM_H = 3.14;
-const HYDRO_HEAD_H = 8.7;
+const HYDRO_PARAMS_H = 4 * HYDRO_PARAM_H;
 const FOOTER_H = 5.5;
 const BOTTOM_MARGIN = 12; // whitespace under the footer
 const REPORT_FOOTER_GAP = 12; // whitespace between the report and the footer
@@ -56,6 +55,9 @@ const MIN_ROW_H = 2.55;
 const MIN_BLOCK_H = 52;
 const MAX_BLOCK_H = 104.4;
 const SIEVE_W = 69.5;
+const PARAM_VALUE_W = 24.6;
+const PARAM_LEFT_LABEL_W = SIEVE_W - PARAM_VALUE_W;
+const PARAM_RIGHT_LABEL_W = CONTENT_W - SIEVE_W - PARAM_VALUE_W;
 
 const COLORS = {
   dark: [0, 0, 0] as [number, number, number],
@@ -369,7 +371,21 @@ const drawClassification = (d: jsPDF, x: number, y: number, o: ParticleSizeDistr
   return cy;
 };
 
-const drawSieveTable = (d: jsPDF, x: number, y: number, w: number, o: ParticleSizeDistributionPdfOptions, rowH: number, targetBottom?: number): number => {
+/** Draw blank rows of the table's own widths until the table reaches `targetBottom`. */
+const fillToBottom = (d: jsPDF, x: number, y: number, widths: number[], rowH: number, targetBottom: number): number => {
+  const fillerCells: Cell[] = widths.map((w) => ({ w, text: "", align: "left" as const }));
+  let cy = y;
+  while (cy + rowH <= targetBottom) {
+    cy = drawCells(d, x, cy, rowH, fillerCells);
+  }
+  if (cy < targetBottom) {
+    const remaining = targetBottom - cy;
+    cy = drawCells(d, x, cy, remaining, fillerCells.map((c) => ({ ...c, h: remaining })));
+  }
+  return cy;
+};
+
+const drawSieveTable = (d: jsPDF, x: number, y: number, w: number, o: ParticleSizeDistributionPdfOptions, rowH: number, targetBottom: number): number => {
   const colW = [19.8, 14.4, 12.2];
   const lastW = w - colW[0] - colW[1] - colW[2];
   const widths = [...colW, lastW];
@@ -379,7 +395,7 @@ const drawSieveTable = (d: jsPDF, x: number, y: number, w: number, o: ParticleSi
     "% Retained\n(%)",
     "Cumulative passing\npercentage (%)",
   ];
-  let cy = drawCells(d, x, y, SIEVE_CAP_H, [{
+  let cy = drawCells(d, x, y, TABLE_CAP_H, [{
     w,
     text: "Wet & Dry Sieve Analysis to BS 1377 2:1990: 9.2/9.3/9.4",
     align: "center",
@@ -387,7 +403,7 @@ const drawSieveTable = (d: jsPDF, x: number, y: number, w: number, o: ParticleSi
     label: true,
     minSize: 4,
   }]);
-  cy = drawCells(d, x, cy, SIEVE_HEAD_H, headers.map((caption, index) => ({
+  cy = drawCells(d, x, cy, TABLE_HEAD_H, headers.map((caption, index) => ({
     w: widths[index],
     text: caption,
     label: true,
@@ -405,29 +421,13 @@ const drawSieveTable = (d: jsPDF, x: number, y: number, w: number, o: ParticleSi
       { w: widths[3], text: passing === null ? DASH : num(passing, 1, DASH), align: "left" },
     ]);
   });
-  return drawCells(d, x, cy, rowH, [
+  cy = drawCells(d, x, cy, rowH, [
     { w: widths[0], text: "TOTAL", align: "left", bold: true },
     { w: widths[1], text: num(o.grading.totalWeight), align: "left", bold: true },
     { w: widths[2], text: DASH, align: "left" },
     { w: widths[3], text: DASH, align: "left" },
   ]);
-  if (targetBottom !== undefined && cy < targetBottom) {
-    const fillerCells: Cell[] = [
-      { w: widths[0], text: "", align: "left" },
-      { w: widths[1], text: "", align: "left" },
-      { w: widths[2], text: "", align: "left" },
-      { w: widths[3], text: "", align: "left" },
-    ];
-    while (cy + rowH <= targetBottom) {
-      cy = drawCells(d, x, cy, rowH, fillerCells);
-    }
-    if (cy < targetBottom) {
-      const remaining = targetBottom - cy;
-      const partialCells = fillerCells.map(c => ({ ...c, h: remaining }));
-      cy = drawCells(d, x, cy, remaining, partialCells);
-    }
-  }
-  return cy;
+  return fillToBottom(d, x, cy, widths, rowH, targetBottom);
 };
 
 /**
@@ -476,25 +476,19 @@ const HYDROMETER_COLUMNS = [
   "% Fines based\non whole sample",
 ];
 
-const drawHydrometerTable = (d: jsPDF, x: number, y: number, w: number, o: ParticleSizeDistributionPdfOptions, rowH: number, targetBottom?: number): number => {
+/** Full-width hydrometer inputs, one pair per half of the sheet, above both tables. */
+const drawHydroParams = (d: jsPDF, x: number, y: number, o: ParticleSizeDistributionPdfOptions): number => {
   const inputs = o.hydrometerInputs;
-  let cy = drawCells(d, x, y, HYDRO_CAP_H, [{
-    w,
-    text: "Hydrometer Analysis to BS 1377-2:1990:9.5",
-    align: "center",
-    bold: true,
-    label: true,
-  }]);
   const paramRow = (
     leftLabel: string, leftUnit: string, leftValue: string,
     rightLabel: string, rightUnit: string, rightValue: string,
   ): Cell[] => [
-    { w: 40.5, text: leftLabel, right: leftUnit, rightPad: 5.4, label: true, bold: true, size: 6, minSize: 3 },
-    { w: 14.8, text: leftValue, align: "center" },
-    { w: 34.6, text: rightLabel, right: rightUnit, rightPad: 5.4, label: true, bold: true, size: 6, minSize: 3 },
-    { w: 15.1, text: rightValue, align: "center" },
+    { w: PARAM_LEFT_LABEL_W, text: leftLabel, right: leftUnit, rightPad: 5.4, label: true, bold: true, size: 6, minSize: 3 },
+    { w: PARAM_VALUE_W, text: leftValue, align: "center" },
+    { w: PARAM_RIGHT_LABEL_W, text: rightLabel, right: rightUnit, rightPad: 5.4, label: true, bold: true, size: 6, minSize: 3 },
+    { w: PARAM_VALUE_W, text: rightValue, align: "center" },
   ];
-  cy = drawCells(d, x, cy, HYDRO_PARAM_H, paramRow(
+  let cy = drawCells(d, x, y, HYDRO_PARAM_H, paramRow(
     "Dry Weight", "(g)", text(inputs.dryWeight),
     "Hydrometer Type", "", text(inputs.hydrometerType),
   ));
@@ -506,15 +500,25 @@ const drawHydrometerTable = (d: jsPDF, x: number, y: number, w: number, o: Parti
     "Temperature (°C)", "", text(inputs.temperature),
     "Meniscus correction (g/L)", "", text(inputs.meniscusCorrection),
   ));
-  cy = drawCells(d, x, cy, HYDRO_PARAM_H, paramRow(
+  return drawCells(d, x, cy, HYDRO_PARAM_H, paramRow(
     "K Factor", "", num(o.hydrometer.stokesConstant, 3),
     "Temperature Correction Factor", "", text(inputs.temperatureCorrection),
   ));
+};
+
+const drawHydrometerTable = (d: jsPDF, x: number, y: number, w: number, o: ParticleSizeDistributionPdfOptions, rowH: number, targetBottom: number): number => {
+  let cy = drawCells(d, x, y, TABLE_CAP_H, [{
+    w,
+    text: "Hydrometer Analysis to BS 1377-2:1990:9.5",
+    align: "center",
+    bold: true,
+    label: true,
+  }]);
 
   const headW = [7.41, 11.18, 10.58, 11.31, 17.85, 13.25, 11.91, 12.38];
   const lastW = w - headW.reduce((a, b) => a + b, 0);
   const widths = [...headW, lastW];
-  cy = drawCells(d, x, cy, HYDRO_HEAD_H, HYDROMETER_COLUMNS.map((caption, index) => ({
+  cy = drawCells(d, x, cy, TABLE_HEAD_H, HYDROMETER_COLUMNS.map((caption, index) => ({
     w: widths[index],
     text: caption,
     label: true,
@@ -542,20 +546,7 @@ const drawHydrometerTable = (d: jsPDF, x: number, y: number, w: number, o: Parti
     ].map((value, index) => ({ w: widths[index], text: value, align: "left" as const })));
   });
 
-  // Pad to common tableBottom so both tables visually meet the frame bottom
-  if (targetBottom !== undefined && cy < targetBottom) {
-    const fillerCells = widths.map((w) => ({ w, text: "", align: "left" as const }));
-    while (cy + rowH <= targetBottom) {
-      cy = drawCells(d, x, cy, rowH, fillerCells);
-    }
-    if (cy < targetBottom) {
-      const remaining = targetBottom - cy;
-      const partialCells = fillerCells.map((c) => ({ ...c, h: remaining }));
-      cy = drawCells(d, x, cy, remaining, partialCells);
-    }
-  }
-
-  return cy;
+  return fillToBottom(d, x, cy, widths, rowH, targetBottom);
 };
 
 /** Percentage axis values: 0 to 100 in steps of 10. */
@@ -819,13 +810,14 @@ export const generateParticleSizeDistributionPDF = async (options: ParticleSizeD
   const hydroCount = options.hydrometer.results.length;
   const graphW = CONTENT_W - GRAPH_INSET * 2;
   const graphNatural = Math.min((REF_BLOCK_H_UNITS * graphW) / REF_BLOCK_UNITS, MAX_BLOCK_H);
-  const hydroBlock = HYDRO_CAP_H + 4 * HYDRO_PARAM_H + HYDRO_HEAD_H;
-  const sieveCapHead = SIEVE_CAP_H + SIEVE_HEAD_H;
-  // Fixed overhead above the side-by-side tables: title block + 3 spacers +
-  // header/preparation/classification rows + the graph gap.
+  // Both tables share one header block and one row grid, so each row rule runs
+  // straight across and both tables end on the same line.
+  const tableBlockFor = (rowH: number): number =>
+    TABLE_CAP_H + TABLE_HEAD_H + Math.max(sieveCount + 1, hydroCount) * rowH;
+  // Fixed overhead above the tables: title block + 3 spacers +
+  // header/preparation/classification rows + the hydrometer parameter band.
   const tableBottomFor = (rowH: number): number =>
-    titleBottom + 3 * SPACER_H + 11 * rowH
-    + Math.max(sieveCapHead + (sieveCount + 1) * rowH, hydroBlock + hydroCount * rowH);
+    titleBottom + 3 * SPACER_H + 11 * rowH + HYDRO_PARAMS_H + tableBlockFor(rowH);
 
   // Single-pass fit: shrink rows first, then the graph (never below
   // MIN_BLOCK_H, the chart is mandatory). One page only — no addPage here.
@@ -847,12 +839,8 @@ export const generateParticleSizeDistributionPDF = async (options: ParticleSizeD
   cursor = drawClassification(doc, x, cursor, options, rowH);
   cursor = drawSpacer(doc, x, cursor);
 
-  // Side-by-side tables: both target the same bottom; shorter table gets
-// a single subtle filler row to meet the frame, so content visually
-// aligns with the side rails.
-  const sieveHeight = SIEVE_CAP_H + SIEVE_HEAD_H + sieveCount * rowH;
-  const hydroHeight = HYDRO_CAP_H + 4 * HYDRO_PARAM_H + HYDRO_HEAD_H + hydroCount * rowH;
-  const tableBottom = cursor + Math.max(sieveHeight, hydroHeight);
+  cursor = drawHydroParams(doc, x, cursor, options);
+  const tableBottom = cursor + tableBlockFor(rowH);
 
   drawSieveTable(doc, x, cursor, SIEVE_W, options, rowH, tableBottom);
   drawHydrometerTable(doc, x + SIEVE_W, cursor, CONTENT_W - SIEVE_W, options, rowH, tableBottom);

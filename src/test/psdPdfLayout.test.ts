@@ -185,6 +185,18 @@ describe("Particle Size Distribution PDF page layout", () => {
     expect(actual?.[1]).toBe("-");
   });
 
+  it("runs the sieve and hydrometer data rows across the same horizontal lines", async () => {
+    const doc = await build(FULL_SIEVE, FULL_HYDROMETER);
+    const content = pageContent(doc);
+    const firstSieve = textY(content, "63");
+    const firstHydro = textY(content, "0.25");
+    const secondSieve = textY(content, "50");
+    const secondHydro = textY(content, "0.50");
+    expect(firstSieve).not.toBeNull();
+    expect(firstHydro).toBeCloseTo(firstSieve as number, 2);
+    expect(secondHydro).toBeCloseTo(secondSieve as number, 2);
+  });
+
   it("draws the vector graph with selectable axis labels", async () => {
     // The PDF export always draws the native curve (the on-screen capture is
     // Excel-only now), so the axis labels must be real text in the stream.
