@@ -225,3 +225,41 @@ describe("TestResults duplicate handling", () => {
     expect(depths[2]).toMatch(/7\.5-10\.0/);
   });
 }, 30000);
+
+describe("TestResults test type filter", () => {
+  beforeEach(() => {
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+  });
+
+  it("shows compressive rows when their dropdown label differs from the stored test name", async () => {
+    resultsMocks.listRecords.mockResolvedValue({
+      data: [
+        gradingRow("90", "2026-06-12 09:00:00", [{ sampleNumber: "Grading sample" }]),
+        {
+          id: "407",
+          project_id: "43",
+          test_key: "compressive",
+          name: "Compressive Strength Test",
+          project_name: "Cube project",
+          category: "concrete",
+          updated_at: "2026-06-11 09:00:00",
+          payload_json: { test: { compressiveTestId: 2, dataPoints: 9 } },
+        },
+      ],
+    });
+
+    renderResults();
+    await screen.findAllByRole("button", { name: "Open →" }, FIND);
+
+    const testTypeTrigger = screen
+      .getAllByRole("combobox")
+      .find((element) => element.textContent?.includes("All test types"));
+    if (!testTypeTrigger) throw new Error("Test Type filter not rendered");
+    fireEvent.click(testTypeTrigger);
+    fireEvent.click(await screen.findByRole("option", { name: "Concrete Cubes — Compressive Strength" }, FIND));
+
+    expect(await screen.findByText("Cube project", undefined, FIND)).toBeInTheDocument();
+    expect(screen.queryByText(/Grading sample/)).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Open →" })).toHaveLength(1);
+  });
+});
