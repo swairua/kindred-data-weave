@@ -65,6 +65,13 @@ const pageContent = (doc: jsPDF): string => {
   return parts.join("\n");
 };
 
+/** The single blue frame as `[x, y, w, h]` in points; `y + h` is its bottom edge. */
+const blueFrame = (content: string): number[] => {
+  const match = /0\. 0\. 1\. RG[\s\S]{0,200}?(-?[\d.]+) (-?[\d.]+) (-?[\d.]+) (-?[\d.]+) re/.exec(content);
+  if (!match) throw new Error("blue frame not found");
+  return match.slice(1, 5).map(Number);
+};
+
 describe("formatReportDate", () => {
   it("renders ISO dates the way the laboratory sheet does", () => {
     expect(formatReportDate("2026-09-19")).toBe("19-Sep-26");
@@ -214,6 +221,23 @@ describe("generateCompressiveStrengthPDF", () => {
     expect(frames).toHaveLength(1);
     // Full-report frame is ~175 mm (~500 pt); the old table-only frame was ~18 mm.
     expect(Math.abs(Number(frames[0][4]))).toBeGreaterThan(300);
+  });
+
+  it("keeps the blue frame's bottom edge visible on the sheet", async () => {
+    const doc = await generateCompressiveStrengthPDF(options(REFERENCE_CUBES));
+    const [fx, fy, , fh] = blueFrame(pageContent(doc));
+    // The frame's bottom edge in points from the page bottom; zero meant it sat on the page edge.
+    expect(fy + fh).toBeGreaterThan(20);
+    expect(fx).toBeGreaterThan(0);
+  });
+
+  it("prints the BS EN reference above the blue frame rather than inside it", async () => {
+    const doc = await generateCompressiveStrengthPDF(options(REFERENCE_CUBES));
+    const content = pageContent(doc);
+    const [, frameTop] = blueFrame(content);
+    const reference = content.match(/(-?[\d.]+) (-?[\d.]+) Td\s+\(BS EN 12390 - 3 : 2002\) Tj/);
+    expect(reference).not.toBeNull();
+    expect(Number(reference![2])).toBeGreaterThan(frameTop);
   });
 
   it("prints whole-millimetre dimensions without decimals", async () => {
