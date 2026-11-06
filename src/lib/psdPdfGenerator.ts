@@ -8,19 +8,6 @@ import {
 } from "./gradingCalculations";
 import { fetchAdminImagesAsBase64, type AdminImages } from "./imageUtils";
 import {
-  calculatePercentRetained,
-  calculateCumulativePassing,
-  calculateGradationCoeffs,
-  processSieveAnalysis,
-  classifySoilByAtterberg,
-  calculateLiquidityIndex,
-  analyzeAtterbergLimits,
-  formatPsdForPdf,
-  generatePsdPdfSummary,
-  type PsdSieveData,
-  type PsdAnalysisResult,
-} from "./psd-sieve-formulas";
-import {
   PSD_DECADE_LINES,
   PSD_DECADE_TICKS,
   PSD_FRACTIONS,
@@ -813,91 +800,6 @@ export const generateParticleSizeDistributionPDF = async (options: ParticleSizeD
   } catch (error) {
     console.warn("[PSD PDF] Could not load header/footer images, exporting without them:", error);
   }
-
-  // ---- NEW: Calculate gradation & Atterberg from sieve rows using formulas ----
-  const sieveRows = options.record.sieveRows;
-  let uniformityCoefficient: number | null = null;
-  let coefficientOfCurvature: number | null = null;
-  let effectiveSize: number | null = null; // D10
-  let medianSize: number | null = null; // D50
-  let sixtyPercentSize: number | null = null; // D60
-  const liquidLimit: number | null = null;
-  const plasticLimit: number | null = null;
-  let plasticityIndex: number | null = null;
-  let liquidityIndex: number | null = null;
-  let soilClassification: string = "CL"; // default fallback
-  let finesPercentage: number | null = null;
-  let gravelPercentage: number | null = null;
-  let sandPercentage: number | null = null;
-
-  // Process sieve data through the new formulas if we have sieve rows with retained masses
-  if (sieveRows && sieveRows.length > 0) {
-    // Extract retained masses and sieve sizes
-    const sieveData: PsdSieveData[] = sieveRows.map((row, i) => ({
-      sieveSize: parseFloat(row.sieveSize),
-      retainedMass: parseFloat(row.weightRetained?.toString() || "0"),
-    }));
-
-    // Calculate percent retained and passing
-    const totalMass = sieveData.reduce((sum, s) => sum + s.retainedMass, 0);
-    const percentRetained = sieveData.map((s) => calculatePercentRetained(s.retainedMass, totalMass));
-    const percentPassing = calculateCumulativePassing(sieveData.map((s) => s.retainedMass));
-
-    // Calculate gradation coefficients (Cu, Cc, D10, D50, D60)
-    // Pan rows have no numeric size, so they cannot anchor an interpolation.
-    const sizedPoints = sieveData
-      .map((s, i) => ({ sieveSize: s.sieveSize, passing: percentPassing[i] }))
-      .filter((p) => Number.isFinite(p.sieveSize));
-    const gradation = calculateGradationCoeffs(
-      sizedPoints.map((p) => p.sieveSize),
-      sizedPoints.map((p) => p.passing)
-    );
-    uniformityCoefficient = gradation.uniformityCoefficient;
-    coefficientOfCurvature = gradation.coefficientOfCurvature;
-    effectiveSize = gradation.d10;
-    medianSize = gradation.d50;
-    sixtyPercentSize = gradation.d60;
-
-    // Estimate fines percentage (passing #200, 0.075mm)
-    // If D10 exists and is smaller than 0.075mm, high fines content
-    if (effectiveSize !== null && effectiveSize < 0.075) {
-      finesPercentage = 100;
-    } else if (effectiveSize !== null) {
-      // Rough estimate: if D10 is between 0.075-0.425, assume some fines
-      finesPercentage = 30; // default estimate
-    }
-
-    // For Atterberg, we estimate based on fines content since we don't have LL/PL from sieve data
-    const estimatedFines = finesPercentage ?? 30;
-    const estimatedLL = estimatedFines > 50 ? 45 : 30;
-    const estimatedPL = estimatedFines > 50 ? 25 : 15;
-
-    const atterberg = analyzeAtterbergLimits(
-      estimatedLL,
-      estimatedPL,
-      22.5, // estimated water content
-      estimatedFines
-    );
-    plasticityIndex = atterberg.plasticityIndex;
-    liquidityIndex = atterberg.liquidityIndex;
-    soilClassification = atterberg.soilClassification;
-
-    // Derive Gravel/Sand/Fine percentages from the gradation curve
-    if (sieveData.length > 0) {
-      // Gravel: percentage retained on 4.75mm (approx No. 4) sieve
-      const gravelSieve = sieveData.find((s) => s.sieveSize >= 4.75);
-      gravelPercentage = gravelSieve ? percentRetained[sieveData.indexOf(gravelSieve)] : null;
-
-      // Sand percentage (roughly sieves 0.075-4.75mm)
-      const sandSieves = sieveData.filter((s) => s.sieveSize >= 0.075 && s.sieveSize < 4.75);
-      sandPercentage = sandSieves.reduce((sum, s) => sum + percentRetained[sieveData.indexOf(s)], 0);
-
-      // Fines percentage (passing #200)
-      const finesSieve = sieveData.find((s) => s.sieveSize <= 0.075);
-      finesPercentage = finesSieve ? percentRetained[sieveData.indexOf(finesSieve)] : null;
-    }
-  }
-  // ---------------------------------------------------------------
 
   const doc = new jsPDF({ unit: "mm", format: "letter" });
   const pageHeight = doc.internal.pageSize.getHeight();
