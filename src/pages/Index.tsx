@@ -142,6 +142,9 @@ const TestsViewContent = ({
       if (testSummary.enabled === false && testKey !== "grading") {
         continue;
       }
+      if (testKey === "atterberg") {
+        continue;
+      }
 
       const category = testSummary.category as TestCategory;
       if (categories[category]) {
