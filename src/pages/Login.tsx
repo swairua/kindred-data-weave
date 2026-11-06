@@ -8,10 +8,17 @@ import { toast } from "sonner";
 import { Eye, EyeOff, Layers, Loader2 } from "lucide-react";
 import { loginUser } from "@/lib/api";
 
+const getSafeNextPath = (value: string | null) => {
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.startsWith("/\\")) {
+    return "/";
+  }
+  return value;
+};
+
 const Login = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const nextPath = searchParams.get("next") || "/";
+  const nextPath = getSafeNextPath(searchParams.get("next"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
