@@ -264,9 +264,10 @@ const TestResults = () => {
 
 // Get unique test types from test definitions (all possible test types, not just those with results)
   const testTypes = useMemo(() => {
-    const mapped = testDefinitions.map((t: TestDefinition) => formatTestType(t.test_key));
-    const types = new Set(mapped.filter(Boolean));
-    return Array.from(types).sort();
+    const keys = new Set(testDefinitions.map((t: TestDefinition) => t.test_key).filter(Boolean));
+    return Array.from(keys)
+      .map((key) => ({ key, label: formatTestType(key) }))
+      .sort((a, b) => a.label.localeCompare(b.label));
   }, [testDefinitions]);
 
   const numberedTests = useMemo(
@@ -290,7 +291,7 @@ const TestResults = () => {
     return numberedTests.filter((test) => {
       const materialMatch =
         materialFilter === "all" || test.material_type === materialFilter;
-      const testTypeMatch = testTypeFilter === "all" || test.test_type === testTypeFilter;
+      const testTypeMatch = testTypeFilter === "all" || test.test_key === testTypeFilter;
       const searchMatch =
         searchQuery === "" ||
         test.project_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -430,8 +431,8 @@ const TestResults = () => {
                         <SelectContent>
                           <SelectItem value="all">All test types</SelectItem>
                           {testTypes.map((type) => (
-                            <SelectItem key={type} value={type || "unknown"}>
-                              {type || "Unknown"}
+                            <SelectItem key={type.key} value={type.key}>
+                              {type.label}
                             </SelectItem>
                           ))}
                         </SelectContent>

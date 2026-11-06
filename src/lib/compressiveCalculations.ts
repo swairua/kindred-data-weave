@@ -35,6 +35,16 @@ export const emptyCubeRow = (): CompressiveCubeInput => ({
   remarks: "",
 });
 
+/** The next KAL reference: one more than the highest KAL number already in use. */
+export const nextKalRef = (existing: Array<string | null | undefined>, digits: number): string => {
+  let highest = 0;
+  for (const ref of existing) {
+    const match = /^KAL(\d+)$/.exec((ref ?? "").trim());
+    if (match) highest = Math.max(highest, Number(match[1]));
+  }
+  return `KAL${String(highest + 1).padStart(digits, "0")}`;
+};
+
 /**
  * parseFloat that maps blanks, NaN and infinities to null.
  * Keeps "not entered" (null) distinct from a real 0, which matters because

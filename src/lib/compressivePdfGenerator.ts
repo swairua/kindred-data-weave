@@ -43,9 +43,11 @@ const ID_ROW_H = 6;
 /** Height of the two-line table heading (~9mm band on the reference). */
 const HEADER_H = 9.5;
 /** Room reserved at the foot of the page for the terms and the signature line. */
-const FOOTER_RESERVE = 20;
-/** Bottom edge of the full-page blue frame: clears the page-number baseline with ~2.5 mm to spare. */
-const FRAME_BOTTOM = 207;
+const FOOTER_RESERVE = 31;
+/** Gap between the blue frame and the content it encloses, on every side. */
+const FRAME_PADDING = 3;
+/** Bottom edge of the blue frame, 10 mm above the 210 mm page edge so the stroke stays on the sheet. */
+const FRAME_BOTTOM = 200;
 
 const COLORS = {
   dark: [0, 0, 0] as [number, number, number],
@@ -568,7 +570,7 @@ const drawFooter = (d: jsPDF, o: CompressiveStrengthPdfOptions, images: AdminIma
   );
   d.setFontSize(7);
   d.setTextColor(120, 120, 120);
-  d.text(`Page ${page} of ${pages}`, MARGIN + CONTENT_W / 2, 204, { align: "center" });
+  d.text(`Page ${page} of ${pages}`, TABLE_X + TABLE_W, y + 20, { align: "right" });
 };
 
 /** Title, laboratory identity and the rule beneath, as on the reference. */
@@ -577,7 +579,7 @@ const drawTitleBlock = (
   o: CompressiveStrengthPdfOptions,
   images: AdminImages,
   y: number,
-): { ruleY: number; endY: number } => {
+): { frameTop: number; endY: number } => {
   const imgW = 62;
   const imgH = 20;
   d.setFontSize(7.5);
@@ -627,14 +629,17 @@ const drawTitleBlock = (
   d.setFontSize(8.5);
   d.setFont("times", "normal");
   d.text("BS EN 12390 - 3 : 2002", TABLE_X + TABLE_W / 2, cy, { align: "center" });
+  // The standard reference stays above the blue frame, which starts just beneath it.
+  const frameTop = cy + 2;
+  const contentTop = frameTop + FRAME_PADDING;
   if (o.labOrganization) {
-    cy += 4;
+    const orgY = contentTop + 3;
     d.setFontSize(8);
     d.setFont("times", "bold");
-    d.text(o.labOrganization, TABLE_X + TABLE_W / 2, cy, { align: "center" });
-    return { ruleY: cy, endY: cy + 4 };
+    d.text(o.labOrganization, TABLE_X + TABLE_W / 2, orgY, { align: "center" });
+    return { frameTop, endY: orgY + 3 };
   }
-  return { ruleY: cy, endY: cy + 3 };
+  return { frameTop, endY: contentTop };
 };
 
 /** Height of everything on a page that is not a cube row. Title block is ~38mm with images. */
@@ -678,25 +683,22 @@ export const generateCompressiveStrengthPDF = async (options: CompressiveStrengt
     }
     // Mode of failure and comment follow the cube table, as on the lab sheet.
     y = drawResultsSummary(doc, o.record, y);
-    return { frameTop: title.ruleY, bodyEnd: y };
+    return { frameTop: title.frameTop, bodyEnd: y };
   };
 
   // A test with no results still yields a valid sheet rather than a bare header.
   const totalPages = Math.max(1, Math.ceil(printable.length / rowsPerPage));
   let pageNo = 0;
-  const footerY = pageHeight - MARGIN - 14;
+  const footerY = FRAME_BOTTOM - FRAME_PADDING - 22;
   const finishPage = (frameTop: number, bottom: number) => {
     pageNo += 1;
     drawTerms(doc, Math.min(bottom + 3, footerY - measureTerms(doc)));
     drawFooter(doc, o, images, footerY, pageNo, totalPages);
-    // The laboratory's sheet inks a single blue frame around the whole report
-    // — letterhead rule through footer — drawn last so it overlays the black
-    // hairlines.
-    const BORDER_PADDING = 3; // space between blue frame and content on all sides
+    // The laboratory's sheet inks a single blue frame from beneath the standard
+    // reference down to the footer, drawn last so it overlays the black hairlines.
     doc.setDrawColor(...COLORS.blue);
     doc.setLineWidth(0.5);
-    // Blue frame with equal padding on all sides; width matches the header underline (TABLE_W) plus padding on each side
-    doc.rect(TABLE_X - BORDER_PADDING, frameTop - BORDER_PADDING, TABLE_W + BORDER_PADDING * 2, FRAME_BOTTOM - frameTop + BORDER_PADDING * 2);
+    doc.rect(TABLE_X - FRAME_PADDING, frameTop, TABLE_W + FRAME_PADDING * 2, FRAME_BOTTOM - frameTop);
   };
   let printed = printPage(printable.slice(0, rowsPerPage));
   for (let index = rowsPerPage; index < printable.length; index += rowsPerPage) {

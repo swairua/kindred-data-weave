@@ -5,7 +5,7 @@ import { ProjectContext } from "@/context/ProjectContext";
 import { useTestData } from "@/context/TestDataContext";
 import { useSessionKeepAlive } from "@/hooks/useSessionKeepAlive";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
@@ -86,7 +86,7 @@ const TestsViewContent = ({
   const selectedFromHash = location.hash.slice(1); // Remove '#'
 
   // Check if hash value is a test key
-  const isTestKey = selectedFromHash && (testData.tests[selectedFromHash] !== undefined);
+  const isTestKey = selectedFromHash !== "" && registry.hasTest(selectedFromHash);
 
   // Determine if we're in "focused mode" (showing only one test from wizard)
   const isFocusedMode = selectedFromHash && isTestKey;
@@ -140,6 +140,9 @@ const TestsViewContent = ({
     for (const [testKey, testSummary] of Object.entries(testData.tests)) {
       // Particle size distribution is available in the Soil section.
       if (testSummary.enabled === false && testKey !== "grading") {
+        continue;
+      }
+      if (testKey === "atterberg") {
         continue;
       }
 
@@ -207,12 +210,6 @@ const TestsViewContent = ({
 
   return (
     <Tabs value={activeTab}>
-      <TabsList>
-        <TabsTrigger value="soil">Soil</TabsTrigger>
-        <TabsTrigger value="concrete">Concrete</TabsTrigger>
-        <TabsTrigger value="rock">Rock</TabsTrigger>
-        <TabsTrigger value="special">Special</TabsTrigger>
-      </TabsList>
       {renderTestsByCategory("soil")}
       {renderTestsByCategory("concrete")}
       {renderTestsByCategory("rock")}

@@ -17,6 +17,7 @@ import {
   getStrengthDistribution,
   groupVerdict,
   mostCommonCastDate,
+  nextKalRef,
   parseNumber,
   strengthOf,
   STRENGTH_GAIN_TABLE,
@@ -26,6 +27,22 @@ import {
 const cube = (over: Partial<CompressiveCubeInput> = {}): CompressiveCubeInput => ({
   ...emptyCubeRow(),
   ...over,
+});
+
+describe("nextKalRef", () => {
+  it("starts at KAL001 and KAL01 when no references exist", () => {
+    expect(nextKalRef([], 3)).toBe("KAL001");
+    expect(nextKalRef([], 2)).toBe("KAL01");
+  });
+
+  it("continues from the highest KAL number, ignoring other references", () => {
+    const existing = ["KAL001", "CM/9023", null, "KAL007", "KAL-9", "kal003"];
+    expect(nextKalRef(existing, 3)).toBe("KAL008");
+  });
+
+  it("does not pad past the digit count it is given", () => {
+    expect(nextKalRef(["KAL99"], 2)).toBe("KAL100");
+  });
 });
 
 describe("parseNumber", () => {
