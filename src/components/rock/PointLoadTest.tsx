@@ -44,7 +44,7 @@ const PointLoadTest = ({ testKey }: { testKey?: string }) => {
         if (!active || !result) return;
         setRecordId(result.id);
         setIsSaved(true);
-        const payload = (result.payload_json as SavedPayload | null) ?? {};
+        const payload: Partial<SavedPayload> = (result.payload_json as SavedPayload | null) ?? {};
         if (Array.isArray(payload.rows) && payload.rows.length > 0) setRows(payload.rows);
         if (payload.testedBy) setTestedBy(payload.testedBy);
         if (payload.dateTested) setDateTested(payload.dateTested);

@@ -623,7 +623,7 @@ const Index = ({ initialTab }: IndexProps) => {
     testData.updateProjectMetadata({ clientName: value });
   };
 
-  const handleMetadataChange = (key: keyof typeof testData.projectMetadata, value: string) => {
+  const handleMetadataChange = (key: "labOrganization" | "dateReported" | "checkedBy" | "dateTested" | "testedBy", value: string) => {
     testData.updateProjectMetadata({ [key]: value });
   };
 

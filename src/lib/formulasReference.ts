@@ -25,6 +25,7 @@ export type FormulaSourceModule =
   | "pointLoadCalculations"
   | "porosityCalculations"
   | "proctorRecords"
+  | "psd-sieve-formulas"
   | "schmidtCalculations"
   | "shearCalculations"
   | "soilClassification"
@@ -305,7 +306,7 @@ export const FORMULA_SECTIONS: FormulaSection[] = [
       },
       {
         heading: "Soil Classification by Atterberg Limits",
-        formulas: ["A-line method: PI = 0.73 × (LL - 20); classify as CL/CH/MH/ML/CL-ML"],
+        formulas: ["A-line method: PI = 0.73 * (LL - 20); classify as CL/CH/MH/ML/CL-ML"],
         variables: [
           { symbol: "LL", meaning: "liquid limit (%)" },
           { symbol: "PI", meaning: "plasticity index (%)" },

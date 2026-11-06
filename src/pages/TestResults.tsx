@@ -21,14 +21,14 @@ import {
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { Layers, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import Navigation from "@/components/Navigation";
-import { useTestData, type TestDefinition } from "@/context/TestDataContext";
+import { useTestData, type AtterbergRecord, type TestDefinition } from "@/context/TestDataContext";
 import { useProject } from "@/context/ProjectContext";
 import { listRecords } from "@/lib/api";
-import { collectSamples, recordField } from "@/lib/testResultSamples";
+import { collectSamples, readSampleRecords, recordField, selectSampleRows } from "@/lib/testResultSamples";
 import { toast } from "sonner";
 
-const ATTERBERG_TEST_KEYS = ["atterberg"] as const;
-const COMPRESSIVE_TEST_KEYS = ["compressive"] as const;
+const ATTERBERG_TEST_KEYS: readonly string[] = ["atterberg"];
+const COMPRESSIVE_TEST_KEYS: readonly string[] = ["compressive"];
 
 interface ApiTestResult {
   id: number;
@@ -146,7 +146,7 @@ const TestResults = () => {
   );
 
   const otherSoilResults = useMemo(
-    () => apiTestResults.filter((row) => !ATTERBERG_TEST_KEYS.includes(row.test_key) && !COMPRESSIVE_TEST_KEYS.includes(row.test_key)),
+    () => selectSampleRows(apiTestResults.filter((row) => !ATTERBERG_TEST_KEYS.includes(row.test_key) && !COMPRESSIVE_TEST_KEYS.includes(row.test_key))),
     [apiTestResults],
   );
 
@@ -194,9 +194,11 @@ const TestResults = () => {
       const projectName = result.project_name || `Project #${result.project_id}`;
       const testType = getTestName(result.test_key);
       const dateCreated = result.created_at || result.updated_at || new Date().toISOString();
-      // For non-atterberg tests, sample_label/depth come from the row directly
+      // For non-atterberg tests, sample_label/depth come from the row; depth falls back to the
+      // record's sampleNumber as collectSamples does for Atterberg.
       const sampleId = typeof result.sample_label === "string" && result.sample_label.trim() !== "" ? result.sample_label : "-";
-      const depth = typeof result.sample_depth === "string" && result.sample_depth.trim() !== "" ? result.sample_depth : "-";
+      const sampleNumber = recordField((readSampleRecords(result)[0] ?? null) as AtterbergRecord | null, "sampleNumber");
+      const depth = typeof result.sample_depth === "string" && result.sample_depth.trim() !== "" ? result.sample_depth : sampleNumber || "-";
 
       return {
         id: `${result.id}::${result.sample_key || "0"}`,
@@ -318,7 +320,7 @@ const TestResults = () => {
   testData.updateProjectMetadata({
     projectName: test.project_name,
     projectDate: test.date_created,
-    currentProjectId: test.project_id,
+    currentProjectId: Number(test.project_id),
   });
 
     toast.success(`Opened ${test.project_name}`);

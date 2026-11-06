@@ -21,6 +21,7 @@ const MODULE_LOADERS: Record<FormulaSourceModule, () => Promise<Record<string, u
   pointLoadCalculations: () => import("@/lib/pointLoadCalculations"),
   porosityCalculations: () => import("@/lib/porosityCalculations"),
   proctorRecords: () => import("@/lib/proctorRecords"),
+  "psd-sieve-formulas": () => import("@/lib/psd-sieve-formulas"),
   schmidtCalculations: () => import("@/lib/schmidtCalculations"),
   shearCalculations: () => import("@/lib/shearCalculations"),
   soilClassification: () => import("@/lib/soilClassification"),
