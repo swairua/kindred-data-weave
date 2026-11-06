@@ -5,7 +5,7 @@ import { ProjectContext } from "@/context/ProjectContext";
 import { useTestData } from "@/context/TestDataContext";
 import { useSessionKeepAlive } from "@/hooks/useSessionKeepAlive";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
@@ -210,12 +210,6 @@ const TestsViewContent = ({
 
   return (
     <Tabs value={activeTab}>
-      <TabsList>
-        <TabsTrigger value="soil">Soil</TabsTrigger>
-        <TabsTrigger value="concrete">Concrete</TabsTrigger>
-        <TabsTrigger value="rock">Rock</TabsTrigger>
-        <TabsTrigger value="special">Special</TabsTrigger>
-      </TabsList>
       {renderTestsByCategory("soil")}
       {renderTestsByCategory("concrete")}
       {renderTestsByCategory("rock")}
