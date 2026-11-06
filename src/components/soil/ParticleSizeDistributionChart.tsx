@@ -42,7 +42,7 @@ const PLOT_FILL = "#f2dcdb";
 const CURVE_COLOR = "#c00000";
 /** Reference sheet line weights: hairline grid, heavier axis rules. */
 const GRID_WIDTH = 0.14;
-const AXIS_WIDTH = 1.24;
+const AXIS_WIDTH = 0.5;
 const FRAME_WIDTH = 0.14;
 const PASSING_STEPS = Array.from({ length: 11 }, (_, step) => step * 10);
 
