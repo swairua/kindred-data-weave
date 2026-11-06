@@ -86,7 +86,7 @@ const TestsViewContent = ({
   const selectedFromHash = location.hash.slice(1); // Remove '#'
 
   // Check if hash value is a test key
-  const isTestKey = selectedFromHash && (testData.tests[selectedFromHash] !== undefined);
+  const isTestKey = selectedFromHash !== "" && registry.hasTest(selectedFromHash);
 
   // Determine if we're in "focused mode" (showing only one test from wizard)
   const isFocusedMode = selectedFromHash && isTestKey;
