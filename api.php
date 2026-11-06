@@ -748,6 +748,46 @@ try {
         ]);
     }
 
+    // ============= LAB REFERENCE SEQUENCE INCREMENT =============
+    // Atomically increments the next_number for a given scope and returns the new value.
+    // Usage: GET /api.php?action=increment_lab_ref&scope=compressive_report
+    //        or POST /api.php with JSON body { "action": "increment_lab_ref", "scope": "compressive_report" }
+    if ($action === 'increment_lab_ref') {
+        $scope = trim((string) ($_GET['scope'] ?? ($body['scope'] ?? 'compressive_report')));
+        // Validate scope to prevent SQL injection
+        if (!preg_match('/^[a-zA-Z0-9_]+$/', $scope)) {
+            respond(['error' => 'Invalid scope'], 400);
+        }
+        $conn->begin_transaction();
+        $updateStmt = $conn->prepare("UPDATE `lab_reference_sequences` SET `next_number` = `next_number` + 1, `updated_at` = CURRENT_TIMESTAMP WHERE `scope` = ?");
+        if (!$updateStmt) {
+            $conn->rollback();
+            respond(['error' => 'Update preparation failed'], 500);
+        }
+        $updateStmt->bind_param('s', $scope);
+        $updateStmt->execute();
+
+        $selectStmt = $conn->prepare("SELECT `next_number` FROM `lab_reference_sequences` WHERE `scope` = ?");
+        if (!$selectStmt) {
+            $conn->rollback();
+            respond(['error' => 'Select preparation failed'], 500);
+        }
+        $selectStmt->bind_param('s', $scope);
+        $selectStmt->execute();
+        $selectResult = $selectStmt->get_result();
+        $selectRow = $selectResult->fetch_assoc();
+        $conn->commit();
+
+        if (!$selectRow) {
+            respond(['error' => 'Sequence not found after update'], 500);
+        }
+
+        respond([
+            'scope' => $scope,
+            'next_number' => $selectRow['next_number'],
+        ]);
+    }
+
     // ============= IMAGE UPLOAD ENDPOINT =============
     if ($action === 'upload') {
         ini_set('log_errors', 1);

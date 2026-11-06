@@ -32,7 +32,6 @@ import {
   strengthOf,
   densityOf,
   mostCommonCastDate,
-  nextKalRef,
   strengthRemark,
   toInputValue,
   type CompressiveCubeInput,
@@ -208,7 +207,8 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   const hasProjectSelected = !!project.currentProjectId;
 
   // Auto-generate references for a new compressive test: LAB REF (KAL001) and Client Ref (KAL01)
-  // each count up across all tests. The reception Lab ID stays on the sample, not in the refs.
+  // each count up across all tests atomically via the server. The fields are only filled
+  // if blank, so anything the technician types is preserved.
   useEffect(() => {
     if (activeTestId !== null || !project.currentProjectId) return;
     let active = true;
@@ -216,13 +216,21 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
       try {
         const allTests = await listCompressiveTests();
         if (!active) return;
-        const allRows = allTests.data || [];
-        const globalSeq = allRows.length + 1;
+        // Fetch next numbers atomically from the server
+        const seqResp = await fetch(`/api.php?action=increment_lab_ref&scope=compressive_report`, {
+          credentials: "same-origin",
+        });
+        if (!active) return;
+        const seqData = await seqResp.json();
+        const labDigits = 3;
+        const clientDigits = 2;
+        const labRef = `KAL${String(seqData.next_number).padStart(labDigits, "0")}`;
+        const clientRef = `KAL${String(seqData.next_number).padStart(clientDigits, "0")}`;
         setTestDetails((prev) => ({
           ...prev,
-          labRef: prev.labRef || nextKalRef(allRows.map((row) => row.lab_ref), 3),
-          clientRef: prev.clientRef || nextKalRef(allRows.map((row) => row.client_ref), 2),
-          reportNo: prev.reportNo || `CMT C - L${String(globalSeq).padStart(3, "0")}`,
+          labRef: prev.labRef || labRef,
+          clientRef: prev.clientRef || clientRef,
+          reportNo: prev.reportNo || `CMT C - L${String(allTests.data?.length + 1 ?? 1).padStart(3, "0")}`,
         }));
       } catch {
         // Reference generation is a convenience; a failed lookup leaves the fields blank.
