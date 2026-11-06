@@ -143,7 +143,7 @@ const RecordTestWizard = () => {
   const projectIdParam = searchParams.get("projectId");
   const projectIdFromParam = projectIdParam ? parseInt(projectIdParam, 10) : null;
   // Reception handoff: /record?material=concrete&test=compressive&labId=26-0418/01
-  // pre-fills the cube details so the lab reference matches the logged sample.
+  // pre-fills the sample id so the test stays linked to the logged sample.
   const labIdFromParam = searchParams.get("labId") || searchParams.get("labRef");
   const testData = useTestData();
 
@@ -629,7 +629,6 @@ const RecordTestWizard = () => {
     }
 
     // If concrete material, also push concrete test details to context.
-    // The reception Lab ID doubles as the lab reference on the cube sheet.
     if (isCompressiveStrengthTest) {
       const concreteMetadata: ConcreteTestMetadata = {
         cement: state.cement,
@@ -642,7 +641,6 @@ const RecordTestWizard = () => {
         madeBy: state.madeBy,
         slump: state.slump,
         clientRef: state.clientRef,
-        labRef: labIdFromParam || state.sampleId,
         dateTested: state.dateTested,
         sampleId: state.sampleId,
       };

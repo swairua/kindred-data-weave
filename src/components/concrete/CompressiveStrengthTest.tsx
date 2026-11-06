@@ -32,6 +32,7 @@ import {
   strengthOf,
   densityOf,
   mostCommonCastDate,
+  nextKalRef,
   strengthRemark,
   toInputValue,
   type CompressiveCubeInput,
@@ -206,24 +207,21 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   }));
   const hasProjectSelected = !!project.currentProjectId;
 
-  // Auto-generate references for a new compressive test, following the laboratory's
-  // numbering: C/<project initial> L01 per project and CMT C - L001 across all tests.
+  // Auto-generate references for a new compressive test: LAB REF (KAL001) and Client Ref (KAL01)
+  // each count up across all tests. The reception Lab ID stays on the sample, not in the refs.
   useEffect(() => {
     if (activeTestId !== null || !project.currentProjectId) return;
     let active = true;
     (async () => {
       try {
-        const [projectTests, allTests] = await Promise.all([
-          listCompressiveTests(project.currentProjectId),
-          listCompressiveTests(),
-        ]);
+        const allTests = await listCompressiveTests();
         if (!active) return;
-        const initial = (project.projectName || "").trim().charAt(0).toUpperCase() || "X";
-        const projectSeq = (projectTests.data || []).length + 1;
-        const globalSeq = (allTests.data || []).length + 1;
+        const allRows = allTests.data || [];
+        const globalSeq = allRows.length + 1;
         setTestDetails((prev) => ({
           ...prev,
-          labRef: prev.labRef || `C/${initial} L${String(projectSeq).padStart(2, "0")}`,
+          labRef: prev.labRef || nextKalRef(allRows.map((row) => row.lab_ref), 3),
+          clientRef: prev.clientRef || nextKalRef(allRows.map((row) => row.client_ref), 2),
           reportNo: prev.reportNo || `CMT C - L${String(globalSeq).padStart(3, "0")}`,
         }));
       } catch {
@@ -233,7 +231,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
     return () => {
       active = false;
     };
-  }, [project.currentProjectId, activeTestId, project.projectName]);
+  }, [project.currentProjectId, activeTestId]);
 
   useEffect(() => {
     // Project metadata only fills blanks: values loaded from a saved test
@@ -248,17 +246,6 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
       setTestDetails(prev => (prev.county ? prev : { ...prev, county: fallback }));
     }
   }, [testData.projectMetadata?.contractor, testData.projectMetadata?.county]);
-
-  // The wizard hands the compressive sheet the reception Lab ID as the lab
-  // reference. The metadata can arrive after this form mounts (the wizard
-  // writes it just before navigating here), so fill a blank labRef once it
-  // shows up — never overwrite one the technician typed or loaded from a
-  // saved test.
-  useEffect(() => {
-    const incoming = testData.concreteTestMetadata?.labRef;
-    if (!incoming) return;
-    setTestDetails(prev => (prev.labRef ? prev : { ...prev, labRef: incoming }));
-  }, [testData.concreteTestMetadata?.labRef]);
 
   // Load the cubes and the test details of the test being edited. This is what
   // makes an existing test editable: previously the grid always rendered one
