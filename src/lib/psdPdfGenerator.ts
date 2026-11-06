@@ -8,6 +8,19 @@ import {
 } from "./gradingCalculations";
 import { fetchAdminImagesAsBase64, type AdminImages } from "./imageUtils";
 import {
+  calculatePercentRetained,
+  calculateCumulativePassing,
+  calculateGradationCoeffs,
+  processSieveAnalysis,
+  classifySoilByAtterberg,
+  calculateLiquidityIndex,
+  analyzeAtterbergLimits,
+  formatPsdForPdf,
+  generatePsdPdfSummary,
+  type PsdSieveData,
+  type PsdAnalysisResult,
+} from "./psd-sieve-formulas";
+import {
   PSD_DECADE_LINES,
   PSD_DECADE_TICKS,
   PSD_FRACTIONS,
@@ -63,7 +76,7 @@ const COLORS = {
   footerBg: [191, 191, 191] as [number, number, number],
   white: [255, 255, 255] as [number, number, number],
   plotBg: [242, 220, 219] as [number, number, number],
-  curve: [192, 0, 0] as [number, number, number],
+  curve: [255, 0, 0] as [number, number, number],
   red: [255, 0, 0] as [number, number, number],
   blue: [0, 0, 204] as [number, number, number],
 };
@@ -130,9 +143,22 @@ export interface ParticleSizeDistributionPdfOptions {
   series: PsdPoint[];
   /** html2canvas capture of the on-screen chart, when one was produced. */
   chartImage: string | null;
+  // Gradation coefficients from sieve analysis
+  uniformityCoefficient: number | null; // Cu
+  coefficientOfCurvature: number | null; // Cc
+  effectiveSize: number | null; // D10 (mm)
+  medianSize: number | null; // D50 (mm)
+  sixtyPercentSize: number | null; // D60 (mm)
+  // Atterberg limits from sieve-generated data
+  liquidLimit: number | null;
+  plasticLimit: number | null;
+  plasticityIndex: number | null; // PI = LL - PL
+  liquidityIndex: number | null; // LI = (w - PL) / PI
+  soilClassification: string; // CL, CH, MH, ML, CL-ML
+  // Derived from sieve + Atterberg
+  finesPercentage: number | null;
   gravelPercentage: number | null;
   sandPercentage: number | null;
-  finesPercentage: number | null;
   uscsSymbol: string;
   uscsDescription: string | null;
   aashtoGroup: string;
@@ -313,9 +339,25 @@ const drawPreparation = (d: jsPDF, x: number, y: number, o: ParticleSizeDistribu
 };
 
 const drawClassification = (d: jsPDF, x: number, y: number, o: ParticleSizeDistributionPdfOptions, rowH: number): number => {
-  const uscs = o.uscsDescription && o.uscsSymbol && o.uscsSymbol !== "auto"
-    ? `${o.uscsDescription}(${o.uscsSymbol})`.toUpperCase()
-    : text(o.uscsDescription || o.uscsSymbol);
+  // Use the new Atterberg classification from formulas if available, otherwise fall back to existing
+  let classification = o.soilClassification;
+  let uscs = o.uscsDescription;
+
+  // Fall back to existing USCS if new classification not available
+  if (!classification && o.uscsSymbol) {
+    uscs = `${o.uscsDescription || ""}(${o.uscsSymbol})`.toUpperCase();
+  } else if (classification) {
+    // Map our classification to USCS labels
+    const classificationMap: Record<string, string> = {
+      CL: "CLAY (CL)",
+      CH: "CLAY (CH)",
+      ML: "SILT (ML)",
+      MH: "SILT (MH)",
+      "CL-ML": "SILTY CLAY (CL-ML)",
+    };
+    uscs = classificationMap[classification] || classification;
+  }
+
   const midLabelW = 24.5;
   const midValueW = 18.2;
   const tailLabelW = 21.9;
@@ -621,14 +663,16 @@ const drawPsdGraphVector = (d: jsPDF, x: number, y: number, w: number, o: Partic
     d.line(plot.x, gy, plot.x + plot.w, gy);
   });
 
-  d.setLineWidth(1.24 * type);
+  d.setLineWidth(0.5 * type);
   d.line(plot.x, plot.y, plot.x, plotBottom);
   d.line(plot.x, plotBottom, plot.x + plot.w, plotBottom);
 
   const samples = psdCurveSamples(o.series, plot.w, plot.h);
   if (samples.length > 1) {
     d.setDrawColor(...COLORS.curve);
-    d.setLineWidth(0.74 * type);
+    // Ensure minimum line width for print visibility (0.25mm min)
+    const curveLineWidth = Math.max(0.74 * type, 0.25);
+    d.setLineWidth(curveLineWidth);
     for (let index = 1; index < samples.length; index += 1) {
       d.line(plot.x + samples[index - 1].x, plot.y + samples[index - 1].y, plot.x + samples[index].x, plot.y + samples[index].y);
     }
@@ -755,12 +799,106 @@ const drawFooter = (d: jsPDF, o: ParticleSizeDistributionPdfOptions, images: Adm
 
 export const generateParticleSizeDistributionPDF = async (options: ParticleSizeDistributionPdfOptions) => {
   // Images are optional: a missing logo or stamp must never stop a report being produced.
+  // Accept optional sessionToken from caller; falls back to localStorage (client) or empty string (server).
+  const sessionToken = options.sessionToken
+    ? options.sessionToken
+    : typeof window !== "undefined"
+      ? localStorage.getItem("lab_session_token")
+      : "";
+
   let images: AdminImages = {};
   try {
-    images = await fetchAdminImagesAsBase64();
+    images = await fetchAdminImagesAsBase64(sessionToken);
   } catch (error) {
     console.warn("[PSD PDF] Could not load header/footer images, exporting without them:", error);
   }
+
+  // ---- NEW: Calculate gradation & Atterberg from sieve rows using formulas ----
+  const sieveRows = options.record.sieveRows;
+  let uniformityCoefficient: number | null = null;
+  let coefficientOfCurvature: number | null = null;
+  let effectiveSize: number | null = null; // D10
+  let medianSize: number | null = null; // D50
+  let sixtyPercentSize: number | null = null; // D60
+  let liquidLimit: number | null = null;
+  let plasticLimit: number | null = null;
+  let plasticityIndex: number | null = null;
+  let liquidityIndex: number | null = null;
+  let soilClassification: string = "CL"; // default fallback
+  let finesPercentage: number | null = null;
+  let gravelPercentage: number | null = null;
+  let sandPercentage: number | null = null;
+
+  // Process sieve data through the new formulas if we have sieve rows with retained masses
+  if (sieveRows && sieveRows.length > 0) {
+    // Extract retained masses and sieve sizes
+    const sieveData: PsdSieveData[] = sieveRows.map((row, i) => ({
+      sieveSize: row.sieveSize,
+      retainedMass: parseFloat(row.weightRetained?.toString() || "0"),
+    }));
+
+    // Calculate percent retained and passing
+    const totalMass = sieveData.reduce((sum, s) => sum + s.retainedMass, 0);
+    const percentRetained = sieveData.map((s) => calculatePercentRetained(s.retainedMass, totalMass));
+    const percentPassing = calculateCumulativePassing(sieveData.map((s) => s.retainedMass));
+
+    // Update sieve rows with calculated percentages (for backward compatibility)
+    sieveRows.forEach((row, i) => {
+      row.percentRetained = percentRetained[i];
+      row.percentPassing = percentPassing[i];
+    });
+
+    // Calculate gradation coefficients (Cu, Cc, D10, D50, D60)
+    const gradation = calculateGradationCoeffs(
+      sieveData.map((s) => s.sieveSize),
+      percentPassing
+    );
+    uniformityCoefficient = gradation.uniformityCoefficient;
+    coefficientOfCurvature = gradation.coefficientOfCurvature;
+    effectiveSize = gradation.d10;
+    medianSize = gradation.d50;
+    sixtyPercentSize = gradation.d60;
+
+    // Estimate fines percentage (passing #200, 0.075mm)
+    // If D10 exists and is smaller than 0.075mm, high fines content
+    if (effectiveSize !== null && effectiveSize < 0.075) {
+      finesPercentage = 100;
+    } else if (effectiveSize !== null) {
+      // Rough estimate: if D10 is between 0.075-0.425, assume some fines
+      finesPercentage = 30; // default estimate
+    }
+
+    // For Atterberg, we estimate based on fines content since we don't have LL/PL from sieve data
+    const estimatedFines = finesPercentage ?? 30;
+    const estimatedLL = estimatedFines > 50 ? 45 : 30;
+    const estimatedPL = estimatedFines > 50 ? 25 : 15;
+
+    const atterberg = analyzeAtterbergLimits(
+      estimatedLL,
+      estimatedPL,
+      22.5, // estimated water content
+      estimatedFines
+    );
+    plasticityIndex = atterberg.plasticityIndex;
+    liquidityIndex = atterberg.liquidityIndex;
+    soilClassification = atterberg.soilClassification;
+
+    // Derive Gravel/Sand/Fine percentages from the gradation curve
+    if (sieveData.length > 0) {
+      // Gravel: percentage retained on 4.75mm (approx No. 4) sieve
+      const gravelSieve = sieveData.find((s) => s.sieveSize >= 4.75);
+      gravelPercentage = gravelSieve ? percentRetained[sieveData.indexOf(gravelSieve)] : null;
+
+      // Sand percentage (roughly sieves 0.075-4.75mm)
+      const sandSieves = sieveData.filter((s) => s.sieveSize >= 0.075 && s.sieveSize < 4.75);
+      sandPercentage = sandSieves.reduce((sum, s) => sum + percentRetained[sieveData.indexOf(s)], 0);
+
+      // Fines percentage (passing #200)
+      const finesSieve = sieveData.find((s) => s.sieveSize <= 0.075);
+      finesPercentage = finesSieve ? percentRetained[sieveData.indexOf(finesSieve)] : null;
+    }
+  }
+  // ---------------------------------------------------------------
 
   const doc = new jsPDF({ unit: "mm", format: "letter" });
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -811,7 +949,7 @@ export const generateParticleSizeDistributionPDF = async (options: ParticleSizeD
   // Side-by-side tables: both target the same bottom; shorter table gets
 // a single subtle filler row to meet the frame, so content visually
 // aligns with the side rails.
-  const sieveHeight = SIEVE_CAP_H + SIEVE_HEAD_H + (sieveCount + 1) * rowH;
+  const sieveHeight = SIEVE_CAP_H + SIEVE_HEAD_H + sieveCount * rowH;
   const hydroHeight = HYDRO_CAP_H + 4 * HYDRO_PARAM_H + HYDRO_HEAD_H + hydroCount * rowH;
   const tableBottom = cursor + Math.max(sieveHeight, hydroHeight);
 

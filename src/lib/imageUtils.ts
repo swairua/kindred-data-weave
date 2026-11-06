@@ -178,19 +178,10 @@ const retryImageFetch = async (
 
 import { makeStampTransparent } from "./stampUtils";
 
-const imagePathToBase64 = async (filePath: string, isStamp: boolean = false): Promise<string | undefined> => {
+const imagePathToBase64 = async (filePath: string, isStamp: boolean = false, sessionToken: string = ""): Promise<string | undefined> => {
   const imageUrl = getAdminImageUrl(filePath);
-  const sessionToken = localStorage.getItem("lab_session_token");
-
-  console.debug("[ImageConvert] Starting image conversion to base64:", {
-    filePath,
-    imageUrl,
-    hasSessionToken: !!sessionToken,
-  });
-
-  try {
-    // Retry fetch with exponential backoff
-    const response = await retryImageFetch(filePath, imageUrl, sessionToken);
+  // sessionToken may be empty string on server (Node.js lacks localStorage); pass as-is to fetch headers
+  const response = await retryImageFetch(filePath, imageUrl, sessionToken);
 
     if (!response) {
       console.debug("[ImageConvert] Image not available, skipping", { filePath });
@@ -268,7 +259,9 @@ const imagePathToBase64 = async (filePath: string, isStamp: boolean = false): Pr
  * Images are converted to base64 data URLs for embedding in documents.
  * Missing images are silently skipped - export will proceed without them.
  */
-export async function fetchAdminImagesAsBase64(): Promise<AdminImages> {
+export async function fetchAdminImagesAsBase64(
+  sessionToken: string = ""
+): Promise<AdminImages> {
   const images: AdminImages = {};
 
   try {
@@ -283,9 +276,9 @@ export async function fetchAdminImagesAsBase64(): Promise<AdminImages> {
     // Fetch images in parallel with individual error handling
     // One failure won't break the others or the export
     const results = await Promise.allSettled([
-      latest.logo ? imagePathToBase64(latest.logo, false) : Promise.resolve(undefined),
-      latest.contacts ? imagePathToBase64(latest.contacts, false) : Promise.resolve(undefined),
-      latest.stamp ? imagePathToBase64(latest.stamp, true) : Promise.resolve(undefined),
+      latest.logo ? imagePathToBase64(latest.logo, false, sessionToken) : Promise.resolve(undefined),
+      latest.contacts ? imagePathToBase64(latest.contacts, false, sessionToken) : Promise.resolve(undefined),
+      latest.stamp ? imagePathToBase64(latest.stamp, true, sessionToken) : Promise.resolve(undefined),
     ]);
 
     const logo = results[0].status === "fulfilled" ? results[0].value : undefined;
