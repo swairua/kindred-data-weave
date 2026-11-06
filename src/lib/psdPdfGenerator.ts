@@ -144,17 +144,17 @@ export interface ParticleSizeDistributionPdfOptions {
   /** html2canvas capture of the on-screen chart, when one was produced. */
   chartImage: string | null;
   // Gradation coefficients from sieve analysis
-  uniformityCoefficient: number | null; // Cu
-  coefficientOfCurvature: number | null; // Cc
-  effectiveSize: number | null; // D10 (mm)
-  medianSize: number | null; // D50 (mm)
-  sixtyPercentSize: number | null; // D60 (mm)
+  uniformityCoefficient?: number | null; // Cu
+  coefficientOfCurvature?: number | null; // Cc
+  effectiveSize?: number | null; // D10 (mm)
+  medianSize?: number | null; // D50 (mm)
+  sixtyPercentSize?: number | null; // D60 (mm)
   // Atterberg limits from sieve-generated data
-  liquidLimit: number | null;
-  plasticLimit: number | null;
-  plasticityIndex: number | null; // PI = LL - PL
-  liquidityIndex: number | null; // LI = (w - PL) / PI
-  soilClassification: string; // CL, CH, MH, ML, CL-ML
+  liquidLimit?: number | null;
+  plasticLimit?: number | null;
+  plasticityIndex?: number | null; // PI = LL - PL
+  liquidityIndex?: number | null; // LI = (w - PL) / PI
+  soilClassification?: string; // CL, CH, MH, ML, CL-ML
   // Derived from sieve + Atterberg
   finesPercentage: number | null;
   gravelPercentage: number | null;
@@ -164,6 +164,7 @@ export interface ParticleSizeDistributionPdfOptions {
   aashtoGroup: string;
   groupIndex: number | null;
   skipDownload?: boolean;
+  sessionToken?: string;
 }
 
 const text = (value: string | number | null | undefined, fallback = BLANK): string => {
@@ -340,7 +341,7 @@ const drawPreparation = (d: jsPDF, x: number, y: number, o: ParticleSizeDistribu
 
 const drawClassification = (d: jsPDF, x: number, y: number, o: ParticleSizeDistributionPdfOptions, rowH: number): number => {
   // Use the new Atterberg classification from formulas if available, otherwise fall back to existing
-  let classification = o.soilClassification;
+  const classification = o.soilClassification;
   let uscs = o.uscsDescription;
 
   // Fall back to existing USCS if new classification not available
@@ -820,8 +821,8 @@ export const generateParticleSizeDistributionPDF = async (options: ParticleSizeD
   let effectiveSize: number | null = null; // D10
   let medianSize: number | null = null; // D50
   let sixtyPercentSize: number | null = null; // D60
-  let liquidLimit: number | null = null;
-  let plasticLimit: number | null = null;
+  const liquidLimit: number | null = null;
+  const plasticLimit: number | null = null;
   let plasticityIndex: number | null = null;
   let liquidityIndex: number | null = null;
   let soilClassification: string = "CL"; // default fallback
@@ -833,7 +834,7 @@ export const generateParticleSizeDistributionPDF = async (options: ParticleSizeD
   if (sieveRows && sieveRows.length > 0) {
     // Extract retained masses and sieve sizes
     const sieveData: PsdSieveData[] = sieveRows.map((row, i) => ({
-      sieveSize: row.sieveSize,
+      sieveSize: parseFloat(row.sieveSize),
       retainedMass: parseFloat(row.weightRetained?.toString() || "0"),
     }));
 
@@ -842,16 +843,14 @@ export const generateParticleSizeDistributionPDF = async (options: ParticleSizeD
     const percentRetained = sieveData.map((s) => calculatePercentRetained(s.retainedMass, totalMass));
     const percentPassing = calculateCumulativePassing(sieveData.map((s) => s.retainedMass));
 
-    // Update sieve rows with calculated percentages (for backward compatibility)
-    sieveRows.forEach((row, i) => {
-      row.percentRetained = percentRetained[i];
-      row.percentPassing = percentPassing[i];
-    });
-
     // Calculate gradation coefficients (Cu, Cc, D10, D50, D60)
+    // Pan rows have no numeric size, so they cannot anchor an interpolation.
+    const sizedPoints = sieveData
+      .map((s, i) => ({ sieveSize: s.sieveSize, passing: percentPassing[i] }))
+      .filter((p) => Number.isFinite(p.sieveSize));
     const gradation = calculateGradationCoeffs(
-      sieveData.map((s) => s.sieveSize),
-      percentPassing
+      sizedPoints.map((p) => p.sieveSize),
+      sizedPoints.map((p) => p.passing)
     );
     uniformityCoefficient = gradation.uniformityCoefficient;
     coefficientOfCurvature = gradation.coefficientOfCurvature;

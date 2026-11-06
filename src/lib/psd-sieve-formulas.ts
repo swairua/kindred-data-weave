@@ -26,7 +26,7 @@ export const calculatePercentRetained = (
   totalMass: number
 ): number => {
   if (totalMass <= 0) return 0;
-  return Number((retainedMass / totalMass) * 100).toFixed(2);
+  return Number(((retainedMass / totalMass) * 100).toFixed(2));
 };
 
 /**
@@ -52,8 +52,8 @@ export const calculateCumulativePassing = (
   return retainedMasses.map((mass: number) => {
     cumulativeRetained += mass;
     const passing: number = Number(
-      ((total - cumulativeRetained) / total) * 100
-    ).toFixed(2);
+      (((total - cumulativeRetained) / total) * 100).toFixed(2)
+    );
     return passing;
   });
 };
@@ -134,6 +134,11 @@ export const calculateGradationCoeffs = (
   };
 };
 
+export interface PsdSieveData {
+  sieveSize: number;
+  retainedMass: number;
+}
+
 /**
  * Full PSD data processing pipeline
  * Processes raw sieve data into analysis results ready for PDF generation
@@ -172,7 +177,7 @@ export const processSieveAnalysis = (
   );
 
   // Calculate gradation coefficients
-  const sieveSizes: number[] = updatedData.map((s: any) => s.sieveSize);
+  const sieveSizes: number[] = updatedData.map((s) => s.sieveSize);
   const passingPercentages: number[] = percentPassing;
   const gradation = calculateGradationCoeffs(sieveSizes, passingPercentages);
 
@@ -182,6 +187,10 @@ export const processSieveAnalysis = (
     percentPassing,
     gradationCoefficients: gradation,
   };
+};
+
+export type PsdAnalysisResult = ReturnType<typeof processSieveAnalysis> & {
+  atterbergData?: ReturnType<typeof analyzeAtterbergLimits>;
 };
 
 // ============================================================
@@ -364,7 +373,7 @@ export const getSoilClassificationLabel = (
  * @returns Formatted headers and rowData for PDF generation
  */
 export const formatPsdForPdf = (
-  result: ReturnType<typeof processSieveAnalysis>
+  result: PsdAnalysisResult
 ): {
   headers: string[];
   rowData: string[][];
@@ -420,7 +429,7 @@ export const formatPsdForPdf = (
  * @returns Summary text block for PDF
  */
 export const generatePsdPdfSummary = (
-  result: ReturnType<typeof processSieveAnalysis>
+  result: PsdAnalysisResult
 ): string => {
   const liValue = result.atterbergData?.liquidityIndex !== undefined ? Number(
     result.atterbergData.liquidityIndex.toFixed(2)
