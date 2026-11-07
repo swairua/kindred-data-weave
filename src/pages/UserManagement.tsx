@@ -59,6 +59,7 @@ const AVAILABLE_TABLES = [
   'admin_images',
   'admin_images_audit',
   'users',
+  'lab_reference_sequences',
 ];
 
 // Helper function to check if a user is an admin
