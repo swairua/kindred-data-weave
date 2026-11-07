@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import CalculatedInput from "@/components/CalculatedInput";
-import { Plus, X, Upload, Trash2, ArrowLeft, FilePlus, Loader2, AlertCircle, CheckCircle, Save } from "lucide-react";
+import { Plus, X, Upload, Trash2, ArrowLeft, FilePlus, Loader2, AlertCircle, CheckCircle, Save, Printer } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
 import { generateTestPDF } from "@/lib/pdfGenerator";
 import { captureChartAsBase64 } from "@/lib/chartCapture";
@@ -200,7 +200,12 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
     return () => { /* cleanup */ };
   }, []);
 
-  const getLDRatio = useCallback((row: CoringRow) => {
+  const handlePrint = async () => {
+    // The PDF generator already handles printing
+    await exportPDF();
+    // Open print dialog
+    window.print();
+  };
     const d = parseFloat(row.diameter);
     const l = parseFloat(row.lengthAfter);
     if (!d || !l) return "";
@@ -478,13 +483,16 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
         }
       }
 
-      // Load pile images as base64 using the serve-image endpoint to avoid CORS
+      // Load pile images as base64 from the uploaded file paths in each row
       const pileImages: Record<string, string> = {};
       
       for (const row of rows) {
         if (row.pileBeforeImage) {
           try {
-            const imageUrl = `${window.location.origin}/api.php?action=serve-image&image_type=pile_before`;
+            // Use the stored image path directly (should be /uploads/...)
+            const imageUrl = row.pileBeforeImage.startsWith('http') 
+              ? row.pileBeforeImage 
+              : `${window.location.origin}${row.pileBeforeImage}`;
             const response = await fetch(imageUrl, { credentials: "include" });
             if (response.ok) {
               const blob = await response.blob();
@@ -502,7 +510,9 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
         }
         if (row.pileAfterImage) {
           try {
-            const imageUrl = `${window.location.origin}/api.php?action=serve-image&image_type=pile_after`;
+            const imageUrl = row.pileAfterImage.startsWith('http')
+              ? row.pileAfterImage
+              : `${window.location.origin}${row.pileAfterImage}`;
             const response = await fetch(imageUrl, { credentials: "include" });
             if (response.ok) {
               const blob = await response.blob();
@@ -603,9 +613,11 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
       testKey={testKey} 
       onSave={handleSave} 
       onClear={() => setRows([{ ...CORING_ROW_DEFAULTS, coreId: "CR1" }, { ...CORING_ROW_DEFAULTS, coreId: "CR2" }])}
-      onExportPDF={exportPDF} 
+      onExportPDF={exportPDF}
+      onPrint={handlePrint}
       canExport={canExport}
       saveStatus={saveStatus}
+      actionsPlacement="footer"
     >
       {/* Validation Error Banner */}
       {hasValidationErrors && (
