@@ -195,7 +195,7 @@ const defaultTests: Record<string, TestSummary> = {
   slump: { id: "slump", name: "Slump Test", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [] },
   compressive: { id: "compressive", name: "Compressive Strength Test", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [] },
   upvt: { id: "upvt", name: "UPVT", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [] },
-  coring: { id: "coring", name: "Coring", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [] },
+  coring: { id: "coring", name: "Coring", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [], enabled: true },
   cubes: { id: "cubes", name: "Concrete Cubes", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [] },
   ucs: { id: "ucs", name: "Unconfined Compressive Strength", category: "rock", status: "not-started", dataPoints: 0, keyResults: [] },
   pointload: { id: "pointload", name: "Point Load Index", category: "rock", status: "not-started", dataPoints: 0, keyResults: [] },
