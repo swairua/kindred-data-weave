@@ -114,10 +114,6 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
   const [rcNo, setRcNo] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const [receptionMode, setReceptionMode] = useState(false);
-  const [rcNo, setRcNo] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
-
   // Load existing test data from resultId URL parameter
   const loadStartedRef = useRef<number | null>(null);
 
@@ -131,7 +127,7 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
     if (loadStartedRef.current === resultIdParam) return;
 
     loadStartedRef.current = resultIdParam;
-    let active = true;
+    const active = true;
 
     const loadData = async () => {
       setIsLoading(true);
@@ -161,8 +157,8 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
             }
             
             // Load cores from payload_json
-            if (test && typeof test === "object") {
-              const testData = test as Record<string, unknown>;
+            if (payload.test && typeof payload.test === "object") {
+              const testData = payload.test as Record<string, unknown>;
               if (testData.cores && Array.isArray(testData.cores)) {
                 const cores = testData.cores as Array<Record<string, unknown>>;
                 const loadedRows = cores.map((core, i) => ({
@@ -200,12 +196,7 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
     return () => { /* cleanup */ };
   }, []);
 
-  const handlePrint = async () => {
-    // The PDF generator already handles printing
-    await exportPDF();
-    // Open print dialog
-    window.print();
-  };
+  const getLDRatio = useCallback((row: CoringRow) => {
     const d = parseFloat(row.diameter);
     const l = parseFloat(row.lengthAfter);
     if (!d || !l) return "";
@@ -426,7 +417,7 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
       const consignment: ReceptionConsignmentInput = emptyReceptionConsignment(newRcNo);
       consignment.jobNo = projectDetails.projectName;
       consignment.project = projectDetails.tower;
-      consignment.client = projectDetails.clientName || "NSSF";
+      consignment.client = "NSSF";
       consignment.receivedAt = new Date().toISOString().slice(0, 16);
       consignment.receivedBy = user?.name || "PUAL N";
       consignment.methodSet = "BS EN 12504-1:2009";
@@ -603,6 +594,11 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
     { label: "Cores Tested", value: strengths.length ? String(strengths.length) : "" },
   ], [avgStrength, strengths.length]);
   useTestReport("coring", strengths.length, results);
+
+  const handlePrint = async () => {
+    await exportPDF();
+    window.print();
+  };
 
   const canExport = !!project.currentProjectId || isSaved;
   const hasValidationErrors = validationErrors.length > 0;
@@ -854,7 +850,7 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
               )}
             </Button>
             <Button variant="outline" onClick={() => setReceptionMode(!receptionMode)}>
-              {receptionMode ? <ArrowLeft className="h-4 w-4 mr-1" /> Back : <ArrowLeft className="h-4 w-4 mr-1" /> Reception Dashboard}
+              {receptionMode ? (<><ArrowLeft className="h-4 w-4 mr-1" /> Back</>) : (<><ArrowLeft className="h-4 w-4 mr-1" /> Reception Dashboard</>)}
             </Button>
           </div>
 

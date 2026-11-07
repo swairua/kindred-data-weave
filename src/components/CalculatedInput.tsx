@@ -1,16 +1,18 @@
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 interface CalculatedInputProps {
   value: string | number;
   label?: string;
+  className?: string;
 }
 
-const CalculatedInput = ({ value, label }: CalculatedInputProps) => (
+const CalculatedInput = ({ value, label, className }: CalculatedInputProps) => (
   <Input
     readOnly
     value={value}
     aria-label={label}
-    className="calculated-field cursor-default"
+    className={cn("calculated-field cursor-default", className)}
     tabIndex={-1}
   />
 );
