@@ -22,6 +22,7 @@ interface PDFData {
     rows: string[][];
   }[];
   chartImages?: { [key: string]: string }; // Base64 encoded chart images
+  pileImages?: { [key: string]: string }; // Base64 encoded pile before/after test images
   skipDownload?: boolean;
 }
 
@@ -335,8 +336,6 @@ export const generateTestPDF = async (data: PDFData) => {
 
         const { base64, format } = imageParts(chartBase64);
         const imgWidth = pageWidth - PAGE_MARGIN * 2;
-        // Keep the chart at its natural 4:3 ratio, but never taller than the
-        // space left on the page, so it is never split across a page break.
         const naturalHeight = (imgWidth * 3) / 4;
         const imgHeight = Math.min(naturalHeight, contentBottom() - y);
 
@@ -345,6 +344,76 @@ export const generateTestPDF = async (data: PDFData) => {
       } catch (error) {
         console.error(`Failed to add chart image (${chartName}):`, error);
       }
+    }
+  }
+
+  // Pile images section (Before/After test images)
+  if (data.pileImages && Object.keys(data.pileImages).length > 0) {
+    if (y + 30 > contentBottom()) y = newPage() + 4;
+
+    doc.setDrawColor(...COLORS.border);
+    doc.setLineWidth(0.4);
+    doc.line(PAGE_MARGIN, y, pageWidth - PAGE_MARGIN, y);
+    y += 8;
+
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...COLORS.primary);
+    doc.text("Core Specimen Photographs (Before / After Test)", PAGE_MARGIN, y);
+    y += 10;
+
+    const imageEntries = Object.entries(data.pileImages);
+    for (let i = 0; i < imageEntries.length; i += 2) {
+      if (y + 70 > contentBottom()) y = newPage() + 4;
+
+      const leftEntry = imageEntries[i];
+      const rightEntry = imageEntries[i + 1];
+
+      const leftTitle = leftEntry[0];
+      const leftBase64 = leftEntry[1];
+      const rightTitle = rightEntry ? rightEntry[0] : null;
+      const rightBase64 = rightEntry ? rightEntry[1] : null;
+
+      const halfWidth = (pageWidth - PAGE_MARGIN * 2 - 8) / 2;
+
+      // Left image
+      if (leftBase64) {
+        try {
+          const { base64, format } = imageParts(leftBase64);
+          const imgHeight = halfWidth * 0.75;
+          
+          doc.setFontSize(8);
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(...COLORS.dark);
+          doc.text(leftTitle, PAGE_MARGIN, y);
+          y += 5;
+          
+          doc.addImage(base64, format, PAGE_MARGIN, y, halfWidth, imgHeight);
+          y += imgHeight + 5;
+        } catch (error) {
+          console.error(`Failed to add pile image (${leftTitle}):`, error);
+        }
+      }
+
+      // Right image (on same row if space permits)
+      if (rightBase64) {
+        try {
+          const { base64, format } = imageParts(rightBase64);
+          const imgHeight = halfWidth * 0.75;
+          const rightX = PAGE_MARGIN + halfWidth + 8;
+          
+          doc.setFontSize(8);
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(...COLORS.dark);
+          doc.text(rightTitle, rightX, y - imgHeight - 5);
+          
+          doc.addImage(base64, format, rightX, y - imgHeight, halfWidth, imgHeight);
+        } catch (error) {
+          console.error(`Failed to add pile image (${rightTitle}):`, error);
+        }
+      }
+
+      y += 10;
     }
   }
 

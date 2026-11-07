@@ -4,6 +4,8 @@ export interface AdminImages {
   logo?: string; // base64 data URL
   contacts?: string;
   stamp?: string;
+  pile_before?: string;
+  pile_after?: string;
 }
 
 type AdminImageType = "logo" | "contacts" | "stamp";
@@ -44,7 +46,7 @@ const listAdminImagePaths = async (): Promise<AdminImagePaths> => {
     console.debug("Admin images fetched from DB:", { rowCount: rows.length, rows });
 
     for (const row of rows) {
-      if (row.image_type === "logo" || row.image_type === "contacts" || row.image_type === "stamp") {
+      if (row.image_type === "logo" || row.image_type === "contacts" || row.image_type === "stamp" || row.image_type === "pile_before" || row.image_type === "pile_after") {
         if (!latest[row.image_type]) {
           latest[row.image_type] = row.file_path;
         }
@@ -269,7 +271,7 @@ export async function fetchAdminImagesAsBase64(
     const latest = await listAdminImagePaths();
 
     // If no images at all, still continue gracefully
-    if (!latest.logo && !latest.contacts && !latest.stamp) {
+    if (!latest.logo && !latest.contacts && !latest.stamp && !latest.pile_before && !latest.pile_after) {
       console.debug("[ImageFetch] No admin images found in database - export will proceed without images");
       return images; // Return empty images object - not an error
     }
@@ -280,15 +282,21 @@ export async function fetchAdminImagesAsBase64(
       latest.logo ? imagePathToBase64(latest.logo, false, sessionToken) : Promise.resolve(undefined),
       latest.contacts ? imagePathToBase64(latest.contacts, false, sessionToken) : Promise.resolve(undefined),
       latest.stamp ? imagePathToBase64(latest.stamp, true, sessionToken) : Promise.resolve(undefined),
+      latest.pile_before ? imagePathToBase64(latest.pile_before, false, sessionToken) : Promise.resolve(undefined),
+      latest.pile_after ? imagePathToBase64(latest.pile_after, false, sessionToken) : Promise.resolve(undefined),
     ]);
 
     const logo = results[0].status === "fulfilled" ? results[0].value : undefined;
     const contacts = results[1].status === "fulfilled" ? results[1].value : undefined;
     const stamp = results[2].status === "fulfilled" ? results[2].value : undefined;
+    const pile_before = results[3].status === "fulfilled" ? results[3].value : undefined;
+    const pile_after = results[4].status === "fulfilled" ? results[4].value : undefined;
 
     images.logo = logo;
     images.contacts = contacts;
     images.stamp = stamp;
+    images.pile_before = pile_before;
+    images.pile_after = pile_after;
   } catch (error) {
     // Silently fail - images are optional
     console.debug("[ImageFetch] Error fetching admin images (export will continue without them):", error);

@@ -802,10 +802,10 @@ try {
 
         // Validate image_type
         $image_type = trim((string) ($_POST['image_type'] ?? $_GET['image_type'] ?? ''));
-        $allowed_types = ['logo', 'contacts', 'stamp'];
+        $allowed_types = ['logo', 'contacts', 'stamp', 'pile_before', 'pile_after'];
 
         if (!$image_type || !in_array($image_type, $allowed_types, true)) {
-            respond(['error' => 'Invalid image type. Must be: logo, contacts, or stamp'], 400);
+            respond(['error' => 'Invalid image type. Must be: logo, contacts, stamp, pile_before, or pile_after'], 400);
         }
 
         // Check if file was uploaded
@@ -1063,7 +1063,7 @@ try {
             $sql = "SELECT id, file_path, mime_type FROM admin_images WHERE id = ? LIMIT 1";
             $params = [$imageId];
             $paramTypes = 'i';
-        } elseif ($imageType && in_array($imageType, ['logo', 'contacts', 'stamp'], true)) {
+        } elseif ($imageType && in_array($imageType, ['logo', 'contacts', 'stamp', 'pile_before', 'pile_after'], true)) {
             // Get the latest image of this type
             $sql = "SELECT id, file_path, mime_type FROM admin_images WHERE image_type = ? ORDER BY id DESC LIMIT 1";
             $params = [$imageType];
