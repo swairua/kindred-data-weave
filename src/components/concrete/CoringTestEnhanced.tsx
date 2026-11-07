@@ -31,6 +31,12 @@ interface CoringRow {
   comments: string;
   pileBeforeImage?: string;
   pileAfterImage?: string;
+  // Additional fields matching PDF
+  area?: string;           // Area (m²)
+  volume?: string;         // Volume (m³)
+  cylinderToCubeRatio?: string;  // Cylinder Strength to Cube Strength (1.25)
+  caFactor?: string;       // Ca correction factor for steel presence
+  excessVoidage?: string;  // Excess Voidage (%)
 }
 
 interface CoringTestProps {
@@ -46,9 +52,7 @@ interface ValidationError {
 const DEPTH_OPTIONS = [
   "0.0-2.0",
   "2.0-15.0",
-  "15.0-30.0",
-  "30.0-45.0",
-  "45.0-60.0",
+  "15.0-20.6",
   "Custom"
 ];
 
@@ -65,9 +69,9 @@ const FAILURE_MODES = [
 
 const CORING_ROW_DEFAULTS: CoringRow = {
   coreId: "CR1",
-  diameter: "75",
-  lengthBefore: "",
-  lengthAfter: "",
+  diameter: "82",
+  lengthBefore: "150",
+  lengthAfter: "82",
   weightInAir: "",
   load: "",
   depth: "0.0-2.0",
@@ -75,6 +79,11 @@ const CORING_ROW_DEFAULTS: CoringRow = {
   comments: "",
   pileBeforeImage: "",
   pileAfterImage: "",
+  area: "",
+  volume: "",
+  cylinderToCubeRatio: "1.25",
+  caFactor: "1.00",
+  excessVoidage: "1.00",
 };
 
 export const CoringTest = ({ testKey }: CoringTestProps) => {
@@ -144,6 +153,21 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
     return (0.87 + 0.065 * ld).toFixed(2);
   }, [getLDRatio]);
 
+  const getArea = useCallback((row: CoringRow) => {
+    const d = parseFloat(row.diameter);
+    if (!d) return "";
+    const areaMm2 = Math.PI * (d / 2) ** 2;
+    return (areaMm2 / 1000000).toFixed(6); // m²
+  }, []);
+
+  const getVolume = useCallback((row: CoringRow) => {
+    const d = parseFloat(row.diameter);
+    const l = parseFloat(row.lengthAfter);
+    if (!d || !l) return "";
+    const volumeMm3 = Math.PI * (d / 2) ** 2 * l;
+    return (volumeMm3 / 1000000000).toFixed(6); // m³
+  }, []);
+
   const update = useCallback((i: number, field: keyof CoringRow, val: string) => {
     setRows(prev => {
       const next = [...prev];
@@ -175,6 +199,12 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
     }
     if (!row.weightInAir || parseFloat(row.weightInAir) <= 0) {
       errors.push({ rowIndex: index, field: "weightInAir", message: "Weight in air is required" });
+    }
+    if (!row.cylinderToCubeRatio || parseFloat(row.cylinderToCubeRatio) <= 0) {
+      errors.push({ rowIndex: index, field: "cylinderToCubeRatio", message: "Cylinder/Cube ratio is required" });
+    }
+    if (!row.caFactor || parseFloat(row.caFactor) <= 0) {
+      errors.push({ rowIndex: index, field: "caFactor", message: "Ca factor is required" });
     }
     if (!row.depth.trim()) {
       errors.push({ rowIndex: index, field: "depth", message: "Depth is required" });
@@ -418,7 +448,7 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
 
       // Build table data with comments
       const tableData = {
-        headers: ["Core ID", "Depth (m)", "Dia (mm)", "L Before (mm)", "L After (mm)", "L/D", "Weight (g)", "Load (kN)", "Core Str (MPa)", "Cd Factor", "Corrected (MPa)", "Density (kg/m³)", "Failure Mode", "Comments"],
+        headers: ["Core ID", "Depth (m)", "Dia (mm)", "L Before (mm)", "L After (mm)", "L/D", "Area (m²)", "Volume (m³)", "Weight (g)", "Load (kN)", "Core Str (MPa)", "Cd Factor", "Cyl/Cube Ratio", "Ca Factor", "Corrected (MPa)", "Density (kg/m³)", "Excess Voidage (%)", "Failure Mode", "Comments"],
         rows: rows.map(r => [
           r.coreId,
           r.depth,
@@ -426,12 +456,17 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
           r.lengthBefore || "—",
           r.lengthAfter || "—",
           getLDRatio(r) || "—",
+          getArea(r) || "—",
+          getVolume(r) || "—",
           r.weightInAir || "—",
           r.load || "—",
           getCoreStrength(r) || "—",
           getCdFactor(r) || "—",
+          r.cylinderToCubeRatio || "—",
+          r.caFactor || "—",
           getCorrectedStrength(r) || "—",
           getDensity(r) || "—",
+          r.excessVoidage || "—",
           r.failureMode,
           r.comments || "—",
         ])
@@ -567,12 +602,17 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">L Before (mm)</th>
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">L After (mm) *</th>
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">L/D</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Area (m²)</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Volume (m³)</th>
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Wt Air (g) *</th>
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Load (kN) *</th>
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Core Str (MPa)</th>
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Cd Factor</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Cyl/Cube Ratio</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Ca Factor</th>
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Corrected (MPa)</th>
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Density (kg/m³)</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Excess Voidage (%)</th>
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Failure Mode</th>
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground w-32">Before Test</th>
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground w-32">After Test</th>
@@ -594,16 +634,21 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
                       </SelectContent>
                     </Select>
                   </td>
-                  <td className="py-1 px-1.5"><Input type="number" value={row.diameter} onChange={(e) => update(i, "diameter", e.target.value)} className={`h-7 w-16 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "diameter") ? "border-destructive" : ""}`} placeholder="75" /></td>
+                  <td className="py-1 px-1.5"><Input type="number" value={row.diameter} onChange={(e) => update(i, "diameter", e.target.value)} className={`h-7 w-16 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "diameter") ? "border-destructive" : ""}`} placeholder="82" /></td>
                   <td className="py-1 px-1.5"><Input type="number" value={row.lengthBefore} onChange={(e) => update(i, "lengthBefore", e.target.value)} className="h-7 w-20 text-xs" placeholder="150" /></td>
-                  <td className="py-1 px-1.5"><Input type="number" value={row.lengthAfter} onChange={(e) => update(i, "lengthAfter", e.target.value)} className={`h-7 w-20 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "lengthAfter") ? "border-destructive" : ""}`} placeholder="150" /></td>
+                  <td className="py-1 px-1.5"><Input type="number" value={row.lengthAfter} onChange={(e) => update(i, "lengthAfter", e.target.value)} className={`h-7 w-20 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "lengthAfter") ? "border-destructive" : ""}`} placeholder="82" /></td>
                   <td className="py-1 px-1.5"><CalculatedInput value={getLDRatio(row)} className="h-7" /></td>
+                  <td className="py-1 px-1.5"><CalculatedInput value={getArea(row)} className="h-7" /></td>
+                  <td className="py-1 px-1.5"><CalculatedInput value={getVolume(row)} className="h-7" /></td>
                   <td className="py-1 px-1.5"><Input type="number" value={row.weightInAir} onChange={(e) => update(i, "weightInAir", e.target.value)} className={`h-7 w-20 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "weightInAir") ? "border-destructive" : ""}`} placeholder="0" /></td>
                   <td className="py-1 px-1.5"><Input type="number" value={row.load} onChange={(e) => update(i, "load", e.target.value)} className={`h-7 w-20 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "load") ? "border-destructive" : ""}`} placeholder="0" /></td>
                   <td className="py-1 px-1.5"><CalculatedInput value={getCoreStrength(row)} className="h-7" /></td>
                   <td className="py-1 px-1.5"><CalculatedInput value={getCdFactor(row)} className="h-7" /></td>
+                  <td className="py-1 px-1.5"><Input type="number" value={row.cylinderToCubeRatio} onChange={(e) => update(i, "cylinderToCubeRatio", e.target.value)} className="h-7 w-20 text-xs" placeholder="1.25" step="0.01" /></td>
+                  <td className="py-1 px-1.5"><Input type="number" value={row.caFactor} onChange={(e) => update(i, "caFactor", e.target.value)} className="h-7 w-20 text-xs" placeholder="1.00" step="0.01" /></td>
                   <td className="py-1 px-1.5"><CalculatedInput value={getCorrectedStrength(row)} className="h-7 font-medium" /></td>
                   <td className="py-1 px-1.5"><CalculatedInput value={getDensity(row)} className="h-7" /></td>
+                  <td className="py-1 px-1.5"><Input type="number" value={row.excessVoidage} onChange={(e) => update(i, "excessVoidage", e.target.value)} className="h-7 w-20 text-xs" placeholder="1.00" step="0.01" /></td>
                   <td className="py-1 px-1.5">
                     <Select value={row.failureMode} onValueChange={(v) => update(i, "failureMode", v)}>
                       <SelectTrigger className="h-7 w-full text-xs"><SelectValue /></SelectTrigger>
