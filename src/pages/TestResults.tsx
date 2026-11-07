@@ -28,7 +28,7 @@ import { collectSamples, readSampleRecords, recordField, selectSampleRows } from
 import { toast } from "sonner";
 
 const ATTERBERG_TEST_KEYS: readonly string[] = ["atterberg"];
-const COMPRESSIVE_TEST_KEYS: readonly string[] = ["compressive"];
+const COMPRESSIVE_TEST_KEYS: readonly string[] = ["compressive", "coring"];
 
 interface ApiTestResult {
   id: number;
@@ -221,16 +221,17 @@ const TestResults = () => {
     return [...atterbergRows, ...otherSoilRows].sort((a, b) => b.sort_stamp.localeCompare(a.sort_stamp));
   }, [atterbergResults, otherSoilResults, getTestName]);
 
-// Compressive mirror rows (see saveCompressiveTest): one display row per
+// Compressive & Coring mirror rows (see saveCompressiveTest): one display row per
   // result row, newest first. Sorted together with the soil rows below.
   const compressiveTests = useMemo(() => {
     const rows = (apiTestResults || [])
-      .filter((row) => row.test_key === "compressive")
+      .filter((row) => COMPRESSIVE_TEST_KEYS.includes(row.test_key))
       .map((row) => {
+        const isCoring = row.test_key === "coring";
         const payloadTest = row.payload_json?.test;
         const cubes = typeof payloadTest?.dataPoints === "number" ? payloadTest.dataPoints : null;
         return {
-          id: `compressive::${row.id}`,
+          id: `${row.test_key}::${row.id}`,
           resultId: Number(row.id),
           sampleKey: "",
           project_id: row.project_id,
@@ -240,12 +241,13 @@ const TestResults = () => {
           sample_id:
             (typeof row.sample_label === "string" && row.sample_label.trim() !== "" && row.sample_label) ||
             (typeof payloadTest?.compressiveTestId === "number" ? `Cubes ${payloadTest.compressiveTestId}` : "-"),
-          depth: cubes === null ? "-" : `${cubes} cube${cubes === 1 ? "" : "s"}`,
+          depth: cubes === null ? (isCoring ? "Core" : "-") : `${cubes} cube${cubes === 1 ? "" : "s"}`,
           date_created: row.created_at || row.updated_at || new Date().toISOString(),
           created_by: "-",
-           material_type: row.category || "Concrete",
-           status: row.status || "-",
+          material_type: row.category || "Concrete",
+          status: row.status || "-",
           sort_stamp: row.updated_at || row.created_at || "",
+          is_coring: isCoring,
         };
       });
     return rows.sort((a, b) => b.sort_stamp.localeCompare(a.sort_stamp));
