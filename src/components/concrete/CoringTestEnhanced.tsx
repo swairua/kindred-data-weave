@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import TestSection from "@/components/TestSection";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import CalculatedInput from "@/components/CalculatedInput";
-import { Plus, X, Image, Upload, Trash2, ArrowLeft, FilePlus, Loader2 } from "lucide-react";
+import { Plus, X, Upload, Trash2, ArrowLeft, FilePlus, Loader2, AlertCircle, CheckCircle, Save } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
 import { generateTestPDF } from "@/lib/pdfGenerator";
 import { captureChartAsBase64 } from "@/lib/chartCapture";
@@ -14,9 +14,10 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { useTestReport } from "@/hooks/useTestReport";
 import { useNavigate } from "react-router-dom";
-import { saveReceptionConsignment, listRecords, createRecord } from "@/lib/api";
+import { saveReceptionConsignment, listRecords } from "@/lib/api";
 import { emptyReceptionConsignment, nextRcNo, emptyReceptionSample, nextLabId, type ReceptionConsignmentInput, type ReceptionSampleInput } from "@/lib/reception";
 import { useSession } from "@/context/SessionContext";
+import { toast } from "sonner";
 
 interface CoringRow {
   coreId: string;
@@ -34,6 +35,12 @@ interface CoringRow {
 
 interface CoringTestProps {
   testKey?: string;
+}
+
+interface ValidationError {
+  rowIndex: number;
+  field: string;
+  message: string;
 }
 
 const DEPTH_OPTIONS = [
@@ -56,7 +63,7 @@ const FAILURE_MODES = [
   "Custom"
 ];
 
-const CORING_ROW_DEFAULTS = {
+const CORING_ROW_DEFAULTS: CoringRow = {
   coreId: "CR1",
   diameter: "75",
   lengthBefore: "",
@@ -79,6 +86,8 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
     { ...CORING_ROW_DEFAULTS, coreId: "CR2" },
   ]);
   const [isSaved, setIsSaved] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [projectDetails, setProjectDetails] = useState({
     projectName: "PROPOSED NSSF TWIN TOWERS, NAIROBI COUNTY",
     tower: "TOWER A",
@@ -95,31 +104,31 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
   const [rcNo, setRcNo] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const getLDRatio = (row: CoringRow) => {
+  const getLDRatio = useCallback((row: CoringRow) => {
     const d = parseFloat(row.diameter);
     const l = parseFloat(row.lengthAfter);
     if (!d || !l) return "";
     return (l / d).toFixed(2);
-  };
+  }, []);
 
-  const getCoreStrength = (row: CoringRow) => {
+  const getCoreStrength = useCallback((row: CoringRow) => {
     const d = parseFloat(row.diameter);
     const load = parseFloat(row.load);
     if (!d || !load) return "";
     const area = Math.PI * (d / 2) ** 2;
     return ((load * 1000) / area).toFixed(2);
-  };
+  }, []);
 
-  const getCorrectedStrength = (row: CoringRow) => {
+  const getCorrectedStrength = useCallback((row: CoringRow) => {
     const strength = parseFloat(getCoreStrength(row));
     const ld = parseFloat(getLDRatio(row));
     if (!strength || !ld) return "";
     let factor = 1.0;
     if (ld < 2.0) factor = 0.87 + 0.065 * ld;
     return (strength * factor).toFixed(2);
-  };
+  }, [getCoreStrength, getLDRatio]);
 
-  const getDensity = (row: CoringRow) => {
+  const getDensity = useCallback((row: CoringRow) => {
     const weight = parseFloat(row.weightInAir);
     const d = parseFloat(row.diameter);
     const l = parseFloat(row.lengthAfter);
@@ -127,40 +136,93 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
     const volume = (Math.PI * (d / 2) ** 2 * l) / 1000000000;
     if (volume <= 0) return "";
     return (weight / 1000 / volume).toFixed(0);
-  };
+  }, []);
 
-  const getCdFactor = (row: CoringRow) => {
+  const getCdFactor = useCallback((row: CoringRow) => {
     const ld = parseFloat(getLDRatio(row));
     if (ld >= 2.0) return "1.00";
     return (0.87 + 0.065 * ld).toFixed(2);
-  };
+  }, [getLDRatio]);
 
-  const update = (i: number, field: keyof CoringRow, val: string) => {
-    const next = [...rows];
-    next[i] = { ...next[i], [field]: val };
-    setRows(next);
-  };
+  const update = useCallback((i: number, field: keyof CoringRow, val: string) => {
+    setRows(prev => {
+      const next = [...prev];
+      next[i] = { ...next[i], [field]: val };
+      return next;
+    });
+    // Clear validation error for this field when user types
+    setValidationErrors(prev => prev.filter(e => !(e.rowIndex === i && e.field === field)));
+  }, []);
 
-  const updateProjectDetail = (field: string, val: string) => {
+  const updateProjectDetail = useCallback((field: string, val: string) => {
     setProjectDetails(prev => ({ ...prev, [field]: val }));
-  };
+  }, []);
 
-  const strengths = rows.map(r => parseFloat(getCorrectedStrength(r))).filter(Boolean);
-  const avgStrength = strengths.length ? (strengths.reduce((a, b) => a + b, 0) / strengths.length).toFixed(2) : "";
+  const validateRow = useCallback((row: CoringRow, index: number): ValidationError[] => {
+    const errors: ValidationError[] = [];
+    
+    if (!row.coreId.trim()) {
+      errors.push({ rowIndex: index, field: "coreId", message: "Core ID is required" });
+    }
+    if (!row.diameter || parseFloat(row.diameter) <= 0) {
+      errors.push({ rowIndex: index, field: "diameter", message: "Diameter must be > 0" });
+    }
+    if (!row.lengthAfter || parseFloat(row.lengthAfter) <= 0) {
+      errors.push({ rowIndex: index, field: "lengthAfter", message: "Length after trimming is required" });
+    }
+    if (!row.load || parseFloat(row.load) <= 0) {
+      errors.push({ rowIndex: index, field: "load", message: "Load is required" });
+    }
+    if (!row.weightInAir || parseFloat(row.weightInAir) <= 0) {
+      errors.push({ rowIndex: index, field: "weightInAir", message: "Weight in air is required" });
+    }
+    if (!row.depth.trim()) {
+      errors.push({ rowIndex: index, field: "depth", message: "Depth is required" });
+    }
+    
+    const correctedStrength = getCorrectedStrength(row);
+    if (!correctedStrength) {
+      errors.push({ rowIndex: index, field: "correctedStrength", message: "Cannot calculate corrected strength - check inputs" });
+    }
+    
+    return errors;
+  }, [getCorrectedStrength]);
 
-  const chartData = useMemo(() =>
-    rows.filter(r => getCorrectedStrength(r)).map(r => ({ name: r.coreId || "—", strength: parseFloat(getCorrectedStrength(r)) })),
-    [rows]
-  );
-  const chartConfig = { strength: { label: "Corrected Strength (MPa)", color: "hsl(var(--primary))" } };
+  const validateAllRows = useCallback((): ValidationError[] => {
+    const allErrors: ValidationError[] = [];
+    rows.forEach((row, i) => {
+      allErrors.push(...validateRow(row, i));
+    });
+    return allErrors;
+  }, [rows, validateRow]);
 
-  const results = useMemo(() => [
-    { label: "Avg Corrected Strength", value: avgStrength ? `${avgStrength} MPa` : "" },
-    { label: "Cores Tested", value: strengths.length ? String(strengths.length) : "" },
-  ], [avgStrength, strengths.length]);
-  useTestReport("coring", strengths.length, results);
+  const validateProjectDetails = useCallback((): ValidationError[] => {
+    const errors: ValidationError[] = [];
+    if (!projectDetails.projectName.trim()) {
+      errors.push({ rowIndex: -1, field: "projectName", message: "Project Name is required" });
+    }
+    if (!projectDetails.tower.trim()) {
+      errors.push({ rowIndex: -1, field: "tower", message: "Tower/Location is required" });
+    }
+    if (!projectDetails.dateOfTest.trim()) {
+      errors.push({ rowIndex: -1, field: "dateOfTest", message: "Date of Test is required" });
+    }
+    return errors;
+  }, [projectDetails]);
 
   const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pileAfterImage", file: File) => {
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Image too large. Maximum size is 10MB.");
+      return;
+    }
+    
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file.");
+      return;
+    }
+
     const formData = new FormData();
     formData.append("file", file);
     formData.append("image_type", field === "pileBeforeImage" ? "pile_before" : "pile_after");
@@ -175,19 +237,61 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
       if (response.ok) {
         const data = await response.json();
         if (data.file_path) {
-          const next = [...rows];
-          next[index] = { ...next[index], [field]: data.file_path };
-          setRows(next);
+          setRows(prev => {
+            const next = [...prev];
+            next[index] = { ...next[index], [field]: data.file_path };
+            return next;
+          });
+          toast.success(`${field === "pileBeforeImage" ? "Before" : "After"} test image uploaded`);
+        } else {
+          toast.error("Upload succeeded but no file path returned");
         }
+      } else {
+        const error = await response.json().catch(() => ({ message: "Upload failed" }));
+        toast.error(`Upload failed: ${error.message || "Unknown error"}`);
       }
     } catch (error) {
       console.error("Image upload failed:", error);
+      toast.error("Image upload failed. Please try again.");
+    }
+  };
+
+  const handleSave = async () => {
+    const errors = [...validateAllRows(), ...validateProjectDetails()];
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      setSaveStatus("error");
+      toast.error("Please fix validation errors before saving");
+      return;
+    }
+    
+    setSaveStatus("saving");
+    try {
+      // Save to localStorage for persistence (can be extended to API)
+      const saveData = {
+        rows,
+        projectDetails,
+        savedAt: new Date().toISOString(),
+        testKey,
+      };
+      localStorage.setItem(`coring_test_${testKey || "default"}`, JSON.stringify(saveData));
+      setIsSaved(true);
+      setSaveStatus("saved");
+      toast.success("Test data saved");
+      
+      // Reset save status after a delay
+      setTimeout(() => setSaveStatus("idle"), 2000);
+    } catch (error) {
+      setSaveStatus("error");
+      toast.error("Save failed");
     }
   };
 
   const handleCreateProject = async () => {
-    if (!projectDetails.projectName.trim() || !projectDetails.tower.trim()) {
-      alert("Please fill in Project Name and Tower");
+    const errors = [...validateAllRows(), ...validateProjectDetails()];
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      toast.error("Please fix validation errors before creating project");
       return;
     }
     
@@ -200,7 +304,7 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
       const consignment: ReceptionConsignmentInput = emptyReceptionConsignment(newRcNo);
       consignment.jobNo = projectDetails.projectName;
       consignment.project = projectDetails.tower;
-      consignment.client = "NSSF";
+      consignment.client = projectDetails.clientName || "NSSF";
       consignment.receivedAt = new Date().toISOString().slice(0, 16);
       consignment.receivedBy = user?.name || "PUAL N";
       consignment.methodSet = "BS EN 12504-1:2009";
@@ -213,7 +317,7 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
         sample.clientMark = row.coreId;
         sample.location = projectDetails.tower;
         sample.depthLabel = row.depth;
-        sample.sampleType = "Concrete cube";
+        sample.sampleType = "Concrete core";
         sample.container = "Core sample";
         sample.tests = ["CMP"];
         sample.massKg = row.weightInAir;
@@ -229,99 +333,179 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
       
       if (result.projectId) {
         setReceptionMode(false);
+        toast.success("Project created successfully");
         navigate(`/projects/${result.projectId}`);
       }
     } catch (error) {
       console.error("Project creation failed:", error);
-      alert("Failed to create project. Please try again.");
+      toast.error("Failed to create project. Please try again.");
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const tableData = {
-    headers: ["Core ID", "Depth (m)", "Dia (mm)", "L Before (mm)", "L After (mm)", "L/D", "Weight (g)", "Load (kN)", "Core Str (MPa)", "Cd Factor", "Corrected (MPa)", "Density (kg/m³)", "Failure Mode"],
-    rows: rows.map(r => [
-      r.coreId,
-      r.depth,
-      r.diameter,
-      r.lengthBefore || "—",
-      r.lengthAfter || "—",
-      getLDRatio(r) || "—",
-      r.weightInAir || "—",
-      r.load || "—",
-      getCoreStrength(r) || "—",
-      getCdFactor(r) || "—",
-      getCorrectedStrength(r) || "—",
-      getDensity(r) || "—",
-      r.failureMode,
-    ])
-  };
-
   const exportPDF = async () => {
-    let chartImages = {};
-    if (chartData.length >= 1) {
-      const chartBase64 = await captureChartAsBase64("coring-chart");
-      if (chartBase64) {
-        chartImages = { "Corrected Core Strengths": chartBase64 };
-      }
+    const errors = [...validateAllRows(), ...validateProjectDetails()];
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      toast.error("Please fix validation errors before exporting PDF");
+      return false;
     }
 
-    // Include before/after images in PDF
-    const pileImages: Record<string, string> = {};
-    rows.forEach((row, i) => {
-      if (row.pileBeforeImage) {
-        try {
-          const response = await fetch(row.pileBeforeImage);
-          if (response.ok) {
-            const blob = await response.blob();
-            const reader = new FileReader();
-            reader.onload = () => {
-              pileImages[`Core ${row.coreId} - Before Test`] = reader.result as string;
-            };
-            reader.readAsDataURL(blob);
-          }
-        } catch {}
+    try {
+      let chartImages = {};
+      if (chartData.length >= 1) {
+        const chartBase64 = await captureChartAsBase64("coring-chart");
+        if (chartBase64) {
+          chartImages = { "Corrected Core Strengths": chartBase64 };
+        }
       }
-      if (row.pileAfterImage) {
-        try {
-          const response = await fetch(row.pileAfterImage);
-          if (response.ok) {
-            const blob = await response.blob();
-            const reader = new FileReader();
-            reader.onload = () => {
-              pileImages[`Core ${row.coreId} - After Test`] = reader.result as string;
-            };
-            reader.readAsDataURL(blob);
+
+      // Load pile images as base64 using the serve-image endpoint to avoid CORS
+      const pileImages: Record<string, string> = {};
+      
+      for (const row of rows) {
+        if (row.pileBeforeImage) {
+          try {
+            const imageUrl = `${window.location.origin}/api.php?action=serve-image&image_type=pile_before`;
+            const response = await fetch(imageUrl, { credentials: "include" });
+            if (response.ok) {
+              const blob = await response.blob();
+              const base64 = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+              });
+              pileImages[`Core ${row.coreId} - Before Test`] = base64;
+            }
+          } catch (e) {
+            console.warn("Failed to load before image for core", row.coreId, e);
           }
-        } catch {}
+        }
+        if (row.pileAfterImage) {
+          try {
+            const imageUrl = `${window.location.origin}/api.php?action=serve-image&image_type=pile_after`;
+            const response = await fetch(imageUrl, { credentials: "include" });
+            if (response.ok) {
+              const blob = await response.blob();
+              const base64 = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+              });
+              pileImages[`Core ${row.coreId} - After Test`] = base64;
+            }
+          } catch (e) {
+            console.warn("Failed to load after image for core", row.coreId, e);
+          }
+        }
       }
-    });
 
-    // Wait a bit for images to load
-    await new Promise(r => setTimeout(r, 500));
+      // Build fields array for PDF results summary
+      const fields = [
+        { label: "Project Name", value: projectDetails.projectName },
+        { label: "Tower / Location", value: projectDetails.tower },
+        { label: "Concrete Class", value: projectDetails.concreteClass },
+        { label: "Age of Concrete", value: projectDetails.ageOfConcrete },
+        { label: "Date of Test", value: projectDetails.dateOfTest },
+        { label: "Date Reported", value: projectDetails.dateReported },
+        { label: "Tested By", value: projectDetails.testedBy },
+        { label: "Checked By", value: projectDetails.checkedBy },
+        { label: "Sample No.", value: projectDetails.sampleNo },
+      ];
 
-    generateTestPDF({ 
-      title: "Compressive Strength of Concrete Cores (BS EN 12504-1:2009)", 
-      ...project, 
-      ...projectDetails,
-      tables: [tableData], 
-      chartImages,
-      pileImages,
-    });
+      // Build table data with comments
+      const tableData = {
+        headers: ["Core ID", "Depth (m)", "Dia (mm)", "L Before (mm)", "L After (mm)", "L/D", "Weight (g)", "Load (kN)", "Core Str (MPa)", "Cd Factor", "Corrected (MPa)", "Density (kg/m³)", "Failure Mode", "Comments"],
+        rows: rows.map(r => [
+          r.coreId,
+          r.depth,
+          r.diameter,
+          r.lengthBefore || "—",
+          r.lengthAfter || "—",
+          getLDRatio(r) || "—",
+          r.weightInAir || "—",
+          r.load || "—",
+          getCoreStrength(r) || "—",
+          getCdFactor(r) || "—",
+          getCorrectedStrength(r) || "—",
+          getDensity(r) || "—",
+          r.failureMode,
+          r.comments || "—",
+        ])
+      };
+
+      generateTestPDF({ 
+        title: "Compressive Strength of Concrete Cores (BS EN 12504-1:2009)", 
+        standard: "BS EN 12504-1:2009",
+        ...project, 
+        ...projectDetails,
+        fields,
+        tables: [tableData], 
+        chartImages,
+        pileImages,
+      });
+      
+      toast.success("PDF generated successfully");
+      return true;
+    } catch (error) {
+      console.error("PDF export failed:", error);
+      toast.error("PDF export failed. Please try again.");
+      return false;
+    }
   };
 
+  const strengths = rows.map(r => parseFloat(getCorrectedStrength(r))).filter(Boolean);
+  const avgStrength = strengths.length ? (strengths.reduce((a, b) => a + b, 0) / strengths.length).toFixed(2) : "";
+
+  const chartData = useMemo(() =>
+    rows.filter(r => getCorrectedStrength(r)).map(r => ({ name: r.coreId || "—", strength: parseFloat(getCorrectedStrength(r)) })),
+    [rows, getCorrectedStrength]
+  );
+  const chartConfig = { strength: { label: "Corrected Strength (MPa)", color: "hsl(var(--primary))" } };
+
+  const results = useMemo(() => [
+    { label: "Avg Corrected Strength", value: avgStrength ? `${avgStrength} MPa` : "" },
+    { label: "Cores Tested", value: strengths.length ? String(strengths.length) : "" },
+  ], [avgStrength, strengths.length]);
+  useTestReport("coring", strengths.length, results);
+
   const canExport = !!project.currentProjectId || isSaved;
+  const hasValidationErrors = validationErrors.length > 0;
 
   return (
     <TestSection 
       title="Compressive Strength of Concrete Cores (BS EN 12504-1:2009)" 
       testKey={testKey} 
-      onSave={() => setIsSaved(true)} 
+      onSave={handleSave} 
       onClear={() => setRows([{ ...CORING_ROW_DEFAULTS, coreId: "CR1" }, { ...CORING_ROW_DEFAULTS, coreId: "CR2" }])}
       onExportPDF={exportPDF} 
       canExport={canExport}
+      saveStatus={saveStatus}
     >
+      {/* Validation Error Banner */}
+      {hasValidationErrors && (
+        <div className="mb-4 p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+          <div className="flex items-center gap-2 text-sm text-destructive mb-2">
+            <AlertCircle className="h-4 w-4" />
+            <span className="font-medium">Validation Errors ({validationErrors.length})</span>
+          </div>
+          <ul className="text-xs text-destructive space-y-1">
+            {validationErrors.slice(0, 5).map((err, i) => (
+              <li key={i}>
+                {err.rowIndex >= 0 ? `Core ${err.rowIndex + 1} - ` : ""}
+                {err.field}: {err.message}
+              </li>
+            ))}
+            {validationErrors.length > 5 && (
+              <li>...and {validationErrors.length - 5} more errors</li>
+            )}
+          </ul>
+        </div>
+      )}
+
       {/* Project Details */}
       <Card className="mb-4">
         <CardHeader>
@@ -329,11 +513,11 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
         </CardHeader>
         <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="space-y-1.5">
-            <Label htmlFor="projectName">Project Name</Label>
+            <Label htmlFor="projectName">Project Name *</Label>
             <Input id="projectName" value={projectDetails.projectName} onChange={(e) => updateProjectDetail("projectName", e.target.value)} className="h-8 text-xs" />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="tower">Tower / Location</Label>
+            <Label htmlFor="tower">Tower / Location *</Label>
             <Input id="tower" value={projectDetails.tower} onChange={(e) => updateProjectDetail("tower", e.target.value)} className="h-8 text-xs" />
           </div>
           <div className="space-y-1.5">
@@ -350,7 +534,7 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
             <Input id="ageOfConcrete" value={projectDetails.ageOfConcrete} onChange={(e) => updateProjectDetail("ageOfConcrete", e.target.value)} className="h-8 text-xs" placeholder="over 28 days" />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="dateOfTest">Date of Test</Label>
+            <Label htmlFor="dateOfTest">Date of Test *</Label>
             <Input id="dateOfTest" type="date" value={projectDetails.dateOfTest} onChange={(e) => updateProjectDetail("dateOfTest", e.target.value)} className="h-8 text-xs" />
           </div>
           <div className="space-y-1.5">
@@ -377,14 +561,14 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b bg-muted/40">
-              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Core ID</th>
-              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Depth (m)</th>
-              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Dia (mm)</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Core ID *</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Depth (m) *</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Dia (mm) *</th>
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">L Before (mm)</th>
-              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">L After (mm)</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">L After (mm) *</th>
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">L/D</th>
-              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Wt Air (g)</th>
-              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Load (kN)</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Wt Air (g) *</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Load (kN) *</th>
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Core Str (MPa)</th>
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Cd Factor</th>
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Corrected (MPa)</th>
@@ -396,74 +580,78 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, i) => (
-              <tr key={i} className="border-b border-border/50">
-                <td className="py-1 px-1.5"><Input value={row.coreId} onChange={(e) => update(i, "coreId", e.target.value)} className="h-7 w-16 text-xs" /></td>
-                <td className="py-1 px-1.5">
-                  <Select value={row.depth} onValueChange={(v) => update(i, "depth", v)}>
-                    <SelectTrigger className="h-7 w-24 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {DEPTH_OPTIONS.map(d => <SelectItem key={d} value={d} className="text-xs">{d}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </td>
-                <td className="py-1 px-1.5"><Input type="number" value={row.diameter} onChange={(e) => update(i, "diameter", e.target.value)} className="h-7 w-16 text-xs" placeholder="75" /></td>
-                <td className="py-1 px-1.5"><Input type="number" value={row.lengthBefore} onChange={(e) => update(i, "lengthBefore", e.target.value)} className="h-7 w-20 text-xs" placeholder="150" /></td>
-                <td className="py-1 px-1.5"><Input type="number" value={row.lengthAfter} onChange={(e) => update(i, "lengthAfter", e.target.value)} className="h-7 w-20 text-xs" placeholder="150" /></td>
-                <td className="py-1 px-1.5"><CalculatedInput value={getLDRatio(row)} className="h-7" /></td>
-                <td className="py-1 px-1.5"><Input type="number" value={row.weightInAir} onChange={(e) => update(i, "weightInAir", e.target.value)} className="h-7 w-20 text-xs" placeholder="0" /></td>
-                <td className="py-1 px-1.5"><Input type="number" value={row.load} onChange={(e) => update(i, "load", e.target.value)} className="h-7 w-20 text-xs" placeholder="0" /></td>
-                <td className="py-1 px-1.5"><CalculatedInput value={getCoreStrength(row)} className="h-7" /></td>
-                <td className="py-1 px-1.5"><CalculatedInput value={getCdFactor(row)} className="h-7" /></td>
-                <td className="py-1 px-1.5"><CalculatedInput value={getCorrectedStrength(row)} className="h-7 font-medium" /></td>
-                <td className="py-1 px-1.5"><CalculatedInput value={getDensity(row)} className="h-7" /></td>
-                <td className="py-1 px-1.5">
-                  <Select value={row.failureMode} onValueChange={(v) => update(i, "failureMode", v)}>
-                    <SelectTrigger className="h-7 w-full text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {FAILURE_MODES.map(f => <SelectItem key={f} value={f} className="text-xs">{f}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </td>
-                <td className="py-1 px-1.5">
-                  <div className="flex flex-col gap-1">
-                    {row.pileBeforeImage ? (
-                      <div className="relative w-28 h-20">
-                        <img src={row.pileBeforeImage} alt="Before" className="w-full h-full object-cover rounded border" />
-                        <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-5 w-5 p-0" onClick={() => update(i, "pileBeforeImage", "")}><Trash2 className="h-3 w-3" /></Button>
-                      </div>
-                    ) : (
-                      <label className="relative cursor-pointer">
-                        <input type="file" accept="image/*" className="sr-only" onChange={(e) => e.target.files[0] && handleImageUpload(i, "pileBeforeImage", e.target.files[0])} />
-                        <div className="w-28 h-20 border-2 border-dashed border-border rounded flex items-center justify-center bg-muted/50">
-                          <Upload className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-[10px] text-muted-foreground">Before</span>
+            {rows.map((row, i) => {
+              const rowErrors = validationErrors.filter(e => e.rowIndex === i);
+              const hasRowError = rowErrors.length > 0;
+              return (
+                <tr key={i} className={`border-b border-border/50 ${hasRowError ? "bg-destructive/5" : ""}`}>
+                  <td className="py-1 px-1.5"><Input value={row.coreId} onChange={(e) => update(i, "coreId", e.target.value)} className={`h-7 w-16 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "coreId") ? "border-destructive" : ""}`} /></td>
+                  <td className="py-1 px-1.5">
+                    <Select value={row.depth} onValueChange={(v) => update(i, "depth", v)}>
+                      <SelectTrigger className={`h-7 w-24 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "depth") ? "border-destructive" : ""}`}><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {DEPTH_OPTIONS.map(d => <SelectItem key={d} value={d} className="text-xs">{d}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </td>
+                  <td className="py-1 px-1.5"><Input type="number" value={row.diameter} onChange={(e) => update(i, "diameter", e.target.value)} className={`h-7 w-16 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "diameter") ? "border-destructive" : ""}`} placeholder="75" /></td>
+                  <td className="py-1 px-1.5"><Input type="number" value={row.lengthBefore} onChange={(e) => update(i, "lengthBefore", e.target.value)} className="h-7 w-20 text-xs" placeholder="150" /></td>
+                  <td className="py-1 px-1.5"><Input type="number" value={row.lengthAfter} onChange={(e) => update(i, "lengthAfter", e.target.value)} className={`h-7 w-20 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "lengthAfter") ? "border-destructive" : ""}`} placeholder="150" /></td>
+                  <td className="py-1 px-1.5"><CalculatedInput value={getLDRatio(row)} className="h-7" /></td>
+                  <td className="py-1 px-1.5"><Input type="number" value={row.weightInAir} onChange={(e) => update(i, "weightInAir", e.target.value)} className={`h-7 w-20 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "weightInAir") ? "border-destructive" : ""}`} placeholder="0" /></td>
+                  <td className="py-1 px-1.5"><Input type="number" value={row.load} onChange={(e) => update(i, "load", e.target.value)} className={`h-7 w-20 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "load") ? "border-destructive" : ""}`} placeholder="0" /></td>
+                  <td className="py-1 px-1.5"><CalculatedInput value={getCoreStrength(row)} className="h-7" /></td>
+                  <td className="py-1 px-1.5"><CalculatedInput value={getCdFactor(row)} className="h-7" /></td>
+                  <td className="py-1 px-1.5"><CalculatedInput value={getCorrectedStrength(row)} className="h-7 font-medium" /></td>
+                  <td className="py-1 px-1.5"><CalculatedInput value={getDensity(row)} className="h-7" /></td>
+                  <td className="py-1 px-1.5">
+                    <Select value={row.failureMode} onValueChange={(v) => update(i, "failureMode", v)}>
+                      <SelectTrigger className="h-7 w-full text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {FAILURE_MODES.map(f => <SelectItem key={f} value={f} className="text-xs">{f}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </td>
+                  <td className="py-1 px-1.5">
+                    <div className="flex flex-col gap-1">
+                      {row.pileBeforeImage ? (
+                        <div className="relative w-28 h-20">
+                          <img src={row.pileBeforeImage} alt="Before" className="w-full h-full object-cover rounded border" />
+                          <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-5 w-5 p-0" onClick={() => update(i, "pileBeforeImage", "")}><Trash2 className="h-3 w-3" /></Button>
                         </div>
-                      </label>
-                    )}
-                  </div>
-                </td>
-                <td className="py-1 px-1.5">
-                  <div className="flex flex-col gap-1">
-                    {row.pileAfterImage ? (
-                      <div className="relative w-28 h-20">
-                        <img src={row.pileAfterImage} alt="After" className="w-full h-full object-cover rounded border" />
-                        <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-5 w-5 p-0" onClick={() => update(i, "pileAfterImage", "")}><Trash2 className="h-3 w-3" /></Button>
-                      </div>
-                    ) : (
-                      <label className="relative cursor-pointer">
-                        <input type="file" accept="image/*" className="sr-only" onChange={(e) => e.target.files[0] && handleImageUpload(i, "pileAfterImage", e.target.files[0])} />
-                        <div className="w-28 h-20 border-2 border-dashed border-border rounded flex items-center justify-center bg-muted/50">
-                          <Upload className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-[10px] text-muted-foreground">After</span>
+                      ) : (
+                        <label className="relative cursor-pointer">
+                          <input type="file" accept="image/*" className="sr-only" onChange={(e) => e.target.files[0] && handleImageUpload(i, "pileBeforeImage", e.target.files[0])} />
+                          <div className="w-28 h-20 border-2 border-dashed border-border rounded flex items-center justify-center bg-muted/50">
+                            <Upload className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-[10px] text-muted-foreground">Before</span>
+                          </div>
+                        </label>
+                      )}
+                    </div>
+                  </td>
+                  <td className="py-1 px-1.5">
+                    <div className="flex flex-col gap-1">
+                      {row.pileAfterImage ? (
+                        <div className="relative w-28 h-20">
+                          <img src={row.pileAfterImage} alt="After" className="w-full h-full object-cover rounded border" />
+                          <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-5 w-5 p-0" onClick={() => update(i, "pileAfterImage", "")}><Trash2 className="h-3 w-3" /></Button>
                         </div>
-                      </label>
-                    )}
-                  </div>
-                </td>
-                <td className="py-1 px-1"><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setRows(rows.filter((_, j) => j !== i))}><X className="h-3 w-3" /></Button></td>
-              </tr>
-            ))}
+                      ) : (
+                        <label className="relative cursor-pointer">
+                          <input type="file" accept="image/*" className="sr-only" onChange={(e) => e.target.files[0] && handleImageUpload(i, "pileAfterImage", e.target.files[0])} />
+                          <div className="w-28 h-20 border-2 border-dashed border-border rounded flex items-center justify-center bg-muted/50">
+                            <Upload className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-[10px] text-muted-foreground">After</span>
+                          </div>
+                        </label>
+                      )}
+                    </div>
+                  </td>
+                  <td className="py-1 px-1"><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setRows(rows.filter((_, j) => j !== i))}><X className="h-3 w-3" /></Button></td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
