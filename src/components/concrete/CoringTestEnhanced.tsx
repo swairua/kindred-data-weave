@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import TestSection from "@/components/TestSection";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { useTestReport } from "@/hooks/useTestReport";
 import { useNavigate } from "react-router-dom";
-import { saveReceptionConsignment, listRecords } from "@/lib/api";
+import { saveReceptionConsignment, listRecords, readRecord, updateRecord } from "@/lib/api";
 import { emptyReceptionConsignment, nextRcNo, emptyReceptionSample, nextLabId, type ReceptionConsignmentInput, type ReceptionSampleInput } from "@/lib/reception";
 import { useSession } from "@/context/SessionContext";
 import { toast } from "sonner";
@@ -97,6 +97,7 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
   const [isSaved, setIsSaved] = useState(false);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [isLoading, setIsLoading] = useState(false);
   const [projectDetails, setProjectDetails] = useState({
     projectName: "PROPOSED NSSF TWIN TOWERS, NAIROBI COUNTY",
     tower: "TOWER A",
@@ -112,6 +113,92 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
   const [receptionMode, setReceptionMode] = useState(false);
   const [rcNo, setRcNo] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+
+  const [receptionMode, setReceptionMode] = useState(false);
+  const [rcNo, setRcNo] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Load existing test data from resultId URL parameter
+  const loadStartedRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const resultIdParam = Number.parseInt(params.get("resultId") || "", 10);
+    const projectIdParam = Number.parseInt(params.get("projectId") || "", 10);
+
+    if (!Number.isInteger(resultIdParam) || resultIdParam <= 0) return;
+    if (!Number.isInteger(projectIdParam) || projectIdParam <= 0) return;
+    if (loadStartedRef.current === resultIdParam) return;
+
+    loadStartedRef.current = resultIdParam;
+    let active = true;
+
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        const record = await readRecord("test_results", resultIdParam);
+        const row = (record as { data?: unknown }).data;
+        if (row && typeof row === "object") {
+          const data = row as Record<string, unknown>;
+          
+          // Load project details from payload_json
+          if (data.payload_json && typeof data.payload_json === "object") {
+            const payload = data.payload_json as Record<string, unknown>;
+            if (payload.test && typeof payload.test === "object") {
+              const test = payload.test as Record<string, unknown>;
+              setProjectDetails(prev => ({
+                ...prev,
+                projectName: (test.projectName as string) || prev.projectName,
+                tower: (test.tower as string) || prev.tower,
+                concreteClass: (test.concreteClass as string) || prev.concreteClass,
+                ageOfConcrete: (test.ageAtTest as string) || prev.ageOfConcrete,
+                dateOfTest: (test.dateTested as string) || prev.dateOfTest,
+                dateReported: (test.dateReported as string) || prev.dateReported,
+                testedBy: (test.testedBy as string) || prev.testedBy,
+                checkedBy: (test.checkedBy as string) || prev.checkedBy,
+                sampleNo: (data.sample_label as string) || prev.sampleNo,
+              }));
+            }
+            
+            // Load cores from payload_json
+            if (test && typeof test === "object") {
+              const testData = test as Record<string, unknown>;
+              if (testData.cores && Array.isArray(testData.cores)) {
+                const cores = testData.cores as Array<Record<string, unknown>>;
+                const loadedRows = cores.map((core, i) => ({
+                  coreId: (core.mark as string) || `CR${i + 1}`,
+                  diameter: String(core.diameter ?? ""),
+                  lengthBefore: String(core.lengthBefore ?? ""),
+                  lengthAfter: String(core.lengthAfter ?? ""),
+                  weightInAir: String(core.weight ?? ""),
+                  load: String(core.load ?? ""),
+                  depth: (core.depth as string) || "0.0-2.0",
+                  failureMode: (core.failureMode as string) || "Sparsely distributed aggregates with maximum size approximately 20mm",
+                  comments: "",
+                  pileBeforeImage: "",
+                  pileAfterImage: "",
+                  area: String(core.area ?? ""),
+                  volume: String(core.volume ?? ""),
+                  cylinderToCubeRatio: String(core.cylCubeRatio ?? "1.25"),
+                  caFactor: String(core.caFactor ?? "1.00"),
+                  excessVoidage: String(core.excessVoidage ?? "1.00"),
+                }));
+                setRows(loadedRows);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error("[CoringTestEnhanced] Failed to load saved test:", error);
+        toast.error("Couldn't load the saved test data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+    return () => { /* cleanup */ };
+  }, []);
 
   const getLDRatio = useCallback((row: CoringRow) => {
     const d = parseFloat(row.diameter);
@@ -359,7 +446,7 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
       
       // Create project from consignment
       const { processReceptionToProject } = await import("@/lib/api");
-      const result = await processReceptionToProject(consignment, "compressive");
+      const result = await processReceptionToProject(consignment, "coring");
       
       if (result.projectId) {
         setReceptionMode(false);
