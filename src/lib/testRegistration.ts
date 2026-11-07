@@ -11,7 +11,7 @@ import SlumpTest from "@/components/concrete/SlumpTest";
 import CompressiveStrengthTest from "@/components/concrete/CompressiveStrengthTest";
 import UPVTTest from "@/components/concrete/UPVTTest";
 import SchmidtHammerTest from "@/components/concrete/SchmidtHammerTest";
-import CoringTest from "@/components/concrete/CoringTest";
+import CoringTestEnhanced from "@/components/concrete/CoringTestEnhanced";
 import ConcreteCubesTest from "@/components/concrete/ConcreteCubesTest";
 
 import UCSTest from "@/components/rock/UCSTest";
@@ -44,7 +44,7 @@ export function registerAllTests(): void {
   registry.registerTest("upvt", UPVTTest);
   registry.registerTest("schmidt", SchmidtHammerTest);
   registry.registerTest("ndt", SchmidtHammerTest);
-  registry.registerTest("coring", CoringTest);
+  registry.registerTest("coring", CoringTestEnhanced);
   registry.registerTest("cubes", ConcreteCubesTest);
 
   // Rock tests
