@@ -41,7 +41,7 @@ const BLANK = "___________";
 const FOOTER_ZONE = 22;
 
 /** Pull the raw base64 out of a data URL and report the image type. */
-const imageParts = (dataUrl: string): { base64: string; format: "PNG" | "JPEG" } => {
+export const imageParts = (dataUrl: string): { base64: string; format: "PNG" | "JPEG" } => {
   const match = /^(data:image\/(\w+);base64,)(.+)$/.exec(dataUrl);
   if (!match) return { base64: dataUrl, format: "PNG" };
   const mime = match[2].toLowerCase();

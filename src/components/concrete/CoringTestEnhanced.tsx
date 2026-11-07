@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef, useContext } from "react";
 import TestSection from "@/components/TestSection";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -8,15 +8,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import CalculatedInput from "@/components/CalculatedInput";
 import { Plus, X, Upload, Trash2, ArrowLeft, FilePlus, Loader2, AlertCircle, CheckCircle, Save, Printer } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
-import { generateTestPDF } from "@/lib/pdfGenerator";
-import { captureChartAsBase64 } from "@/lib/chartCapture";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
+import type { jsPDF } from "jspdf";
+import { buildCoringReportPDF, type CoringCoreReport } from "@/lib/coringReportPdf";
+import { printPDFDocument } from "@/lib/pdfGenerator";
 import { useTestReport } from "@/hooks/useTestReport";
 import { useNavigate } from "react-router-dom";
 import { saveReceptionConsignment, listRecords, readRecord, updateRecord } from "@/lib/api";
 import { emptyReceptionConsignment, nextRcNo, emptyReceptionSample, nextLabId, type ReceptionConsignmentInput, type ReceptionSampleInput } from "@/lib/reception";
-import { useSession } from "@/context/SessionContext";
+import { SessionContext } from "@/context/SessionContext";
 import { toast } from "sonner";
 
 interface CoringRow {
@@ -86,10 +85,35 @@ const CORING_ROW_DEFAULTS: CoringRow = {
   excessVoidage: "1.00",
 };
 
+const loadImageAsDataUrl = async (path: string | undefined): Promise<string | undefined> => {
+  if (!path) return undefined;
+  const url = path.startsWith("http") ? path : `${window.location.origin}${path}`;
+  try {
+    const response = await fetch(url, { credentials: "include" });
+    if (!response.ok) return undefined;
+    const blob = await response.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.warn("Failed to load test image", path, error);
+    return undefined;
+  }
+};
+
+const formatReportDate = (isoDate: string, options: Intl.DateTimeFormatOptions) => {
+  const date = new Date(`${isoDate}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("en-GB", options).replace(/ /g, "-");
+};
+
 export const CoringTest = ({ testKey }: CoringTestProps) => {
   const project = useProject();
   const navigate = useNavigate();
-  const { user } = useSession();
+  const user = useContext(SessionContext)?.user;
   const [rows, setRows] = useState<CoringRow[]>([
     { ...CORING_ROW_DEFAULTS, coreId: "CR1" },
     { ...CORING_ROW_DEFAULTS, coreId: "CR2" },
@@ -457,137 +481,70 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
     }
   };
 
-  const exportPDF = async () => {
+  const buildReport = async (): Promise<jsPDF | null> => {
     const errors = [...validateAllRows(), ...validateProjectDetails()];
     if (errors.length > 0) {
       setValidationErrors(errors);
       toast.error("Please fix validation errors before exporting PDF");
-      return false;
+      return null;
     }
 
     try {
-      let chartImages = {};
-      if (chartData.length >= 1) {
-        const chartBase64 = await captureChartAsBase64("coring-chart");
-        if (chartBase64) {
-          chartImages = { "Corrected Core Strengths": chartBase64 };
-        }
-      }
+      const dateOfTest = formatReportDate(projectDetails.dateOfTest, { day: "numeric", month: "numeric", year: "numeric" });
+      const cores: CoringCoreReport[] = await Promise.all(rows.map(async (row) => ({
+        coreId: row.coreId,
+        depth: row.depth,
+        dateOfTest,
+        diameter: row.diameter,
+        heightBefore: row.lengthBefore,
+        heightAfter: row.lengthAfter,
+        weightInAir: row.weightInAir,
+        density: getDensity(row),
+        area: getArea(row),
+        volume: getVolume(row),
+        load: row.load,
+        coreStrength: getCoreStrength(row),
+        ldRatio: getLDRatio(row),
+        cdFactor: getCdFactor(row),
+        cylinderToCube: row.cylinderToCubeRatio ?? "",
+        caFactor: row.caFactor ?? "",
+        correctedStrength: getCorrectedStrength(row),
+        excessVoidage: row.excessVoidage ?? "",
+        failureMode: row.failureMode,
+        comments: row.comments,
+        beforeImage: await loadImageAsDataUrl(row.pileBeforeImage),
+        afterImage: await loadImageAsDataUrl(row.pileAfterImage),
+      })));
 
-      // Load pile images as base64 from the uploaded file paths in each row
-      const pileImages: Record<string, string> = {};
-      
-      for (const row of rows) {
-        if (row.pileBeforeImage) {
-          try {
-            // Use the stored image path directly (should be /uploads/...)
-            const imageUrl = row.pileBeforeImage.startsWith('http') 
-              ? row.pileBeforeImage 
-              : `${window.location.origin}${row.pileBeforeImage}`;
-            const response = await fetch(imageUrl, { credentials: "include" });
-            if (response.ok) {
-              const blob = await response.blob();
-              const base64 = await new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result as string);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-              });
-              pileImages[`Core ${row.coreId} - Before Test`] = base64;
-            }
-          } catch (e) {
-            console.warn("Failed to load before image for core", row.coreId, e);
-          }
-        }
-        if (row.pileAfterImage) {
-          try {
-            const imageUrl = row.pileAfterImage.startsWith('http')
-              ? row.pileAfterImage
-              : `${window.location.origin}${row.pileAfterImage}`;
-            const response = await fetch(imageUrl, { credentials: "include" });
-            if (response.ok) {
-              const blob = await response.blob();
-              const base64 = await new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result as string);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-              });
-              pileImages[`Core ${row.coreId} - After Test`] = base64;
-            }
-          } catch (e) {
-            console.warn("Failed to load after image for core", row.coreId, e);
-          }
-        }
-      }
-
-      // Build fields array for PDF results summary
-      const fields = [
-        { label: "Project Name", value: projectDetails.projectName },
-        { label: "Tower / Location", value: projectDetails.tower },
-        { label: "Concrete Class", value: projectDetails.concreteClass },
-        { label: "Age of Concrete", value: projectDetails.ageOfConcrete },
-        { label: "Date of Test", value: projectDetails.dateOfTest },
-        { label: "Date Reported", value: projectDetails.dateReported },
-        { label: "Tested By", value: projectDetails.testedBy },
-        { label: "Checked By", value: projectDetails.checkedBy },
-        { label: "Sample No.", value: projectDetails.sampleNo },
-      ];
-
-      // Build table data with comments
-      const tableData = {
-        headers: ["Core ID", "Depth (m)", "Dia (mm)", "L Before (mm)", "L After (mm)", "L/D", "Area (m²)", "Volume (m³)", "Weight (g)", "Load (kN)", "Core Str (MPa)", "Cd Factor", "Cyl/Cube Ratio", "Ca Factor", "Corrected (MPa)", "Density (kg/m³)", "Excess Voidage (%)", "Failure Mode", "Comments"],
-        rows: rows.map(r => [
-          r.coreId,
-          r.depth,
-          r.diameter,
-          r.lengthBefore || "—",
-          r.lengthAfter || "—",
-          getLDRatio(r) || "—",
-          getArea(r) || "—",
-          getVolume(r) || "—",
-          r.weightInAir || "—",
-          r.load || "—",
-          getCoreStrength(r) || "—",
-          getCdFactor(r) || "—",
-          r.cylinderToCubeRatio || "—",
-          r.caFactor || "—",
-          getCorrectedStrength(r) || "—",
-          getDensity(r) || "—",
-          r.excessVoidage || "—",
-          r.failureMode,
-          r.comments || "—",
-        ])
-      };
-
-      generateTestPDF({ 
-        title: "Compressive Strength of Concrete Cores (BS EN 12504-1:2009)", 
+      return await buildCoringReportPDF({
+        title: "Compressive Strength of Concrete Cores",
         standard: "BS EN 12504-1:2009",
-        ...project, 
-        ...projectDetails,
-        fields,
-        tables: [tableData], 
-        chartImages,
-        pileImages,
-      });
-      
-      toast.success("PDF generated successfully");
-      return true;
+        projectName: projectDetails.projectName,
+        sampleNo: projectDetails.sampleNo,
+        concreteClass: projectDetails.concreteClass,
+        ageOfConcrete: projectDetails.ageOfConcrete,
+        location: projectDetails.tower,
+        testedBy: projectDetails.testedBy,
+        checkedBy: projectDetails.checkedBy,
+        dateReported: formatReportDate(projectDetails.dateReported, { day: "2-digit", month: "short", year: "2-digit" }),
+      }, cores);
     } catch (error) {
       console.error("PDF export failed:", error);
       toast.error("PDF export failed. Please try again.");
-      return false;
+      return null;
     }
+  };
+
+  const exportPDF = async () => {
+    const doc = await buildReport();
+    if (!doc) return false;
+    doc.save(`Coring_Report_${projectDetails.sampleNo.trim().replace(/\s+/g, "_")}.pdf`);
+    toast.success("PDF generated successfully");
+    return true;
   };
 
   const strengths = rows.map(r => parseFloat(getCorrectedStrength(r))).filter(Boolean);
   const avgStrength = strengths.length ? (strengths.reduce((a, b) => a + b, 0) / strengths.length).toFixed(2) : "";
-
-  const chartData = useMemo(() =>
-    rows.filter(r => getCorrectedStrength(r)).map(r => ({ name: r.coreId || "—", strength: parseFloat(getCorrectedStrength(r)) })),
-    [rows, getCorrectedStrength]
-  );
-  const chartConfig = { strength: { label: "Corrected Strength (MPa)", color: "hsl(var(--primary))" } };
 
   const results = useMemo(() => [
     { label: "Avg Corrected Strength", value: avgStrength ? `${avgStrength} MPa` : "" },
@@ -596,8 +553,8 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
   useTestReport("coring", strengths.length, results);
 
   const handlePrint = async () => {
-    await exportPDF();
-    window.print();
+    const doc = await buildReport();
+    if (doc) printPDFDocument(doc);
   };
 
   const canExport = !!project.currentProjectId || isSaved;
@@ -862,20 +819,37 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
         </CardContent>
       </Card>
 
-      {/* Chart */}
-      {chartData.length >= 1 && (
-        <div className="mt-6">
-          <Label className="text-xs text-muted-foreground mb-2 block">Corrected Core Strengths</Label>
-          <ChartContainer id="coring-chart" config={chartConfig} className="h-[300px] w-full">
-            <BarChart data={chartData} margin={{ top: 10, right: 20, bottom: 20, left: 10 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" label={{ value: "Core ID", position: "insideBottom", offset: -10, className: "fill-muted-foreground text-xs" }} />
-              <YAxis domain={[0, "dataMax + 5"]} label={{ value: "Strength (MPa)", angle: -90, position: "insideLeft", offset: 5, className: "fill-muted-foreground text-xs" }} />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="strength" name="strength" fill="var(--color-strength)" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ChartContainer>
-        </div>
+      {/* Test Photographs */}
+      {rows.some(r => r.pileBeforeImage || r.pileAfterImage) && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="text-sm">Test Photographs</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {rows.filter(r => r.pileBeforeImage || r.pileAfterImage).map(row => (
+              <div key={row.coreId} className="space-y-2">
+                <Label className="text-xs">Core {row.coreId}</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  {[
+                    { src: row.pileBeforeImage, label: "Before test" },
+                    { src: row.pileAfterImage, label: "After test" },
+                  ].map(({ src, label }) => (
+                    <div key={label} className="space-y-1">
+                      <div className="flex h-48 items-center justify-center overflow-hidden rounded border bg-muted/30">
+                        {src ? (
+                          <img src={src} alt={`Core ${row.coreId} ${label.toLowerCase()}`} className="h-full w-full object-contain" />
+                        ) : (
+                          <span className="text-xs text-muted-foreground">No photo</span>
+                        )}
+                      </div>
+                      <p className="text-center text-xs text-muted-foreground">{label}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       )}
     </TestSection>
   );
