@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef, useContext } from "react";
 import TestSection from "@/components/TestSection";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import { useTestReport } from "@/hooks/useTestReport";
 import { useNavigate } from "react-router-dom";
 import { saveReceptionConsignment, listRecords, readRecord, updateRecord } from "@/lib/api";
 import { emptyReceptionConsignment, nextRcNo, emptyReceptionSample, nextLabId, type ReceptionConsignmentInput, type ReceptionSampleInput } from "@/lib/reception";
-import { useSession } from "@/context/SessionContext";
+import { SessionContext } from "@/context/SessionContext";
 import { toast } from "sonner";
 
 interface CoringRow {
@@ -89,7 +89,7 @@ const CORING_ROW_DEFAULTS: CoringRow = {
 export const CoringTest = ({ testKey }: CoringTestProps) => {
   const project = useProject();
   const navigate = useNavigate();
-  const { user } = useSession();
+  const user = useContext(SessionContext)?.user;
   const [rows, setRows] = useState<CoringRow[]>([
     { ...CORING_ROW_DEFAULTS, coreId: "CR1" },
     { ...CORING_ROW_DEFAULTS, coreId: "CR2" },
