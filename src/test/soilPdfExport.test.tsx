@@ -247,11 +247,12 @@ describe("Particle Size Distribution PDF export", () => {
     expect(payload.dateReported).toBe("2025-02-20");
     expect(payload.checkedBy).toBe("R. Checker");
 
-    // The BS sheet prints the fractions it classified the sample by. A 100 g sample
-    // retaining 10 g on 4.75 mm and 5 g on 0.075 mm is 10 % gravel, 50 % sand and
-    // 40 % fines.
-    expect(payload.gravelPercentage).toBeCloseTo(10, 5);
-    expect(payload.sandPercentage).toBeCloseTo(50, 5);
+    // The BS sheet prints the fractions the BS 1377 table is built on — gravel
+    // ≥ 2 mm, sand 2–0.063 mm, fines < 0.063 mm. The same 100 g sample retains
+    // 20 g above 2 mm (10 g on 4.75 mm + 10 g on 2 mm) and has 40 % passing the
+    // finest measured sieve, so 20 % gravel, 40 % sand and 40 % fines.
+    expect(payload.gravelPercentage).toBeCloseTo(20, 5);
+    expect(payload.sandPercentage).toBeCloseTo(40, 5);
     expect(payload.finesPercentage).toBeCloseTo(40, 5);
 
     // The grading curve is handed over as a merged series ordered by ascending size,

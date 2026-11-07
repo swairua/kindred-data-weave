@@ -104,7 +104,7 @@ interface ApiTestResultRow {
 }
 
 const SIEVE_SIZES = [
-  "75", "63", "50", "37.5", "28", "20", "14", "10", "6.3", "5", "4.75 (No. 4)", "3.35", "2.36", "2.00 (No. 10)", "1.18", "0.6", "0.425", "0.3", "0.15", "0.075", "0.063", "<0.063", "<0.075",
+  "75", "63", "50", "37.5", "28", "20", "14", "10", "6.3", "5", "4.75 (No. 4)", "3.35", "2.36", "2.00 (No. 10)", "1.18", "0.6", "0.425", "0.3", "0.212", "0.15", "0.075", "0.063", "<0.063", "<0.075",
 ];
 const HYDROMETER_TIMES = ["0.25", "0.50", "1", "2", "4", "8", "15", "30", "60", "120", "240", "480", "1440"];
 const EMPTY_SIEVE_ROWS: GradingRow[] = SIEVE_SIZES.map((sieveSize) => ({ sieveSize, weightRetained: "" }));
@@ -313,15 +313,39 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
     const gravelPassing = passingAt((size) => Number.parseFloat(size) === 4.75 || size.includes("No. 4"));
     const finesPassing = passingAt((size) => Number.parseFloat(size) === 0.075 || size.includes("0.075"));
     // AASHTO M 145 evidence: % passing No. 10 (2.00 mm) and No. 40 (0.425 mm),
-    // read off the sieve rows the same way as the No. 4 / No. 200 values.
+    // read off the sieve rows the same way as the No. 4 / No. 200 values. The
+    // No. 10 passing also opens the BS fraction table, where gravel is what the
+    // 2 mm sieve retains.
     const p10Passing = passingAt((size) => Number.parseFloat(size) === 2 || size.includes("No. 10"));
     const p40Passing = passingAt((size) => Number.parseFloat(size) === 0.425 || size.includes("No. 40"));
+    // BS 1377 fraction boundaries — gravel ≥ 2 mm, sand 2–0.063 mm, fines
+    // < 0.063 mm — which differ from the No. 4 / No. 200 split the USCS and
+    // AASHTO verdicts above are built on. Records saved before the 0.212 mm
+    // sieve existed (or sieved down to 0.075 mm only) have no 0.063 mm row, so
+    // the fines read off the finest measured sieve: the closest available
+    // reading of what passes 0.063 mm. Pan rows never carry a percentage, so
+    // they cannot be picked up by the fallback.
+    const bsFinesPassing = passingAt((size) => Number.parseFloat(size) === 0.063) ?? (() => {
+      let finestIndex = -1;
+      let finestSize = Number.POSITIVE_INFINITY;
+      record.sieveRows.forEach((row, index) => {
+        const size = Number.parseFloat(row.sieveSize);
+        if (size > 0 && size < finestSize && calculations.cumulativePassing[index] !== null) {
+          finestIndex = index;
+          finestSize = size;
+        }
+      });
+      return finestIndex >= 0 ? calculations.cumulativePassing[finestIndex] : null;
+    })();
     const liquidLimit = parseNumber(record.classification.liquidLimit);
     const plasticLimit = parseNumber(record.classification.plasticLimit);
     return {
       gravel: gravelPassing === null ? null : 100 - gravelPassing,
       sand: gravelPassing !== null && finesPassing !== null ? gravelPassing - finesPassing : null,
       fines: finesPassing,
+      bsGravel: p10Passing === null ? null : 100 - p10Passing,
+      bsSand: p10Passing !== null && bsFinesPassing !== null ? p10Passing - bsFinesPassing : null,
+      bsFines: bsFinesPassing,
       p10: p10Passing,
       p40: p40Passing,
       plasticityIndex: liquidLimit !== null && plasticLimit !== null ? liquidLimit - plasticLimit : null,
@@ -586,9 +610,9 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
     hydrometerInputs: { ...DEFAULT_HYDROMETER_INPUTS, ...record.hydrometerInputs },
     series: psdSeries,
     chartImage: null,
-    gravelPercentage: classificationValues.gravel,
-    sandPercentage: classificationValues.sand,
-    finesPercentage: classificationValues.fines,
+    gravelPercentage: classificationValues.bsGravel,
+    sandPercentage: classificationValues.bsSand,
+    finesPercentage: classificationValues.bsFines,
     uscsSymbol: autoClassification?.uscsSymbol ?? record.classification.uscs,
     uscsDescription: autoClassification?.uscsDescription ?? null,
     aashtoGroup: autoClassification?.aashtoGroup ?? record.classification.aashtoGroup,
@@ -713,9 +737,9 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
 
       <RecordSection title="Soil classification" help="Calculated classification values update from the recorded material data.">
         <div className="grid gap-px overflow-hidden rounded-md border sm:grid-cols-3">
-          <EditableCell label="Gravel (%)" value={formatValue(classificationValues.gravel, 1)} calculated />
-          <EditableCell label="Sand (%)" value={formatValue(classificationValues.sand, 1)} calculated />
-          <EditableCell label="Fines (%)" value={formatValue(classificationValues.fines, 1)} calculated />
+          <EditableCell label="Gravel (%)" value={formatValue(classificationValues.bsGravel, 1)} calculated />
+          <EditableCell label="Sand (%)" value={formatValue(classificationValues.bsSand, 1)} calculated />
+          <EditableCell label="Fines (%)" value={formatValue(classificationValues.bsFines, 1)} calculated />
         </div>
         <div className="mt-px grid gap-px overflow-hidden rounded-md border sm:grid-cols-2">
           <EditableCell label="No. 10 passing P10 (%)" value={formatValue(classificationValues.p10, 1)} calculated />
