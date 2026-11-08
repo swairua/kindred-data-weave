@@ -33,13 +33,21 @@ const ConsolidationTest = ({ testKey }: ConsolidationTestProps) => {
     [rows]
   );
 
+  // Consolidation calculations (simplified)
+  // Cc = -Δe / Δlog(σ') - requires void ratio vs log pressure data
+  // cv = 0.197 * H^2 / t50 (log time) or 0.848 * H^2 / t90 (root time)
+  // σ'_p = preconsolidation pressure (Casagrande method)
+  // These are simplified calculations - full implementation requires more input parameters
+  const maxSettlement = useMemo(() => 
+    chartData.length ? Math.max(...chartData.map(d => d.settlement)) : 0, [chartData]);
+
   const chartConfig = { settlement: { label: "Settlement (mm)", color: "hsl(var(--primary))" } };
 
   const filledConsol = rows.filter(r => r.time && r.settlement).length;
   const consolResults = useMemo(() => {
-    const maxSettlement = chartData.length ? Math.max(...chartData.map(d => d.settlement)) : 0;
-    return [{ label: "Max Settlement", value: maxSettlement ? `${maxSettlement.toFixed(2)} mm` : "" }];
-  }, [chartData]);
+    const maxS = maxSettlement > 0 ? `${maxSettlement.toFixed(2)} mm` : "";
+    return [{ label: "Max Settlement", value: maxS }];
+  }, [maxSettlement]);
   useTestReport("consolidation", filledConsol, consolResults);
 
   const exportPDF = async () => {
@@ -54,6 +62,7 @@ const ConsolidationTest = ({ testKey }: ConsolidationTestProps) => {
     const maxSettlement = chartData.length ? Math.max(...chartData.map(d => d.settlement)) : 0;
     const fields = maxSettlement > 0 ? [
       { label: "Max Settlement", value: `${maxSettlement.toFixed(2)} mm` },
+      { label: "Note", value: "Cc, cv, σ'_p require e-log p curve data" },
     ] : [];
 
     generateTestPDF({ 
