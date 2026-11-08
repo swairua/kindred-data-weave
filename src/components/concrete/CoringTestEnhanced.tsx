@@ -12,6 +12,7 @@ import { loadTestResult, saveTestResult } from "@/lib/testResultPersistence";
 import type { jsPDF } from "jspdf";
 import { buildCoringReportPDF, type CoringCoreReport } from "@/lib/coringReportPdf";
 import { pdfFileName, printPDFDocument } from "@/lib/pdfGenerator";
+import { formatReportDate } from "@/lib/compressivePdfGenerator";
 import { useTestReport } from "@/hooks/useTestReport";
 import { useNavigate } from "react-router-dom";
 import { saveReceptionConsignment, listRecords, readRecord, uploadFile } from "@/lib/api";
@@ -750,7 +751,7 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
     }
 
     try {
-      const dateOfTest = formatReportDate(projectDetails.dateOfTest, { day: "numeric", month: "numeric", year: "numeric" });
+      const dateOfTest = formatReportDate(projectDetails.dateOfTest);
       const cores: CoringCoreReport[] = await Promise.all(rows.map(async (row) => ({
         depth: row.depth,
         dateOfTest,
@@ -788,7 +789,7 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
         location: projectDetails.tower,
         testedBy: projectDetails.testedBy,
         checkedBy: projectDetails.checkedBy,
-        dateReported: formatReportDate(projectDetails.dateReported, { day: "2-digit", month: "short", year: "2-digit" }),
+        dateReported: formatReportDate(projectDetails.dateReported),
       }, cores);
     } catch (error) {
       console.error("PDF export failed:", error);
