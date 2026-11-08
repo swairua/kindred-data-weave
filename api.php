@@ -270,6 +270,7 @@ function respond(array $payload, int $status = 200, ?string $logContext = null):
  * Implements the whitelist permission model:
  * - By default, users have NO access to any tables
  * - Admins must explicitly grant access to each table
+ * - Admin user (id=1) has access to ALL tables
  * - Admin tables (users, user_allowed_tables) are accessible by any authenticated user
  * 
  * @param mysqli $conn Database connection
@@ -279,6 +280,11 @@ function respond(array $payload, int $status = 200, ?string $logContext = null):
  */
 function hasTablePermission(mysqli $conn, int $userId, string $tableName): bool
 {
+    // Admin user (id=1) has access to ALL tables
+    if ($userId === 1) {
+        return true;
+    }
+
     // Admin tables are accessible by any authenticated user
     $adminTables = ['users', 'user_allowed_tables'];
     if (in_array($tableName, $adminTables, true)) {
