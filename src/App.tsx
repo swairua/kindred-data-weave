@@ -51,13 +51,13 @@ const App = () => {
                         <Route path="/storage" element={<Storage />} />
                         <Route path="/equipment" element={<Equipment />} />
                       </Route>
+                      <Route path="/results" element={<TestResults />} />
+                      <Route path="/users" element={<UserManagement />} />
                     </Route>
                     <Route path="/tests" element={<Index initialTab="soil" />} />
                     <Route path="/tests/:projectId" element={<Index initialTab="soil" />} />
                     <Route path="/reports" element={<Index />} />
-                    <Route path="/results" element={<TestResults />} />
                     <Route path="/admin" element={<Index />} />
-                    <Route path="/users" element={<UserManagement />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>

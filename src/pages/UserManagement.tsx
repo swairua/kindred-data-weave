@@ -50,6 +50,18 @@ interface UserAllowedTable {
   created_at?: string;
 }
 
+const AVAILABLE_TABLES = [
+  'projects',
+  'test_definitions',
+  'test_results',
+  'atterberg_instances',
+  'atterberg_rows',
+  'admin_images',
+  'admin_images_audit',
+  'users',
+  'lab_reference_sequences',
+];
+
 // Helper function to check if a user is an admin
 const isAdminUser = (userId: number): boolean => {
   return userId === 1;
@@ -74,8 +86,7 @@ const canManageUserPermissions = (currentUser: AuthUser | null, targetUserId: nu
 
 const UserManagement = () => {
   const navigate = useNavigate();
-  const user = useContext(AuthContext); // Get the currently authenticated user
-  
+
   const [users, setUsers] = useState<ApiUser[]>([]);
   const [userPermissions, setUserPermissions] = useState<Map<number, Set<string>>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
