@@ -94,15 +94,25 @@ const drawCell = (doc: jsPDF, x: number, y: number, w: number, h: number, label:
   doc.setDrawColor(0);
   doc.setLineWidth(0.4);
   doc.rect(x, y, w, h);
+  const text = value || "—";
+  const mid = y + h / 2;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  const valueReserve = Math.min(doc.getTextWidth(text), w * 0.35);
+
   doc.setFont("helvetica", "normal");
+  const labelSize = fitFontSize(doc, label, w - valueReserve - 14, 6.5, 4.5);
+  doc.setFontSize(labelSize);
+  const labelW = doc.getTextWidth(label);
   doc.setTextColor(60);
-  doc.setFontSize(fitFontSize(doc, label, w - 4, 6.5, 5));
-  doc.text(label, x + 2, y + 5.2);
+  doc.text(label, x + 2, mid + labelSize * 0.35);
+
   doc.setFont("helvetica", "bold");
   doc.setTextColor(0);
-  const text = value || "—";
-  doc.setFontSize(fitFontSize(doc, text, w - 4, 8, 6));
-  doc.text(text, x + 2, y + h - 2);
+  const valueSize = fitFontSize(doc, text, w - labelW - 14, 8, 6);
+  doc.setFontSize(valueSize);
+  doc.text(text, x + w - 2, mid + valueSize * 0.35, { align: "right" });
 };
 
 const drawInlineCell = (doc: jsPDF, x: number, y: number, w: number, label: string, value: string) => {
