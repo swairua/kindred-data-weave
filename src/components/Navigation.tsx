@@ -18,6 +18,8 @@ import { generateFormulasReferencePDF } from "@/lib/formulasReferencePdfGenerato
 import { toast } from "sonner";
 import { useNavigationLoading } from "@/context/NavigationLoadingContext";
 import { Loader2 } from "lucide-react";
+import { useSession } from "@/context/SessionContext";
+import { useUserPermissions } from "@/hooks/useUserPermissions";
 
 export type NavigationView = "dashboard" | "tests" | "reports" | "results" | "projects" | "admin" | "users" | "settings" | "reception";
 
@@ -41,6 +43,40 @@ const Navigation = ({
   const { setOpenMobile, isMobile } = useSidebar();
   const project = useProject();
   const { isNavigating, navigationProgress, startNavigation, completeNavigation } = useNavigationLoading();
+  const session = useSession();
+  const { hasPermission, isLoading: permissionsLoading } = useUserPermissions(session.user);
+
+  // Map navigation items to their required table permissions
+  const getTableForView = (view: NavigationView): string => {
+    switch (view) {
+      case "reception":
+        return "reception_consignments";
+      case "tests":
+        return "test_definitions";
+      case "results":
+        return "test_results";
+      case "projects":
+        return "projects";
+      case "users":
+        return "users";
+      case "settings":
+        return "settings";
+      case "admin":
+        return "users"; // admin page requires user management permission
+      default:
+        return "";
+    }
+  };
+
+  // Filter navigation items based on user permissions
+  const filterNavItems = (items: NavItem[]): NavItem[] => {
+    if (permissionsLoading) return []; // Show nothing while loading
+    return items.filter((item) => {
+      const tableName = getTableForView(item.id);
+      if (!tableName) return true; // Allow items without specific table requirements
+      return hasPermission(tableName);
+    });
+  };
 
   // Handle browser back/forward navigation
   useEffect(() => {
@@ -90,6 +126,10 @@ const Navigation = ({
     { id: "users", label: "Users", icon: Users, path: "/users" },
     { id: "settings", label: "Settings", icon: SettingsIcon, path: "/settings" },
   ];
+
+  // Filter items based on permissions
+  const filteredLabItems = filterNavItems(labItems);
+  const filteredSystemItems = filterNavItems(systemItems);
 
   const initials = (userName || userEmail || "?")
     .split(/[\s@]+/)
@@ -170,7 +210,7 @@ const Navigation = ({
             <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground group-data-[collapsible=icon]:hidden">
               Lab
             </div>
-            {renderItems(labItems)}
+            {renderItems(filteredLabItems)}
             <SidebarMenu className="space-y-1">
               <SidebarMenuItem>
                 <SidebarMenuButton
@@ -192,7 +232,7 @@ const Navigation = ({
             <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground group-data-[collapsible=icon]:hidden">
               System
             </div>
-            {renderItems(systemItems)}
+            {renderItems(filteredSystemItems)}
           </div>
         </SidebarContent>
 
