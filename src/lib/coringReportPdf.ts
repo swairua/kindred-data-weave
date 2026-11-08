@@ -16,7 +16,6 @@ export interface CoringProjectInfo {
 }
 
 export interface CoringCoreReport {
-  coreId: string;
   depth: string;
   dateOfTest: string;
   diameter: string;
@@ -30,8 +29,11 @@ export interface CoringCoreReport {
   coreStrength: string;
   ldRatio: string;
   cdFactor: string;
+  cdcFactor: string;
+  cdAccuracyFactor: string;
   cylinderToCube: string;
   caFactor: string;
+  conversionRatio: string;
   correctedStrength: string;
   excessVoidage: string;
   failureMode: string;
@@ -41,30 +43,32 @@ export interface CoringCoreReport {
 }
 
 const PAGE_CENTER = 306;
-const LEFT = 116.2;
-const WIDTH = 404.6;
+const FRAME_INSET = 8;
+const LEFT = 82.8 + FRAME_INSET;
+const WIDTH = 440.8 - FRAME_INSET * 2;
 const COL_W = WIDTH / 3;
 const FRAME = { x: 82.8, y: 71, w: 440.8, h: 489 };
-const BANNER = { x: 120.4, y: 84, w: 386.1, h: 70.2 };
+const HEADER = { y: 84, w: 190, h: 70.2 };
 const BAND_H = 8.4;
 const ROW_H = 9;
-const CELL_H = 12.5;
-const PHOTO_TOP = 320;
-const PHOTO_H = 150;
+const CELL_H = 14.5;
+const PHOTO_TOP = 336;
+const PHOTO_H = 140;
 const PHOTO_GAP = 10;
 const PHOTO_W = (WIDTH - PHOTO_GAP) / 2;
 const COMMENTS_TOP = PHOTO_TOP + PHOTO_H + 16;
 const STAMP_AREA = 52;
 const SIGNATURE_H = 17;
 
-const drawFittedImage = (doc: jsPDF, dataUrl: string, x: number, y: number, w: number, h: number) => {
+const drawFittedImage = (doc: jsPDF, dataUrl: string, x: number, y: number, w: number, h: number, align: "left" | "center" | "right" = "center") => {
   try {
     const { base64, format } = imageParts(dataUrl);
     const props = doc.getImageProperties(dataUrl);
     const scale = Math.min(w / props.width, h / props.height);
     const dw = props.width * scale;
     const dh = props.height * scale;
-    doc.addImage(base64, format, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh, undefined, "FAST");
+    const dx = align === "left" ? x : align === "right" ? x + w - dw : x + (w - dw) / 2;
+    doc.addImage(base64, format, dx, y + (h - dh) / 2, dw, dh, undefined, "FAST");
   } catch (error) {
     console.warn("[CoringPDF] Could not place image:", error);
   }
@@ -80,18 +84,35 @@ const drawBand = (doc: jsPDF, y: number, text: string) => {
   doc.text(text, PAGE_CENTER, y + 6, { align: "center" });
 };
 
+const fitFontSize = (doc: jsPDF, text: string, maxW: number, size: number, min: number) => {
+  doc.setFontSize(size);
+  const textWidth = doc.getTextWidth(text);
+  return textWidth <= maxW ? size : Math.max(min, (size * maxW) / textWidth);
+};
+
 const drawCell = (doc: jsPDF, x: number, y: number, w: number, h: number, label: string, value: string) => {
   doc.setDrawColor(0);
   doc.setLineWidth(0.4);
   doc.rect(x, y, w, h);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(6.5);
-  doc.setTextColor(60);
-  doc.text(label, x + 2, y + 3.5, { maxWidth: w - 4 });
+  const text = value || "—";
+  const mid = y + h / 2;
+
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
+  const valueReserve = Math.min(doc.getTextWidth(text), w * 0.35);
+
+  doc.setFont("helvetica", "normal");
+  const labelSize = fitFontSize(doc, label, w - valueReserve - 14, 6.5, 4.5);
+  doc.setFontSize(labelSize);
+  const labelW = doc.getTextWidth(label);
+  doc.setTextColor(60);
+  doc.text(label, x + 2, mid + labelSize * 0.35);
+
+  doc.setFont("helvetica", "bold");
   doc.setTextColor(0);
-  doc.text(value || "—", x + 2, y + h - 2, { maxWidth: w - 4 });
+  const valueSize = fitFontSize(doc, text, w - labelW - 14, 8, 6);
+  doc.setFontSize(valueSize);
+  doc.text(text, x + w - 2, mid + valueSize * 0.35, { align: "right" });
 };
 
 const drawInlineCell = (doc: jsPDF, x: number, y: number, w: number, label: string, value: string) => {
@@ -101,12 +122,26 @@ const drawInlineCell = (doc: jsPDF, x: number, y: number, w: number, label: stri
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
   doc.setTextColor(60);
-  doc.text(label, x + 2, y + 6);
-  const labelW = doc.getTextWidth(label);
+  let valueX = x + w / 2;
+  let valueAlign: "left" | "center" = "center";
+  let maxW = w - 4;
+  if (label) {
+    doc.text(label, x + 2, y + 6);
+    const labelW = doc.getTextWidth(label);
+    valueX = x + labelW + 5;
+    valueAlign = "left";
+    maxW = w - labelW - 7;
+  }
+  if (!value) return;
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
   doc.setTextColor(0);
-  doc.text(value || "—", x + labelW + 5, y + 6, { maxWidth: w - labelW - 7 });
+  doc.setFontSize(fitFontSize(doc, value, maxW, 8, 6));
+  doc.text(value, valueX, y + 6, { align: valueAlign });
+};
+
+const splitSampleNo = (sampleNo: string): [string, string] => {
+  const match = /^(.*?)\s+(BH\S*)$/i.exec(sampleNo.trim());
+  return match ? [match[1], match[2]] : [sampleNo, ""];
 };
 
 const drawInlineRow = (doc: jsPDF, y: number, cells: [string, string, number][]) => {
@@ -125,48 +160,60 @@ const drawCorePage = (doc: jsPDF, project: CoringProjectInfo, core: CoringCoreRe
   doc.setLineWidth(0.6);
   doc.rect(FRAME.x, FRAME.y, FRAME.w, FRAME.h);
 
-  if (images.logo) drawFittedImage(doc, images.logo, BANNER.x, BANNER.y, BANNER.w, BANNER.h);
+  if (images.logo) drawFittedImage(doc, images.logo, LEFT, HEADER.y, HEADER.w, HEADER.h, "left");
+  if (images.contacts) drawFittedImage(doc, images.contacts, LEFT + WIDTH - HEADER.w, HEADER.y, HEADER.w, HEADER.h, "right");
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10.5);
   doc.setTextColor(0);
-  const title = project.title.toUpperCase();
-  doc.text(title, pageWidth / 2, 170, { align: "center" });
-  const titleWidth = doc.getTextWidth(title);
+  doc.text(project.title.toUpperCase(), pageWidth / 2, 170, { align: "center" });
+  doc.setFontSize(9);
+  const standard = `(${project.standard})`;
+  doc.text(standard, pageWidth / 2, 181, { align: "center" });
+  const standardWidth = doc.getTextWidth(standard);
   doc.setLineWidth(0.4);
-  doc.line(pageWidth / 2 - titleWidth / 2, 172.2, pageWidth / 2 + titleWidth / 2, 172.2);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.text(`(${project.standard})`, pageWidth / 2, 180, { align: "center" });
+  doc.line(pageWidth / 2 - standardWidth / 2, 182.2, pageWidth / 2 + standardWidth / 2, 182.2);
 
-  drawInlineCell(doc, LEFT, 186, WIDTH, "PROJECT NAME:", project.projectName);
+  drawInlineRow(doc, 186, [
+    ["PROJECT NAME:", project.projectName, 0.765],
+    ["", "", 0.235],
+  ]);
 
   drawBand(doc, 195, "CORE DETAILS");
+  const [samplePile, sampleBorehole] = splitSampleNo(project.sampleNo);
   drawInlineRow(doc, 203.4, [
-    ["Sample No.:", project.sampleNo, 0.28],
-    ["Depth (m):", core.depth, 0.2],
-    ["Date:", core.dateOfTest, 0.2],
-    ["Class of Concrete (N/mm²):", project.concreteClass, 0.32],
+    ["Sample No.:", samplePile, 0.19],
+    ["", sampleBorehole, 0.075],
+    ["Depth(m):", "", 0.08],
+    ["", core.depth, 0.12],
+    ["Date:", core.dateOfTest, 0.155],
+    ["Class of Concrete (N/mm²):", "", 0.25],
+    ["", project.concreteClass, 0.13],
   ]);
   drawInlineRow(doc, 212.4, [
-    ["Age of Concrete:", project.ageOfConcrete, 1 / 3],
-    ["Location:", project.location, 1 / 3],
-    ["Core ID:", core.coreId, 1 / 3],
+    ["Age of Concrete:", "", 0.14],
+    ["", project.ageOfConcrete, 0.15],
+    ["Location:", "", 0.09],
+    ["", project.location, 0.25],
+    ["", "", 0.37],
   ]);
 
   drawBand(doc, 221.4, "TEST DETAILS");
   const testTop = 229.8;
-  const testRows: [string, string][][] = [
-    [["Core Diameter (mm)", core.diameter], ["Height Before Trimming (mm)", core.heightBefore], ["Height After Trimming (mm)", core.heightAfter]],
+  const testRows: ([string, string] | null)[][] = [
+    [["Core Diameter (mm)", core.diameter], ["Height Before trimming (mm)", core.heightBefore], ["Height After trimming (mm)", core.heightAfter]],
     [["Core Weight in Air (g)", core.weightInAir], ["Density (Kg/m³)", core.density], ["C(H/D)-correction factor for aspect ratio", core.cdFactor]],
-    [["Area (m²)", core.area], ["Volume (m³)", core.volume], ["Cdc-correction factor for core diameter", ""]],
-    [["Maximum Load (kN)", core.load], ["Actual Compressive Strength (N/mm²)", core.coreStrength], ["Cd-correction factor for core extraction accuracy", ""]],
-    [["Length/Diameter ratio of core at preparations", core.ldRatio], ["Cylinder Strength to Cube Strength", core.cylinderToCube], ["Ca-correction factor for presence of steel", core.caFactor]],
-    [["", ""], ["", ""], ["Corrected Insitu Cube Strength (N/mm²)", core.correctedStrength]],
+    [["Area (m²)", core.area], ["Volume (m³)", core.volume], ["Cdia-correction factors for core diameter", core.cdcFactor]],
+    [["Maximum Load (kN)", core.load], ["Actual Compressive Strength (N/mm²)", core.coreStrength], ["Cd- correction factor for core extraction accuracy", core.cdAccuracyFactor]],
+    [null, ["Cylinder Strength to Cube Strength", core.cylinderToCube], ["Ca-correction factors for the presence of steel", core.caFactor]],
+    [null, ["Conversion Ratio", core.conversionRatio], ["Corrected Insitu Cube Strength (N/mm²)", core.correctedStrength]],
   ];
   testRows.forEach((row, r) =>
-    row.forEach(([label, value], c) => drawCell(doc, LEFT + c * COL_W, testTop + r * CELL_H, COL_W, CELL_H, label, value))
+    row.forEach((cell, c) => {
+      if (cell) drawCell(doc, LEFT + c * COL_W, testTop + r * CELL_H, COL_W, CELL_H, cell[0], cell[1]);
+    })
   );
+  drawCell(doc, LEFT, testTop + 4 * CELL_H, COL_W, 2 * CELL_H, "Length/ Diameter ratio of Core at preparations", core.ldRatio);
   drawCell(doc, LEFT, testTop + testRows.length * CELL_H, WIDTH, CELL_H, "Failure Mode", core.failureMode);
 
   const photos: [string, string | undefined, number][] = [

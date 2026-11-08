@@ -198,6 +198,11 @@ function addFooter(doc: jsPDF, data: PDFData, images: AdminImages): void {
   }
 }
 
+export const pdfFileName = (projectName: string | undefined, fallback: string) => {
+  const name = (projectName ?? "").replace(/[\\/:*?"<>|]/g, "").replace(/\s+/g, " ").trim();
+  return `${name || fallback}.pdf`;
+};
+
 export const generateTestPDF = async (data: PDFData) => {
   // Images are optional: a missing logo must never stop a report being produced.
   let images: AdminImages = {};
@@ -419,7 +424,7 @@ export const generateTestPDF = async (data: PDFData) => {
 
   addFooter(doc, data, images);
   if (!data.skipDownload) {
-    doc.save(`${data.title.replace(/\s+/g, "_")}_Report.pdf`);
+    doc.save(pdfFileName(data.projectName, `${data.title.replace(/\s+/g, "_")}_Report`));
   }
   return doc;
 };

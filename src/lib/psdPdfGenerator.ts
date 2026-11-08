@@ -7,6 +7,7 @@ import {
   type HydrometerInputs,
 } from "./gradingCalculations";
 import { fetchAdminImagesAsBase64, type AdminImages } from "./imageUtils";
+import { pdfFileName } from "./pdfGenerator";
 import {
   PSD_DECADE_LINES,
   PSD_DECADE_TICKS,
@@ -861,8 +862,7 @@ export const generateParticleSizeDistributionPDF = async (options: ParticleSizeD
   drawFooter(doc, options, images, footerTop);
 
   if (!options.skipDownload) {
-    const stem = (options.projectName || "Particle Size Distribution").replace(/[^\w-]+/g, "_");
-    doc.save(`${stem}_PSD.pdf`);
+    doc.save(pdfFileName(options.projectName, "Particle_Size_Distribution"));
   }
   return doc;
 };

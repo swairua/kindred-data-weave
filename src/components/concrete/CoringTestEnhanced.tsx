@@ -10,7 +10,7 @@ import { Plus, X, Upload, Trash2, ArrowLeft, FilePlus, Loader2, AlertCircle, Che
 import { useProject } from "@/context/ProjectContext";
 import type { jsPDF } from "jspdf";
 import { buildCoringReportPDF, type CoringCoreReport } from "@/lib/coringReportPdf";
-import { printPDFDocument } from "@/lib/pdfGenerator";
+import { pdfFileName, printPDFDocument } from "@/lib/pdfGenerator";
 import { useTestReport } from "@/hooks/useTestReport";
 import { useNavigate } from "react-router-dom";
 import { saveReceptionConsignment, listRecords, readRecord, updateRecord } from "@/lib/api";
@@ -36,6 +36,9 @@ interface CoringRow {
   cylinderToCubeRatio?: string;  // Cylinder Strength to Cube Strength (1.25)
   caFactor?: string;       // Ca correction factor for steel presence
   excessVoidage?: string;  // Excess Voidage (%)
+  cdcFactor?: string;      // Cdia correction factor for core diameter
+  cdAccuracyFactor?: string; // Cd correction factor for core extraction accuracy
+  conversionRatio?: string;
 }
 
 interface CoringTestProps {
@@ -56,6 +59,8 @@ const DEPTH_OPTIONS = [
 ];
 
 const CONCRETE_CLASSES = ["45 MPA", "40 MPA", "35 MPA", "30 MPA", "25 MPA", "20 MPA", "Custom"];
+const detailLabelClass = "w-2/5 shrink-0 border-r border-border pr-3 text-xs font-normal leading-tight text-foreground";
+const detailInputClass = "h-8 min-w-0 flex-1 text-xs";
 
 const FAILURE_MODES = [
   "Sparsely distributed aggregates with maximum size approximately 20mm",
@@ -83,6 +88,9 @@ const CORING_ROW_DEFAULTS: CoringRow = {
   cylinderToCubeRatio: "1.25",
   caFactor: "1.00",
   excessVoidage: "1.00",
+  cdcFactor: "1.00",
+  cdAccuracyFactor: "1.00",
+  conversionRatio: "",
 };
 
 const loadImageAsDataUrl = async (path: string | undefined): Promise<string | undefined> => {
@@ -202,6 +210,9 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
                   cylinderToCubeRatio: String(core.cylCubeRatio ?? "1.25"),
                   caFactor: String(core.caFactor ?? "1.00"),
                   excessVoidage: String(core.excessVoidage ?? "1.00"),
+                  cdcFactor: "1.00",
+                  cdAccuracyFactor: "1.00",
+                  conversionRatio: "",
                 }));
                 setRows(loadedRows);
               }
@@ -492,7 +503,6 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
     try {
       const dateOfTest = formatReportDate(projectDetails.dateOfTest, { day: "numeric", month: "numeric", year: "numeric" });
       const cores: CoringCoreReport[] = await Promise.all(rows.map(async (row) => ({
-        coreId: row.coreId,
         depth: row.depth,
         dateOfTest,
         diameter: row.diameter,
@@ -506,8 +516,11 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
         coreStrength: getCoreStrength(row),
         ldRatio: getLDRatio(row),
         cdFactor: getCdFactor(row),
+        cdcFactor: row.cdcFactor ?? "",
+        cdAccuracyFactor: row.cdAccuracyFactor ?? "",
         cylinderToCube: row.cylinderToCubeRatio ?? "",
         caFactor: row.caFactor ?? "",
+        conversionRatio: row.conversionRatio ?? "",
         correctedStrength: getCorrectedStrength(row),
         excessVoidage: row.excessVoidage ?? "",
         failureMode: row.failureMode,
@@ -538,7 +551,7 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
   const exportPDF = async () => {
     const doc = await buildReport();
     if (!doc) return false;
-    doc.save(`Coring_Report_${projectDetails.sampleNo.trim().replace(/\s+/g, "_")}.pdf`);
+    doc.save(pdfFileName(projectDetails.projectName, "Coring_Report"));
     toast.success("PDF generated successfully");
     return true;
   };
@@ -599,46 +612,46 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
           <CardTitle className="text-sm">Project & Sample Details</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="projectName">Project Name *</Label>
-            <Input id="projectName" value={projectDetails.projectName} onChange={(e) => updateProjectDetail("projectName", e.target.value)} className="h-8 text-xs" />
+          <div className="flex items-center gap-3">
+            <Label htmlFor="projectName" className={detailLabelClass}>Project Name *</Label>
+            <Input id="projectName" value={projectDetails.projectName} onChange={(e) => updateProjectDetail("projectName", e.target.value)} className={detailInputClass} />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="tower">Tower / Location *</Label>
-            <Input id="tower" value={projectDetails.tower} onChange={(e) => updateProjectDetail("tower", e.target.value)} className="h-8 text-xs" />
+          <div className="flex items-center gap-3">
+            <Label htmlFor="tower" className={detailLabelClass}>Tower / Location *</Label>
+            <Input id="tower" value={projectDetails.tower} onChange={(e) => updateProjectDetail("tower", e.target.value)} className={detailInputClass} />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="concreteClass">Concrete Class</Label>
+          <div className="flex items-center gap-3">
+            <Label htmlFor="concreteClass" className={detailLabelClass}>Concrete Class</Label>
             <Select value={projectDetails.concreteClass} onValueChange={(v) => updateProjectDetail("concreteClass", v)}>
-              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectTrigger className={detailInputClass}><SelectValue /></SelectTrigger>
               <SelectContent>
                 {CONCRETE_CLASSES.map(c => <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="ageOfConcrete">Age of Concrete</Label>
-            <Input id="ageOfConcrete" value={projectDetails.ageOfConcrete} onChange={(e) => updateProjectDetail("ageOfConcrete", e.target.value)} className="h-8 text-xs" placeholder="over 28 days" />
+          <div className="flex items-center gap-3">
+            <Label htmlFor="ageOfConcrete" className={detailLabelClass}>Age of Concrete</Label>
+            <Input id="ageOfConcrete" value={projectDetails.ageOfConcrete} onChange={(e) => updateProjectDetail("ageOfConcrete", e.target.value)} className={detailInputClass} placeholder="over 28 days" />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="dateOfTest">Date of Test *</Label>
-            <Input id="dateOfTest" type="date" value={projectDetails.dateOfTest} onChange={(e) => updateProjectDetail("dateOfTest", e.target.value)} className="h-8 text-xs" />
+          <div className="flex items-center gap-3">
+            <Label htmlFor="dateOfTest" className={detailLabelClass}>Date of Test *</Label>
+            <Input id="dateOfTest" type="date" value={projectDetails.dateOfTest} onChange={(e) => updateProjectDetail("dateOfTest", e.target.value)} className={detailInputClass} />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="dateReported">Date Reported</Label>
-            <Input id="dateReported" type="date" value={projectDetails.dateReported} onChange={(e) => updateProjectDetail("dateReported", e.target.value)} className="h-8 text-xs" />
+          <div className="flex items-center gap-3">
+            <Label htmlFor="dateReported" className={detailLabelClass}>Date Reported</Label>
+            <Input id="dateReported" type="date" value={projectDetails.dateReported} onChange={(e) => updateProjectDetail("dateReported", e.target.value)} className={detailInputClass} />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="testedBy">Tested By</Label>
-            <Input id="testedBy" value={projectDetails.testedBy} onChange={(e) => updateProjectDetail("testedBy", e.target.value)} className="h-8 text-xs" />
+          <div className="flex items-center gap-3">
+            <Label htmlFor="testedBy" className={detailLabelClass}>Tested By</Label>
+            <Input id="testedBy" value={projectDetails.testedBy} onChange={(e) => updateProjectDetail("testedBy", e.target.value)} className={detailInputClass} />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="checkedBy">Checked By</Label>
-            <Input id="checkedBy" value={projectDetails.checkedBy} onChange={(e) => updateProjectDetail("checkedBy", e.target.value)} className="h-8 text-xs" />
+          <div className="flex items-center gap-3">
+            <Label htmlFor="checkedBy" className={detailLabelClass}>Checked By</Label>
+            <Input id="checkedBy" value={projectDetails.checkedBy} onChange={(e) => updateProjectDetail("checkedBy", e.target.value)} className={detailInputClass} />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="sampleNo">Sample No.</Label>
-            <Input id="sampleNo" value={projectDetails.sampleNo} onChange={(e) => updateProjectDetail("sampleNo", e.target.value)} className="h-8 text-xs" />
+          <div className="flex items-center gap-3">
+            <Label htmlFor="sampleNo" className={detailLabelClass}>Sample No.</Label>
+            <Input id="sampleNo" value={projectDetails.sampleNo} onChange={(e) => updateProjectDetail("sampleNo", e.target.value)} className={detailInputClass} />
           </div>
         </CardContent>
       </Card>
@@ -662,6 +675,9 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Cd Factor</th>
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Cyl/Cube Ratio</th>
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Ca Factor</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Cdia Factor</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Cd Accuracy</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Conversion Ratio</th>
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Corrected (MPa)</th>
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Density (kg/m³)</th>
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Excess Voidage (%)</th>
@@ -698,6 +714,9 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
                   <td className="py-1 px-1.5"><CalculatedInput value={getCdFactor(row)} className="h-7" /></td>
                   <td className="py-1 px-1.5"><Input type="number" value={row.cylinderToCubeRatio} onChange={(e) => update(i, "cylinderToCubeRatio", e.target.value)} className="h-7 w-20 text-xs" placeholder="1.25" step="0.01" /></td>
                   <td className="py-1 px-1.5"><Input type="number" value={row.caFactor} onChange={(e) => update(i, "caFactor", e.target.value)} className="h-7 w-20 text-xs" placeholder="1.00" step="0.01" /></td>
+                  <td className="py-1 px-1.5"><Input type="number" value={row.cdcFactor} onChange={(e) => update(i, "cdcFactor", e.target.value)} className="h-7 w-20 text-xs" placeholder="1.00" step="0.01" /></td>
+                  <td className="py-1 px-1.5"><Input type="number" value={row.cdAccuracyFactor} onChange={(e) => update(i, "cdAccuracyFactor", e.target.value)} className="h-7 w-20 text-xs" placeholder="1.00" step="0.01" /></td>
+                  <td className="py-1 px-1.5"><Input type="number" value={row.conversionRatio} onChange={(e) => update(i, "conversionRatio", e.target.value)} className="h-7 w-20 text-xs" step="0.01" /></td>
                   <td className="py-1 px-1.5"><CalculatedInput value={getCorrectedStrength(row)} className="h-7 font-medium" /></td>
                   <td className="py-1 px-1.5"><CalculatedInput value={getDensity(row)} className="h-7" /></td>
                   <td className="py-1 px-1.5"><Input type="number" value={row.excessVoidage} onChange={(e) => update(i, "excessVoidage", e.target.value)} className="h-7 w-20 text-xs" placeholder="1.00" step="0.01" /></td>

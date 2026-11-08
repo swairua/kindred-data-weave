@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { TestSummary, TestStatus } from "@/context/TestDataContext";
+import { pdfFileName } from "@/lib/pdfGenerator";
 
 interface ProjectInfo {
   projectName: string;
@@ -187,7 +188,7 @@ export function generateProjectSummaryReport(
   }
 
   addFooter(doc);
-  doc.save(`Project_Summary_Report.pdf`);
+  doc.save(pdfFileName(project.projectName, "Project_Summary_Report"));
 }
 
 // ──────────── DASHBOARD EXPORT ────────────
@@ -226,7 +227,7 @@ export function generateDashboardReport(
   });
 
   addFooter(doc);
-  doc.save(`Dashboard_Export.pdf`);
+  doc.save(pdfFileName(project.projectName, "Dashboard_Export"));
 }
 
 // ──────────── CSV EXPORTS ────────────
