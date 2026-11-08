@@ -791,7 +791,9 @@ export const FORMULA_SECTIONS: FormulaSection[] = [
       {
         heading: "Core strength and L/D correction",
         formulas: [
-          "Area = pi * (d / 2)^2   (mm^2)",
+          "Area = pi * (d / 2)^2   (mm^2; reported in m^2 as Area / 10^6)",
+          "Volume = Area * length   (mm^3; reported in m^3 as Volume / 10^9)",
+          "Density = (weight in air / 1000) / (Volume in m^3)   (kg/m^3)",
           "strength = (P * 1000) / Area   (MPa)",
           "L/D = length / diameter",
           "factor = 1.0  when L/D >= 2.0",
@@ -800,14 +802,14 @@ export const FORMULA_SECTIONS: FormulaSection[] = [
         ],
         variables: [
           { symbol: "d", meaning: "core diameter (mm)" },
-          { symbol: "length", meaning: "core length (mm)" },
+          { symbol: "length", meaning: "core length after trimming (mm)" },
           { symbol: "P", meaning: "failure load (kN)" },
           { symbol: "Area", meaning: "loaded cross-sectional area (mm^2)" },
           { symbol: "L/D", meaning: "length-to-diameter ratio" },
           { symbol: "corrected", meaning: "L/D-corrected core strength (MPa)" },
         ],
         notes: [
-          "Cores with L/D < 2.0 are strength-reduced; the correction factor raises the result.",
+          "Cores with L/D < 2.0 are strength-reduced: the factor is below 1.0, so the corrected strength is lower than the core strength.",
           "Cores with L/D >= 2.0 use the uncorrected strength.",
           "Average corrected strength is reported across all cores.",
         ],
