@@ -61,6 +61,7 @@ export const calculateCumulativePassing = (
 /**
  * Interpolate particle size at a given cumulative passing percentage
  * Used to find D10, D50, D60 from the grading curve
+ * Uses LOG interpolation (standard for sieve analysis per BS 1377-2)
  * @param passingPercentages - % passing for each sieve data points
  * @param sieveSizes - Sieve sizes mm corresponding to passing percentages (sorted largest to smallest)
  * @param targetPercent - Target % passing (e.g., 10, 50, or 60)
@@ -83,12 +84,13 @@ const interpolateSize = (
       const sieveHigh: number = sieveSizes[i - 1];
       const sieveLow: number = sieveSizes[i];
 
-      // Linear interpolation: x = x1 + (x2-x1) * (y-y1)/(y2-y1)
-      const size: number = Number(
-        (sieveHigh + (sieveLow - sieveHigh) * (targetPercent - pHigh) / (pLow - pHigh)).toFixed(2)
-      );
+      // LOG interpolation (standard for sieve analysis per BS 1377-2):
+      // log10(d) = log10(d1) + ratio * (log10(d2) - log10(d1))
+      // where ratio = (target - p1) / (p2 - p1)
+      const ratio = (targetPercent - pHigh) / (pLow - pHigh);
+      const size = Math.pow(10, Math.log10(sieveHigh) + ratio * (Math.log10(sieveLow) - Math.log10(sieveHigh)));
 
-      return size;
+      return Number(size.toFixed(2));
     }
   }
   return null;
@@ -98,7 +100,7 @@ const interpolateSize = (
  * Calculate gradation coefficients (Cu and Cc)
  * Excel formulas:
  * - Uniformity coefficient: Cu = D60 / D10
- * - Coefficient of curvature: Cc = (D50²) / (D10 × D60)
+ * - Coefficient of curvature: Cc = (D30²) / (D10 × D60)
  * @param sieveSizes - Sieve opening sizes in mm (sorted largest to smallest)
  * @param passingPercentages - Cumulative % passing for each sieve
  * @returns Object with D10, D50, D60, Cu, Cc (all rounded to 2 dp)
@@ -114,6 +116,7 @@ export const calculateGradationCoeffs = (
   coefficientOfCurvature: number; // Cc
 } => {
   const d10: number | null = interpolateSize(passingPercentages, sieveSizes, 10);
+  const d30: number | null = interpolateSize(passingPercentages, sieveSizes, 30);
   const d50: number | null = interpolateSize(passingPercentages, sieveSizes, 50);
   const d60: number | null = interpolateSize(passingPercentages, sieveSizes, 60);
 
@@ -122,7 +125,9 @@ export const calculateGradationCoeffs = (
 
   if (d10 !== null && d10 !== 0) {
     cu = Number((d60 / d10).toFixed(2));
-    cc = Number(((d50 * d50) / (d10 * d60)).toFixed(2));
+    if (d30 !== null && d60 !== null) {
+      cc = Number(((d30 * d30) / (d10 * d60)).toFixed(2));
+    }
   }
 
   return {

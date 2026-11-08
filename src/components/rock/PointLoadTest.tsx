@@ -8,6 +8,7 @@ import { useProject } from "@/context/ProjectContext";
 import { generateTestPDF, printPDFDocument } from "@/lib/pdfGenerator";
 import { useTestReport } from "@/hooks/useTestReport";
 import { loadTestResult, saveTestResult } from "@/lib/testResultPersistence";
+import { calculatePointLoadIndex, calculatePointLoadRows, averagePointLoadIndex, type PointLoadRow, type PointLoadCalculation } from "@/lib/pointLoadCalculations";
 
 interface Row { sampleId: string; failureLoad: string; de: string }
 
@@ -26,15 +27,34 @@ const PointLoadTest = ({ testKey }: { testKey?: string }) => {
   const [recordId, setRecordId] = useState<number | null>(null);
   const [isSaved, setIsSaved] = useState(false);
 
-  const getIndex = (row: Row) => { const p = parseFloat(row.failureLoad); const de = parseFloat(row.de); if (!p || !de) return ""; return ((p * 1000) / (de * de)).toFixed(3); };
-  const update = (i: number, field: keyof Row, val: string) => { const next = [...rows]; next[i] = { ...next[i], [field]: val }; setRows(next); };
+  // Use library for Is and Is(50) calculations
+  const getIndex = (row: Row) => { 
+    const result = calculatePointLoadIndex(row.failureLoad, row.de);
+    return result ? result.is50.toFixed(3) : "";
+  };
+  
+  const getIs = (row: Row) => { 
+    const result = calculatePointLoadIndex(row.failureLoad, row.de);
+    return result ? result.is.toFixed(3) : "";
+  };
+  
+  const update = (i: number, field: keyof Row, val: string) => { 
+    const next = [...rows]; 
+    next[i] = { ...next[i], [field]: val }; 
+    setRows(next); 
+  };
 
-  const indices = rows.map(r => parseFloat(getIndex(r))).filter(Boolean);
-  const avgIndex = indices.length ? (indices.reduce((a, b) => a + b, 0) / indices.length).toFixed(3) : "";
+  // Calculate indices using library
+  const calculations = useMemo(() => calculatePointLoadRows(rows), [rows]);
+  const avgResult = useMemo(() => averagePointLoadIndex(calculations), [calculations]);
+  const avgIs50 = avgResult ? avgResult.avgIs50.toFixed(3) : "";
+  const avgIs = avgResult ? avgResult.avgIs.toFixed(3) : "";
+  
   const plResults = useMemo(() => [
-    { label: "Avg Is(50)", value: avgIndex ? `${avgIndex} MPa` : "" },
-  ], [avgIndex]);
-  useTestReport("pointload", indices.length, plResults);
+    { label: "Avg Is", value: avgIs ? `${avgIs} MPa` : "" },
+    { label: "Avg Is(50)", value: avgIs50 ? `${avgIs50} MPa` : "" },
+  ], [avgIs, avgIs50]);
+  useTestReport("pointload", calculations.length, plResults);
 
   useEffect(() => {
     if (!projectId) return;
@@ -68,7 +88,14 @@ const PointLoadTest = ({ testKey }: { testKey?: string }) => {
     setIsSaved(true);
   };
 
-  const tableData = { headers: ["Sample ID", "Failure Load (kN)", "De (mm)", "Is(50) (MPa)"], rows: rows.map(r => [r.sampleId, r.failureLoad || "—", r.de || "—", getIndex(r) || "—"]) };
+  const tableData = { 
+    headers: ["Sample ID", "Failure Load (kN)", "De (mm)", "Is (MPa)", "Is(50) (MPa)"], 
+    rows: rows.map(r => { 
+      const isVal = getIs(r);
+      const is50Val = getIndex(r);
+      return [r.sampleId, r.failureLoad || "—", r.de || "—", isVal || "—", is50Val || "—"]; 
+    }) 
+  };
 
   const buildPDF = (skipDownload: boolean) => generateTestPDF({
     title: "Point Load Test",
@@ -92,13 +119,14 @@ const PointLoadTest = ({ testKey }: { testKey?: string }) => {
     <TestSection title="Point Load Test" testKey={testKey} onSave={save} onClear={() => { setRows([{ sampleId: "", failureLoad: "", de: "" }]); setTestedBy(""); setDateTested(""); }} onExportPDF={exportPDF} onPrint={printPDF} canExport={canExport} actionsPlacement="footer">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Sample ID</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Failure Load (kN)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">De (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Is(50) (MPa)</th><th className="w-10"></th></tr></thead>
+          <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Sample ID</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Failure Load (kN)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">De (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Is (MPa)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Is(50) (MPa)</th><th className="w-10"></th></tr></thead>
           <tbody>
             {rows.map((row, i) => (
               <tr key={i} className="border-b border-border/50">
                 <td className="py-1.5 px-2"><Input value={row.sampleId} onChange={(e) => update(i, "sampleId", e.target.value)} className="h-8" /></td>
                 <td className="py-1.5 px-2"><Input type="number" value={row.failureLoad} onChange={(e) => update(i, "failureLoad", e.target.value)} className="h-8" placeholder="0" /></td>
                 <td className="py-1.5 px-2"><Input type="number" value={row.de} onChange={(e) => update(i, "de", e.target.value)} className="h-8" placeholder="0" /></td>
+                <td className="py-1.5 px-2"><CalculatedInput value={getIs(row)} /></td>
                 <td className="py-1.5 px-2"><CalculatedInput value={getIndex(row)} /></td>
                 <td className="py-1.5 px-1"><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setRows(rows.filter((_, j) => j !== i))}><X className="h-3.5 w-3.5" /></Button></td>
               </tr>

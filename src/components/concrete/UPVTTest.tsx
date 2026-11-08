@@ -27,7 +27,7 @@ const UPVTTest = () => {
     const L = parseFloat(row.pathLength);
     const T = parseFloat(row.transitTime);
     if (!L || !T) return "";
-    return ((L / T) * 1000).toFixed(1); // mm / µs → km/s * 1000 = m/s ... actually L(mm)/T(µs) = km/s
+    return (L / T).toFixed(2); // L(mm)/T(µs) = km/s
   };
 
   const getQuality = (v: number) => {
