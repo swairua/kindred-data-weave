@@ -9,6 +9,11 @@ const viewForPath = (pathname: string): NavigationView => {
     return "reception";
   }
   if (pathname.startsWith("/projects")) return "projects";
+  if (pathname.startsWith("/results")) return "results";
+  if (pathname.startsWith("/users")) return "users";
+  if (pathname.startsWith("/settings")) return "settings";
+  if (pathname.startsWith("/reports")) return "reports";
+  if (pathname.startsWith("/admin")) return "admin";
   return "tests";
 };
 
