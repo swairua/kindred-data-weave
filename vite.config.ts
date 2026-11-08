@@ -26,6 +26,7 @@ export default defineConfig(({ mode }) => ({
         secure: false,
       },
     },
+    historyApiFallback: true,
   },
   plugins: [react()],
   resolve: {
