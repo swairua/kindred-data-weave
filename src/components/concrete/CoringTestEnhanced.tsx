@@ -113,10 +113,23 @@ const loadImageAsDataUrl = async (path: string | undefined): Promise<string | un
   }
 };
 
-const formatReportDate = (isoDate: string, options: Intl.DateTimeFormatOptions) => {
-  const date = new Date(`${isoDate}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString("en-GB", options).replace(/ /g, "-");
+const sanitizeInput = (input: string): string => {
+  // Remove potentially dangerous characters and limit length
+  return input
+    .replace(/<script[^>]*>.*?<\/script>/gi, "")
+    .replace(/javascript:/gi, "")
+    .replace(/on\w+=/gi, "")
+    .trim()
+    .substring(0, 500); // Limit length to prevent DoS
+};
+
+const validateInputNumber = (value: string, min: number = 0, max: number = 1000000): boolean => {
+  const num = parseFloat(value);
+  return !isNaN(num) && isFinite(num) && num >= min && num <= max;
+};
+
+const validateInputString = (value: string, minLength: number = 1, maxLength: number = 200): boolean => {
+  return value.length >= minLength && value.length <= maxLength;
 };
 
 export const CoringTest = ({ testKey }: CoringTestProps) => {
@@ -340,10 +353,41 @@ const [recordId, setRecordId] = useState<number | null>(null);
     return (volumeMm3 / 1000000000).toFixed(6); // m³
   }, []);
 
-  const update = useCallback((i: number, field: keyof CoringRow, val: string) => {
+const update = useCallback((i: number, field: keyof CoringRow, val: string) => {
+    // Sanitize input to prevent XSS and injection attacks
+    const sanitizedVal = sanitizeInput(val);
+    
+    // Additional validation for different fields
+    if (field === "coreId") {
+      if (!validateInputString(sanitizedVal, 1, 50)) {
+        console.warn(`[CoringTestEnhanced] Core ID format invalid or out of range: ${sanitizedVal}`);
+        return;
+      }
+    }
+    
+    if (field === "diameter" && !validateInputNumber(sanitizedVal, 1, 1000)) {
+      console.warn(`[CoringTestEnhanced] Diameter invalid or out of range: ${sanitizedVal}`);
+      return;
+    }
+    
+    if (field === "lengthAfter" && !validateInputNumber(sanitizedVal, 1, 1000)) {
+      console.warn(`[CoringTestEnhanced] Length after trimming invalid or out of range: ${sanitizedVal}`);
+      return;
+    }
+    
+    if (field === "weightInAir" && !validateInputNumber(sanitizedVal, 0, 100000)) {
+      console.warn(`[CoringTestEnhanced] Weight in air invalid or out of range: ${sanitizedVal}`);
+      return;
+    }
+    
+    if (field === "load" && !validateInputNumber(sanitizedVal, 0, 100000)) {
+      console.warn(`[CoringTestEnhanced] Load invalid or out of range: ${sanitizedVal}`);
+      return;
+    }
+
     setRows(prev => {
       const next = [...prev];
-      next[i] = { ...next[i], [field]: val };
+      next[i] = { ...next[i], [field]: sanitizedVal };
       return next;
     });
     // Clear validation error for this field when user types
@@ -351,7 +395,24 @@ const [recordId, setRecordId] = useState<number | null>(null);
   }, []);
 
   const updateProjectDetail = useCallback((field: string, val: string) => {
-    setProjectDetails(prev => ({ ...prev, [field]: val }));
+    // Sanitize input and validate project details
+    const sanitizedVal = sanitizeInput(val);
+    
+    if (field === "projectName") {
+      if (!validateInputString(sanitizedVal, 1, 200)) {
+        console.warn(`[CoringTestEnhanced] Project name invalid: ${sanitizedVal}`);
+        return;
+      }
+    }
+    
+    if (field === "tower") {
+      if (!validateInputString(sanitizedVal, 1, 100)) {
+        console.warn(`[CoringTestEnhanced] Tower/location invalid: ${sanitizedVal}`);
+        return;
+      }
+    }
+    
+    setProjectDetails(prev => ({ ...prev, [field]: sanitizedVal }));
   }, []);
 
   const validateRow = useCallback((row: CoringRow, index: number): ValidationError[] => {
@@ -427,19 +488,34 @@ const [recordId, setRecordId] = useState<number | null>(null);
     return errors;
   }, [projectDetails]);
 
-  const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pileAfterImage", file: File) => {
+const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pileAfterImage", file: File) => {
     // Validate file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
       toast.error("Image too large. Maximum size is 10MB.");
       return;
     }
     
-    // Validate file type
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please select an image file.");
+    // Validate file type - only allow common image formats
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.");
       return;
     }
-
+    
+    // Validate file name to prevent path traversal
+    const fileName = file.name;
+    if (!fileName || fileName.includes("..") || fileName.includes("/") || fileName.includes("\\")) {
+      toast.error("Invalid file name.");
+      return;
+    }
+    
+    // Check file extension as additional security
+    const fileExtension = fileName.split(".").pop()?.toLowerCase();
+    if (!fileExtension || !["jpg", "jpeg", "png", "gif", "webp"].includes(fileExtension)) {
+      toast.error("Invalid file extension. Only .jpg, .jpeg, .png, .gif, and .webp are allowed.");
+      return;
+    }
+    
     const formData = new FormData();
     formData.append("file", file);
     formData.append("image_type", field === "pileBeforeImage" ? "pile_before" : "pile_after");
@@ -449,23 +525,42 @@ const [recordId, setRecordId] = useState<number | null>(null);
         method: "POST",
         body: formData,
         credentials: "include",
+        headers: {
+          "X-Requested-With": "XMLHttpRequest" // Help prevent CSRF
+        }
       });
       
       if (response.ok) {
         const data = await response.json();
-        if (data.file_path) {
-          setRows(prev => {
-            const next = [...prev];
-            next[index] = { ...next[index], [field]: data.file_path };
-            return next;
-          });
-          toast.success(`${field === "pileBeforeImage" ? "Before" : "After"} test image uploaded`);
-        } else {
-          toast.error("Upload succeeded but no file path returned");
+        // Validate response data
+        if (!data || typeof data !== "object" || !data.file_path) {
+          toast.error("Invalid upload response. Please try again.");
+          return;
         }
+        
+        // Validate file path format
+        const filePath = data.file_path;
+        if (!filePath || typeof filePath !== "string" || filePath.includes("..") || filePath.includes("//")) {
+          toast.error("Invalid file path returned. Please try again.");
+          return;
+        }
+        
+        setRows(prev => {
+          const next = [...prev];
+          next[index] = { ...next[index], [field]: filePath };
+          return next;
+        });
+        toast.success(`${field === "pileBeforeImage" ? "Before" : "After"} test image uploaded`);
       } else {
-        const error = await response.json().catch(() => ({ message: "Upload failed" }));
-        toast.error(`Upload failed: ${error.message || "Unknown error"}`);
+        let errorMessage = "Upload failed";
+        try {
+          const error = await response.json();
+          errorMessage = error.message || errorMessage;
+        } catch {
+          // If response is not JSON, use status text
+          errorMessage = `${response.status}: ${response.statusText}`;
+        }
+        toast.error(`Upload failed: ${errorMessage}`);
       }
     } catch (error) {
       console.error("Image upload failed:", error);
@@ -482,6 +577,31 @@ const [recordId, setRecordId] = useState<number | null>(null);
       return;
     }
     
+    // Additional security validation
+    if (!projectDetails.projectName.trim()) {
+      toast.error("Project Name cannot be empty");
+      setSaveStatus("error");
+      return;
+    }
+    
+    if (!projectDetails.tower.trim()) {
+      toast.error("Tower/Location cannot be empty");
+      setSaveStatus("error");
+      return;
+    }
+    
+    if (projectDetails.projectName.length > 200) {
+      toast.error("Project Name is too long (maximum 200 characters)");
+      setSaveStatus("error");
+      return;
+    }
+    
+    if (projectDetails.tower.length > 100) {
+      toast.error("Tower/Location is too long (maximum 100 characters)");
+      setSaveStatus("error");
+      return;
+    }
+    
     setSaveStatus("saving");
     try {
       // Save to localStorage for persistence (can be extended to API)
@@ -491,6 +611,12 @@ const [recordId, setRecordId] = useState<number | null>(null);
         savedAt: new Date().toISOString(),
         testKey,
       };
+      
+      // Validate data before saving
+      if (!saveData.rows || saveData.rows.length === 0) {
+        throw new Error("No test data to save");
+      }
+      
       localStorage.setItem(`coring_test_${testKey || "default"}`, JSON.stringify(saveData));
 
       if (projectId) {
@@ -516,8 +642,9 @@ const [recordId, setRecordId] = useState<number | null>(null);
       // Reset save status after a delay
       setTimeout(() => setSaveStatus("idle"), 2000);
     } catch (error) {
+      console.error("[CoringTestEnhanced] Save failed:", error);
       setSaveStatus("error");
-      toast.error("Save failed");
+      toast.error("Save failed. Please try again.");
     }
   };
 
@@ -529,15 +656,43 @@ const [recordId, setRecordId] = useState<number | null>(null);
       return;
     }
     
+    // Additional validation for project details
+    if (!projectDetails.projectName.trim()) {
+      toast.error("Project Name cannot be empty");
+      return;
+    }
+    
+    if (!projectDetails.tower.trim()) {
+      toast.error("Tower/Location cannot be empty");
+      return;
+    }
+    
+    if (projectDetails.projectName.length > 200) {
+      toast.error("Project Name is too long (maximum 200 characters)");
+      return;
+    }
+    
+    if (projectDetails.tower.length > 100) {
+      toast.error("Tower/Location is too long (maximum 100 characters)");
+      return;
+    }
+    
     setIsProcessing(true);
     try {
-      // Create reception consignment
+      // Create reception consignment with additional validation
       const consignments = await listRecords<{ rc_no: string }>("reception_consignments", { limit: 500 });
       const newRcNo = nextRcNo(consignments.data?.map(c => c.rc_no) || []);
       
+      // Validate RC number format
+      if (!newRcNo || newRcNo.length === 0) {
+        console.error("[CoringTestEnhanced] Failed to generate RC number");
+        toast.error("Failed to generate project reference number. Please try again.");
+        return;
+      }
+      
       const consignment: ReceptionConsignmentInput = emptyReceptionConsignment(newRcNo);
-      consignment.jobNo = projectDetails.projectName;
-      consignment.project = projectDetails.tower;
+      consignment.jobNo = projectDetails.projectName.trim();
+      consignment.project = projectDetails.tower.trim();
       consignment.client = "NSSF";
       consignment.receivedAt = new Date().toISOString().slice(0, 16);
       consignment.receivedBy = user?.name || "PUAL N";
@@ -545,30 +700,51 @@ const [recordId, setRecordId] = useState<number | null>(null);
       consignment.status = "processed";
       consignment.cubeCastDate = projectDetails.dateOfTest;
       
-      // Create samples from rows
-      consignment.samples = rows.map((row, i) => {
+      // Validate and create samples from rows
+      if (rows.length < 1) {
+        toast.error("At least one core is required to create a project");
+        return;
+      }
+      
+      const samples = rows.map((row, i) => {
         const sample = emptyReceptionSample(`CR${i + 1}`);
-        sample.clientMark = row.coreId;
-        sample.location = projectDetails.tower;
-        sample.depthLabel = row.depth;
+        
+        // Validate sample data
+        if (!row.coreId.trim()) {
+          console.error(`[CoringTestEnhanced] Core ${i + 1} missing ID`);
+        }
+        
+        sample.clientMark = row.coreId.trim() || `CR${i + 1}`;
+        sample.location = projectDetails.tower.trim();
+        sample.depthLabel = row.depth || "0.0-2.0";
         sample.sampleType = "Concrete core";
         sample.container = "Core sample";
         sample.tests = ["CMP"];
-        sample.massKg = row.weightInAir;
+        sample.massKg = row.weightInAir || "0";
         sample.condition = "Intact";
         return sample;
       });
       
+      consignment.samples = samples;
+      
       await saveReceptionConsignment(consignment);
       
       // Create project from consignment
-      const { processReceptionToProject } = await import("@/lib/api");
-      const result = await processReceptionToProject(consignment, "coring");
-      
-      if (result.projectId) {
-        setReceptionMode(false);
-        toast.success("Project created successfully");
-        navigate(`/projects/${result.projectId}`);
+      try {
+        const { processReceptionToProject } = await import("@/lib/api");
+        const result = await processReceptionToProject(consignment, "coring");
+        
+        if (result.projectId) {
+          setReceptionMode(false);
+          toast.success("Project created successfully");
+          navigate(`/projects/${result.projectId}`);
+        } else {
+          console.error("[CoringTestEnhanced] processReceptionToProject returned no project ID");
+          toast.error("Project created but ID could not be retrieved. Please check your projects list.");
+        }
+      } catch (error) {
+        console.error("[CoringTestEnhanced] Process reception to project failed:", error);
+        toast.error("Failed to create project. Please try again.");
       }
     } catch (error) {
       console.error("Project creation failed:", error);
@@ -583,6 +759,17 @@ const [recordId, setRecordId] = useState<number | null>(null);
     if (errors.length > 0) {
       setValidationErrors(errors);
       toast.error("Please fix validation errors before exporting PDF");
+      return null;
+    }
+
+    // Additional validation for PDF generation
+    if (!projectDetails.projectName.trim()) {
+      toast.error("Project Name cannot be empty for PDF export");
+      return null;
+    }
+    
+    if (!projectDetails.sampleNo.trim()) {
+      toast.error("Sample Number cannot be empty for PDF export");
       return null;
     }
 
@@ -618,8 +805,8 @@ const [recordId, setRecordId] = useState<number | null>(null);
       return await buildCoringReportPDF({
         title: "Compressive Strength of Concrete Cores",
         standard: "BS EN 12504-1:2009",
-        projectName: projectDetails.projectName,
-        sampleNo: projectDetails.sampleNo,
+        projectName: projectDetails.projectName.trim(),
+        sampleNo: projectDetails.sampleNo.trim(),
         concreteClass: projectDetails.concreteClass,
         ageOfConcrete: projectDetails.ageOfConcrete,
         location: projectDetails.tower,
