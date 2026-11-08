@@ -976,6 +976,53 @@ export const uploadReceptionPhoto = async (
   }
 };
 
+export const uploadCoringPhoto = async (
+  file: File,
+  imageType: "before" | "after"
+): Promise<string> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("image_type", imageType);
+
+  const url = buildApiUrl({ action: "upload-coring-photo" });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 300000);
+
+  try {
+    const headers: HeadersInit = {};
+    const sessionToken = getSessionToken();
+    if (sessionToken) {
+      headers["X-Session-Token"] = sessionToken;
+    }
+
+    const response = await fetch(url, {
+      method: "POST",
+      credentials: "include",
+      headers,
+      body: formData,
+      signal: controller.signal,
+    });
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(data?.message || data?.error || `HTTP ${response.status}`);
+    }
+
+    const responseSessionToken = response.headers.get("X-Session-Token");
+    if (responseSessionToken) {
+      setSessionToken(responseSessionToken);
+    }
+
+    if (typeof data?.file_path !== "string" || !data.file_path) {
+      throw new Error("Invalid upload response. Please try again.");
+    }
+    return data.file_path;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
 export const deleteReceptionPhoto = async (id: number | string): Promise<boolean> => {
   try {
     await apiRequest<ApiWriteResponse<null>>(
@@ -1111,7 +1158,23 @@ export const uploadFile = async (file: File, metadata?: Record<string, string>) 
   }
 };
 
-export const processReceptionToProject = async (consignment: ReceptionConsignmentInput, overrideTestType?: string): Promise<{
+export const linkCoringPhotos = async (
+  projectId: number,
+  testResultId: number,
+  filePaths: string[],
+): Promise<void> => {
+  if (filePaths.length === 0) return;
+  await apiRequest<{ success: boolean }>(
+    { method: "POST", body: JSON.stringify({ project_id: projectId, test_result_id: testResultId, file_paths: filePaths }) },
+    { action: "link-coring-photos" },
+  );
+};
+
+export const processReceptionToProject = async (
+  consignment: ReceptionConsignmentInput,
+  overrideTestType?: string,
+  coringRecord?: Record<string, unknown>,
+): Promise<{
   projectId: number;
   testResultIds: Record<string, number>;
 }> => {
@@ -1139,12 +1202,13 @@ export const processReceptionToProject = async (consignment: ReceptionConsignmen
   const testResultIds: Record<string, number> = {};
   if (testType === "coring") {
     const tr = await createRecord<{ id: number }>("test_results", {
-      project_id: projectId,
-      test_key: "coring",
       name: "Concrete Coring",
       category: "concrete",
       status: "in-progress",
       data_points: 0,
+      ...coringRecord,
+      project_id: projectId,
+      test_key: "coring",
     });
     if (tr.data?.id) testResultIds.coring = tr.data.id;
   } else {

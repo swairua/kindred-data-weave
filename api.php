@@ -1098,6 +1098,140 @@ try {
         respond(['success' => true, 'message' => 'Photo deleted', 'id' => $id], 200);
     }
 
+    // ============= CORING PHOTO UPLOAD ENDPOINT =============
+    if ($action === 'upload-coring-photo') {
+        $user = requireAuth($conn);
+        if (!$user) {
+            respond(['error' => 'Unauthorized', 'debug' => 'Session validation failed'], 401);
+        }
+        $userId = (int) $_SESSION['user_id'];
+
+        $imageType = trim((string) ($_POST['image_type'] ?? $_GET['image_type'] ?? ''));
+        if (!in_array($imageType, ['before', 'after'], true)) {
+            respond(['error' => 'Invalid image_type. Must be before or after'], 400);
+        }
+
+        if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
+            respond(['error' => 'No file uploaded or upload error'], 400);
+        }
+
+        $file = $_FILES['file'];
+
+        $maxSize = 10 * 1024 * 1024;
+        if ($file['size'] > $maxSize) {
+            respond(['error' => 'File too large. Maximum size is 10MB'], 413);
+        }
+
+        $allowed_mimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!in_array($file['type'], $allowed_mimes, true)) {
+            respond(['error' => 'Invalid file type. Allowed: JPG, PNG, GIF, WebP'], 400);
+        }
+
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        $allowed_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        if (!in_array($ext, $allowed_exts, true)) {
+            respond(['error' => 'Invalid file extension'], 400);
+        }
+
+        $upload_dir = __DIR__ . '/uploads/coring/';
+        if (!is_dir($upload_dir)) {
+            if (!@mkdir($upload_dir, 0755, true)) {
+                error_log('Coring upload directory creation failed');
+                respond(['error' => 'Failed to create upload directory'], 500);
+            }
+        }
+
+        $filename = 'coring_' . $imageType . '_' . date('Ymd_His') . '_' . bin2hex(random_bytes(6)) . '.' . $ext;
+        $file_path = $upload_dir . $filename;
+        $relative_path = '/uploads/coring/' . $filename;
+
+        if (!@move_uploaded_file($file['tmp_name'], $file_path)) {
+            error_log('Coring photo move failed');
+            respond(['error' => 'Failed to save uploaded file'], 500);
+        }
+
+        try {
+            $stmt = $conn->prepare(
+                "INSERT INTO coring_photos (image_type, file_path, original_filename, file_size, mime_type, uploaded_by)
+                 VALUES (?, ?, ?, ?, ?, ?)"
+            );
+            if (!$stmt) {
+                throw new Exception("Prepare failed: " . $conn->error);
+            }
+
+            $stmt->bind_param(
+                'sssisi',
+                $imageType,
+                $relative_path,
+                $file['name'],
+                $file['size'],
+                $file['type'],
+                $userId
+            );
+
+            if (!$stmt->execute()) {
+                throw new Exception("Execute failed: " . $stmt->error);
+            }
+
+            $photo_id = $conn->insert_id;
+
+            respond([
+                'success' => true,
+                'message' => 'Photo uploaded successfully',
+                'id' => $photo_id,
+                'file_path' => $relative_path,
+                'image_type' => $imageType,
+            ], 200);
+
+        } catch (Exception $e) {
+            error_log('Coring photo database insert failed (' . get_class($e) . ')');
+            if (file_exists($file_path)) {
+                if (!@unlink($file_path)) {
+                    error_log('Coring photo cleanup failed');
+                }
+            }
+            respond(['error' => 'Failed to save photo to database', 'details' => $e->getMessage()], 500);
+        }
+    }
+
+    if ($action === 'link-coring-photos') {
+        $user = requireAuth($conn);
+        if (!$user) {
+            respond(['error' => 'Unauthorized'], 401);
+        }
+        $userId = (int) $_SESSION['user_id'];
+
+        $projectId = (int) ($body['project_id'] ?? 0);
+        $testResultId = (int) ($body['test_result_id'] ?? 0);
+        $filePaths = is_array($body['file_paths'] ?? null) ? $body['file_paths'] : [];
+        $filePaths = array_values(array_filter($filePaths, static fn($p) => is_string($p) && preg_match('#^/uploads/coring/[A-Za-z0-9_.\-]+$#', $p)));
+
+        if ($projectId <= 0 || $testResultId <= 0) {
+            respond(['error' => 'project_id and test_result_id are required'], 400);
+        }
+        if (count($filePaths) === 0) {
+            respond(['success' => true, 'linked' => 0], 200);
+        }
+
+        $placeholders = implode(',', array_fill(0, count($filePaths), '?'));
+        $stmt = $conn->prepare(
+            "UPDATE coring_photos SET project_id = ?, test_result_id = ?
+             WHERE uploaded_by = ? AND file_path IN ($placeholders)"
+        );
+        if (!$stmt) {
+            respond(['error' => 'Failed to prepare photo link'], 500);
+        }
+        $types = 'iii' . str_repeat('s', count($filePaths));
+        $params = array_merge([$projectId, $testResultId, $userId], $filePaths);
+        $stmt->bind_param($types, ...$params);
+        if (!$stmt->execute()) {
+            error_log('Coring photo link failed: ' . $stmt->error);
+            respond(['error' => 'Failed to link photos'], 500);
+        }
+
+        respond(['success' => true, 'linked' => $stmt->affected_rows], 200);
+    }
+
     // ============= IMAGE SERVE ENDPOINT (fixes CORS for exports) =============
     if ($action === 'serve-image') {
         // Allow serving images to authenticated users

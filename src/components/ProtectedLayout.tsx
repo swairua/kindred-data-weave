@@ -4,10 +4,11 @@ import Navigation, { type NavigationView } from "@/components/Navigation";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { useSession } from "@/context/SessionContext";
 
-const viewForPath = (pathname: string): NavigationView => {
+const viewForPath = (pathname: string, hash: string): NavigationView => {
   if (pathname.startsWith("/reception") || pathname.startsWith("/storage") || pathname.startsWith("/equipment")) {
     return "reception";
   }
+  if (pathname.startsWith("/tests") && hash === "#coring") return "coring";
   if (pathname.startsWith("/projects")) return "projects";
   if (pathname.startsWith("/results")) return "results";
   if (pathname.startsWith("/users")) return "users";
@@ -18,7 +19,7 @@ const viewForPath = (pathname: string): NavigationView => {
 };
 
 const ProtectedLayout = () => {
-  const { pathname } = useLocation();
+  const { pathname, hash } = useLocation();
   const { user, logout } = useSession();
 
   const handleLogout = async () => {
@@ -29,7 +30,7 @@ const ProtectedLayout = () => {
   return (
     <SidebarProvider>
       <Navigation
-        currentView={viewForPath(pathname)}
+        currentView={viewForPath(pathname, hash)}
         onViewChange={() => {}}
         onLogout={handleLogout}
         user={user}

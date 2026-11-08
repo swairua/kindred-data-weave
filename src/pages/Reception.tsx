@@ -525,6 +525,7 @@ const Reception = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="compressive">Compressive (Concrete)</SelectItem>
+                <SelectItem value="coring">Coring (Concrete cores)</SelectItem>
                 <SelectItem value="atterberg">Atterberg (Soil classification)</SelectItem>
                 <SelectItem value="grading">Grading/Particle size</SelectItem>
                 <SelectItem value="proctor">Proctor/Compaction</SelectItem>

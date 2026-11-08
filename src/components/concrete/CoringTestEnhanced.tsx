@@ -15,7 +15,7 @@ import { pdfFileName, printPDFDocument } from "@/lib/pdfGenerator";
 import { formatReportDate } from "@/lib/compressivePdfGenerator";
 import { useTestReport } from "@/hooks/useTestReport";
 import { useNavigate } from "react-router-dom";
-import { saveReceptionConsignment, listRecords, readRecord, uploadFile } from "@/lib/api";
+import { saveReceptionConsignment, listRecords, readRecord, uploadCoringPhoto } from "@/lib/api";
 import { emptyReceptionConsignment, nextRcNo, emptyReceptionSample, type ReceptionConsignmentInput, type ReceptionSampleInput } from "@/lib/reception";
 import { SessionContext } from "@/context/SessionContext";
 import { toast } from "sonner";
@@ -521,15 +521,9 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
     }
     
     try {
-      const data = await uploadFile(file, { image_type: field === "pileBeforeImage" ? "pile_before" : "pile_after" });
+      const filePath = await uploadCoringPhoto(file, field === "pileBeforeImage" ? "before" : "after");
 
-      if (!data || typeof data !== "object" || !data.file_path) {
-        toast.error("Invalid upload response. Please try again.");
-        return;
-      }
-
-      const filePath = data.file_path;
-      if (typeof filePath !== "string" || filePath.includes("..") || filePath.includes("//")) {
+      if (filePath.includes("..") || filePath.includes("//")) {
         toast.error("Invalid file path returned. Please try again.");
         return;
       }
@@ -699,8 +693,8 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
         sample.depthLabel = row.depth || "0.0-2.0";
         sample.sampleType = "Concrete core";
         sample.container = "Core sample";
-        sample.tests = ["CMP"];
-        sample.massKg = row.weightInAir ? String(parseFloat(row.weightInAir) / 1000) : "0";
+        sample.tests = ["CORE"];
+        sample.massKg = row.weightInAir ? String(parseFloat(row.weightInAir) / 1000) : "";
         sample.condition = "Intact";
         return sample;
       });
@@ -711,17 +705,22 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
       
       // Create project from consignment
       try {
-        const { processReceptionToProject } = await import("@/lib/api");
-        const result = await processReceptionToProject(consignment, "coring");
-        
-        if (result.projectId) {
+        const { processReceptionToProject, linkCoringPhotos } = await import("@/lib/api");
+        const result = await processReceptionToProject(consignment, "coring", buildCoringRecord("in-progress"));
+
+        const coringTestResultId = result.testResultIds.coring;
+        const photoPaths = rows.flatMap(row => [row.pileBeforeImage, row.pileAfterImage]).filter((p): p is string => Boolean(p));
+        if (result.projectId && coringTestResultId && photoPaths.length > 0) {
           try {
-            await saveTestResult(result.projectId, result.testResultIds.coring ?? null, buildCoringRecord("in-progress"));
-          } catch (error) {
-            console.error("[CoringTestEnhanced] Saving coring data for new project failed:", error);
-            toast.error("Project created, but the coring data could not be saved. Your measurements are still on this page.");
-            return;
+            await linkCoringPhotos(result.projectId, coringTestResultId, photoPaths);
+          } catch (linkError) {
+            console.error("[CoringTestEnhanced] Failed to link Coring photos", linkError);
+            toast.error("Project created, but photos could not be linked to it");
           }
+        }
+
+        if (result.projectId) {
+          setRecordId(result.testResultIds.coring ?? null);
           setReceptionMode(false);
           toast.success("Project created successfully");
           navigate(`/projects/${result.projectId}`);
@@ -835,7 +834,7 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
 
   return (
     <TestSection 
-      title="Compressive Strength of Concrete Cores (BS EN 12504-1:2009)" 
+      title="Concrete Core Testing (BS EN 12504-1:2009)" 
       testKey={testKey} 
       onSave={handleSave} 
       onClear={() => setRows([{ ...CORING_ROW_DEFAULTS, coreId: "CR1" }, { ...CORING_ROW_DEFAULTS, coreId: "CR2" }])}
