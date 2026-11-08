@@ -555,7 +555,9 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
       } else {
         let errorMessage = "Upload failed";
         try {
-          const error = await response.json();
+          const responseText = await response.text();
+          console.log("[CoringTestEnhanced] Upload error response:", responseText);
+          const error = JSON.parse(responseText);
           errorMessage = error.message || errorMessage;
         } catch {
           // If response is not JSON, use status text
