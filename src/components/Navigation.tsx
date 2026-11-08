@@ -22,7 +22,7 @@ import { useSession } from "@/context/SessionContext";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
 import type { ApiUser } from "@/lib/api";
 
-export type NavigationView = "dashboard" | "tests" | "reports" | "results" | "projects" | "admin" | "users" | "settings" | "reception";
+export type NavigationView = "dashboard" | "tests" | "coring" | "reports" | "results" | "projects" | "admin" | "users" | "settings" | "reception";
 
 interface NavigationProps {
   currentView: NavigationView;
@@ -124,6 +124,7 @@ const Navigation = ({
   const labItems: NavItem[] = [
     { id: "reception", label: "Reception", icon: PackageOpen, path: "/reception" },
     { id: "tests", label: "Testing", icon: FlaskConical, path: project.currentProjectId ? `/tests?projectId=${project.currentProjectId}` : "/record" },
+    { id: "coring", label: "Coring", icon: Hammer, path: project.currentProjectId ? `/tests?projectId=${project.currentProjectId}#coring` : "/tests#coring" },
     { id: "results", label: "Test Results", icon: FileText, path: "/results" },
     { id: "projects", label: "Projects", icon: Layers, path: project.currentProjectId ? `/projects/${project.currentProjectId}` : "/projects" },
   ];

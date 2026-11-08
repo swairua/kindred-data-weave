@@ -240,7 +240,9 @@ const TestResults = () => {
           sample_id:
             (typeof row.sample_label === "string" && row.sample_label.trim() !== "" && row.sample_label) ||
             (typeof payloadTest?.compressiveTestId === "number" ? `Cubes ${payloadTest.compressiveTestId}` : "-"),
-          depth: cubes === null ? (isCoring ? "Core" : "-") : `${cubes} cube${cubes === 1 ? "" : "s"}`,
+          depth: isCoring
+            ? (cubes === null ? "Core" : `${cubes} core${cubes === 1 ? "" : "s"}`)
+            : cubes === null ? "-" : `${cubes} cube${cubes === 1 ? "" : "s"}`,
           date_created: row.created_at || row.updated_at || new Date().toISOString(),
           created_by: "-",
           material_type: row.category || "Concrete",

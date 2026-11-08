@@ -699,8 +699,8 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
         sample.depthLabel = row.depth || "0.0-2.0";
         sample.sampleType = "Concrete core";
         sample.container = "Core sample";
-        sample.tests = ["CMP"];
-        sample.massKg = row.weightInAir ? String(parseFloat(row.weightInAir) / 1000) : "0";
+        sample.tests = ["CORE"];
+        sample.massKg = row.weightInAir ? String(parseFloat(row.weightInAir) / 1000) : "";
         sample.condition = "Intact";
         return sample;
       });
@@ -712,16 +712,10 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
       // Create project from consignment
       try {
         const { processReceptionToProject } = await import("@/lib/api");
-        const result = await processReceptionToProject(consignment, "coring");
-        
+        const result = await processReceptionToProject(consignment, "coring", buildCoringRecord("in-progress"));
+
         if (result.projectId) {
-          try {
-            await saveTestResult(result.projectId, result.testResultIds.coring ?? null, buildCoringRecord("in-progress"));
-          } catch (error) {
-            console.error("[CoringTestEnhanced] Saving coring data for new project failed:", error);
-            toast.error("Project created, but the coring data could not be saved. Your measurements are still on this page.");
-            return;
-          }
+          setRecordId(result.testResultIds.coring ?? null);
           setReceptionMode(false);
           toast.success("Project created successfully");
           navigate(`/projects/${result.projectId}`);
@@ -835,7 +829,7 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
 
   return (
     <TestSection 
-      title="Compressive Strength of Concrete Cores (BS EN 12504-1:2009)" 
+      title="Concrete Core Testing (BS EN 12504-1:2009)" 
       testKey={testKey} 
       onSave={handleSave} 
       onClear={() => setRows([{ ...CORING_ROW_DEFAULTS, coreId: "CR1" }, { ...CORING_ROW_DEFAULTS, coreId: "CR2" }])}
