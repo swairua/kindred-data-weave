@@ -522,7 +522,7 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
     formData.append("image_type", field === "pileBeforeImage" ? "pile_before" : "pile_after");
     
     try {
-      const response = await fetch("/api.php?action=upload-admin-image", {
+      const response = await fetch("/api.php?action=upload", {
         method: "POST",
         body: formData,
         credentials: "include",
