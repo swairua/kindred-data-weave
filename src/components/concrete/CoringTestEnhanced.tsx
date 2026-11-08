@@ -36,6 +36,9 @@ interface CoringRow {
   cylinderToCubeRatio?: string;  // Cylinder Strength to Cube Strength (1.25)
   caFactor?: string;       // Ca correction factor for steel presence
   excessVoidage?: string;  // Excess Voidage (%)
+  cdcFactor?: string;      // Cdia correction factor for core diameter
+  cdAccuracyFactor?: string; // Cd correction factor for core extraction accuracy
+  conversionRatio?: string;
 }
 
 interface CoringTestProps {
@@ -83,6 +86,9 @@ const CORING_ROW_DEFAULTS: CoringRow = {
   cylinderToCubeRatio: "1.25",
   caFactor: "1.00",
   excessVoidage: "1.00",
+  cdcFactor: "1.00",
+  cdAccuracyFactor: "1.00",
+  conversionRatio: "",
 };
 
 const loadImageAsDataUrl = async (path: string | undefined): Promise<string | undefined> => {
@@ -202,6 +208,9 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
                   cylinderToCubeRatio: String(core.cylCubeRatio ?? "1.25"),
                   caFactor: String(core.caFactor ?? "1.00"),
                   excessVoidage: String(core.excessVoidage ?? "1.00"),
+                  cdcFactor: "1.00",
+                  cdAccuracyFactor: "1.00",
+                  conversionRatio: "",
                 }));
                 setRows(loadedRows);
               }
@@ -492,7 +501,6 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
     try {
       const dateOfTest = formatReportDate(projectDetails.dateOfTest, { day: "numeric", month: "numeric", year: "numeric" });
       const cores: CoringCoreReport[] = await Promise.all(rows.map(async (row) => ({
-        coreId: row.coreId,
         depth: row.depth,
         dateOfTest,
         diameter: row.diameter,
@@ -506,8 +514,11 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
         coreStrength: getCoreStrength(row),
         ldRatio: getLDRatio(row),
         cdFactor: getCdFactor(row),
+        cdcFactor: row.cdcFactor ?? "",
+        cdAccuracyFactor: row.cdAccuracyFactor ?? "",
         cylinderToCube: row.cylinderToCubeRatio ?? "",
         caFactor: row.caFactor ?? "",
+        conversionRatio: row.conversionRatio ?? "",
         correctedStrength: getCorrectedStrength(row),
         excessVoidage: row.excessVoidage ?? "",
         failureMode: row.failureMode,
@@ -662,6 +673,9 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Cd Factor</th>
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Cyl/Cube Ratio</th>
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Ca Factor</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Cdia Factor</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Cd Accuracy</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Conversion Ratio</th>
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Corrected (MPa)</th>
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Density (kg/m³)</th>
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Excess Voidage (%)</th>
@@ -698,6 +712,9 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
                   <td className="py-1 px-1.5"><CalculatedInput value={getCdFactor(row)} className="h-7" /></td>
                   <td className="py-1 px-1.5"><Input type="number" value={row.cylinderToCubeRatio} onChange={(e) => update(i, "cylinderToCubeRatio", e.target.value)} className="h-7 w-20 text-xs" placeholder="1.25" step="0.01" /></td>
                   <td className="py-1 px-1.5"><Input type="number" value={row.caFactor} onChange={(e) => update(i, "caFactor", e.target.value)} className="h-7 w-20 text-xs" placeholder="1.00" step="0.01" /></td>
+                  <td className="py-1 px-1.5"><Input type="number" value={row.cdcFactor} onChange={(e) => update(i, "cdcFactor", e.target.value)} className="h-7 w-20 text-xs" placeholder="1.00" step="0.01" /></td>
+                  <td className="py-1 px-1.5"><Input type="number" value={row.cdAccuracyFactor} onChange={(e) => update(i, "cdAccuracyFactor", e.target.value)} className="h-7 w-20 text-xs" placeholder="1.00" step="0.01" /></td>
+                  <td className="py-1 px-1.5"><Input type="number" value={row.conversionRatio} onChange={(e) => update(i, "conversionRatio", e.target.value)} className="h-7 w-20 text-xs" step="0.01" /></td>
                   <td className="py-1 px-1.5"><CalculatedInput value={getCorrectedStrength(row)} className="h-7 font-medium" /></td>
                   <td className="py-1 px-1.5"><CalculatedInput value={getDensity(row)} className="h-7" /></td>
                   <td className="py-1 px-1.5"><Input type="number" value={row.excessVoidage} onChange={(e) => update(i, "excessVoidage", e.target.value)} className="h-7 w-20 text-xs" placeholder="1.00" step="0.01" /></td>
