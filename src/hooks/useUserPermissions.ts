@@ -7,6 +7,11 @@ interface UserPermission {
   table_name: string;
 }
 
+// Check if user is admin (id=1 is the default admin user)
+const isAdminUser = (userId: number): boolean => {
+  return userId === 1;
+};
+
 export const useUserPermissions = (user: ApiUser | null) => {
   const [permissions, setPermissions] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
@@ -14,6 +19,12 @@ export const useUserPermissions = (user: ApiUser | null) => {
   const loadPermissions = useCallback(async () => {
     if (!user) {
       setPermissions(new Set());
+      return;
+    }
+
+    // Admin user has access to everything
+    if (isAdminUser(user.id)) {
+      setPermissions(new Set()); // Empty set means all access for admin
       return;
     }
 
@@ -41,11 +52,15 @@ export const useUserPermissions = (user: ApiUser | null) => {
   }, [loadPermissions]);
 
   const hasPermission = useCallback((tableName: string): boolean => {
+    // Admin user has access to everything
+    const userId = user?.id;
+    if (isAdminUser(userId ?? 0)) return true;
+    
     // Admin tables are always accessible
     const adminTables = ["users", "user_allowed_tables"];
     if (adminTables.includes(tableName)) return true;
     return permissions.has(tableName);
-  }, [permissions]);
+  }, [permissions, user]);
 
   return { permissions, hasPermission, isLoading, refreshPermissions: loadPermissions };
 };
