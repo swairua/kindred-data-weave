@@ -33,6 +33,8 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/s
 import { Users, Loader2, ChevronLeft, ChevronRight, Lock, Plus, Edit2, Trash2 } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import { listRecords, createRecord, deleteRecord, updateRecord } from "@/lib/api";
+import { useSession } from "@/context/SessionContext";
+import { useUserPermissions } from "@/hooks/useUserPermissions";
 import { toast } from "sonner";
 
 interface ApiUser {
@@ -49,6 +51,18 @@ interface UserAllowedTable {
   table_name: string;
   created_at?: string;
 }
+
+const AVAILABLE_TABLES = [
+  'projects',
+  'test_definitions',
+  'test_results',
+  'atterberg_instances',
+  'atterberg_rows',
+  'admin_images',
+  'admin_images_audit',
+  'users',
+  'lab_reference_sequences',
+];
 
 // Helper function to check if a user is an admin
 const isAdminUser = (userId: number): boolean => {
@@ -74,8 +88,10 @@ const canManageUserPermissions = (currentUser: AuthUser | null, targetUserId: nu
 
 const UserManagement = () => {
   const navigate = useNavigate();
-  const user = useContext(AuthContext); // Get the currently authenticated user
-  
+  const { user } = useSession();
+  const { hasPermission, isLoading: permissionsLoading } = useUserPermissions(user);
+  const canViewUsers = hasPermission("users");
+
   const [users, setUsers] = useState<ApiUser[]>([]);
   const [userPermissions, setUserPermissions] = useState<Map<number, Set<string>>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
@@ -104,6 +120,8 @@ const UserManagement = () => {
 
   // Fetch users and their permissions from API
   useEffect(() => {
+    if (!canViewUsers) return;
+
     const loadData = async () => {
       try {
         setIsLoading(true);
@@ -135,7 +153,7 @@ const UserManagement = () => {
     };
 
     loadData();
-  }, []);
+  }, [canViewUsers]);
 
   // Filter users based on search query
   const filteredUsers = useMemo(() => {
@@ -382,6 +400,28 @@ const UserManagement = () => {
       setIsSavingPermissions(false);
     }
   };
+
+  if (!permissionsLoading && !canViewUsers) {
+    return (
+      <SidebarProvider>
+        <Navigation
+          currentView="admin"
+          onViewChange={() => {}}
+          onLogout={handleLogout}
+        />
+        <SidebarInset>
+          <div className="p-6">
+            <Card className="border-0 shadow-sm max-w-md">
+              <CardHeader>
+                <CardTitle>Access denied</CardTitle>
+                <CardDescription>You do not have permission to view users.</CardDescription>
+              </CardHeader>
+            </Card>
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
+    );
+  }
 
   return (
     <SidebarProvider>
