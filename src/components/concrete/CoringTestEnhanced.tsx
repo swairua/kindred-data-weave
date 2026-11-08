@@ -14,7 +14,7 @@ import { buildCoringReportPDF, type CoringCoreReport } from "@/lib/coringReportP
 import { pdfFileName, printPDFDocument } from "@/lib/pdfGenerator";
 import { useTestReport } from "@/hooks/useTestReport";
 import { useNavigate } from "react-router-dom";
-import { saveReceptionConsignment, listRecords, readRecord } from "@/lib/api";
+import { saveReceptionConsignment, listRecords, readRecord, uploadFile } from "@/lib/api";
 import { emptyReceptionConsignment, nextRcNo, emptyReceptionSample, type ReceptionConsignmentInput, type ReceptionSampleInput } from "@/lib/reception";
 import { SessionContext } from "@/context/SessionContext";
 import { toast } from "sonner";
@@ -517,57 +517,30 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
       return;
     }
     
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("image_type", field === "pileBeforeImage" ? "pile_before" : "pile_after");
-    
     try {
-      const response = await fetch("/api.php?action=upload", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-        headers: {
-          "X-Requested-With": "XMLHttpRequest" // Help prevent CSRF
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        // Validate response data
-        if (!data || typeof data !== "object" || !data.file_path) {
-          toast.error("Invalid upload response. Please try again.");
-          return;
-        }
-        
-        // Validate file path format
-        const filePath = data.file_path;
-        if (!filePath || typeof filePath !== "string" || filePath.includes("..") || filePath.includes("//")) {
-          toast.error("Invalid file path returned. Please try again.");
-          return;
-        }
-        
-        setRows(prev => {
-          const next = [...prev];
-          next[index] = { ...next[index], [field]: filePath };
-          return next;
-        });
-        toast.success(`${field === "pileBeforeImage" ? "Before" : "After"} test image uploaded`);
-      } else {
-        let errorMessage = "Upload failed";
-        try {
-          const responseText = await response.text();
-          console.log("[CoringTestEnhanced] Upload error response:", responseText);
-          const error = JSON.parse(responseText);
-          errorMessage = error.message || errorMessage;
-        } catch {
-          // If response is not JSON, use status text
-          errorMessage = `${response.status}: ${response.statusText}`;
-        }
-        toast.error(`Upload failed: ${errorMessage}`);
+      const data = await uploadFile(file, { image_type: field === "pileBeforeImage" ? "pile_before" : "pile_after" });
+
+      if (!data || typeof data !== "object" || !data.file_path) {
+        toast.error("Invalid upload response. Please try again.");
+        return;
       }
+
+      const filePath = data.file_path;
+      if (typeof filePath !== "string" || filePath.includes("..") || filePath.includes("//")) {
+        toast.error("Invalid file path returned. Please try again.");
+        return;
+      }
+
+      setRows(prev => {
+        const next = [...prev];
+        next[index] = { ...next[index], [field]: filePath };
+        return next;
+      });
+      toast.success(`${field === "pileBeforeImage" ? "Before" : "After"} test image uploaded`);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       console.error("Image upload failed:", error);
-      toast.error("Image upload failed. Please try again.");
+      toast.error(`Upload failed: ${errorMessage}`);
     }
   };
 

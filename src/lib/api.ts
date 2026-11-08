@@ -1062,13 +1062,16 @@ export const uploadFile = async (file: File, metadata?: Record<string, string>) 
 
   try {
     const sessionId = getStoredSessionId();
+    const headers: Record<string, string> = {};
     if (sessionId) {
+      headers["X-Session-Token"] = sessionId;
       console.debug(`[API] Upload request with session ID: ${sessionId.substring(0, 8)}...`);
     }
 
     const response = await fetch(url, {
       method: "POST",
       credentials: "include",
+      headers,
       body: formData,
       signal: controller.signal,
     });
