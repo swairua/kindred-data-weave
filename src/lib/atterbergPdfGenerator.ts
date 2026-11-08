@@ -8,6 +8,7 @@ import type {
 } from "@/context/TestDataContext";
 import { calculateLogLinearRegression, calculateMoistureFromMass, getTrialMoisture } from "./atterbergCalculations";
 import { fetchAdminImagesAsBase64, type AdminImages } from "./imageUtils";
+import { pdfFileName } from "./pdfGenerator";
 import { classifySoilUSCS, type GrainSizeDistribution } from "./soilClassification";
 
 // Helper to extract base64 string from data URL
@@ -605,11 +606,9 @@ export const generateAtterbergPDF = async (
     doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, pageHeight - 6);
   }
 
-  const fileName = `Atterberg_Limits_${(options.projectName || "export").replace(/\s+/g, "_")}.pdf`;
-
   if (options.skipDownload) {
     return doc.output("blob");
   }
 
-  doc.save(fileName);
+  doc.save(pdfFileName(options.projectName, "Atterberg_Limits"));
 };

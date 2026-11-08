@@ -10,7 +10,7 @@ import { Plus, X, Upload, Trash2, ArrowLeft, FilePlus, Loader2, AlertCircle, Che
 import { useProject } from "@/context/ProjectContext";
 import type { jsPDF } from "jspdf";
 import { buildCoringReportPDF, type CoringCoreReport } from "@/lib/coringReportPdf";
-import { printPDFDocument } from "@/lib/pdfGenerator";
+import { pdfFileName, printPDFDocument } from "@/lib/pdfGenerator";
 import { useTestReport } from "@/hooks/useTestReport";
 import { useNavigate } from "react-router-dom";
 import { saveReceptionConsignment, listRecords, readRecord, updateRecord } from "@/lib/api";
@@ -538,7 +538,7 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
   const exportPDF = async () => {
     const doc = await buildReport();
     if (!doc) return false;
-    doc.save(`Coring_Report_${projectDetails.sampleNo.trim().replace(/\s+/g, "_")}.pdf`);
+    doc.save(pdfFileName(projectDetails.projectName, "Coring_Report"));
     toast.success("PDF generated successfully");
     return true;
   };

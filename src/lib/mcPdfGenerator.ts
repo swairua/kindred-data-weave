@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import { fetchAdminImagesAsBase64, type AdminImages } from "./imageUtils";
+import { pdfFileName } from "./pdfGenerator";
 import {
   formatDensityTick,
   formatMoistureTick,
@@ -578,8 +579,7 @@ export const generateMoistureDensityPDF = async (options: MoistureDensityPdfOpti
   }
 
   if (!options.skipDownload) {
-    const stem = (options.projectName || "Density Moisture Content").replace(/[^\w-]+/g, "_");
-    doc.save(`${stem}_Compaction.pdf`);
+    doc.save(pdfFileName(options.projectName, "Density_Moisture_Content"));
   }
   return doc;
 };

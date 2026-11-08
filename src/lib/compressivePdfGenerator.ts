@@ -25,6 +25,7 @@ import {
 } from "./compressiveCalculations";
 
 import { fetchAdminImagesAsBase64, type AdminImages } from "./imageUtils";
+import { pdfFileName } from "./pdfGenerator";
 
 /** Page margins. A4 landscape is 297 x 210 mm. */
 const MARGIN = 10;
@@ -709,8 +710,7 @@ export const generateCompressiveStrengthPDF = async (options: CompressiveStrengt
   finishPage(printed.frameTop, printed.bodyEnd);
 
   if (!o.skipDownload) {
-    const stem = (o.projectName || "Compressive Strength").replace(/[^\w-]+/g, "_");
-    doc.save(`${stem}_Cubes.pdf`);
+    doc.save(pdfFileName(o.projectName, "Compressive_Strength_Cubes"));
   }
   return doc;
 };
