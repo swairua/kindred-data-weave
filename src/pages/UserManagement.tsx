@@ -33,6 +33,8 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/s
 import { Users, Loader2, ChevronLeft, ChevronRight, Lock, Plus, Edit2, Trash2 } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import { listRecords, createRecord, deleteRecord, updateRecord } from "@/lib/api";
+import { useSession } from "@/context/SessionContext";
+import { useUserPermissions } from "@/hooks/useUserPermissions";
 import { toast } from "sonner";
 
 interface ApiUser {
@@ -86,6 +88,9 @@ const canManageUserPermissions = (currentUser: AuthUser | null, targetUserId: nu
 
 const UserManagement = () => {
   const navigate = useNavigate();
+  const { user } = useSession();
+  const { hasPermission, isLoading: permissionsLoading } = useUserPermissions(user);
+  const canViewUsers = hasPermission("users");
 
   const [users, setUsers] = useState<ApiUser[]>([]);
   const [userPermissions, setUserPermissions] = useState<Map<number, Set<string>>>(new Map());
@@ -115,6 +120,8 @@ const UserManagement = () => {
 
   // Fetch users and their permissions from API
   useEffect(() => {
+    if (!canViewUsers) return;
+
     const loadData = async () => {
       try {
         setIsLoading(true);
@@ -146,7 +153,7 @@ const UserManagement = () => {
     };
 
     loadData();
-  }, []);
+  }, [canViewUsers]);
 
   // Filter users based on search query
   const filteredUsers = useMemo(() => {
@@ -393,6 +400,28 @@ const UserManagement = () => {
       setIsSavingPermissions(false);
     }
   };
+
+  if (!permissionsLoading && !canViewUsers) {
+    return (
+      <SidebarProvider>
+        <Navigation
+          currentView="admin"
+          onViewChange={() => {}}
+          onLogout={handleLogout}
+        />
+        <SidebarInset>
+          <div className="p-6">
+            <Card className="border-0 shadow-sm max-w-md">
+              <CardHeader>
+                <CardTitle>Access denied</CardTitle>
+                <CardDescription>You do not have permission to view users.</CardDescription>
+              </CardHeader>
+            </Card>
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
+    );
+  }
 
   return (
     <SidebarProvider>
