@@ -976,6 +976,53 @@ export const uploadReceptionPhoto = async (
   }
 };
 
+export const uploadCoringPhoto = async (
+  file: File,
+  imageType: "before" | "after"
+): Promise<string> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("image_type", imageType);
+
+  const url = buildApiUrl({ action: "upload-coring-photo" });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 300000);
+
+  try {
+    const headers: HeadersInit = {};
+    const sessionToken = getSessionToken();
+    if (sessionToken) {
+      headers["X-Session-Token"] = sessionToken;
+    }
+
+    const response = await fetch(url, {
+      method: "POST",
+      credentials: "include",
+      headers,
+      body: formData,
+      signal: controller.signal,
+    });
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(data?.message || data?.error || `HTTP ${response.status}`);
+    }
+
+    const responseSessionToken = response.headers.get("X-Session-Token");
+    if (responseSessionToken) {
+      setSessionToken(responseSessionToken);
+    }
+
+    if (typeof data?.file_path !== "string" || !data.file_path) {
+      throw new Error("Invalid upload response. Please try again.");
+    }
+    return data.file_path;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
 export const deleteReceptionPhoto = async (id: number | string): Promise<boolean> => {
   try {
     await apiRequest<ApiWriteResponse<null>>(

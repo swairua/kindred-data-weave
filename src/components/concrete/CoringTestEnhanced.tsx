@@ -15,7 +15,7 @@ import { pdfFileName, printPDFDocument } from "@/lib/pdfGenerator";
 import { formatReportDate } from "@/lib/compressivePdfGenerator";
 import { useTestReport } from "@/hooks/useTestReport";
 import { useNavigate } from "react-router-dom";
-import { saveReceptionConsignment, listRecords, readRecord, uploadFile } from "@/lib/api";
+import { saveReceptionConsignment, listRecords, readRecord, uploadCoringPhoto } from "@/lib/api";
 import { emptyReceptionConsignment, nextRcNo, emptyReceptionSample, type ReceptionConsignmentInput, type ReceptionSampleInput } from "@/lib/reception";
 import { SessionContext } from "@/context/SessionContext";
 import { toast } from "sonner";
@@ -521,15 +521,9 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
     }
     
     try {
-      const data = await uploadFile(file, { image_type: field === "pileBeforeImage" ? "pile_before" : "pile_after" });
+      const filePath = await uploadCoringPhoto(file, field === "pileBeforeImage" ? "before" : "after");
 
-      if (!data || typeof data !== "object" || !data.file_path) {
-        toast.error("Invalid upload response. Please try again.");
-        return;
-      }
-
-      const filePath = data.file_path;
-      if (typeof filePath !== "string" || filePath.includes("..") || filePath.includes("//")) {
+      if (filePath.includes("..") || filePath.includes("//")) {
         toast.error("Invalid file path returned. Please try again.");
         return;
       }
