@@ -1137,23 +1137,35 @@ export const processReceptionToProject = async (consignment: ReceptionConsignmen
   if (!projectId) throw new Error("Failed to create project from reception");
 
   const testResultIds: Record<string, number> = {};
-  for (const sample of consignment.samples || []) {
-    if (!sample.tests || sample.tests.length === 0) continue;
-    try {
-      const tr = await createRecord<{ id: number }>("test_results", {
-        project_id: projectId,
-        test_key: testType,
-        sample_key: sample.labId,
-        sample_label: sample.clientMark,
-        sample_depth: sample.depthLabel,
-        name: `${testType} - ${sample.labId}`,
-        category: testType === "compressive" ? "concrete" : "soil",
-        status: "in-progress",
-        data_points: 0,
-      });
-      if (tr.data?.id) testResultIds[sample.labId] = tr.data.id;
-    } catch (e) {
-      console.warn("[API] Failed to create test_result for sample", sample.labId, e);
+  if (testType === "coring") {
+    const tr = await createRecord<{ id: number }>("test_results", {
+      project_id: projectId,
+      test_key: "coring",
+      name: "Concrete Coring",
+      category: "concrete",
+      status: "in-progress",
+      data_points: 0,
+    });
+    if (tr.data?.id) testResultIds.coring = tr.data.id;
+  } else {
+    for (const sample of consignment.samples || []) {
+      if (!sample.tests || sample.tests.length === 0) continue;
+      try {
+        const tr = await createRecord<{ id: number }>("test_results", {
+          project_id: projectId,
+          test_key: testType,
+          sample_key: sample.labId,
+          sample_label: sample.clientMark,
+          sample_depth: sample.depthLabel,
+          name: `${testType} - ${sample.labId}`,
+          category: testType === "compressive" ? "concrete" : "soil",
+          status: "in-progress",
+          data_points: 0,
+        });
+        if (tr.data?.id) testResultIds[sample.labId] = tr.data.id;
+      } catch (e) {
+        console.warn("[API] Failed to create test_result for sample", sample.labId, e);
+      }
     }
   }
 

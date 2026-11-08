@@ -73,6 +73,8 @@ const FAILURE_MODES = [
   "Custom"
 ];
 
+const CORING_TEST_NAME = "Concrete Coring: Core Compressive Strength";
+
 const CORING_ROW_DEFAULTS: CoringRow = {
   coreId: "CR1",
   diameter: "82",
@@ -545,6 +547,19 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
     }
   };
 
+  const buildCoringRecord = (status: "in-progress" | "completed") => ({
+    test_key: "coring",
+    name: CORING_TEST_NAME,
+    category: "concrete",
+    status,
+    data_points: rows.length,
+    key_results_json: [
+      { label: "Avg Corrected Strength", value: (rows.map(r => parseFloat(getCorrectedStrength(r))).filter(Boolean).reduce((a,b)=>a+b,0)/rows.length || 0).toFixed(2) + " MPa" },
+      { label: "Cores Tested", value: String(rows.length) },
+    ].filter(r => r.value),
+    payload_json: { test: { testKey: "coring", dataPoints: rows.length, coring: true, cores: rows, projectDetails }, rows, projectDetails },
+  });
+
   const handleSave = async () => {
     const errors = [...validateAllRows(), ...validateProjectDetails()];
     if (errors.length > 0) {
@@ -597,18 +612,7 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
       localStorage.setItem(`coring_test_${testKey || "default"}`, JSON.stringify(saveData));
 
       if (projectId) {
-        const savedId = await saveTestResult(projectId, recordId, {
-          test_key: "coring",
-          name: "Compressive Strength of Concrete Cores",
-          category: "concrete",
-          status: "completed",
-          data_points: rows.length,
-          key_results_json: [
-            { label: "Avg Corrected Strength", value: (rows.map(r => parseFloat(getCorrectedStrength(r))).filter(Boolean).reduce((a,b)=>a+b,0)/rows.length || 0).toFixed(2) + " MPa" },
-            { label: "Cores Tested", value: String(rows.length) },
-          ].filter(r => r.value),
-          payload_json: { test: { testKey: "coring", compressiveTestId: recordId, dataPoints: rows.length, coring: true, cores: rows, projectDetails }, rows, projectDetails },
-        });
+        const savedId = await saveTestResult(projectId, recordId, buildCoringRecord("completed"));
         setRecordId(savedId);
       }
 
@@ -675,7 +679,6 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
       consignment.receivedBy = user?.name || "PUAL N";
       consignment.methodSet = "BS EN 12504-1:2009";
       consignment.status = "processed";
-      consignment.cubeCastDate = projectDetails.dateOfTest;
       
       // Validate and create samples from rows
       if (rows.length < 1) {
@@ -697,7 +700,7 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
         sample.sampleType = "Concrete core";
         sample.container = "Core sample";
         sample.tests = ["CMP"];
-        sample.massKg = row.weightInAir || "0";
+        sample.massKg = row.weightInAir ? String(parseFloat(row.weightInAir) / 1000) : "0";
         sample.condition = "Intact";
         return sample;
       });
@@ -712,6 +715,13 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
         const result = await processReceptionToProject(consignment, "coring");
         
         if (result.projectId) {
+          try {
+            await saveTestResult(result.projectId, result.testResultIds.coring ?? null, buildCoringRecord("in-progress"));
+          } catch (error) {
+            console.error("[CoringTestEnhanced] Saving coring data for new project failed:", error);
+            toast.error("Project created, but the coring data could not be saved. Your measurements are still on this page.");
+            return;
+          }
           setReceptionMode(false);
           toast.success("Project created successfully");
           navigate(`/projects/${result.projectId}`);
