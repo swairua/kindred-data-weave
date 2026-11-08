@@ -109,12 +109,18 @@ const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
       }
     }
 
+    const fields = avgRebound ? [
+      { label: "Avg Rebound", value: `${avgRebound}` },
+      { label: "Est. Strength", value: `${getEstStrength(avgRebound)} MPa` },
+    ] : [];
+
     return generateTestPDF({
       title: testName,
       standard: testKey === "schmidt_rock" ? "ASTM D5873" : "ASTM C805",
       ...project,
       dateTested: dateTested || project.projectDate,
       testedBy,
+      fields,
       skipDownload,
       tables: [tableData],
       chartImages

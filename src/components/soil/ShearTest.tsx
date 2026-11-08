@@ -79,7 +79,22 @@ const ShearTest = ({ testKey }: ShearTestProps) => {
       }
     }
 
-    generateTestPDF({ title: "Shear Test", ...project, tables: [{ headers: ["Normal Stress (kPa)", "Shear Stress (kPa)"], rows: rows.map(r => [r.normalStress || "—", r.shearStress || "—"]) }], chartImages });
+    const fields = envelope ? [
+      { label: "Cohesion (c)", value: `${envelope.cohesion.toFixed(1)} kPa` },
+      { label: "Friction Angle (φ)", value: `${envelope.phi.toFixed(1)}°` },
+    ] : [];
+
+    generateTestPDF({ 
+      title: "Shear Test", 
+      standard: "BS 1377-7:1990 / ASTM D3080",
+      ...project, 
+      fields,
+      tables: [{ 
+        headers: ["Normal Stress (kPa)", "Shear Stress (kPa)"], 
+        rows: rows.map(r => [r.normalStress || "—", r.shearStress || "—"]) 
+      }], 
+      chartImages 
+    });
   };
 
   const status = filledShear === 0 ? "No data" : filledShear < rows.length ? "In progress" : "Complete";

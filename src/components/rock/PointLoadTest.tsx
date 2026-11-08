@@ -103,6 +103,10 @@ const PointLoadTest = ({ testKey }: { testKey?: string }) => {
     ...project,
     dateTested: dateTested || project.projectDate,
     testedBy,
+    fields: [
+      { label: "Avg Is", value: avgIs ? `${avgIs} MPa` : "—" },
+      { label: "Avg Is(50)", value: avgIs50 ? `${avgIs50} MPa` : "—" },
+    ],
     skipDownload,
     tables: [tableData]
   });

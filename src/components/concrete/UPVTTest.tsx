@@ -68,7 +68,19 @@ const UPVTTest = () => {
       }
     }
 
-    generateTestPDF({ title: "UPVT", ...project, tables: [tableData], chartImages });
+    const fields = avgVelocity ? [
+      { label: "Avg Velocity", value: `${avgVelocity} km/s` },
+      { label: "Quality", value: getQuality(parseFloat(avgVelocity)) },
+    ] : [];
+
+    generateTestPDF({ 
+      title: "UPVT", 
+      standard: "BS EN 12504-4:2004 / ASTM C597",
+      ...project, 
+      fields,
+      tables: [tableData], 
+      chartImages 
+    });
   };
 
   const canExport = !!project.currentProjectId || isSaved;

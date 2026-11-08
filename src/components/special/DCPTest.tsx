@@ -23,7 +23,17 @@ const DCPTest = () => {
   useTestReport("dcp", filledDCP, dcpResults);
 
   const exportPDF = () => {
-    generateTestPDF({ title: "DCP (Dynamic Cone Penetrometer)", ...project, tables: [{ headers: ["Depth (mm)", "Penetration per Blow (mm/blow)"], rows: rows.map(r => [r.depth || "—", r.penetration || "—"]) }] });
+    const pens = rows.map(r => parseFloat(r.penetration)).filter(Boolean);
+    const avg = pens.length ? (pens.reduce((a, b) => a + b, 0) / pens.length).toFixed(1) : "";
+    const fields = avg ? [{ label: "Avg Penetration Rate", value: `${avg} mm/blow` }] : [];
+    
+    generateTestPDF({ 
+      title: "DCP (Dynamic Cone Penetrometer)", 
+      standard: "ASTM D6951 / BS 1377-9",
+      ...project, 
+      fields,
+      tables: [{ headers: ["Depth (mm)", "Penetration per Blow (mm/blow)"], rows: rows.map(r => [r.depth || "—", r.penetration || "—"]) }] 
+    });
   };
 
   return (

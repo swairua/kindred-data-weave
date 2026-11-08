@@ -77,7 +77,20 @@ const ConcreteCubesTest = ({ testKey }: ConcreteCubesTestProps) => {
       }
     }
 
-    generateTestPDF({ title: "Concrete Cubes", ...project, tables: [tableData], chartImages });
+    const fields = [
+      { label: "Target Grade", value: `C${gradeTarget}` },
+      { label: "Avg Strength", value: avgStrength ? `${avgStrength} MPa` : "—" },
+      { label: "Pass Rate", value: strengths.length ? `${passCount}/${strengths.length}` : "—" },
+    ];
+
+    generateTestPDF({ 
+      title: "Concrete Cubes", 
+      standard: "BS EN 12390-3:2009",
+      ...project, 
+      fields,
+      tables: [tableData], 
+      chartImages 
+    });
   };
 
   const canExport = !!project.currentProjectId || isSaved;

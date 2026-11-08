@@ -76,6 +76,7 @@ const UCSTest = ({ testKey }: { testKey?: string }) => {
     dateTested: dateTested || project.projectDate,
     testedBy,
     skipDownload,
+    fields: avgUCS ? [{ label: "Avg UCS", value: `${avgUCS} MPa` }] : [],
     tables: [{ headers: ["Sample ID", "Load (kN)", "Area (mm²)", "Strength (MPa)"], rows: rows.map(r => [r.sampleId, r.load || "—", r.area || "—", getStrength(r) || "—"]) }]
   });
 

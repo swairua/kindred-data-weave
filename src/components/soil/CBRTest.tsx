@@ -55,11 +55,13 @@ const CBRTest = ({ testKey }: CBRTestProps) => {
 
   const cbr25 = getCBR("2.5", rows.find(r => r.penetration === "2.5")?.load || "");
   const cbr50 = getCBR("5.0", rows.find(r => r.penetration === "5.0")?.load || "");
+  const cbrReported = cbr25 && cbr50 ? Math.max(parseFloat(cbr25), parseFloat(cbr50)) : (cbr25 || cbr50 || "");
   const filledCBR = rows.filter(r => r.load).length;
   const cbrResults = useMemo(() => [
     { label: "CBR @ 2.5mm", value: cbr25 ? `${cbr25}%` : "" },
     { label: "CBR @ 5.0mm", value: cbr50 ? `${cbr50}%` : "" },
-  ], [cbr25, cbr50]);
+    { label: "Reported CBR", value: cbrReported ? `${cbrReported}%` : "" },
+  ], [cbr25, cbr50, cbrReported]);
   useTestReport("cbr", filledCBR, cbrResults);
 
   const projectId = project.currentProjectId ?? null;
@@ -81,8 +83,7 @@ const CBRTest = ({ testKey }: CBRTestProps) => {
   }, [projectId]);
 
   const chartConfig = { load: { label: "Load (kN)", color: "hsl(var(--primary))" } };
-
-  const buildPDF = async (skipDownload: boolean) => {
+const buildPDF = async (skipDownload: boolean) => {
     let chartImages = {};
     if (chartData.length >= 2) {
       const chartBase64 = await captureChartAsBase64("cbr-chart");
@@ -91,8 +92,17 @@ const CBRTest = ({ testKey }: CBRTestProps) => {
       }
     }
 
+    const fields = [
+      { label: "CBR @ 2.5mm", value: cbr25 ? `${cbr25}%` : "—" },
+      { label: "CBR @ 5.0mm", value: cbr50 ? `${cbr50}%` : "—" },
+      { label: "Reported CBR (max)", value: cbrReported ? `${cbrReported}%` : "—" },
+    ];
+
     return generateTestPDF({
-      title: "CBR (California Bearing Ratio)", ...project,
+      title: "CBR (California Bearing Ratio)",
+      standard: "BS 1377-4:1990 / ASTM D1883",
+      ...project,
+      fields,
       tables: [{ headers: ["Penetration (mm)", "Load (kN)", "CBR (%)"], rows: rows.map(r => [r.penetration, r.load || "—", getCBR(r.penetration, r.load) || "—"]) }],
       chartImages,
       skipDownload,

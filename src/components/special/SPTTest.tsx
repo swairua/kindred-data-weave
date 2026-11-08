@@ -66,15 +66,22 @@ const SPTTest = ({ testKey }: { testKey?: string }) => {
     setIsSaved(true);
   };
 
-  const buildPDF = (skipDownload: boolean) => generateTestPDF({
-    title: "SPT (Standard Penetration Test)",
-    standard: "BS 1377-9:1990",
-    ...project,
-    dateTested: dateTested || project.projectDate,
-    testedBy,
-    skipDownload,
-    tables: [{ headers: ["Depth (m)", "Blow Count (N-value)"], rows: rows.map(r => [r.depth || "—", r.blowCount || "—"]) }]
-  });
+  const buildPDF = (skipDownload: boolean) => {
+    const blows = rows.map(r => parseFloat(r.blowCount)).filter(Boolean);
+    const avg = blows.length ? (blows.reduce((a, b) => a + b, 0) / blows.length).toFixed(0) : "";
+    const fields = avg ? [{ label: "Avg N-value", value: `${avg}` }] : [];
+    
+    return generateTestPDF({
+      title: "SPT (Standard Penetration Test)",
+      standard: "BS 1377-9:1990",
+      ...project,
+      dateTested: dateTested || project.projectDate,
+      testedBy,
+      fields,
+      skipDownload,
+      tables: [{ headers: ["Depth (m)", "Blow Count (N-value)"], rows: rows.map(r => [r.depth || "—", r.blowCount || "—"]) }]
+    });
+  };
 
   const exportPDF = async () => {
     await buildPDF(false);

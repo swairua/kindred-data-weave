@@ -51,7 +51,19 @@ const ConsolidationTest = ({ testKey }: ConsolidationTestProps) => {
       }
     }
 
-    generateTestPDF({ title: "Consolidation Test", ...project, tables: [{ headers: ["Time (min)", "Settlement (mm)"], rows: rows.map(r => [r.time || "—", r.settlement || "—"]) }], chartImages });
+    const maxSettlement = chartData.length ? Math.max(...chartData.map(d => d.settlement)) : 0;
+    const fields = maxSettlement > 0 ? [
+      { label: "Max Settlement", value: `${maxSettlement.toFixed(2)} mm` },
+    ] : [];
+
+    generateTestPDF({ 
+      title: "Consolidation Test", 
+      standard: "BS 1377-6:1990 / ASTM D2435",
+      ...project, 
+      fields,
+      tables: [{ headers: ["Time (min)", "Settlement (mm)"], rows: rows.map(r => [r.time || "—", r.settlement || "—"]) }], 
+      chartImages 
+    });
   };
 
   const maxSettlement = chartData.length ? Math.max(...chartData.map(d => d.settlement)) : 0;
