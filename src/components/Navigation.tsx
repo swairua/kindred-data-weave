@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useContext } from "react";
 import { LayoutDashboard, FlaskConical, FileText, Hammer, LogOut, Layers, ChevronRight, Sigma, Users, Settings as SettingsIcon, PackageOpen, Package, Wrench } from "lucide-react";
 import {
   Sidebar,
