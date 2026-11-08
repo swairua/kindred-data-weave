@@ -59,6 +59,8 @@ const DEPTH_OPTIONS = [
 ];
 
 const CONCRETE_CLASSES = ["45 MPA", "40 MPA", "35 MPA", "30 MPA", "25 MPA", "20 MPA", "Custom"];
+const detailLabelClass = "w-2/5 shrink-0 border-r border-border pr-3 text-xs font-normal leading-tight text-foreground";
+const detailInputClass = "h-8 min-w-0 flex-1 text-xs";
 
 const FAILURE_MODES = [
   "Sparsely distributed aggregates with maximum size approximately 20mm",
@@ -610,46 +612,46 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
           <CardTitle className="text-sm">Project & Sample Details</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="projectName">Project Name *</Label>
-            <Input id="projectName" value={projectDetails.projectName} onChange={(e) => updateProjectDetail("projectName", e.target.value)} className="h-8 text-xs" />
+          <div className="flex items-center gap-3">
+            <Label htmlFor="projectName" className={detailLabelClass}>Project Name *</Label>
+            <Input id="projectName" value={projectDetails.projectName} onChange={(e) => updateProjectDetail("projectName", e.target.value)} className={detailInputClass} />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="tower">Tower / Location *</Label>
-            <Input id="tower" value={projectDetails.tower} onChange={(e) => updateProjectDetail("tower", e.target.value)} className="h-8 text-xs" />
+          <div className="flex items-center gap-3">
+            <Label htmlFor="tower" className={detailLabelClass}>Tower / Location *</Label>
+            <Input id="tower" value={projectDetails.tower} onChange={(e) => updateProjectDetail("tower", e.target.value)} className={detailInputClass} />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="concreteClass">Concrete Class</Label>
+          <div className="flex items-center gap-3">
+            <Label htmlFor="concreteClass" className={detailLabelClass}>Concrete Class</Label>
             <Select value={projectDetails.concreteClass} onValueChange={(v) => updateProjectDetail("concreteClass", v)}>
-              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectTrigger className={detailInputClass}><SelectValue /></SelectTrigger>
               <SelectContent>
                 {CONCRETE_CLASSES.map(c => <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="ageOfConcrete">Age of Concrete</Label>
-            <Input id="ageOfConcrete" value={projectDetails.ageOfConcrete} onChange={(e) => updateProjectDetail("ageOfConcrete", e.target.value)} className="h-8 text-xs" placeholder="over 28 days" />
+          <div className="flex items-center gap-3">
+            <Label htmlFor="ageOfConcrete" className={detailLabelClass}>Age of Concrete</Label>
+            <Input id="ageOfConcrete" value={projectDetails.ageOfConcrete} onChange={(e) => updateProjectDetail("ageOfConcrete", e.target.value)} className={detailInputClass} placeholder="over 28 days" />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="dateOfTest">Date of Test *</Label>
-            <Input id="dateOfTest" type="date" value={projectDetails.dateOfTest} onChange={(e) => updateProjectDetail("dateOfTest", e.target.value)} className="h-8 text-xs" />
+          <div className="flex items-center gap-3">
+            <Label htmlFor="dateOfTest" className={detailLabelClass}>Date of Test *</Label>
+            <Input id="dateOfTest" type="date" value={projectDetails.dateOfTest} onChange={(e) => updateProjectDetail("dateOfTest", e.target.value)} className={detailInputClass} />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="dateReported">Date Reported</Label>
-            <Input id="dateReported" type="date" value={projectDetails.dateReported} onChange={(e) => updateProjectDetail("dateReported", e.target.value)} className="h-8 text-xs" />
+          <div className="flex items-center gap-3">
+            <Label htmlFor="dateReported" className={detailLabelClass}>Date Reported</Label>
+            <Input id="dateReported" type="date" value={projectDetails.dateReported} onChange={(e) => updateProjectDetail("dateReported", e.target.value)} className={detailInputClass} />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="testedBy">Tested By</Label>
-            <Input id="testedBy" value={projectDetails.testedBy} onChange={(e) => updateProjectDetail("testedBy", e.target.value)} className="h-8 text-xs" />
+          <div className="flex items-center gap-3">
+            <Label htmlFor="testedBy" className={detailLabelClass}>Tested By</Label>
+            <Input id="testedBy" value={projectDetails.testedBy} onChange={(e) => updateProjectDetail("testedBy", e.target.value)} className={detailInputClass} />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="checkedBy">Checked By</Label>
-            <Input id="checkedBy" value={projectDetails.checkedBy} onChange={(e) => updateProjectDetail("checkedBy", e.target.value)} className="h-8 text-xs" />
+          <div className="flex items-center gap-3">
+            <Label htmlFor="checkedBy" className={detailLabelClass}>Checked By</Label>
+            <Input id="checkedBy" value={projectDetails.checkedBy} onChange={(e) => updateProjectDetail("checkedBy", e.target.value)} className={detailInputClass} />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="sampleNo">Sample No.</Label>
-            <Input id="sampleNo" value={projectDetails.sampleNo} onChange={(e) => updateProjectDetail("sampleNo", e.target.value)} className="h-8 text-xs" />
+          <div className="flex items-center gap-3">
+            <Label htmlFor="sampleNo" className={detailLabelClass}>Sample No.</Label>
+            <Input id="sampleNo" value={projectDetails.sampleNo} onChange={(e) => updateProjectDetail("sampleNo", e.target.value)} className={detailInputClass} />
           </div>
         </CardContent>
       </Card>
