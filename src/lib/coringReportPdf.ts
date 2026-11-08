@@ -43,8 +43,9 @@ export interface CoringCoreReport {
 }
 
 const PAGE_CENTER = 306;
-const LEFT = 116.2;
-const WIDTH = 404.6;
+const FRAME_INSET = 8;
+const LEFT = 82.8 + FRAME_INSET;
+const WIDTH = 440.8 - FRAME_INSET * 2;
 const COL_W = WIDTH / 3;
 const FRAME = { x: 82.8, y: 71, w: 440.8, h: 489 };
 const HEADER = { y: 84, w: 190, h: 70.2 };
