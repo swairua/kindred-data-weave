@@ -909,6 +909,7 @@ const Index = ({ initialTab }: IndexProps) => {
           currentView={view}
           onViewChange={setView}
           onLogout={handleLogout}
+          user={currentUser}
           userName={currentUser?.name}
           userEmail={currentUser?.email}
         />

@@ -203,7 +203,7 @@ const Settings = () => {
   if (isLoading) {
     return (
       <SidebarProvider>
-        <Navigation currentView="settings" onViewChange={() => {}} onLogout={handleLogout} />
+        <Navigation currentView="settings" onViewChange={() => {}} onLogout={handleLogout} user={user} userName={user?.name} userEmail={user?.email} />
         <SidebarInset>
           <div className="flex h-screen items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -216,7 +216,7 @@ const Settings = () => {
   if (!company) {
     return (
       <SidebarProvider>
-        <Navigation currentView="settings" onViewChange={() => {}} onLogout={handleLogout} />
+        <Navigation currentView="settings" onViewChange={() => {}} onLogout={handleLogout} user={user} userName={user?.name} userEmail={user?.email} />
         <SidebarInset>
           <div className="flex h-screen items-center justify-center">
             <div className="text-center">
@@ -230,7 +230,7 @@ const Settings = () => {
 
   return (
     <SidebarProvider>
-      <Navigation currentView="settings" onViewChange={() => {}} onLogout={handleLogout} />
+      <Navigation currentView="settings" onViewChange={() => {}} onLogout={handleLogout} user={user} userName={user?.name} userEmail={user?.email} />
       <SidebarInset>
         <div className="flex flex-col h-screen overflow-y-auto bg-background">
           {/* Header */}

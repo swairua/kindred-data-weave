@@ -20,6 +20,7 @@ import { useNavigationLoading } from "@/context/NavigationLoadingContext";
 import { Loader2 } from "lucide-react";
 import { useSession } from "@/context/SessionContext";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
+import type { ApiUser } from "@/lib/api";
 
 export type NavigationView = "dashboard" | "tests" | "reports" | "results" | "projects" | "admin" | "users" | "settings" | "reception";
 
@@ -29,6 +30,7 @@ interface NavigationProps {
   onLogout?: () => void;
   userName?: string;
   userEmail?: string;
+  user?: ApiUser; // Optional user prop for pages that don't use ProtectedLayout
 }
 
 const Navigation = ({
@@ -37,14 +39,18 @@ const Navigation = ({
   onLogout,
   userName,
   userEmail,
+  user: propsUser,
 }: NavigationProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { setOpenMobile, isMobile } = useSidebar();
   const project = useProject();
   const { isNavigating, navigationProgress, startNavigation, completeNavigation } = useNavigationLoading();
+  
+  // Use user from props if provided, otherwise fall back to SessionContext
   const session = useSession();
-  const { hasPermission, isLoading: permissionsLoading } = useUserPermissions(session.user);
+  const user = propsUser || session?.user;
+  const { hasPermission, isLoading: permissionsLoading } = useUserPermissions(user);
 
   // Map navigation items to their required table permissions
   const getTableForView = (view: NavigationView): string => {

@@ -36,6 +36,7 @@ import { listRecords, createRecord, deleteRecord, updateRecord } from "@/lib/api
 import { useSession } from "@/context/SessionContext";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
 import { toast } from "sonner";
+import type { ApiUser } from "@/lib/api";
 
 interface ApiUser {
   id: number;
@@ -88,10 +89,15 @@ const canManageUserPermissions = (currentUser: AuthUser | null, targetUserId: nu
 
 const UserManagement = () => {
   const navigate = useNavigate();
-  const { user } = useSession();
+  const { user, logout } = useSession();
   const { hasPermission, isLoading: permissionsLoading } = useUserPermissions(user);
   const canViewUsers = hasPermission("users");
-
+  
+  const handleLogout = async () => {
+    await logout();
+    toast.success("Logged out");
+  };
+  
   const [users, setUsers] = useState<ApiUser[]>([]);
   const [userPermissions, setUserPermissions] = useState<Map<number, Set<string>>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
@@ -176,11 +182,6 @@ const UserManagement = () => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
-
-  const handleLogout = () => {
-    toast.success("Logged out");
-    navigate("/login", { replace: true });
-  };
 
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
@@ -429,6 +430,9 @@ const UserManagement = () => {
         currentView="admin"
         onViewChange={() => {}}
         onLogout={handleLogout}
+        user={user}
+        userName={user?.name}
+        userEmail={user?.email}
       />
       <SidebarInset>
         <div className="flex flex-col min-h-screen bg-background">

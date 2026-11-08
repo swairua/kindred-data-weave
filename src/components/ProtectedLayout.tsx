@@ -27,6 +27,7 @@ const ProtectedLayout = () => {
         currentView={viewForPath(pathname)}
         onViewChange={() => {}}
         onLogout={handleLogout}
+        user={user}
         userName={user.name}
         userEmail={user.email}
       />

@@ -370,6 +370,7 @@ const TestResults = () => {
         currentView="results"
         onViewChange={() => {}}
         onLogout={handleLogout}
+        user={currentUser}
         userName={currentUser?.name}
         userEmail={currentUser?.email}
       />
