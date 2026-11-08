@@ -264,6 +264,44 @@ function respond(array $payload, int $status = 200, ?string $logContext = null):
     exit;
 }
 
+/**
+ * Check if a user has permission to access a specific table.
+ * 
+ * Implements the whitelist permission model:
+ * - By default, users have NO access to any tables
+ * - Admins must explicitly grant access to each table
+ * - Admin tables (users, user_allowed_tables) are accessible by any authenticated user
+ * 
+ * @param mysqli $conn Database connection
+ * @param int $userId The user ID to check permissions for
+ * @param string $tableName The table name to check access to
+ * @return bool true if the user has access, false otherwise
+ */
+function hasTablePermission(mysqli $conn, int $userId, string $tableName): bool
+{
+    // Admin tables are accessible by any authenticated user
+    $adminTables = ['users', 'user_allowed_tables'];
+    if (in_array($tableName, $adminTables, true)) {
+        return true;
+    }
+
+    // Check if user has explicit permission to access this table
+    $sql = "SELECT COUNT(*) as count FROM user_allowed_tables WHERE user_id = ? AND table_name = ?";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        error_log("Permission check failed: Unable to prepare statement");
+        return false;
+    }
+
+    $stmt->bind_param('is', $userId, $tableName);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    $stmt->close();
+
+    return (bool) ($row['count'] > 0);
+}
+
 function hashPassword(string $password): string
 {
     return password_hash($password, PASSWORD_DEFAULT);
@@ -1160,6 +1198,15 @@ try {
     }
 
     if ($action === 'schema') {
+        // Check if user has permission to access this table
+        // Schema information could be considered sensitive metadata
+        $user = requireAuth($conn);
+        $userId = (int) $_SESSION['user_id'];
+
+        if (!in_array($table, ['users', 'user_allowed_tables'], true) && !hasTablePermission($conn, $userId, $table)) {
+            respond(['error' => 'Access denied: No permission to view schema for this table'], 403);
+        }
+
         respond([
             'table' => $table,
             'primaryKey' => $primaryKey,
@@ -1191,6 +1238,15 @@ try {
             // For public tables, get user if authenticated
             $user = getCurrentUser($conn);
             $userId = $user ? (int) $_SESSION['user_id'] : null;
+        }
+
+        // Check if user has permission to access this table (whitelist model)
+        // Admin tables are always accessible by authenticated admins
+        // For other tables, user must have explicit permission in user_allowed_tables
+        if ($userId && !in_array($table, $adminTables, true)) {
+            if (!hasTablePermission($conn, $userId, $table)) {
+                respond(['error' => 'Access denied: No permission to access this table'], 403);
+            }
         }
 
         $limit = isset($_GET['limit']) ? max(1, (int) $_GET['limit']) : 100;
@@ -1262,6 +1318,11 @@ try {
         $user = requireAuth($conn);
         $userId = (int) $_SESSION['user_id'];
 
+        // Check if user has permission to access this table
+        if (!in_array($table, ['users', 'user_allowed_tables'], true) && !hasTablePermission($conn, $userId, $table)) {
+            respond(['error' => 'Access denied: No permission to access this table'], 403);
+        }
+
         $id = $_GET['id'] ?? $body['id'] ?? null;
         if ($id === null || $id === '') {
             respond(['error' => 'Missing id'], 400);
@@ -1294,6 +1355,12 @@ try {
     if ($action === 'create') {
         $user = requireAuth($conn);
         $userId = (int) $_SESSION['user_id'];
+
+        // Check if user has permission to access this table
+        if (!in_array($table, ['users', 'user_allowed_tables'], true) && !hasTablePermission($conn, $userId, $table)) {
+            respond(['error' => 'Access denied: No permission to create records in this table'], 403);
+        }
+
         $payload = filteredPayload($body);
 
         // Automatically add user_id if table has it
@@ -1381,6 +1448,12 @@ try {
     if ($action === 'update') {
         $user = requireAuth($conn);
         $userId = (int) $_SESSION['user_id'];
+
+        // Check if user has permission to access this table
+        if (!in_array($table, ['users', 'user_allowed_tables'], true) && !hasTablePermission($conn, $userId, $table)) {
+            respond(['error' => 'Access denied: No permission to update records in this table'], 403);
+        }
+
         $id = $_GET['id'] ?? $body['id'] ?? null;
         if ($id === null || $id === '') {
             respond(['error' => 'Missing id'], 400);
@@ -1482,6 +1555,11 @@ try {
     if ($action === 'delete') {
         $user = requireAuth($conn);
         $userId = (int) $_SESSION['user_id'];
+
+        // Check if user has permission to access this table
+        if (!in_array($table, ['users', 'user_allowed_tables'], true) && !hasTablePermission($conn, $userId, $table)) {
+            respond(['error' => 'Access denied: No permission to delete records from this table'], 403);
+        }
 
         $id = $_GET['id'] ?? $body['id'] ?? null;
         if ($id === null || $id === '') {
