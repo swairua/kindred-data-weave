@@ -50,15 +50,15 @@ const App = () => {
                         <Route path="/reception/:rcNo" element={<LogConsignment />} />
                         <Route path="/storage" element={<Storage />} />
                         <Route path="/equipment" element={<Equipment />} />
+                        <Route path="/tests" element={<Index initialTab="soil" />} />
+                        <Route path="/tests/:projectId" element={<Index initialTab="soil" />} />
+                        <Route path="/reports" element={<Index />} />
+                        <Route path="/admin" element={<Index />} />
+                        <Route path="/settings" element={<Settings />} />
+                        <Route path="/results" element={<TestResults />} />
+                        <Route path="/users" element={<UserManagement />} />
                       </Route>
-                      <Route path="/results" element={<TestResults />} />
-                      <Route path="/users" element={<UserManagement />} />
                     </Route>
-                    <Route path="/tests" element={<Index initialTab="soil" />} />
-                    <Route path="/tests/:projectId" element={<Index initialTab="soil" />} />
-                    <Route path="/reports" element={<Index />} />
-                    <Route path="/admin" element={<Index />} />
-                    <Route path="/settings" element={<Settings />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </NavigationLoadingProvider>
