@@ -289,6 +289,7 @@ const [recordId, setRecordId] = useState<number | null>(null);
       .catch((error) => console.error("Failed to load coring result", error));
     return () => { active = false; };
   }, [projectId]);
+    const getLDRatio = useCallback((row: CoringRow) => {
     const d = parseFloat(row.diameter);
     const l = parseFloat(row.lengthAfter);
     if (!d || !l) return "";

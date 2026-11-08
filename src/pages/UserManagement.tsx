@@ -50,25 +50,32 @@ interface UserAllowedTable {
   created_at?: string;
 }
 
-const AVAILABLE_TABLES = [
-  'projects',
-  'test_definitions',
-  'test_results',
-  'atterberg_instances',
-  'atterberg_rows',
-  'admin_images',
-  'admin_images_audit',
-  'users',
-  'lab_reference_sequences',
-];
-
 // Helper function to check if a user is an admin
 const isAdminUser = (userId: number): boolean => {
   return userId === 1;
 };
 
+// Check if the current user (by userId) has permission to manage permissions for another user
+type AuthUser = { id: number; };
+const canManageUserPermissions = (currentUser: AuthUser | null, targetUserId: number): boolean => {
+  // Admin users can manage permissions for any user
+  if (currentUser && isAdminUser(currentUser.id)) {
+    return true;
+  }
+  
+  // Users can manage their own permissions
+  if (currentUser && currentUser.id === targetUserId) {
+    return true;
+  }
+  
+  // Otherwise, no permission
+  return false;
+};
+
 const UserManagement = () => {
   const navigate = useNavigate();
+  const user = useContext(AuthContext); // Get the currently authenticated user
+  
   const [users, setUsers] = useState<ApiUser[]>([]);
   const [userPermissions, setUserPermissions] = useState<Map<number, Set<string>>>(new Map());
   const [isLoading, setIsLoading] = useState(true);

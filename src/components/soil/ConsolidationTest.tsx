@@ -59,9 +59,9 @@ const ConsolidationTest = ({ testKey }: ConsolidationTestProps) => {
       }
     }
 
-    const maxSettlement = chartData.length ? Math.max(...chartData.map(d => d.settlement)) : 0;
-    const fields = maxSettlement > 0 ? [
-      { label: "Max Settlement", value: `${maxSettlement.toFixed(2)} mm` },
+    const maxSettlementVal = chartData.length ? Math.max(...chartData.map(d => d.settlement)) : 0;
+    const fields = maxSettlementVal > 0 ? [
+      { label: "Max Settlement", value: `${maxSettlementVal.toFixed(2)} mm` },
       { label: "Note", value: "Cc, cv, σ'_p require e-log p curve data" },
     ] : [];
 
@@ -75,7 +75,6 @@ const ConsolidationTest = ({ testKey }: ConsolidationTestProps) => {
     });
   };
 
-  const maxSettlement = chartData.length ? Math.max(...chartData.map(d => d.settlement)) : 0;
   const status = filledConsol === 0 ? "No data" : filledConsol < rows.length ? "In progress" : "Complete";
 
   interface OverviewMetricProps {
