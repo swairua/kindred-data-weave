@@ -45,7 +45,7 @@ const LEFT = 116.2;
 const WIDTH = 404.6;
 const COL_W = WIDTH / 3;
 const FRAME = { x: 82.8, y: 71, w: 440.8, h: 489 };
-const BANNER = { x: 120.4, y: 84, w: 386.1, h: 70.2 };
+const HEADER = { y: 84, w: 190, h: 70.2 };
 const BAND_H = 8.4;
 const ROW_H = 9;
 const CELL_H = 12.5;
@@ -57,14 +57,15 @@ const COMMENTS_TOP = PHOTO_TOP + PHOTO_H + 16;
 const STAMP_AREA = 52;
 const SIGNATURE_H = 17;
 
-const drawFittedImage = (doc: jsPDF, dataUrl: string, x: number, y: number, w: number, h: number) => {
+const drawFittedImage = (doc: jsPDF, dataUrl: string, x: number, y: number, w: number, h: number, align: "left" | "center" | "right" = "center") => {
   try {
     const { base64, format } = imageParts(dataUrl);
     const props = doc.getImageProperties(dataUrl);
     const scale = Math.min(w / props.width, h / props.height);
     const dw = props.width * scale;
     const dh = props.height * scale;
-    doc.addImage(base64, format, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh, undefined, "FAST");
+    const dx = align === "left" ? x : align === "right" ? x + w - dw : x + (w - dw) / 2;
+    doc.addImage(base64, format, dx, y + (h - dh) / 2, dw, dh, undefined, "FAST");
   } catch (error) {
     console.warn("[CoringPDF] Could not place image:", error);
   }
@@ -125,7 +126,8 @@ const drawCorePage = (doc: jsPDF, project: CoringProjectInfo, core: CoringCoreRe
   doc.setLineWidth(0.6);
   doc.rect(FRAME.x, FRAME.y, FRAME.w, FRAME.h);
 
-  if (images.logo) drawFittedImage(doc, images.logo, BANNER.x, BANNER.y, BANNER.w, BANNER.h);
+  if (images.logo) drawFittedImage(doc, images.logo, LEFT, HEADER.y, HEADER.w, HEADER.h, "left");
+  if (images.contacts) drawFittedImage(doc, images.contacts, LEFT + WIDTH - HEADER.w, HEADER.y, HEADER.w, HEADER.h, "right");
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10.5);
