@@ -48,9 +48,9 @@ const FRAME = { x: 82.8, y: 71, w: 440.8, h: 489 };
 const HEADER = { y: 84, w: 190, h: 70.2 };
 const BAND_H = 8.4;
 const ROW_H = 9;
-const CELL_H = 12.5;
-const PHOTO_TOP = 320;
-const PHOTO_H = 150;
+const CELL_H = 14.5;
+const PHOTO_TOP = 336;
+const PHOTO_H = 140;
 const PHOTO_GAP = 10;
 const PHOTO_W = (WIDTH - PHOTO_GAP) / 2;
 const COMMENTS_TOP = PHOTO_TOP + PHOTO_H + 16;
@@ -81,18 +81,25 @@ const drawBand = (doc: jsPDF, y: number, text: string) => {
   doc.text(text, PAGE_CENTER, y + 6, { align: "center" });
 };
 
+const fitFontSize = (doc: jsPDF, text: string, maxW: number, size: number, min: number) => {
+  doc.setFontSize(size);
+  const textWidth = doc.getTextWidth(text);
+  return textWidth <= maxW ? size : Math.max(min, (size * maxW) / textWidth);
+};
+
 const drawCell = (doc: jsPDF, x: number, y: number, w: number, h: number, label: string, value: string) => {
   doc.setDrawColor(0);
   doc.setLineWidth(0.4);
   doc.rect(x, y, w, h);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(6.5);
   doc.setTextColor(60);
-  doc.text(label, x + 2, y + 3.5, { maxWidth: w - 4 });
+  doc.setFontSize(fitFontSize(doc, label, w - 4, 6.5, 5));
+  doc.text(label, x + 2, y + 5.2);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
   doc.setTextColor(0);
-  doc.text(value || "—", x + 2, y + h - 2, { maxWidth: w - 4 });
+  const text = value || "—";
+  doc.setFontSize(fitFontSize(doc, text, w - 4, 8, 6));
+  doc.text(text, x + 2, y + h - 2);
 };
 
 const drawInlineCell = (doc: jsPDF, x: number, y: number, w: number, label: string, value: string) => {
