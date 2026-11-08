@@ -369,6 +369,22 @@ const drawClassification = (d: jsPDF, x: number, y: number, o: ParticleSizeDistr
     { w: tailLabelW, text: "AASHTO", align: "center", label: true, bold: true },
     { w: valueW, text: text(o.aashtoGroup), align: "center" },
   ]);
+  cy = drawCells(d, x, cy, rowH, [
+    { w: 19.9, text: "D10 (mm):", label: true, bold: true },
+    { w: 14.4, text: num(o.effectiveSize, 3), align: "center" },
+    { w: midLabelW, text: "D60 (mm):", label: true, bold: true },
+    { w: midValueW, text: num(o.sixtyPercentSize, 3), align: "center" },
+    { w: tailLabelW, text: "Cu / Cc:", label: true, bold: true },
+    { w: valueW, text: `${num(o.uniformityCoefficient, 2)} / ${num(o.coefficientOfCurvature, 2)}`, align: "center" },
+  ]);
+  cy = drawCells(d, x, cy, rowH, [
+    { w: 19.9, text: "PI:", label: true, bold: true },
+    { w: 14.4, text: num(o.plasticityIndex, 1), align: "center" },
+    { w: midLabelW, text: "Group Index:", label: true, bold: true },
+    { w: midValueW, text: o.groupIndex === null || o.groupIndex === undefined ? BLANK : String(o.groupIndex), align: "center" },
+    { w: tailLabelW, text: "LL / PL:", label: true, bold: true },
+    { w: valueW, text: `${num(o.liquidLimit, 1)} / ${num(o.plasticLimit, 1)}`, align: "center" },
+  ]);
   return cy;
 };
 
@@ -818,7 +834,7 @@ export const generateParticleSizeDistributionPDF = async (options: ParticleSizeD
   // Fixed overhead above the tables: title block + 3 spacers +
   // header/preparation/classification rows + the hydrometer parameter band.
   const tableBottomFor = (rowH: number): number =>
-    titleBottom + 3 * SPACER_H + 11 * rowH + HYDRO_PARAMS_H + tableBlockFor(rowH);
+    titleBottom + 3 * SPACER_H + 13 * rowH + HYDRO_PARAMS_H + tableBlockFor(rowH);
 
   // Single-pass fit: shrink rows first, then the graph (never below
   // MIN_BLOCK_H, the chart is mandatory). One page only — no addPage here.

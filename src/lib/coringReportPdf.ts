@@ -53,7 +53,7 @@ const BAND_H = 8.4;
 const ROW_H = 9;
 const CELL_H = 14.5;
 const PHOTO_TOP = 336;
-const PHOTO_H = 140;
+const PHOTO_H = 120;
 const PHOTO_GAP = 10;
 const PHOTO_W = (WIDTH - PHOTO_GAP) / 2;
 const COMMENTS_TOP = PHOTO_TOP + PHOTO_H + 16;
@@ -206,7 +206,7 @@ const drawCorePage = (doc: jsPDF, project: CoringProjectInfo, core: CoringCoreRe
     [["Area (m²)", core.area], ["Volume (m³)", core.volume], ["Cdia-correction factors for core diameter", core.cdcFactor]],
     [["Maximum Load (kN)", core.load], ["Actual Compressive Strength (N/mm²)", core.coreStrength], ["Cd- correction factor for core extraction accuracy", core.cdAccuracyFactor]],
     [null, ["Cylinder Strength to Cube Strength", core.cylinderToCube], ["Ca-correction factors for the presence of steel", core.caFactor]],
-    [null, ["Conversion Ratio", core.conversionRatio], ["Corrected Insitu Cube Strength (N/mm²)", core.correctedStrength]],
+    [null, ["Conversion Ratio", core.conversionRatio], ["L/D-Corrected Core Strength (N/mm²)", core.correctedStrength]],
   ];
   testRows.forEach((row, r) =>
     row.forEach((cell, c) => {
@@ -235,7 +235,7 @@ const drawCorePage = (doc: jsPDF, project: CoringProjectInfo, core: CoringCoreRe
     doc.text(label, x + PHOTO_W / 2, PHOTO_TOP + PHOTO_H + 10, { align: "center" });
   }
 
-  const commentLines = doc.splitTextToSize(core.comments || "—", WIDTH - 46);
+  const commentLines = doc.splitTextToSize(core.comments || "—", WIDTH - 46).slice(0, 4);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.5);
   doc.setTextColor(0);

@@ -8,13 +8,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import CalculatedInput from "@/components/CalculatedInput";
 import { Plus, X, Upload, Trash2, ArrowLeft, FilePlus, Loader2, AlertCircle, CheckCircle, Save, Printer } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
+import { loadTestResult, saveTestResult } from "@/lib/testResultPersistence";
 import type { jsPDF } from "jspdf";
 import { buildCoringReportPDF, type CoringCoreReport } from "@/lib/coringReportPdf";
 import { pdfFileName, printPDFDocument } from "@/lib/pdfGenerator";
 import { useTestReport } from "@/hooks/useTestReport";
 import { useNavigate } from "react-router-dom";
-import { saveReceptionConsignment, listRecords, readRecord, updateRecord } from "@/lib/api";
-import { emptyReceptionConsignment, nextRcNo, emptyReceptionSample, nextLabId, type ReceptionConsignmentInput, type ReceptionSampleInput } from "@/lib/reception";
+import { saveReceptionConsignment, listRecords, readRecord } from "@/lib/api";
+import { emptyReceptionConsignment, nextRcNo, emptyReceptionSample, type ReceptionConsignmentInput, type ReceptionSampleInput } from "@/lib/reception";
 import { SessionContext } from "@/context/SessionContext";
 import { toast } from "sonner";
 
@@ -120,6 +121,7 @@ const formatReportDate = (isoDate: string, options: Intl.DateTimeFormatOptions) 
 
 export const CoringTest = ({ testKey }: CoringTestProps) => {
   const project = useProject();
+const projectId = project.currentProjectId ?? null;
   const navigate = useNavigate();
   const user = useContext(SessionContext)?.user;
   const [rows, setRows] = useState<CoringRow[]>([
@@ -127,6 +129,7 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
     { ...CORING_ROW_DEFAULTS, coreId: "CR2" },
   ]);
   const [isSaved, setIsSaved] = useState(false);
+const [recordId, setRecordId] = useState<number | null>(null);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [isLoading, setIsLoading] = useState(false);
@@ -202,17 +205,17 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
                   load: String(core.load ?? ""),
                   depth: (core.depth as string) || "0.0-2.0",
                   failureMode: (core.failureMode as string) || "Sparsely distributed aggregates with maximum size approximately 20mm",
-                  comments: "",
-                  pileBeforeImage: "",
-                  pileAfterImage: "",
+                  comments: (core.comments as string) ?? "",
+                  pileBeforeImage: (core.pileBeforeImage as string) ?? (core.beforeImage as string) ?? "",
+                  pileAfterImage: (core.pileAfterImage as string) ?? (core.afterImage as string) ?? "",
                   area: String(core.area ?? ""),
                   volume: String(core.volume ?? ""),
                   cylinderToCubeRatio: String(core.cylCubeRatio ?? "1.25"),
                   caFactor: String(core.caFactor ?? "1.00"),
                   excessVoidage: String(core.excessVoidage ?? "1.00"),
-                  cdcFactor: "1.00",
-                  cdAccuracyFactor: "1.00",
-                  conversionRatio: "",
+                  cdcFactor: String(core.cdcFactor ?? "1.00"),
+                  cdAccuracyFactor: String(core.cdAccuracyFactor ?? "1.00"),
+                  conversionRatio: String(core.conversionRatio ?? ""),
                 }));
                 setRows(loadedRows);
               }
@@ -231,7 +234,48 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
     return () => { /* cleanup */ };
   }, []);
 
-  const getLDRatio = useCallback((row: CoringRow) => {
+  useEffect(() => {
+    if (!projectId) return;
+    let active = true;
+    loadTestResult(projectId, "coring")
+      .then((result) => {
+        if (!active || !result) return;
+        setRecordId(result.id);
+        setIsSaved(true);
+        const saved = result.payload_json as Record<string, unknown> | null;
+        if (saved && typeof saved === "object") {
+          if (Array.isArray(saved.rows)) {
+            const loadedRows = (saved.rows as Array<Record<string, unknown>>).map((core, i) => ({
+              coreId: (core.coreId as string) || `CR${i + 1}`,
+              diameter: String(core.diameter ?? ""),
+              lengthBefore: String(core.lengthBefore ?? ""),
+              lengthAfter: String(core.lengthAfter ?? ""),
+              weightInAir: String(core.weightInAir ?? ""),
+              load: String(core.load ?? ""),
+              depth: (core.depth as string) || "0.0-2.0",
+              failureMode: (core.failureMode as string) || "Sparsely distributed aggregates with maximum size approximately 20mm",
+              comments: (core.comments as string) ?? "",
+              pileBeforeImage: (core.pileBeforeImage as string) ?? "",
+              pileAfterImage: (core.pileAfterImage as string) ?? "",
+              area: String(core.area ?? ""),
+              volume: String(core.volume ?? ""),
+              cylinderToCubeRatio: String(core.cylinderToCubeRatio ?? "1.25"),
+              caFactor: String(core.caFactor ?? "1.00"),
+              excessVoidage: String(core.excessVoidage ?? "1.00"),
+              cdcFactor: String(core.cdcFactor ?? "1.00"),
+              cdAccuracyFactor: String(core.cdAccuracyFactor ?? "1.00"),
+              conversionRatio: String(core.conversionRatio ?? ""),
+            }));
+            setRows(loadedRows);
+          }
+          if (saved.projectDetails && typeof saved.projectDetails === "object") {
+            setProjectDetails((prev) => ({ ...prev, ...(saved.projectDetails as Record<string, unknown>) }));
+          }
+        }
+      })
+      .catch((error) => console.error("Failed to load coring result", error));
+    return () => { active = false; };
+  }, [projectId]);
     const d = parseFloat(row.diameter);
     const l = parseFloat(row.lengthAfter);
     if (!d || !l) return "";
@@ -247,13 +291,19 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
   }, []);
 
   const getCorrectedStrength = useCallback((row: CoringRow) => {
-    const strength = parseFloat(getCoreStrength(row));
-    const ld = parseFloat(getLDRatio(row));
-    if (!strength || !ld) return "";
+    const d = parseFloat(row.diameter);
+    const load = parseFloat(row.load);
+    const l = parseFloat(row.lengthAfter);
+    if (!d || !load || !l) return "";
+    const area = Math.PI * (d / 2) ** 2;
+    const strength = (load * 1000) / area;
+    const ld = l / d;
+    if (!Number.isFinite(strength) || !Number.isFinite(ld)) return "";
+    if (ld < 1.0 || ld > 2.0) return "";
     let factor = 1.0;
     if (ld < 2.0) factor = 0.87 + 0.065 * ld;
     return (strength * factor).toFixed(2);
-  }, [getCoreStrength, getLDRatio]);
+  }, []);
 
   const getDensity = useCallback((row: CoringRow) => {
     const weight = parseFloat(row.weightInAir);
@@ -266,10 +316,14 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
   }, []);
 
   const getCdFactor = useCallback((row: CoringRow) => {
-    const ld = parseFloat(getLDRatio(row));
+    const d = parseFloat(row.diameter);
+    const l = parseFloat(row.lengthAfter);
+    if (!d || !l) return "";
+    const ld = l / d;
     if (ld >= 2.0) return "1.00";
+    if (ld < 1.0) return "";
     return (0.87 + 0.065 * ld).toFixed(2);
-  }, [getLDRatio]);
+  }, []);
 
   const getArea = useCallback((row: CoringRow) => {
     const d = parseFloat(row.diameter);
@@ -312,6 +366,13 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
     if (!row.lengthAfter || parseFloat(row.lengthAfter) <= 0) {
       errors.push({ rowIndex: index, field: "lengthAfter", message: "Length after trimming is required" });
     }
+    const ld = row.diameter && row.lengthAfter ? parseFloat(row.lengthAfter) / parseFloat(row.diameter) : 0;
+    if (ld && (ld < 1.0 || ld > 2.0)) {
+      errors.push({ rowIndex: index, field: "lengthAfter", message: "L/D ratio must be between 1.0 and 2.0" });
+    }
+    if (row.lengthBefore && row.lengthAfter && parseFloat(row.lengthAfter) > parseFloat(row.lengthBefore)) {
+      errors.push({ rowIndex: index, field: "lengthAfter", message: "Length after trimming cannot exceed length before" });
+    }
     if (!row.load || parseFloat(row.load) <= 0) {
       errors.push({ rowIndex: index, field: "load", message: "Load is required" });
     }
@@ -338,9 +399,17 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
 
   const validateAllRows = useCallback((): ValidationError[] => {
     const allErrors: ValidationError[] = [];
+    const seenIds = new Set<string>();
     rows.forEach((row, i) => {
+      if (seenIds.has(row.coreId.trim())) {
+        allErrors.push({ rowIndex: i, field: "coreId", message: "Duplicate core ID" });
+      }
+      seenIds.add(row.coreId.trim());
       allErrors.push(...validateRow(row, i));
     });
+    if (rows.length < 3) {
+      allErrors.push({ rowIndex: -1, field: "rows", message: "At least 3 cores are required to report a mean strength" });
+    }
     return allErrors;
   }, [rows, validateRow]);
 
@@ -423,6 +492,23 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
         testKey,
       };
       localStorage.setItem(`coring_test_${testKey || "default"}`, JSON.stringify(saveData));
+
+      if (projectId) {
+        const savedId = await saveTestResult(projectId, recordId, {
+          test_key: "coring",
+          name: "Compressive Strength of Concrete Cores",
+          category: "concrete",
+          status: "completed",
+          data_points: rows.length,
+          key_results_json: [
+            { label: "Avg Corrected Strength", value: (rows.map(r => parseFloat(getCorrectedStrength(r))).filter(Boolean).reduce((a,b)=>a+b,0)/rows.length || 0).toFixed(2) + " MPa" },
+            { label: "Cores Tested", value: String(rows.length) },
+          ].filter(r => r.value),
+          payload_json: { test: { testKey: "coring", compressiveTestId: recordId, dataPoints: rows.length, coring: true, cores: rows, projectDetails }, rows, projectDetails },
+        });
+        setRecordId(savedId);
+      }
+
       setIsSaved(true);
       setSaveStatus("saved");
       toast.success("Test data saved");

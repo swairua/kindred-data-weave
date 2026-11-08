@@ -8,13 +8,13 @@ export interface AdminImages {
   pile_after?: string;
 }
 
-type AdminImageType = "logo" | "contacts" | "stamp";
+type AdminImageType = "logo" | "contacts" | "stamp" | "pile_before" | "pile_after";
 type AdminImageRow = { image_type: string; file_path: string };
 type AdminImagePaths = Partial<Record<AdminImageType, string>>;
 
 const getAdminImageUrl = (path: string) => {
   // Extract image type from filename (format: {image_type}_{date}_{random}.{ext})
-  const match = path.match(/\/(logo|contacts|stamp)_/);
+  const match = path.match(/\/(logo|contacts|stamp|pile_before|pile_after)_/);
   const imageType = match ? match[1] : null;
 
   // Use the serve-image API endpoint instead of direct /uploads/ path

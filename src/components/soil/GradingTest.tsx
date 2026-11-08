@@ -10,7 +10,6 @@ import { useGridArrowNavigation } from "@/hooks/useGridArrowNavigation";
 import { type RecordMetadata, useTestData } from "@/context/TestDataContext";
 import { captureChartAsBase64 } from "@/lib/chartCapture";
 import { createRecord, deleteRecord, listRecords, updateRecord } from "@/lib/api";
-import { generateTestExcel } from "@/lib/genericExcelExporter";
 import { generateParticleSizeDistributionPDF } from "@/lib/psdPdfGenerator";
 import { calculateGrading, calculateHydrometer, calculateMoisture, type GradingRow } from "@/lib/gradingCalculations";
 import { mergePsdSeries } from "@/lib/psdChartGeometry";
@@ -310,14 +309,26 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       const index = record.sieveRows.findIndex((row) => matcher(row.sieveSize));
       return index >= 0 ? calculations.cumulativePassing[index] : null;
     };
-    const gravelPassing = passingAt((size) => Number.parseFloat(size) === 4.75 || size.includes("No. 4"));
-    const finesPassing = passingAt((size) => Number.parseFloat(size) === 0.075 || size.includes("0.075"));
+    const sieveMm = (size: string) => {
+      const trimmed = size.trim().toLowerCase();
+      const map: Record<string, number> = { "no. 4": 4.75, "no. 8": 2.36, "no. 10": 2, "no. 16": 1.18, "no. 30": 0.6, "no. 40": 0.425, "no. 50": 0.3, "no. 100": 0.15, "no. 200": 0.075 };
+      if (map[trimmed] !== undefined) return map[trimmed];
+      const m = trimmed.match(/[\d.]+/);
+      return m ? Number.parseFloat(m[0]) : NaN;
+    };
+    const matchesSieve = (size: string, mm: number, ...aliases: string[]) => {
+      const parsed = sieveMm(size);
+      if (Number.isFinite(parsed) && Math.abs(parsed - mm) < 1e-9) return true;
+      return aliases.some((alias) => size.toLowerCase().includes(alias.toLowerCase()));
+    };
+    const gravelPassing = passingAt((size) => matchesSieve(size, 4.75, "No. 4"));
+    const finesPassing = passingAt((size) => matchesSieve(size, 0.075, "No. 200"));
     // AASHTO M 145 evidence: % passing No. 10 (2.00 mm) and No. 40 (0.425 mm),
     // read off the sieve rows the same way as the No. 4 / No. 200 values. The
     // No. 10 passing also opens the BS fraction table, where gravel is what the
     // 2 mm sieve retains.
-    const p10Passing = passingAt((size) => Number.parseFloat(size) === 2 || size.includes("No. 10"));
-    const p40Passing = passingAt((size) => Number.parseFloat(size) === 0.425 || size.includes("No. 40"));
+    const p10Passing = passingAt((size) => matchesSieve(size, 2, "No. 10"));
+    const p40Passing = passingAt((size) => matchesSieve(size, 0.425, "No. 40"));
     // BS 1377 fraction boundaries — gravel ≥ 2 mm, sand 2–0.063 mm, fines
     // < 0.063 mm — which differ from the No. 4 / No. 200 split the USCS and
     // AASHTO verdicts above are built on. Records saved before the 0.212 mm
@@ -325,11 +336,11 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
     // the fines read off the finest measured sieve: the closest available
     // reading of what passes 0.063 mm. Pan rows never carry a percentage, so
     // they cannot be picked up by the fallback.
-    const bsFinesPassing = passingAt((size) => Number.parseFloat(size) === 0.063) ?? (() => {
+    const bsFinesPassing = passingAt((size) => { const m = sieveMm(size); return Number.isFinite(m) && Math.abs(m - 0.063) < 1e-9; }) ?? (() => {
       let finestIndex = -1;
       let finestSize = Number.POSITIVE_INFINITY;
       record.sieveRows.forEach((row, index) => {
-        const size = Number.parseFloat(row.sieveSize);
+        const size = sieveMm(row.sieveSize);
         if (size > 0 && size < finestSize && calculations.cumulativePassing[index] !== null) {
           finestIndex = index;
           finestSize = size;
@@ -348,14 +359,21 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       bsFines: bsFinesPassing,
       p10: p10Passing,
       p40: p40Passing,
-      plasticityIndex: liquidLimit !== null && plasticLimit !== null ? liquidLimit - plasticLimit : null,
+      plasticityIndex: liquidLimit !== null && plasticLimit !== null ? liquidLimit - plasticLimit : (record.classification.nonPlastic && liquidLimit !== null ? 0 : null),
     };
   }, [record.sieveRows, record.classification.liquidLimit, record.classification.plasticLimit, calculations.cumulativePassing]);
 
   /** USCS / AASHTO symbols follow directly from the computed fractions. */
   const autoClassification = useMemo(() => {
     const { gravel, sand, fines, plasticityIndex } = classificationValues;
-    if (gravel === null || sand === null || fines === null) return null;
+    if (fines === null) return null;
+    // Fine-grained soils (≥ 50 % fines) classify on the No. 200 passing value
+    // alone, so a record without a No. 4 row still gets a USCS/AASHTO verdict.
+    // Coarse-grained soils need the No. 4 / No. 200 split.
+    const isFineGrained = fines >= 50;
+    if (!isFineGrained && (gravel === null || sand === null)) return null;
+    const g = isFineGrained ? 0 : (gravel ?? 0);
+    const s = isFineGrained ? 0 : (sand ?? 0);
     const liquidLimit = parseNumber(record.classification.liquidLimit) ?? undefined;
     const plasticLimit = parseNumber(record.classification.plasticLimit) ?? undefined;
     const atterberg = {
@@ -363,10 +381,10 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       plasticLimit,
       plasticityIndex: plasticityIndex ?? undefined,
     };
-    const uscs = classifySoilUSCS({ gravel, sand, fines }, atterberg);
+    const uscs = classifySoilUSCS({ gravel: g, sand: s, fines }, atterberg);
     // AASHTO M 145 granular groups need the No. 10 / No. 40 passing values;
     // without them the classifier falls back to a flagged approximation.
-    const aashto = classifySoilAASHTO({ gravel, sand, fines }, atterberg, {
+    const aashto = classifySoilAASHTO({ gravel: g, sand: s, fines }, atterberg, {
       p10: classificationValues.p10,
       p40: classificationValues.p40,
       nonPlastic: record.classification.nonPlastic,
@@ -613,10 +631,17 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
     gravelPercentage: classificationValues.bsGravel,
     sandPercentage: classificationValues.bsSand,
     finesPercentage: classificationValues.bsFines,
-    uscsSymbol: autoClassification?.uscsSymbol ?? record.classification.uscs,
+    uscsSymbol: record.classification.uscs && record.classification.uscs !== "auto" ? record.classification.uscs : (autoClassification?.uscsSymbol ?? record.classification.uscs),
     uscsDescription: autoClassification?.uscsDescription ?? null,
-    aashtoGroup: autoClassification?.aashtoGroup ?? record.classification.aashtoGroup,
+    aashtoGroup: record.classification.aashtoGroup && record.classification.aashtoGroup !== "auto" ? record.classification.aashtoGroup : (autoClassification?.aashtoGroup ?? record.classification.aashtoGroup),
     groupIndex,
+    uniformityCoefficient: calculations.cu,
+    coefficientOfCurvature: calculations.cc,
+    effectiveSize: calculations.d10,
+    sixtyPercentSize: calculations.d60,
+    liquidLimit: parseNumber(record.classification.liquidLimit),
+    plasticLimit: parseNumber(record.classification.plasticLimit),
+    plasticityIndex: classificationValues.plasticityIndex,
   });
 
   const handlePrint = async () => {
@@ -763,7 +788,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
             <EditableCell label="Plasticity index" value={formatValue(classificationValues.plasticityIndex, 1)} calculated />
           </div>
         </div>
-        <div className="mt-2 grid gap-2 border-t pt-2 text-[11px] sm:grid-cols-3"><label className="flex items-center gap-2"><Checkbox checked={record.classification.nonPlastic} onCheckedChange={(checked) => updateNested("classification", "nonPlastic", checked === true)} />Non-plastic (NP)</label><label className="flex items-center gap-2"><Checkbox checked={record.classification.suspectedOrganic} onCheckedChange={(checked) => updateNested("classification", "suspectedOrganic", checked === true)} />Suspected organic soil</label><div><span className="text-muted-foreground">Oven-dried Liquid Limit</span><div className="mt-1 rounded border bg-muted/40 px-2 py-1">{record.classification.ovenDriedLiquidLimit}</div></div></div>
+        <div className="mt-2 grid gap-2 border-t pt-2 text-[11px] sm:grid-cols-3"><label className="flex items-center gap-2"><Checkbox checked={record.classification.nonPlastic} onCheckedChange={(checked) => updateNested("classification", "nonPlastic", checked === true)} />Non-plastic (NP)</label><label className="flex items-center gap-2"><Checkbox checked={record.classification.suspectedOrganic} onCheckedChange={(checked) => updateNested("classification", "suspectedOrganic", checked === true)} />Suspected organic soil</label><div><span className="text-muted-foreground">Oven-dried Liquid Limit</span><Input value={record.classification.ovenDriedLiquidLimit} onChange={(event) => updateNested("classification", "ovenDriedLiquidLimit", event.target.value)} className="mt-1 h-7 w-full" /></div></div>
         {aashtoWarnings.length > 0 ? (
           <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] text-amber-800"><span className="font-semibold">AASHTO evidence: </span>{aashtoWarnings.join(" ")} The group shown is an approximation.</div>
         ) : (
