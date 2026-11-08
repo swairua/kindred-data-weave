@@ -5,10 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Loader2, Upload, X } from "lucide-react";
-import Navigation from "@/components/Navigation";
 import { readRecord, updateRecord, listRecords, uploadFile } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -195,223 +194,203 @@ const Settings = () => {
     }
   };
 
-  const handleLogout = () => {
-    toast.success("Logged out");
-    navigate("/login", { replace: true });
-  };
-
   if (isLoading) {
     return (
-      <SidebarProvider>
-        <Navigation currentView="settings" onViewChange={() => {}} onLogout={handleLogout} user={user} userName={user?.name} userEmail={user?.email} />
-        <SidebarInset>
-          <div className="flex h-screen items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        </SidebarInset>
-      </SidebarProvider>
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
     );
   }
 
   if (!company) {
     return (
-      <SidebarProvider>
-        <Navigation currentView="settings" onViewChange={() => {}} onLogout={handleLogout} user={user} userName={user?.name} userEmail={user?.email} />
-        <SidebarInset>
-          <div className="flex h-screen items-center justify-center">
-            <div className="text-center">
-              <p className="text-muted-foreground">Failed to load company settings</p>
-            </div>
-          </div>
-        </SidebarInset>
-      </SidebarProvider>
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground">Failed to load company settings</p>
+        </div>
+      </div>
     );
   }
 
   return (
-    <SidebarProvider>
-      <Navigation currentView="settings" onViewChange={() => {}} onLogout={handleLogout} user={user} userName={user?.name} userEmail={user?.email} />
-      <SidebarInset>
-        <div className="flex flex-col h-screen overflow-y-auto bg-background">
-          {/* Header */}
-          <div className="border-b bg-card sticky top-0 z-10">
-            <div className="flex items-center gap-3 px-6 py-4">
-              <SidebarTrigger />
-              <div>
-                <h1 className="text-2xl font-bold">Company Settings</h1>
-                <p className="text-sm text-muted-foreground">Manage company information and branding</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="flex-1 overflow-auto p-6">
-            <div className="max-w-4xl mx-auto space-y-6">
-              {/* Company Information Section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Company Information</CardTitle>
-                  <CardDescription>Update your company details</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Name */}
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Company Name *</Label>
-                    <Input
-                      id="name"
-                      name="name"
-                      value={formData.name || ""}
-                      onChange={handleInputChange}
-                      placeholder="Cransfield Materials Testing Center"
-                    />
-                  </div>
-
-                  {/* Address */}
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="address_line1">Address Line 1</Label>
-                      <Input
-                        id="address_line1"
-                        name="address_line1"
-                        value={formData.address_line1 || ""}
-                        onChange={handleInputChange}
-                        placeholder="P.O. Box 59401 - 00200"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="address_line2">Address Line 2</Label>
-                      <Input
-                        id="address_line2"
-                        name="address_line2"
-                        value={formData.address_line2 || ""}
-                        onChange={handleInputChange}
-                        placeholder="Nairobi, Kenya"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="address_line3">Address Line 3</Label>
-                      <Input
-                        id="address_line3"
-                        name="address_line3"
-                        value={formData.address_line3 || ""}
-                        onChange={handleInputChange}
-                        placeholder="Runda Grove House No. 278"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Contact Information */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="phone1">Phone 1</Label>
-                      <Input
-                        id="phone1"
-                        name="phone1"
-                        type="tel"
-                        value={formData.phone1 || ""}
-                        onChange={handleInputChange}
-                        placeholder="+254 703410973"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="phone2">Phone 2</Label>
-                      <Input
-                        id="phone2"
-                        name="phone2"
-                        type="tel"
-                        value={formData.phone2 || ""}
-                        onChange={handleInputChange}
-                        placeholder="+254 721740587"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Email and Website */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email *</Label>
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        value={formData.email || ""}
-                        onChange={handleInputChange}
-                        placeholder="info@cmtc.co.ke"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="website">Website</Label>
-                      <Input
-                        id="website"
-                        name="website"
-                        value={formData.website || ""}
-                        onChange={handleInputChange}
-                        placeholder="www.cmtc.co.ke"
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Image Management Section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Company Images</CardTitle>
-                  <CardDescription>Upload and manage your company branding images</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* Logo Image Card */}
-                    <ImageCard
-                      type="logo"
-                      title="Logo"
-                      image={images.logo}
-                      isUploading={isUploading.logo}
-                      uploadProgress={uploadProgress.logo}
-                      onUpload={(e) => handleImageUpload(e, "logo")}
-                      onRemove={() => handleRemoveImage("logo")}
-                    />
-
-                    {/* Contacts Image Card */}
-                    <ImageCard
-                      type="contacts"
-                      title="Contacts"
-                      image={images.contacts}
-                      isUploading={isUploading.contacts}
-                      uploadProgress={uploadProgress.contacts}
-                      onUpload={(e) => handleImageUpload(e, "contacts")}
-                      onRemove={() => handleRemoveImage("contacts")}
-                    />
-
-                    {/* Stamp Image Card */}
-                    <ImageCard
-                      type="stamp"
-                      title="Stamp"
-                      image={images.stamp}
-                      isUploading={isUploading.stamp}
-                      uploadProgress={uploadProgress.stamp}
-                      onUpload={(e) => handleImageUpload(e, "stamp")}
-                      onRemove={() => handleRemoveImage("stamp")}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Save Button */}
-              <div className="flex justify-end gap-3">
-                <Button variant="outline" onClick={() => navigate(-1)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleSave} disabled={isSaving}>
-                  {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Save Changes
-                </Button>
-              </div>
-            </div>
+    <div className="flex flex-col h-screen overflow-y-auto bg-background">
+      {/* Header */}
+      <div className="border-b bg-card sticky top-0 z-10">
+        <div className="flex items-center gap-3 px-6 py-4">
+          <SidebarTrigger />
+          <div>
+            <h1 className="text-2xl font-bold">Company Settings</h1>
+            <p className="text-sm text-muted-foreground">Manage company information and branding</p>
           </div>
         </div>
-      </SidebarInset>
-    </SidebarProvider>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-auto p-6">
+        <div className="max-w-4xl mx-auto space-y-6">
+          {/* Company Information Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Company Information</CardTitle>
+              <CardDescription>Update your company details</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Name */}
+              <div className="space-y-2">
+                <Label htmlFor="name">Company Name *</Label>
+                <Input
+                  id="name"
+                  name="name"
+                  value={formData.name || ""}
+                  onChange={handleInputChange}
+                  placeholder="Cransfield Materials Testing Center"
+                />
+              </div>
+
+              {/* Address */}
+              <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="address_line1">Address Line 1</Label>
+                  <Input
+                    id="address_line1"
+                    name="address_line1"
+                    value={formData.address_line1 || ""}
+                    onChange={handleInputChange}
+                    placeholder="P.O. Box 59401 - 00200"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="address_line2">Address Line 2</Label>
+                  <Input
+                    id="address_line2"
+                    name="address_line2"
+                    value={formData.address_line2 || ""}
+                    onChange={handleInputChange}
+                    placeholder="Nairobi, Kenya"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="address_line3">Address Line 3</Label>
+                  <Input
+                    id="address_line3"
+                    name="address_line3"
+                    value={formData.address_line3 || ""}
+                    onChange={handleInputChange}
+                    placeholder="Runda Grove House No. 278"
+                  />
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="phone1">Phone 1</Label>
+                  <Input
+                    id="phone1"
+                    name="phone1"
+                    type="tel"
+                    value={formData.phone1 || ""}
+                    onChange={handleInputChange}
+                    placeholder="+254 703410973"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone2">Phone 2</Label>
+                  <Input
+                    id="phone2"
+                    name="phone2"
+                    type="tel"
+                    value={formData.phone2 || ""}
+                    onChange={handleInputChange}
+                    placeholder="+254 721740587"
+                  />
+                </div>
+              </div>
+
+              {/* Email and Website */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email *</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={formData.email || ""}
+                    onChange={handleInputChange}
+                    placeholder="info@cmtc.co.ke"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="website">Website</Label>
+                  <Input
+                    id="website"
+                    name="website"
+                    value={formData.website || ""}
+                    onChange={handleInputChange}
+                    placeholder="www.cmtc.co.ke"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Image Management Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Company Images</CardTitle>
+              <CardDescription>Upload and manage your company branding images</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Logo Image Card */}
+                <ImageCard
+                  type="logo"
+                  title="Logo"
+                  image={images.logo}
+                  isUploading={isUploading.logo}
+                  uploadProgress={uploadProgress.logo}
+                  onUpload={(e) => handleImageUpload(e, "logo")}
+                  onRemove={() => handleRemoveImage("logo")}
+                />
+
+                {/* Contacts Image Card */}
+                <ImageCard
+                  type="contacts"
+                  title="Contacts"
+                  image={images.contacts}
+                  isUploading={isUploading.contacts}
+                  uploadProgress={uploadProgress.contacts}
+                  onUpload={(e) => handleImageUpload(e, "contacts")}
+                  onRemove={() => handleRemoveImage("contacts")}
+                />
+
+                {/* Stamp Image Card */}
+                <ImageCard
+                  type="stamp"
+                  title="Stamp"
+                  image={images.stamp}
+                  isUploading={isUploading.stamp}
+                  uploadProgress={uploadProgress.stamp}
+                  onUpload={(e) => handleImageUpload(e, "stamp")}
+                  onRemove={() => handleRemoveImage("stamp")}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Save Button */}
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => navigate(-1)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={isSaving}>
+              {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Save Changes
+            </Button>
+          </div>
+        </div>
+      </div>
+</div>
   );
 };
 
@@ -429,84 +408,84 @@ function ImageCard({ type, title, image, isUploading, uploadProgress, onUpload, 
   const baseUrl = "https://lab.wayrus.co.ke";
 
   return (
-    <div className="border rounded-lg p-4 bg-card hover:bg-accent/50 transition-colors">
-      <h3 className="font-semibold mb-3">{title}</h3>
+<div className="border rounded-lg p-4 bg-card hover:bg-accent/50 transition-colors">
+  <h3 className="font-semibold mb-3">{title}</h3>
 
-      {/* Image Preview */}
-      <div className="mb-4 bg-muted rounded-lg h-40 flex items-center justify-center overflow-hidden relative">
-        {image ? (
-          <img
-            src={`${baseUrl}/${image.file_path}`}
-            alt={title}
-            className="h-full w-full object-contain"
-          />
-        ) : (
-          <div className="text-center text-muted-foreground text-sm">
-            <Upload className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p>No image</p>
-          </div>
-        )}
-
-        {isUploading && (
-          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-white" />
-          </div>
-        )}
-      </div>
-
-      {/* Upload Progress */}
-      {isUploading && uploadProgress > 0 && (
-        <div className="mb-4">
-          <Progress value={uploadProgress} className="h-2" />
-          <p className="text-xs text-muted-foreground mt-1">{Math.round(uploadProgress)}%</p>
-        </div>
-      )}
-
-      {/* Upload Input */}
-      <input
-        type="file"
-        accept="image/*"
-        onChange={onUpload}
-        disabled={isUploading}
-        className="hidden"
-        id={`upload-${type}`}
+  {/* Image Preview */}
+  <div className="mb-4 bg-muted rounded-lg h-40 flex items-center justify-center overflow-hidden relative">
+    {image ? (
+      <img
+        src={`${baseUrl}/${image.file_path}`}
+        alt={title}
+        className="h-full w-full object-contain"
       />
-
-      {/* Action Buttons */}
-      <div className="flex gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          className="flex-1"
-          onClick={() => document.getElementById(`upload-${type}`)?.click()}
-          disabled={isUploading}
-        >
-          <Upload className="h-4 w-4 mr-1" />
-          Upload
-        </Button>
-
-        {image && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" size="sm" disabled={isUploading}>
-                <X className="h-4 w-4" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogTitle>Remove Image</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to remove the {title.toLowerCase()} image? This action cannot be undone.
-              </AlertDialogDescription>
-              <div className="flex gap-3 justify-end">
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={onRemove} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                  Remove
-                </AlertDialogAction>
-              </div>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
+    ) : (
+      <div className="text-center text-muted-foreground text-sm">
+        <Upload className="h-8 w-8 mx-auto mb-2 opacity-50" />
+        <p>No image</p>
       </div>
+    )}
+
+    {isUploading && (
+      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-white" />
+      </div>
+    )}
+  </div>
+
+  {/* Upload Progress */}
+  {isUploading && uploadProgress > 0 && (
+    <div className="mb-4">
+      <Progress value={uploadProgress} className="h-2" />
+      <p className="text-xs text-muted-foreground mt-1">{Math.round(uploadProgress)}%</p>
+    </div>
+  )}
+
+  {/* Upload Input */}
+  <input
+    type="file"
+    accept="image/*"
+    onChange={onUpload}
+    disabled={isUploading}
+    className="hidden"
+    id={`upload-${type}`}
+  />
+
+  {/* Action Buttons */}
+  <div className="flex gap-2">
+    <Button
+      variant="outline"
+      size="sm"
+      className="flex-1"
+      onClick={() => document.getElementById(`upload-${type}`)?.click()}
+      disabled={isUploading}
+    >
+      <Upload className="h-4 w-4 mr-1" />
+      Upload
+    </Button>
+
+    {image && (
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button variant="outline" size="sm" disabled={isUploading}>
+            <X className="h-4 w-4" />
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogTitle>Remove Image</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to remove the {title.toLowerCase()} image? This action cannot be undone.
+          </AlertDialogDescription>
+          <div className="flex gap-3 justify-end">
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={onRemove} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Remove
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
+    )}
+  </div>
     </div>
   );
 }

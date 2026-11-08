@@ -12,9 +12,10 @@ import { loadTestResult, saveTestResult } from "@/lib/testResultPersistence";
 import type { jsPDF } from "jspdf";
 import { buildCoringReportPDF, type CoringCoreReport } from "@/lib/coringReportPdf";
 import { pdfFileName, printPDFDocument } from "@/lib/pdfGenerator";
+import { formatReportDate } from "@/lib/compressivePdfGenerator";
 import { useTestReport } from "@/hooks/useTestReport";
 import { useNavigate } from "react-router-dom";
-import { saveReceptionConsignment, listRecords, readRecord } from "@/lib/api";
+import { saveReceptionConsignment, listRecords, readRecord, uploadFile } from "@/lib/api";
 import { emptyReceptionConsignment, nextRcNo, emptyReceptionSample, type ReceptionConsignmentInput, type ReceptionSampleInput } from "@/lib/reception";
 import { SessionContext } from "@/context/SessionContext";
 import { toast } from "sonner";
@@ -71,6 +72,8 @@ const FAILURE_MODES = [
   "Mixed failure",
   "Custom"
 ];
+
+const CORING_TEST_NAME = "Concrete Coring: Core Compressive Strength";
 
 const CORING_ROW_DEFAULTS: CoringRow = {
   coreId: "CR1",
@@ -517,59 +520,45 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
       return;
     }
     
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("image_type", field === "pileBeforeImage" ? "pile_before" : "pile_after");
-    
     try {
-      const response = await fetch("/api.php?action=upload", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-        headers: {
-          "X-Requested-With": "XMLHttpRequest" // Help prevent CSRF
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        // Validate response data
-        if (!data || typeof data !== "object" || !data.file_path) {
-          toast.error("Invalid upload response. Please try again.");
-          return;
-        }
-        
-        // Validate file path format
-        const filePath = data.file_path;
-        if (!filePath || typeof filePath !== "string" || filePath.includes("..") || filePath.includes("//")) {
-          toast.error("Invalid file path returned. Please try again.");
-          return;
-        }
-        
-        setRows(prev => {
-          const next = [...prev];
-          next[index] = { ...next[index], [field]: filePath };
-          return next;
-        });
-        toast.success(`${field === "pileBeforeImage" ? "Before" : "After"} test image uploaded`);
-      } else {
-        let errorMessage = "Upload failed";
-        try {
-          const responseText = await response.text();
-          console.log("[CoringTestEnhanced] Upload error response:", responseText);
-          const error = JSON.parse(responseText);
-          errorMessage = error.message || errorMessage;
-        } catch {
-          // If response is not JSON, use status text
-          errorMessage = `${response.status}: ${response.statusText}`;
-        }
-        toast.error(`Upload failed: ${errorMessage}`);
+      const data = await uploadFile(file, { image_type: field === "pileBeforeImage" ? "pile_before" : "pile_after" });
+
+      if (!data || typeof data !== "object" || !data.file_path) {
+        toast.error("Invalid upload response. Please try again.");
+        return;
       }
+
+      const filePath = data.file_path;
+      if (typeof filePath !== "string" || filePath.includes("..") || filePath.includes("//")) {
+        toast.error("Invalid file path returned. Please try again.");
+        return;
+      }
+
+      setRows(prev => {
+        const next = [...prev];
+        next[index] = { ...next[index], [field]: filePath };
+        return next;
+      });
+      toast.success(`${field === "pileBeforeImage" ? "Before" : "After"} test image uploaded`);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       console.error("Image upload failed:", error);
-      toast.error("Image upload failed. Please try again.");
+      toast.error(`Upload failed: ${errorMessage}`);
     }
   };
+
+  const buildCoringRecord = (status: "in-progress" | "completed") => ({
+    test_key: "coring",
+    name: CORING_TEST_NAME,
+    category: "concrete",
+    status,
+    data_points: rows.length,
+    key_results_json: [
+      { label: "Avg Corrected Strength", value: (rows.map(r => parseFloat(getCorrectedStrength(r))).filter(Boolean).reduce((a,b)=>a+b,0)/rows.length || 0).toFixed(2) + " MPa" },
+      { label: "Cores Tested", value: String(rows.length) },
+    ].filter(r => r.value),
+    payload_json: { test: { testKey: "coring", dataPoints: rows.length, coring: true, cores: rows, projectDetails }, rows, projectDetails },
+  });
 
   const handleSave = async () => {
     const errors = [...validateAllRows(), ...validateProjectDetails()];
@@ -623,18 +612,7 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
       localStorage.setItem(`coring_test_${testKey || "default"}`, JSON.stringify(saveData));
 
       if (projectId) {
-        const savedId = await saveTestResult(projectId, recordId, {
-          test_key: "coring",
-          name: "Compressive Strength of Concrete Cores",
-          category: "concrete",
-          status: "completed",
-          data_points: rows.length,
-          key_results_json: [
-            { label: "Avg Corrected Strength", value: (rows.map(r => parseFloat(getCorrectedStrength(r))).filter(Boolean).reduce((a,b)=>a+b,0)/rows.length || 0).toFixed(2) + " MPa" },
-            { label: "Cores Tested", value: String(rows.length) },
-          ].filter(r => r.value),
-          payload_json: { test: { testKey: "coring", compressiveTestId: recordId, dataPoints: rows.length, coring: true, cores: rows, projectDetails }, rows, projectDetails },
-        });
+        const savedId = await saveTestResult(projectId, recordId, buildCoringRecord("completed"));
         setRecordId(savedId);
       }
 
@@ -701,7 +679,6 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
       consignment.receivedBy = user?.name || "PUAL N";
       consignment.methodSet = "BS EN 12504-1:2009";
       consignment.status = "processed";
-      consignment.cubeCastDate = projectDetails.dateOfTest;
       
       // Validate and create samples from rows
       if (rows.length < 1) {
@@ -723,7 +700,7 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
         sample.sampleType = "Concrete core";
         sample.container = "Core sample";
         sample.tests = ["CMP"];
-        sample.massKg = row.weightInAir || "0";
+        sample.massKg = row.weightInAir ? String(parseFloat(row.weightInAir) / 1000) : "0";
         sample.condition = "Intact";
         return sample;
       });
@@ -738,6 +715,13 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
         const result = await processReceptionToProject(consignment, "coring");
         
         if (result.projectId) {
+          try {
+            await saveTestResult(result.projectId, result.testResultIds.coring ?? null, buildCoringRecord("in-progress"));
+          } catch (error) {
+            console.error("[CoringTestEnhanced] Saving coring data for new project failed:", error);
+            toast.error("Project created, but the coring data could not be saved. Your measurements are still on this page.");
+            return;
+          }
           setReceptionMode(false);
           toast.success("Project created successfully");
           navigate(`/projects/${result.projectId}`);
@@ -777,7 +761,7 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
     }
 
     try {
-      const dateOfTest = formatReportDate(projectDetails.dateOfTest, { day: "numeric", month: "numeric", year: "numeric" });
+      const dateOfTest = formatReportDate(projectDetails.dateOfTest);
       const cores: CoringCoreReport[] = await Promise.all(rows.map(async (row) => ({
         depth: row.depth,
         dateOfTest,
@@ -815,7 +799,7 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
         location: projectDetails.tower,
         testedBy: projectDetails.testedBy,
         checkedBy: projectDetails.checkedBy,
-        dateReported: formatReportDate(projectDetails.dateReported, { day: "2-digit", month: "short", year: "2-digit" }),
+        dateReported: formatReportDate(projectDetails.dateReported),
       }, cores);
     } catch (error) {
       console.error("PDF export failed:", error);

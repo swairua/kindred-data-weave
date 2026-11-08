@@ -29,9 +29,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Users, Loader2, ChevronLeft, ChevronRight, Lock, Plus, Edit2, Trash2 } from "lucide-react";
-import Navigation from "@/components/Navigation";
 import { listRecords, createRecord, deleteRecord, updateRecord } from "@/lib/api";
 import { useSession } from "@/context/SessionContext";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
@@ -89,14 +88,10 @@ const canManageUserPermissions = (currentUser: AuthUser | null, targetUserId: nu
 
 const UserManagement = () => {
   const navigate = useNavigate();
-  const { user, logout } = useSession();
+  const { user } = useSession();
   const { hasPermission, isLoading: permissionsLoading } = useUserPermissions(user);
   const canViewUsers = hasPermission("users");
   
-  const handleLogout = async () => {
-    await logout();
-    toast.success("Logged out");
-  };
   
   const [users, setUsers] = useState<ApiUser[]>([]);
   const [userPermissions, setUserPermissions] = useState<Map<number, Set<string>>>(new Map());
@@ -404,38 +399,20 @@ const UserManagement = () => {
 
   if (!permissionsLoading && !canViewUsers) {
     return (
-      <SidebarProvider>
-        <Navigation
-          currentView="admin"
-          onViewChange={() => {}}
-          onLogout={handleLogout}
-        />
-        <SidebarInset>
-          <div className="p-6">
-            <Card className="border-0 shadow-sm max-w-md">
-              <CardHeader>
-                <CardTitle>Access denied</CardTitle>
-                <CardDescription>You do not have permission to view users.</CardDescription>
-              </CardHeader>
-            </Card>
-          </div>
-        </SidebarInset>
-      </SidebarProvider>
+      <div className="p-6">
+        <Card className="border-0 shadow-sm max-w-md">
+          <CardHeader>
+            <CardTitle>Access denied</CardTitle>
+            <CardDescription>You do not have permission to view users.</CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <SidebarProvider>
-      <Navigation
-        currentView="admin"
-        onViewChange={() => {}}
-        onLogout={handleLogout}
-        user={user}
-        userName={user?.name}
-        userEmail={user?.email}
-      />
-      <SidebarInset>
-        <div className="flex flex-col min-h-screen bg-background">
+    <>
+      <div className="flex flex-col min-h-screen bg-background">
           {/* Header */}
           <header className="border-b bg-card sticky top-0 z-10">
             <div className="flex items-center justify-between h-14 px-4 gap-2">
@@ -644,8 +621,7 @@ const UserManagement = () => {
               </Card>
             </div>
           </main>
-        </div>
-      </SidebarInset>
+      </div>
 
       {/* Permission Management Dialog */}
       <Dialog open={isPermissionDialogOpen} onOpenChange={setIsPermissionDialogOpen}>
@@ -852,7 +828,7 @@ const UserManagement = () => {
           </div>
         </AlertDialogContent>
       </AlertDialog>
-    </SidebarProvider>
+    </>
   );
 };
 
