@@ -705,8 +705,19 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
       
       // Create project from consignment
       try {
-        const { processReceptionToProject } = await import("@/lib/api");
+        const { processReceptionToProject, linkCoringPhotos } = await import("@/lib/api");
         const result = await processReceptionToProject(consignment, "coring", buildCoringRecord("in-progress"));
+
+        const coringTestResultId = result.testResultIds.coring;
+        const photoPaths = rows.flatMap(row => [row.pileBeforeImage, row.pileAfterImage]).filter((p): p is string => Boolean(p));
+        if (result.projectId && coringTestResultId && photoPaths.length > 0) {
+          try {
+            await linkCoringPhotos(result.projectId, coringTestResultId, photoPaths);
+          } catch (linkError) {
+            console.error("[CoringTestEnhanced] Failed to link Coring photos", linkError);
+            toast.error("Project created, but photos could not be linked to it");
+          }
+        }
 
         if (result.projectId) {
           setRecordId(result.testResultIds.coring ?? null);

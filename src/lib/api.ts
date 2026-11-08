@@ -1158,6 +1158,18 @@ export const uploadFile = async (file: File, metadata?: Record<string, string>) 
   }
 };
 
+export const linkCoringPhotos = async (
+  projectId: number,
+  testResultId: number,
+  filePaths: string[],
+): Promise<void> => {
+  if (filePaths.length === 0) return;
+  await apiRequest<{ success: boolean }>(
+    { method: "POST", body: JSON.stringify({ project_id: projectId, test_result_id: testResultId, file_paths: filePaths }) },
+    { action: "link-coring-photos" },
+  );
+};
+
 export const processReceptionToProject = async (
   consignment: ReceptionConsignmentInput,
   overrideTestType?: string,

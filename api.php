@@ -1194,6 +1194,44 @@ try {
         }
     }
 
+    if ($action === 'link-coring-photos') {
+        $user = requireAuth($conn);
+        if (!$user) {
+            respond(['error' => 'Unauthorized'], 401);
+        }
+        $userId = (int) $_SESSION['user_id'];
+
+        $projectId = (int) ($body['project_id'] ?? 0);
+        $testResultId = (int) ($body['test_result_id'] ?? 0);
+        $filePaths = is_array($body['file_paths'] ?? null) ? $body['file_paths'] : [];
+        $filePaths = array_values(array_filter($filePaths, static fn($p) => is_string($p) && preg_match('#^/uploads/coring/[A-Za-z0-9_.\-]+$#', $p)));
+
+        if ($projectId <= 0 || $testResultId <= 0) {
+            respond(['error' => 'project_id and test_result_id are required'], 400);
+        }
+        if (count($filePaths) === 0) {
+            respond(['success' => true, 'linked' => 0], 200);
+        }
+
+        $placeholders = implode(',', array_fill(0, count($filePaths), '?'));
+        $stmt = $conn->prepare(
+            "UPDATE coring_photos SET project_id = ?, test_result_id = ?
+             WHERE uploaded_by = ? AND file_path IN ($placeholders)"
+        );
+        if (!$stmt) {
+            respond(['error' => 'Failed to prepare photo link'], 500);
+        }
+        $types = 'iii' . str_repeat('s', count($filePaths));
+        $params = array_merge([$projectId, $testResultId, $userId], $filePaths);
+        $stmt->bind_param($types, ...$params);
+        if (!$stmt->execute()) {
+            error_log('Coring photo link failed: ' . $stmt->error);
+            respond(['error' => 'Failed to link photos'], 500);
+        }
+
+        respond(['success' => true, 'linked' => $stmt->affected_rows], 200);
+    }
+
     // ============= IMAGE SERVE ENDPOINT (fixes CORS for exports) =============
     if ($action === 'serve-image') {
         // Allow serving images to authenticated users
