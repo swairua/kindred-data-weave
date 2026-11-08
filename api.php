@@ -896,7 +896,15 @@ try {
         try {
             $stmt = $conn->prepare(
                 "INSERT INTO admin_images (image_type, file_path, original_filename, file_size, mime_type, uploaded_by)
-                 VALUES (?, ?, ?, ?, ?, ?)"
+                 VALUES (?, ?, ?, ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE
+                    id = LAST_INSERT_ID(id),
+                    file_path = VALUES(file_path),
+                    original_filename = VALUES(original_filename),
+                    file_size = VALUES(file_size),
+                    mime_type = VALUES(mime_type),
+                    uploaded_by = VALUES(uploaded_by),
+                    uploaded_at = CURRENT_TIMESTAMP"
             );
 
             if (!$stmt) {
