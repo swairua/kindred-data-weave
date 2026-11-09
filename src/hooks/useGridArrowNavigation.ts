@@ -30,6 +30,13 @@ const FIELD_SELECTOR =
 const isField = (node: Element | null): node is HTMLElement =>
   !!node && node.matches(FIELD_SELECTOR);
 
+/** Left/Right only leave a text value once the caret is already at that edge. */
+const caretAtEdge = (el: HTMLElement, key: "ArrowLeft" | "ArrowRight"): boolean => {
+  if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return true;
+  if (el.selectionStart === null || el.selectionEnd === null) return true;
+  return key === "ArrowLeft" ? el.selectionStart === 0 : el.selectionEnd === el.value.length;
+};
+
 export const useGridArrowNavigation = <T extends HTMLElement>() => {
   const ref = useRef<T | null>(null);
 
@@ -83,6 +90,8 @@ export const useGridArrowNavigation = <T extends HTMLElement>() => {
     const index = all.indexOf(target);
     if (index === -1) return;
 
+    if ((event.key === "ArrowLeft" || event.key === "ArrowRight") && !caretAtEdge(target, event.key)) return;
+
     const { rowEl, column, indexInRow } = cellOf(target);
     let next: HTMLElement | null = null;
 
@@ -101,14 +110,15 @@ export const useGridArrowNavigation = <T extends HTMLElement>() => {
     };
 
     if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-      // Stay on this row: the neighbouring input in reading order.
       const step = event.key === "ArrowRight" ? 1 : -1;
-      const rowInputs = rowEl
-        ? Array.from(rowEl.querySelectorAll<HTMLElement>(FIELD_SELECTOR))
-        : [];
-      // A row of a single input has no horizontal neighbour, so fall back to
-      // flat document order for stacked (non-table) layouts.
-      next = indexInRow >= 0 ? rowInputs[indexInRow + step] ?? null : all[index + step] ?? null;
+      if (rowEl?.closest("table")) {
+        // Stay on this row: the neighbouring input in reading order.
+        const rowInputs = Array.from(rowEl.querySelectorAll<HTMLElement>(FIELD_SELECTOR));
+        next = rowInputs[indexInRow + step] ?? null;
+      } else {
+        // Stacked layouts (labelled fields outside a table) move in document order.
+        next = all[index + step] ?? null;
+      }
     } else {
       // Same visual column: nearest input in the adjacent row holding that column.
       // Rows carry a label cell first, so target cells and exclude it from matching.
@@ -130,8 +140,14 @@ export const useGridArrowNavigation = <T extends HTMLElement>() => {
           if (pick && isField(pick)) next = pick;
         }
       }
-      // Outside a table, fall back to flat order.
-      if (!next) next = all[index + step] ?? null;
+      // Past the table's first or last input row, continue to the nearest field outside it.
+      if (!next) {
+        const outside = (field: HTMLElement) => !table || !table.contains(field);
+        next =
+          step > 0
+            ? all.slice(index + 1).find(outside) ?? null
+            : all.slice(0, index).reverse().find(outside) ?? null;
+      }
     }
 
     if (!next) return;
