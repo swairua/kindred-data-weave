@@ -236,7 +236,7 @@ describe("GradingTest selected record", () => {
 
     expect(await screen.findByText("Granular evidence sample")).toBeInTheDocument();
     // 20% fines with PI 4 can only be an approximate A-1-a without P10/P40.
-    expect(screen.getByText("AASHTO group (auto)").closest("label")).toHaveTextContent("A-1-a");
+    expect(screen.getByText("AASHTO group").closest("label")).toHaveTextContent("A-1-a");
     expect(screen.getByText("AASHTO evidence:")).toBeInTheDocument();
     expect(screen.getByText(/A-1-a, A-1-b and A-3 cannot be verified/)).toBeInTheDocument();
     expect(screen.getByText(/The group shown is an approximation/)).toBeInTheDocument();
@@ -257,7 +257,7 @@ describe("GradingTest selected record", () => {
 
     expect(await screen.findByText("Partial evidence sample")).toBeInTheDocument();
     // P40 30% with 15% fines and PI 4 satisfies A-1-b outright.
-    expect(screen.getByText("AASHTO group (auto)").closest("label")).toHaveTextContent("A-1-b");
+    expect(screen.getByText("AASHTO group").closest("label")).toHaveTextContent("A-1-b");
     expect(screen.getByText(/A-1-a cannot be fully verified/)).toBeInTheDocument();
     expect(screen.queryByText(/A-1-a, A-1-b and A-3 cannot be verified/)).not.toBeInTheDocument();
     expect(screen.getByText("No. 40 passing P40 (%)").closest("label")).toHaveTextContent("30.0");
