@@ -15,7 +15,7 @@ import { pdfFileName, printPDFDocument } from "@/lib/pdfGenerator";
 import { formatReportDate } from "@/lib/compressivePdfGenerator";
 import { useTestReport } from "@/hooks/useTestReport";
 import { useNavigate } from "react-router-dom";
-import { saveReceptionConsignment, listRecords, readRecord, uploadCoringPhoto, discardCoringPhoto } from "@/lib/api";
+import { API_BASE_URL, saveReceptionConsignment, listRecords, readRecord, uploadCoringPhoto, discardCoringPhoto } from "@/lib/api";
 import { emptyReceptionConsignment, nextRcNo, emptyReceptionSample, type ReceptionConsignmentInput, type ReceptionSampleInput } from "@/lib/reception";
 import { SessionContext } from "@/context/SessionContext";
 import { toast } from "sonner";
@@ -97,9 +97,12 @@ const CORING_ROW_DEFAULTS: CoringRow = {
   conversionRatio: "",
 };
 
+const coringImageUrl = (path: string): string =>
+  new URL(path, new URL(API_BASE_URL, window.location.origin)).toString();
+
 const loadImageAsDataUrl = async (path: string | undefined): Promise<string | undefined> => {
   if (!path) return undefined;
-  const url = path.startsWith("http") ? path : `${window.location.origin}${path}`;
+  const url = coringImageUrl(path);
   try {
     const response = await fetch(url, { credentials: "include" });
     if (!response.ok) return undefined;
@@ -1003,7 +1006,7 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
                     <div className="flex flex-col gap-1">
                       {row.pileBeforeImage ? (
                         <div className="relative w-28 h-20">
-                          <img src={row.pileBeforeImage} alt="Before" className="w-full h-full object-cover rounded border" />
+                          <img src={coringImageUrl(row.pileBeforeImage)} alt="Before" className="w-full h-full object-cover rounded border" />
                           <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-5 w-5 p-0" onClick={() => removeCoringImage(i, "pileBeforeImage")}><Trash2 className="h-3 w-3" /></Button>
                         </div>
                       ) : (
@@ -1021,7 +1024,7 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
                     <div className="flex flex-col gap-1">
                       {row.pileAfterImage ? (
                         <div className="relative w-28 h-20">
-                          <img src={row.pileAfterImage} alt="After" className="w-full h-full object-cover rounded border" />
+                          <img src={coringImageUrl(row.pileAfterImage)} alt="After" className="w-full h-full object-cover rounded border" />
                           <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-5 w-5 p-0" onClick={() => removeCoringImage(i, "pileAfterImage")}><Trash2 className="h-3 w-3" /></Button>
                         </div>
                       ) : (
