@@ -136,10 +136,9 @@ const AtterbergRecordView = ({
   const chartRef = useRef<HTMLDivElement | null>(null);
   const autoCreatedRef = useRef<Set<AtterbergTestType>>(new Set());
   const project = useProject();
-  // Arrow keys walk the unified A–G trial table so the whole record can be
-  // filled from the keyboard: Left/Right across LL + PL columns, Up/Down
-  // across measurement rows, stepping over auto and "-" cells.
-  const trialsNav = useGridArrowNavigation<HTMLDivElement>();
+  // Arrow keys cover the whole report form: across the A–G trial grid, then
+  // on to Linear Shrinkage, Passing 425 µm and Tested by.
+  const formNav = useGridArrowNavigation<HTMLDivElement>();
 
   // Locate primary tests
   const llTest = useMemo(
@@ -256,7 +255,7 @@ const AtterbergRecordView = ({
 
   return (
     <Card className="border shadow-sm overflow-hidden atterberg-record" data-atterberg-record-id={record.id}>
-      <div className="atterberg-edit-surface">
+      <div className="atterberg-edit-surface" ref={formNav.ref} onKeyDown={formNav.onKeyDown}>
       {/* ===== Project context strip ===== */}
       <div className="border-b bg-card px-5 py-4">
         <div className="flex items-start justify-between gap-3">
@@ -297,8 +296,6 @@ const AtterbergRecordView = ({
           </div>
           <div
             className="rounded-lg border overflow-x-auto bg-background"
-            ref={trialsNav.ref}
-            onKeyDown={trialsNav.onKeyDown}
             data-testid="atterberg-trials-grid"
           >
             <table className="w-full min-w-[600px] text-xs border-collapse">

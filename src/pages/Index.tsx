@@ -142,7 +142,7 @@ const TestsViewContent = ({
       if (testSummary.enabled === false && testKey !== "grading") {
         continue;
       }
-      if (testKey === "atterberg" || testKey === "coring") {
+      if (testKey === "atterberg") {
         continue;
       }
 

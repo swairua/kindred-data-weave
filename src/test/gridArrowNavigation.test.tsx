@@ -173,4 +173,52 @@ describe("useGridArrowNavigation", () => {
     press("c-b", "ArrowRight");
     expect(document.activeElement).toBe(screen.getByLabelText("c-c"));
   });
+
+  it("leaves Left/Right to the caret while it is inside a value", () => {
+    render(<LabelledGrid />);
+    const field = screen.getByLabelText("cn-b") as HTMLInputElement;
+    field.value = "12.5";
+    field.focus();
+    field.setSelectionRange(2, 2);
+    press("cn-b", "ArrowLeft");
+    expect(document.activeElement).toBe(field);
+    field.setSelectionRange(2, 2);
+    press("cn-b", "ArrowRight");
+    expect(document.activeElement).toBe(field);
+
+    field.setSelectionRange(0, 0);
+    press("cn-b", "ArrowLeft");
+    expect(document.activeElement).toBe(screen.getByLabelText("cn-a"));
+  });
+
+  it("moves past the last table row into the fields that follow it", () => {
+    const Form = () => {
+      const nav = useGridArrowNavigation<HTMLDivElement>();
+      return (
+        <div ref={nav.ref} onKeyDown={nav.onKeyDown}>
+          <input aria-label="before" />
+          <table>
+            <tbody>
+              <tr>
+                <td>Container No</td>
+                <td><input aria-label="cn-a" /></td>
+              </tr>
+              <tr>
+                <td>Wt of Container (g)</td>
+                <td><input aria-label="c-a" /></td>
+              </tr>
+            </tbody>
+          </table>
+          <input aria-label="after" />
+        </div>
+      );
+    };
+    render(<Form />);
+    screen.getByLabelText("c-a").focus();
+    press("c-a", "ArrowDown");
+    expect(document.activeElement).toBe(screen.getByLabelText("after"));
+
+    press("after", "ArrowUp");
+    expect(document.activeElement).toBe(screen.getByLabelText("c-a"));
+  });
 });

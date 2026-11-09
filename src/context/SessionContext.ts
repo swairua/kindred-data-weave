@@ -4,6 +4,7 @@ import type { ApiUser } from "@/lib/api";
 export type SessionContextValue = {
   user: ApiUser;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 };
 
 export const SessionContext = createContext<SessionContextValue | null>(null);
