@@ -10,7 +10,7 @@ import { NavigationLoadingProvider } from "@/context/NavigationLoadingContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SessionGuard } from "@/components/SessionGuard";
 import ProtectedLayout from "@/components/ProtectedLayout";
-const Index = lazy(() => import("./pages/Index.tsx"));
+import Index from "./pages/Index.tsx";
 const Login = lazy(() => import("./pages/Login.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const RecordTestWizard = lazy(() => import("./pages/RecordTestWizard.tsx"));

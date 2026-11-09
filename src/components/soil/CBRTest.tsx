@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { useTestReport } from "@/hooks/useTestReport";
 import { captureChartAsBase64 } from "@/lib/chartCapture";
 import { loadCBRResult, saveCBRResult } from "@/lib/cbrPersistence";
+import { useGridArrowNavigation } from "@/hooks/useGridArrowNavigation";
 
 const STANDARD_LOAD_2_5 = 13.24;
 const STANDARD_LOAD_5_0 = 19.96;
@@ -27,6 +28,7 @@ interface CBRTestProps {
 const CBRTest = ({ testKey }: CBRTestProps) => {
   const navigate = useNavigate();
   const project = useProject();
+  const gridNav = useGridArrowNavigation<HTMLTableElement>();
   const defaultRows: Row[] = [
     { penetration: "0.5", load: "" },{ penetration: "1.0", load: "" },{ penetration: "1.5", load: "" },{ penetration: "2.0", load: "" },
     { penetration: "2.5", load: "" },{ penetration: "3.0", load: "" },{ penetration: "4.0", load: "" },{ penetration: "5.0", load: "" },
@@ -168,7 +170,7 @@ const buildPDF = async (skipDownload: boolean) => {
               </CardHeader>
               <CardContent className="pt-0">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table ref={gridNav.ref} onKeyDown={gridNav.onKeyDown} className="w-full text-sm">
                     <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Penetration (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Load (kN)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">CBR (%)</th><th className="w-10"></th></tr></thead>
                     <tbody>
                       {rows.map((row, i) => (

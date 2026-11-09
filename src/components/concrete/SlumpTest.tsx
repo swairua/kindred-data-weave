@@ -6,6 +6,7 @@ import { useProject } from "@/context/ProjectContext";
 import { generateTestPDF, printPDFDocument } from "@/lib/pdfGenerator";
 import { useTestReport } from "@/hooks/useTestReport";
 import { loadTestResult, saveTestResult } from "@/lib/testResultPersistence";
+import { useGridArrowNavigation } from "@/hooks/useGridArrowNavigation";
 
 interface SlumpTestProps {
   testKey?: string;
@@ -20,6 +21,7 @@ interface SavedPayload {
 
 const SlumpTest = ({ testKey }: SlumpTestProps) => {
   const project = useProject();
+  const formNav = useGridArrowNavigation<HTMLDivElement>();
   const [slump, setSlump] = useState("");
   const [remarks, setRemarks] = useState("");
   const [testedBy, setTestedBy] = useState("");
@@ -101,7 +103,7 @@ const SlumpTest = ({ testKey }: SlumpTestProps) => {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div ref={formNav.ref} onKeyDown={formNav.onKeyDown} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Slump Value (mm)</Label>
             <Input type="number" value={slump} onChange={(e) => setSlump(e.target.value)} placeholder="0" />

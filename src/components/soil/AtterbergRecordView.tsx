@@ -67,7 +67,7 @@ interface AtterbergRecordViewProps {
 }
 
 const DEFAULT_LL_COLS = 4;
-const DEFAULT_PL_COLS = 3;
+const DEFAULT_PL_COLS = 2;
 const ALPHA = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 const isLLFilled = (t: LiquidLimitTrial | null | undefined) =>

@@ -3,6 +3,7 @@ import { createElement } from "react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { cleanup } from "@testing-library/react";
 import TestResults from "@/pages/TestResults";
+import { SidebarProvider } from "@/components/ui/sidebar";
 
 const resultsMocks = vi.hoisted(() => ({ listRecords: vi.fn() }));
 const contextMocks = vi.hoisted(() => ({ updateProjectMetadata: vi.fn() }));
@@ -48,8 +49,12 @@ const renderResults = () =>
     createElement(
       MemoryRouter,
       null,
-      createElement(TestResults, null),
-      createElement(LocationProbe, null),
+      createElement(
+        SidebarProvider,
+        null,
+        createElement(TestResults, null),
+        createElement(LocationProbe, null),
+      ),
     ),
   );
 
