@@ -266,6 +266,8 @@ describe("age bands and class-derived targets", () => {
     const saveButton = screen.getByRole("button", { name: "Save" });
     expect(pdfButton.parentElement).toBe(saveButton.parentElement);
     expect(pdfButton.compareDocumentPosition(saveButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const summaryTitle = screen.getByText("Summary");
+    expect(summaryTitle.compareDocumentPosition(pdfButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });
 
