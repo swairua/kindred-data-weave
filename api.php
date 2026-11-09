@@ -346,7 +346,7 @@ function logAuditEntry(mysqli $conn, array $data): bool
     $userAgent = $data['user_agent'] ?? ($_SERVER['HTTP_USER_AGENT'] ?? null);
     $userName = $data['user_name'] ?? null;
     
-    $stmt->bind_param('iissssss', $companyId, $userId, $action, $entityType, $entityId, $changes, $ipAddress, $userAgent, $userName);
+    $stmt->bind_param('iisssssss', $companyId, $userId, $action, $entityType, $entityId, $changes, $ipAddress, $userAgent, $userName);
     
     $success = $stmt->execute();
     if (!$success) {
