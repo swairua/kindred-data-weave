@@ -176,7 +176,7 @@ const Projects = () => {
       if (latestGradingResult) {
         navigate(`/tests?projectId=${projectId}&resultId=${latestGradingResult.id}#grading`);
       } else {
-        navigate(`/tests?newRecord=1&fromProject=${projectId}#grading`);
+        navigate(`/tests?projectId=${projectId}#grading`);
       }
       return;
     }
