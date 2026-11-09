@@ -27,6 +27,11 @@ export const SessionGuard = () => {
     return () => { active = false; };
   }, [attempt]);
 
+  const refreshUser = useCallback(async () => {
+    const currentUser = await fetchCurrentUser();
+    if (currentUser) setUser(currentUser);
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       await logoutUser();
@@ -68,7 +73,7 @@ export const SessionGuard = () => {
   }
 
   return (
-    <SessionContext.Provider value={{ user, logout }}>
+    <SessionContext.Provider value={{ user, logout, refreshUser }}>
       <Outlet />
     </SessionContext.Provider>
   );
