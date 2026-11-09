@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Loader2, Upload, X } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { readRecord, updateRecord, listRecords, uploadFile } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -96,7 +97,8 @@ const Settings = ({ initialTab = "company" }: { initialTab?: string }) => {
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditPage, setAuditPage] = useState(1);
   const [auditTotal, setAuditTotal] = useState(0);
-  const auditPerPage = 25;
+  const auditPerPage = 20;
+  const [selectedAuditEntry, setSelectedAuditEntry] = useState<any | null>(null);
 
   // Load all settings on mount
   useEffect(() => {
@@ -672,7 +674,7 @@ const Settings = ({ initialTab = "company" }: { initialTab?: string }) => {
                           </thead>
                           <tbody>
                             {auditLog.map((entry) => (
-                              <tr key={entry.id} className="border-b hover:bg-muted/50">
+                              <tr key={entry.id} className="border-b hover:bg-muted/50 cursor-pointer" onClick={() => setSelectedAuditEntry(entry)}>
                                 <td className="py-2 pr-4 text-sm">
                                   {entry.created_at ? new Date(entry.created_at).toLocaleString() : "—"}
                                 </td>
@@ -702,6 +704,30 @@ const Settings = ({ initialTab = "company" }: { initialTab?: string }) => {
                           </tbody>
                         </table>
                       </div>
+                      <Dialog open={selectedAuditEntry !== null} onOpenChange={(open) => !open && setSelectedAuditEntry(null)}>
+                        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                          <DialogHeader>
+                            <DialogTitle>Audit entry #{selectedAuditEntry?.id}</DialogTitle>
+                            <DialogDescription>
+                              {selectedAuditEntry?.action?.toUpperCase()} on {selectedAuditEntry?.entity_type || "—"}
+                            </DialogDescription>
+                          </DialogHeader>
+                          <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-2 text-sm">
+                            {selectedAuditEntry && Object.entries(selectedAuditEntry).map(([key, value]) => (
+                              <div key={key} className="contents">
+                                <dt className="font-medium text-muted-foreground">{key}</dt>
+                                <dd className="break-all">
+                                  {value === null || value === undefined || value === ""
+                                    ? "—"
+                                    : typeof value === "object"
+                                      ? <pre className="whitespace-pre-wrap text-xs bg-muted p-2 rounded">{JSON.stringify(value, null, 2)}</pre>
+                                      : String(value)}
+                                </dd>
+                              </div>
+                            ))}
+                          </dl>
+                        </DialogContent>
+                      </Dialog>
                       {/* Pagination */}
                       {auditTotal > auditPerPage && (
                         <div className="flex items-center justify-between mt-4 pt-4 border-t">
