@@ -54,7 +54,7 @@ export interface FormulaSection {
   entries: FormulaEntry[];
 }
 
-export const FORMULAS_REFERENCE_VERSION = "1.3.0";
+export const FORMULAS_REFERENCE_VERSION = "1.4.0";
 
 export const FORMULAS_REFERENCE_TITLE = "Calculations and Formulas Reference";
 
@@ -103,6 +103,27 @@ export const FORMULA_SECTIONS: FormulaSection[] = [
         ],
         sourceModule: "psd-sieve-formulas",
         sourceFunctions: ["calculateGradationCoeffs"],
+      },
+      {
+        heading: "Full PSD pipeline (processSieveAnalysis)",
+        formulas: [
+          "1. Sort sieve rows largest to smallest",
+          "2. % retained_i = m_i / total * 100",
+          "3. cumulative passing_i = (1 - SUM(retained to row i) / total) * 100",
+          "4. D10, D30, D60 via log interpolation; Cu = D60 / D10; Cc = D30^2 / (D10 * D60)",
+          "5. Atterberg limits (LL, PL, PI) from sieve-generated data",
+          "6. Soil classification: USCS/AASHTO from fractions + Atterberg",
+        ],
+        variables: [
+          { symbol: "m_i", meaning: "mass retained on sieve row i (g)" },
+          { symbol: "total", meaning: "sum of all retained masses (g)" },
+        ],
+        notes: [
+          "Oven-dried LL input: when an oven-dried liquid limit is entered it takes precedence over the air-dried value for classification.",
+          "Non-plastic soils (NP) report PI = 0 and skip BS/USCS Atterberg classification.",
+        ],
+        sourceModule: "psd-sieve-formulas",
+        sourceFunctions: ["processSieveAnalysis"],
       },
       {
         heading: "Moisture content",
@@ -362,6 +383,8 @@ export const FORMULA_SECTIONS: FormulaSection[] = [
         variables: [],
         notes: [
           "Gravel + sand + fines must total 100%; otherwise classification is withheld as invalid data.",
+           "Relaxed classification gate: fine-grained soils (>= 50% fines) classify on the No. 200 passing value alone.",
+           "Manual USCS/AASHTO overrides take precedence over auto-classification on the printed report.",
         ],
         sourceModule: "soilClassification",
         sourceFunctions: ["classifySoilUSCS", "validateClassificationData"],
