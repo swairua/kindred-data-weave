@@ -85,6 +85,9 @@ const Reception = () => {
       const rows = await listReceptionConsignments();
       setConsignments(rows);
       setProcessDialogOpen(false);
+      if (selectedTestType === "coring") {
+        navigate(`/record?${new URLSearchParams({ material: "concrete", test: "coring", projectId: String(res.projectId) }).toString()}`);
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to process reception");
     } finally {

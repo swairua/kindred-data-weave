@@ -921,7 +921,7 @@ export const listReceptionPhotos = async (rcNo: string): Promise<ReceptionPhoto[
 export const uploadReceptionPhoto = async (
   file: File,
   rcNo: string
-): Promise<ReceptionPhoto | null> => {
+): Promise<ReceptionPhoto> => {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("rc_no", rcNo);
@@ -968,9 +968,6 @@ export const uploadReceptionPhoto = async (
       file_size: data?.file_size ?? file.size,
       mime_type: data?.mime_type ?? file.type,
     });
-  } catch (error) {
-    console.error("[API] Reception photo upload error:", error);
-    return null;
   } finally {
     clearTimeout(timeoutId);
   }
@@ -1170,6 +1167,17 @@ export const linkCoringPhotos = async (
   );
 };
 
+export const discardCoringPhoto = async (filePath: string): Promise<void> => {
+  try {
+    await apiRequest<ApiWriteResponse<null>>(
+      { method: "DELETE", body: JSON.stringify({ file_path: filePath }) },
+      { action: "delete-coring-photo" },
+    );
+  } catch (error) {
+    console.warn("[API] Failed to discard Coring photo", filePath, error);
+  }
+};
+
 export const processReceptionToProject = async (
   consignment: ReceptionConsignmentInput,
   overrideTestType?: string,
@@ -1201,16 +1209,25 @@ export const processReceptionToProject = async (
 
   const testResultIds: Record<string, number> = {};
   if (testType === "coring") {
-    const tr = await createRecord<{ id: number }>("test_results", {
-      name: "Concrete Coring",
-      category: "concrete",
-      status: "in-progress",
-      data_points: 0,
-      ...coringRecord,
-      project_id: projectId,
-      test_key: "coring",
-    });
-    if (tr.data?.id) testResultIds.coring = tr.data.id;
+    if (coringRecord) {
+      try {
+        const tr = await createRecord<{ id: number }>("test_results", {
+          name: "Concrete Coring",
+          category: "concrete",
+          status: "in-progress",
+          data_points: 0,
+          ...coringRecord,
+          project_id: projectId,
+          test_key: "coring",
+        });
+        if (tr.data?.id) testResultIds.coring = tr.data.id;
+      } catch (error) {
+        await deleteRecord("projects", projectId).catch((rollbackError) =>
+          console.warn("[API] Failed to roll back project after Coring test failure", rollbackError),
+        );
+        throw error;
+      }
+    }
   } else {
     for (const sample of consignment.samples || []) {
       if (!sample.tests || sample.tests.length === 0) continue;

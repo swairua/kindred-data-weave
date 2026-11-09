@@ -15,7 +15,7 @@ import { pdfFileName, printPDFDocument } from "@/lib/pdfGenerator";
 import { formatReportDate } from "@/lib/compressivePdfGenerator";
 import { useTestReport } from "@/hooks/useTestReport";
 import { useNavigate } from "react-router-dom";
-import { saveReceptionConsignment, listRecords, readRecord, uploadCoringPhoto } from "@/lib/api";
+import { saveReceptionConsignment, listRecords, readRecord, uploadCoringPhoto, discardCoringPhoto } from "@/lib/api";
 import { emptyReceptionConsignment, nextRcNo, emptyReceptionSample, type ReceptionConsignmentInput, type ReceptionSampleInput } from "@/lib/reception";
 import { SessionContext } from "@/context/SessionContext";
 import { toast } from "sonner";
@@ -491,6 +491,18 @@ const update = useCallback((i: number, field: keyof CoringRow, val: string) => {
     }
     return errors;
   }, [projectDetails]);
+
+const removeCoringImage = (index: number, field: "pileBeforeImage" | "pileAfterImage") => {
+    const path = rows[index]?.[field];
+    update(index, field, "");
+    if (path) void discardCoringPhoto(path);
+  };
+
+  const removeCoringRow = (index: number) => {
+    const paths = [rows[index]?.pileBeforeImage, rows[index]?.pileAfterImage].filter((p): p is string => Boolean(p));
+    setRows(rows.filter((_, j) => j !== index));
+    paths.forEach((path) => void discardCoringPhoto(path));
+  };
 
 const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pileAfterImage", file: File) => {
     // Validate file size (max 10MB)
@@ -992,7 +1004,7 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
                       {row.pileBeforeImage ? (
                         <div className="relative w-28 h-20">
                           <img src={row.pileBeforeImage} alt="Before" className="w-full h-full object-cover rounded border" />
-                          <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-5 w-5 p-0" onClick={() => update(i, "pileBeforeImage", "")}><Trash2 className="h-3 w-3" /></Button>
+                          <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-5 w-5 p-0" onClick={() => removeCoringImage(i, "pileBeforeImage")}><Trash2 className="h-3 w-3" /></Button>
                         </div>
                       ) : (
                         <label className="relative cursor-pointer">
@@ -1010,7 +1022,7 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
                       {row.pileAfterImage ? (
                         <div className="relative w-28 h-20">
                           <img src={row.pileAfterImage} alt="After" className="w-full h-full object-cover rounded border" />
-                          <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-5 w-5 p-0" onClick={() => update(i, "pileAfterImage", "")}><Trash2 className="h-3 w-3" /></Button>
+                          <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-5 w-5 p-0" onClick={() => removeCoringImage(i, "pileAfterImage")}><Trash2 className="h-3 w-3" /></Button>
                         </div>
                       ) : (
                         <label className="relative cursor-pointer">
@@ -1023,7 +1035,7 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
                       )}
                     </div>
                   </td>
-                  <td className="py-1 px-1"><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setRows(rows.filter((_, j) => j !== i))}><X className="h-3 w-3" /></Button></td>
+                  <td className="py-1 px-1"><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeCoringRow(i)}><X className="h-3 w-3" /></Button></td>
                 </tr>
               );
             })}

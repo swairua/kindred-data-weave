@@ -35,11 +35,10 @@ export const ConsignmentPhotos = ({
       setUploading(true);
       const next = [...photos];
       for (const file of Array.from(files)) {
-        const photo = await uploadReceptionPhoto(file, rcNo);
-        if (photo) {
-          next.push(photo);
-        } else {
-          toast.error("Failed to upload photo");
+        try {
+          next.push(await uploadReceptionPhoto(file, rcNo));
+        } catch (error) {
+          toast.error(`${file.name}: ${error instanceof Error ? error.message : "Failed to upload photo"}`);
         }
       }
       onChange(next);
@@ -53,10 +52,12 @@ export const ConsignmentPhotos = ({
     async (id: number) => {
       setDeleting((prev) => new Set([...prev, id]));
       try {
-        await deleteReceptionPhoto(id);
-        onChange(photos.filter((p) => p.id !== id));
-      } catch {
-        toast.error("Failed to delete photo");
+        const deleted = await deleteReceptionPhoto(id);
+        if (deleted) {
+          onChange(photos.filter((p) => p.id !== id));
+        } else {
+          toast.error("Failed to delete photo");
+        }
       } finally {
         setDeleting((prev) => {
           const next = new Set(prev);

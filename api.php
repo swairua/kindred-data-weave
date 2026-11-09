@@ -1121,6 +1121,11 @@ try {
             respond(['error' => 'Invalid file type. Allowed: JPG, PNG, GIF, WebP'], 400);
         }
 
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if (!in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)) {
+            respond(['error' => 'Invalid file extension'], 400);
+        }
+
         // Create upload directory: uploads/reception/
         $upload_dir = __DIR__ . '/uploads/reception/';
         if (!is_dir($upload_dir)) {
@@ -1131,7 +1136,6 @@ try {
         }
 
         // Generate unique filename prefixed with rc_no
-        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
         $filename = $rcNo . '_' . date('Ymd_His') . '_' . bin2hex(random_bytes(6)) . '.' . $ext;
         $file_path = $upload_dir . $filename;
         $relative_path = '/uploads/reception/' . $filename;
@@ -1201,8 +1205,7 @@ try {
             respond(['error' => 'Missing id'], 400);
         }
 
-        // Fetch the photo row so we can delete the file and verify ownership
-        $stmt = $conn->prepare("SELECT id, file_path FROM reception_photos WHERE id = ? LIMIT 1");
+        $stmt = $conn->prepare("SELECT id, file_path, uploaded_by FROM reception_photos WHERE id = ? LIMIT 1");
         if (!$stmt) {
             respond(['error' => 'Database error'], 500);
         }
@@ -1213,6 +1216,10 @@ try {
 
         if (!$row) {
             respond(['error' => 'Photo not found'], 404);
+        }
+
+        if ((int) $row['uploaded_by'] !== (int) $user['id']) {
+            respond(['error' => 'You can only delete photos you uploaded'], 403);
         }
 
         // Unlink the physical file (path-validated inside uploads/)
@@ -1329,6 +1336,50 @@ try {
             }
             respond(['error' => 'Failed to save photo to database', 'details' => $e->getMessage()], 500);
         }
+    }
+
+    if ($action === 'delete-coring-photo') {
+        $user = requireAuth($conn);
+        $userId = (int) $user['id'];
+
+        $body = $body ?: [];
+        $filePath = $body['file_path'] ?? '';
+        if (!is_string($filePath) || !preg_match('#^/uploads/coring/[A-Za-z0-9_.\-]+$#', $filePath)) {
+            respond(['error' => 'Invalid file_path'], 400);
+        }
+
+        $stmt = $conn->prepare(
+            "SELECT id, file_path FROM coring_photos
+             WHERE file_path = ? AND uploaded_by = ? AND test_result_id IS NULL LIMIT 1"
+        );
+        if (!$stmt) {
+            respond(['error' => 'Database error'], 500);
+        }
+        $stmt->bind_param('si', $filePath, $userId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if (!$row) {
+            respond(['error' => 'Photo not found or already linked'], 404);
+        }
+
+        $realPath = realpath(__DIR__ . $row['file_path']);
+        $uploadsDir = realpath(__DIR__ . '/uploads/coring/');
+        if ($realPath && $uploadsDir && strpos($realPath, $uploadsDir) === 0 && file_exists($realPath)) {
+            @unlink($realPath);
+        }
+
+        $stmt = $conn->prepare("DELETE FROM coring_photos WHERE id = ?");
+        if (!$stmt) {
+            respond(['error' => 'Database error'], 500);
+        }
+        $photoId = (int) $row['id'];
+        $stmt->bind_param('i', $photoId);
+        $stmt->execute();
+        $stmt->close();
+
+        respond(['success' => true, 'message' => 'Photo deleted'], 200);
     }
 
     if ($action === 'link-coring-photos') {
