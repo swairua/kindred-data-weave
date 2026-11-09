@@ -66,7 +66,8 @@ describe("arrow keys in the record forms", () => {
     fireEvent.click(await screen.findByText("SPT (Standard Penetration Test)"));
     fireEvent.click(screen.getByRole("button", { name: /Add Row/ }));
 
-    const [firstDepth, firstBlows, secondDepth, secondBlows] = cells(container);
+    const [firstDepth, firstBlows, secondDepth, secondBlows] = cells(container)
+      .filter((input) => !input.readOnly && input.tabIndex !== -1);
     firstDepth.focus();
 
     press(firstDepth, "ArrowDown");

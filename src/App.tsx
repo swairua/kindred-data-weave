@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
@@ -11,18 +12,18 @@ import { SessionGuard } from "@/components/SessionGuard";
 import ProtectedLayout from "@/components/ProtectedLayout";
 import Index from "./pages/Index.tsx";
 import Login from "./pages/Login.tsx";
-import NotFound from "./pages/NotFound.tsx";
-import RecordTestWizard from "./pages/RecordTestWizard.tsx";
-import TestResults from "./pages/TestResults.tsx";
-import Reception from "./pages/Reception.tsx";
-import LogConsignment from "./pages/LogConsignment.tsx";
-import Projects from "./pages/Projects.tsx";
-import ProjectOverview from "./pages/ProjectOverview.tsx";
-import UserManagement from "./pages/UserManagement.tsx";
-import Settings from "./pages/Settings.tsx";
-import Storage from "./pages/Storage.tsx";
-import Equipment from "./pages/Equipment.tsx";
-import Profile from "./pages/Profile.tsx";
+const NotFound = lazy(() => import("./pages/NotFound.tsx"));
+const RecordTestWizard = lazy(() => import("./pages/RecordTestWizard.tsx"));
+const TestResults = lazy(() => import("./pages/TestResults.tsx"));
+const Reception = lazy(() => import("./pages/Reception.tsx"));
+const LogConsignment = lazy(() => import("./pages/LogConsignment.tsx"));
+const Projects = lazy(() => import("./pages/Projects.tsx"));
+const ProjectOverview = lazy(() => import("./pages/ProjectOverview.tsx"));
+const UserManagement = lazy(() => import("./pages/UserManagement.tsx"));
+const Settings = lazy(() => import("./pages/Settings.tsx"));
+const Storage = lazy(() => import("./pages/Storage.tsx"));
+const Equipment = lazy(() => import("./pages/Equipment.tsx"));
+const Profile = lazy(() => import("./pages/Profile.tsx"));
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,7 @@ const App = () => {
                 <NavigationLoadingProvider>
                   <Toaster />
                   <Sonner />
+                  <Suspense fallback={<div className="min-h-svh flex items-center justify-center bg-background" role="status"><p className="text-sm text-muted-foreground">Loading application…</p></div>}>
                   <Routes>
                     <Route path="/login" element={<Login />} />
                     <Route element={<SessionGuard />}>
@@ -64,6 +66,7 @@ const App = () => {
                     </Route>
                     <Route path="*" element={<NotFound />} />
                   </Routes>
+                  </Suspense>
                 </NavigationLoadingProvider>
               </TestDataProvider>
             </TooltipProvider>

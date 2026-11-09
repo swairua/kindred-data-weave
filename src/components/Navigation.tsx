@@ -18,7 +18,7 @@ import { generateFormulasReferencePDF } from "@/lib/formulasReferencePdfGenerato
 import { toast } from "sonner";
 import { useNavigationLoading } from "@/context/NavigationLoadingContext";
 import { Loader2 } from "lucide-react";
-import { useSession } from "@/context/SessionContext";
+import { SessionContext } from "@/context/SessionContext";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
 import type { ApiUser } from "@/lib/api";
 
@@ -48,7 +48,7 @@ const Navigation = ({
   const { isNavigating, navigationProgress, startNavigation, completeNavigation } = useNavigationLoading();
   
   // Use user from props if provided, otherwise fall back to SessionContext
-  const session = useSession();
+  const session = useContext(SessionContext);
   const user = propsUser || session?.user;
   const { hasPermission, isLoading: permissionsLoading } = useUserPermissions(user);
 

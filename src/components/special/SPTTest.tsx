@@ -8,6 +8,7 @@ import { useProject } from "@/context/ProjectContext";
 import { generateTestPDF, printPDFDocument } from "@/lib/pdfGenerator";
 import { useTestReport } from "@/hooks/useTestReport";
 import { loadTestResult, saveTestResult } from "@/lib/testResultPersistence";
+import { useGridArrowNavigation } from "@/hooks/useGridArrowNavigation";
 
 interface Row { 
   depth: string; 
@@ -30,6 +31,7 @@ interface SavedPayload {
 
 const SPTTest = ({ testKey }: { testKey?: string }) => {
   const project = useProject();
+  const gridNav = useGridArrowNavigation<HTMLTableElement>();
   const [rows, setRows] = useState<Row[]>([{ depth: "", blowCount: "", n60: "", n1_60: "" }]);
   const [testedBy, setTestedBy] = useState("");
   const [dateTested, setDateTested] = useState("");
@@ -194,15 +196,15 @@ const SPTTest = ({ testKey }: { testKey?: string }) => {
   return (
     <TestSection title="SPT (Standard Penetration Test)" testKey={testKey} onSave={save} onClear={() => { setRows([{ depth: "", blowCount: "", n60: "", n1_60: "" }]); setTestedBy(""); setDateTested(""); }} onExportPDF={exportPDF} onPrint={printPDF} canExport={canExport}>
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table ref={gridNav.ref} onKeyDown={gridNav.onKeyDown} className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Depth (m)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Blow Count (N)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">N60</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">N1,60</th><th className="w-10"></th></tr></thead>
           <tbody>
             {rows.map((row, i) => (
               <tr key={i} className="border-b border-border/50">
                 <td className="py-1.5 px-2"><Input type="number" value={row.depth} onChange={(e) => update(i, "depth", e.target.value)} className="h-8" placeholder="0" /></td>
                 <td className="py-1.5 px-2"><Input type="number" value={row.blowCount} onChange={(e) => update(i, "blowCount", e.target.value)} className="h-8" placeholder="0" /></td>
-                <td className="py-1.5 px-2"><Input value={row.n60 || ""} readOnly className="h-8 bg-muted/50" /></td>
-                <td className="py-1.5 px-2"><Input value={row.n1_60 || ""} readOnly className="h-8 bg-muted/50" /></td>
+                <td className="py-1.5 px-2"><Input value={row.n60 || ""} readOnly tabIndex={-1} className="h-8 bg-muted/50" /></td>
+                <td className="py-1.5 px-2"><Input value={row.n1_60 || ""} readOnly tabIndex={-1} className="h-8 bg-muted/50" /></td>
                 <td className="py-1.5 px-1"><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setRows(rows.filter((_, j) => j !== i))}><X className="h-3.5 w-3.5" /></Button></td>
               </tr>
             ))}
