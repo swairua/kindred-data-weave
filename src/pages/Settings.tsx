@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Loader2, Upload, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { readRecord, updateRecord, listRecords, uploadFile } from "@/lib/api";
+import { readRecord, updateRecord, listRecords, uploadFile, createRecord } from "@/lib/api";
 import { toast } from "sonner";
 
 interface CompanyInfo {
@@ -42,7 +42,19 @@ interface AdminImage {
   created_at: string;
 }
 
-type ImageType = "logo" | "contacts" | "stamp";
+interface AuditLogEntry {
+  id: number;
+  company_id?: number;
+  user_id?: number;
+  action: string;
+  entity_type?: string;
+  entity_id?: number;
+  changes?: unknown;
+  ip_address?: string;
+  user_agent?: string;
+  user_name?: string;
+  created_at: string;
+}
 
 // Generic record shape for settings tables
 interface SettingsRecord {
@@ -211,6 +223,13 @@ const Settings = ({ initialTab = "company" }: { initialTab?: string }) => {
         return;
       }
       await updateRecord("company_info", company.id.toString(), formData);
+      // Log the action
+      await createRecord("audit_log", {
+        action: `Company information updated: ${formData.name || company.name} — email: ${formData.email || company.email}`,
+        entity_type: "company_info",
+        entity_id: company.id,
+        changes: formData,
+      });
       setCompany({ ...company, ...formData } as CompanyInfo);
       toast.success("Company settings saved");
     } catch (error) {
@@ -221,7 +240,7 @@ const Settings = ({ initialTab = "company" }: { initialTab?: string }) => {
     }
   };
 
-  const handleSaveSetting = async (table: string, id: number | undefined, data: Partial<SettingsRecord>, setter: React.Dispatch<React.SetStateAction<SettingsRecord | null>>) => {
+  const handleSaveSetting = async (table: string, id: number | undefined, data: Partial<SettingsRecord>, setter: React.Dispatch<React.SetStateAction<SettingsRecord | null>>, actionDesc?: string) => {
     try {
       setIsSaving(true);
       if (id) {
@@ -230,6 +249,13 @@ const Settings = ({ initialTab = "company" }: { initialTab?: string }) => {
         // create new record
         await updateRecord(table, "1", data);
       }
+      // Log the action
+      await createRecord("audit_log", {
+        action: actionDesc || `Updated ${table.replace(/_/g, " ")} settings`,
+        entity_type: table,
+        entity_id: id ?? 1,
+        changes: data,
+      });
       const res = await readRecord<SettingsRecord>(table, "1");
       setter(res.data);
       toast.success("Settings saved");
@@ -416,7 +442,7 @@ const Settings = ({ initialTab = "company" }: { initialTab?: string }) => {
                     <Textarea name="description" value={String(orgFormData.description || "")} onChange={handleNestedChange(setOrgFormData)} />
                   </div>
                   <div className="flex justify-end">
-                    <Button onClick={() => handleSaveSetting("organisation_details", orgDetails?.id, orgFormData, setOrgDetails)} disabled={isSaving}>
+                    <Button onClick={() => handleSaveSetting("organisation_details", orgDetails?.id, orgFormData, setOrgDetails, "Organisation details updated: legal name, registration, tax ID, industry, year established, HQ country, description")} disabled={isSaving}>
                       {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Save Organisation
                     </Button>
                   </div>
@@ -480,7 +506,7 @@ const Settings = ({ initialTab = "company" }: { initialTab?: string }) => {
                     <Input name="billing_contact_email" type="email" value={String(billingFormData.billing_contact_email || "")} onChange={handleNestedChange(setBillingFormData)} />
                   </div>
                   <div className="flex justify-end">
-                    <Button onClick={() => handleSaveSetting("billing_settings", billing?.id, billingFormData, setBilling)} disabled={isSaving}>
+                    <Button onClick={() => handleSaveSetting("billing_settings", billing?.id, billingFormData, setBilling, "Billing settings updated: payment method, bank details, billing frequency, tax rate, billing contact")} disabled={isSaving}>
                       {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Save Billing
                     </Button>
                   </div>
@@ -521,7 +547,7 @@ const Settings = ({ initialTab = "company" }: { initialTab?: string }) => {
                     <Input name="data_retention_days" type="number" value={String(automationFormData.data_retention_days || "")} onChange={handleNestedChange(setAutomationFormData)} />
                   </div>
                   <div className="flex justify-end">
-                    <Button onClick={() => handleSaveSetting("automation_settings", automation?.id, automationFormData, setAutomation)} disabled={isSaving}>
+                    <Button onClick={() => handleSaveSetting("automation_settings", automation?.id, automationFormData, setAutomation, "Automation settings updated: auto-save interval, auto-export reports, scheduled report time, email notifications, data retention")} disabled={isSaving}>
                       {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Save Automation
                     </Button>
                   </div>
@@ -561,7 +587,7 @@ const Settings = ({ initialTab = "company" }: { initialTab?: string }) => {
                     </Select>
                   </div>
                   <div className="flex justify-end">
-                    <Button onClick={() => handleSaveSetting("policy_settings", policy?.id, policyFormData, setPolicy)} disabled={isSaving}>
+                    <Button onClick={() => handleSaveSetting("policy_settings", policy?.id, policyFormData, setPolicy, "Policy settings updated: acceptance margin, photo evidence, default standard, compliance mode")} disabled={isSaving}>
                       {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Save Policies
                     </Button>
                   </div>
@@ -601,7 +627,7 @@ const Settings = ({ initialTab = "company" }: { initialTab?: string }) => {
                     <Switch checked={Boolean(workflowFormData.save_and_next_test)} onCheckedChange={handleSwitchChange(setWorkflowFormData, "save_and_next_test")} />
                   </div>
                   <div className="flex justify-end">
-                    <Button onClick={() => handleSaveSetting("workflow_settings", workflow?.id, workflowFormData, setWorkflow)} disabled={isSaving}>
+                    <Button onClick={() => handleSaveSetting("workflow_settings", workflow?.id, workflowFormData, setWorkflow, "Workflow settings updated: approval before save, approval role, auto-advance test steps, save and next test")} disabled={isSaving}>
                       {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Save Workflows
                     </Button>
                   </div>
@@ -634,7 +660,7 @@ const Settings = ({ initialTab = "company" }: { initialTab?: string }) => {
                     <Input name="certificate_issuer" value={String(complianceFormData.certificate_issuer || "")} onChange={handleNestedChange(setComplianceFormData)} />
                   </div>
                   <div className="flex justify-end">
-                    <Button onClick={() => handleSaveSetting("compliance_settings", compliance?.id, complianceFormData, setCompliance)} disabled={isSaving}>
+                    <Button onClick={() => handleSaveSetting("compliance_settings", compliance?.id, complianceFormData, setCompliance, "Compliance settings updated: active standards, required fields, audit required, certificate issuer")} disabled={isSaving}>
                       {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Save Compliance
                     </Button>
                   </div>
@@ -785,7 +811,7 @@ const Settings = ({ initialTab = "company" }: { initialTab?: string }) => {
                     <Input name="proxy_url" value={String(connectivityFormData.proxy_url || "")} onChange={handleNestedChange(setConnectivityFormData)} />
                   </div>
                   <div className="flex justify-end">
-                    <Button onClick={() => handleSaveSetting("connectivity_settings", connectivity?.id, connectivityFormData, setConnectivity)} disabled={isSaving}>
+                    <Button onClick={() => handleSaveSetting("connectivity_settings", connectivity?.id, connectivityFormData, setConnectivity, "Connectivity settings updated: API endpoint, network timeout, SSL, proxy URL")} disabled={isSaving}>
                       {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Save Connectivity
                     </Button>
                   </div>
@@ -818,7 +844,7 @@ const Settings = ({ initialTab = "company" }: { initialTab?: string }) => {
                     <Switch checked={Boolean(integrationsFormData.is_active)} onCheckedChange={handleSwitchChange(setIntegrationsFormData, "is_active")} />
                   </div>
                   <div className="flex justify-end">
-                    <Button onClick={() => handleSaveSetting("integrations", integrations?.id, integrationsFormData, setIntegrations)} disabled={isSaving}>
+                    <Button onClick={() => handleSaveSetting("integrations", integrations?.id, integrationsFormData, setIntegrations, "Integrations settings updated: integration type, provider, config, active status")} disabled={isSaving}>
                       {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Save Integrations
                     </Button>
                   </div>

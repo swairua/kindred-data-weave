@@ -378,7 +378,7 @@ function logLogin(mysqli $conn, int $userId, string $userName): void
 {
     logAuditEntry($conn, [
         'user_id' => $userId,
-        'action' => 'login',
+        'action' => "User logged in: {$userName} (ID: {$userId})",
         'entity_type' => 'session',
         'ip_address' => getClientIp(),
         'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
@@ -393,7 +393,7 @@ function logLogout(mysqli $conn, int $userId, string $userName): void
 {
     logAuditEntry($conn, [
         'user_id' => $userId,
-        'action' => 'logout',
+        'action' => "User logged out: {$userName} (ID: {$userId})",
         'entity_type' => 'session',
         'ip_address' => getClientIp(),
         'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
@@ -1075,7 +1075,7 @@ try {
             $image_id = $conn->insert_id;
 
             // Log image upload
-            logImageOperation($conn, 'upload', $image_type, $image_id, $file['name'], $userId, $user['name'] ?? '');
+            logImageOperation($conn, "Uploaded {$image_type} image: {$file['name']} ({$file['size']} bytes)", $image_type, $image_id, $file['name'], $userId, $user['name'] ?? '');
 
             respond([
                 'success' => true,
@@ -1786,7 +1786,7 @@ try {
         }
 
         // Log CRUD operation
-        logCrudOperation($conn, 'create', $table, $insertId, $userId, $user['name'] ?? '', [
+        logCrudOperation($conn, "Created new record in {$table} (ID: {$insertId})" . (isset($payload['test_key']) ? " [{$payload['test_key']}]" : ''), $table, $insertId, $userId, $user['name'] ?? '', [
             'table' => $table,
             'fields' => redactAuditRecord($created ?? $payload),
         ]);
@@ -1912,7 +1912,7 @@ try {
         }
 
         // Log CRUD operation
-        logCrudOperation($conn, 'update', $table, (int) $id, $userId, $user['name'] ?? '', [
+        logCrudOperation($conn, "Updated {$table} record ID {$id}" . ($auditFields !== [] ? " (changed: " . implode(', ', array_keys($auditFields)) . ")" : ''), $table, (int) $id, $userId, $user['name'] ?? '', [
             'table' => $table,
             'fields' => $auditFields,
         ]);
@@ -1957,7 +1957,7 @@ try {
         $stmt->execute();
 
         // Log CRUD operation
-        logCrudOperation($conn, 'delete', $table, (int) $id, $userId, $user['name'] ?? '', [
+        logCrudOperation($conn, "Deleted {$table} record ID {$id}", $table, (int) $id, $userId, $user['name'] ?? '', [
             'table' => $table,
             'deleted_id' => $id,
             'record' => $deletedRow ? redactAuditRecord($deletedRow) : null,

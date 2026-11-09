@@ -98,14 +98,15 @@ CREATE TABLE IF NOT EXISTS audit_log (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   company_id INT UNSIGNED DEFAULT NULL,
   user_id INT UNSIGNED DEFAULT NULL,
-  action VARCHAR(100) NOT NULL,
+  action TEXT NOT NULL,
   entity_type VARCHAR(50) DEFAULT NULL,
   entity_id INT UNSIGNED DEFAULT NULL,
   changes JSON DEFAULT NULL,
   ip_address VARCHAR(45) DEFAULT NULL,
   user_agent TEXT DEFAULT NULL,
+  user_name VARCHAR(255) DEFAULT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_action (action),
+  INDEX idx_action (action(250)),
   INDEX idx_created (created_at),
   INDEX idx_entity (entity_type, entity_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -137,8 +138,17 @@ CREATE TABLE IF NOT EXISTS connectivity_settings (
   UNIQUE KEY (company_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Insert default rows for company_id = 1 (existing company)
-INSERT IGNORE INTO organisation_details (company_id) VALUES (1);
+-- ============================================================
+-- Audit Log Schema Update
+-- Changes action from VARCHAR(100) to TEXT for full descriptions
+-- Adds user_name column if missing
+-- ============================================================
+
+-- Update existing audit_log table (drop index first, then modify column, then re-add index)
+ALTER TABLE audit_log DROP INDEX IF EXISTS idx_action;
+ALTER TABLE audit_log MODIFY COLUMN action TEXT NOT NULL;
+ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS user_name VARCHAR(255) DEFAULT NULL AFTER user_agent;
+ALTER TABLE audit_log ADD INDEX idx_action (action(250));
 INSERT IGNORE INTO billing_settings (company_id) VALUES (1);
 INSERT IGNORE INTO automation_settings (company_id) VALUES (1);
 INSERT IGNORE INTO policy_settings (company_id) VALUES (1);
