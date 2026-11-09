@@ -15,6 +15,7 @@ const viewForPath = (pathname: string, hash: string): NavigationView => {
   if (pathname.startsWith("/settings")) return "settings";
   if (pathname.startsWith("/reports")) return "reports";
   if (pathname.startsWith("/admin")) return "admin";
+  if (pathname.startsWith("/profile")) return "profile";
   return "tests";
 };
 

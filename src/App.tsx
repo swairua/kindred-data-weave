@@ -22,6 +22,7 @@ import UserManagement from "./pages/UserManagement.tsx";
 import Settings from "./pages/Settings.tsx";
 import Storage from "./pages/Storage.tsx";
 import Equipment from "./pages/Equipment.tsx";
+import Profile from "./pages/Profile.tsx";
 
 const queryClient = new QueryClient();
 
@@ -55,6 +56,7 @@ const App = () => {
                         <Route path="/reports" element={<Index />} />
                         <Route path="/admin" element={<Index />} />
                         <Route path="/settings" element={<Settings />} />
+                        <Route path="/profile" element={<Profile />} />
                         <Route path="/results" element={<TestResults />} />
                         <Route path="/users" element={<UserManagement />} />
                       </Route>

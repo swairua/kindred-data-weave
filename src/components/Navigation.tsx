@@ -22,7 +22,7 @@ import { useSession } from "@/context/SessionContext";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
 import type { ApiUser } from "@/lib/api";
 
-export type NavigationView = "dashboard" | "tests" | "coring" | "reports" | "results" | "projects" | "admin" | "users" | "settings" | "reception";
+export type NavigationView = "dashboard" | "tests" | "coring" | "reports" | "results" | "projects" | "admin" | "users" | "settings" | "reception" | "profile";
 
 interface NavigationProps {
   currentView: NavigationView;
@@ -69,6 +69,8 @@ const Navigation = ({
         return "settings";
       case "admin":
         return "users"; // admin page requires user management permission
+      case "profile":
+        return ""; // Profile accessible to all authenticated users
       default:
         return "";
     }
@@ -258,6 +260,17 @@ const Navigation = ({
                 )}
               </div>
             </div>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={isNavigating}
+              className="w-full justify-start gap-2 mt-2 h-9 text-muted-foreground hover:text-primary hover:bg-primary/10 group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:mt-0"
+              onClick={() => handleNavigation("profile", "/profile")}
+            >
+              <User className="h-4 w-4 flex-shrink-0" />
+              <span className="text-sm group-data-[collapsible=icon]:hidden">Profile</span>
+            </Button>
 
             {onLogout && (
               <Button
