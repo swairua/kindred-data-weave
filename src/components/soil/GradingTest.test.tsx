@@ -1,15 +1,15 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import GradingTest from "@/components/soil/GradingTest";
 import { ProjectContext } from "@/context/ProjectContext";
 
-const gradingMocks = vi.hoisted(() => ({ listRecords: vi.fn() }));
+const gradingMocks = vi.hoisted(() => ({ listRecords: vi.fn(), createRecord: vi.fn(), updateRecord: vi.fn() }));
 
 vi.mock("@/lib/api", () => ({
   listRecords: gradingMocks.listRecords,
-  createRecord: vi.fn(),
+  createRecord: gradingMocks.createRecord,
   deleteRecord: vi.fn(),
-  updateRecord: vi.fn(),
+  updateRecord: gradingMocks.updateRecord,
 }));
 
 vi.mock("@/context/TestDataContext", () => ({
@@ -107,6 +107,8 @@ beforeAll(() => {
 
 beforeEach(() => {
   gradingMocks.listRecords.mockReset().mockResolvedValue({ data: savedResults });
+  gradingMocks.createRecord.mockReset();
+  gradingMocks.updateRecord.mockReset();
 });
 
 afterEach(cleanup);
@@ -129,6 +131,24 @@ describe("GradingTest selected record", () => {
     // ...and no stored row id is loaded, so the first save creates a new row instead of
     // updating the original project's record.
     expect(gradingMocks.listRecords).not.toHaveBeenCalled();
+  });
+
+  it("does not save through a stale PSD result link", async () => {
+    render(
+      <MemoryRouter initialEntries={["/tests?projectId=42&resultId=999#grading"]}>
+        <ProjectContext.Provider value={{ projectName: "Grading project", clientName: "Client", date: "2026-06-12", currentProjectId: 42 }}>
+          <GradingTest testKey="grading" />
+        </ProjectContext.Provider>
+      </MemoryRouter>,
+    );
+
+    const saveButton = await screen.findByRole("button", { name: "Save" });
+    await waitFor(() => expect(saveButton).toBeEnabled());
+    fireEvent.click(saveButton);
+    expect(gradingMocks.listRecords).toHaveBeenCalled();
+    expect(await screen.findByText("This PSD result could not be found. Reload the project before saving.")).toBeInTheDocument();
+    expect(gradingMocks.createRecord).not.toHaveBeenCalled();
+    expect(gradingMocks.updateRecord).not.toHaveBeenCalled();
   });
 
   it("loads the saved result ID from the project overview", async () => {

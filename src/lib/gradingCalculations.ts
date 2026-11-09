@@ -32,7 +32,8 @@ const sieveSizeToMm = (label: string): number => {
  * (it would push percentages negative and passing above 100), so it reads
  * as 0; the input itself is floored at zero in the sieve table. */
 const numeric = (value: string) => {
-  const parsed = Number.parseFloat(value);
+  const trimmed = value.trim();
+  const parsed = trimmed ? Number(trimmed) : 0;
   return Number.isFinite(parsed) ? Math.max(parsed, 0) : 0;
 };
 
@@ -56,10 +57,23 @@ export const calculateGrading = (rows: GradingRow[]): GradingCalculations => {
     .filter((point): point is { size: number; passing: number } => Number.isFinite(point.size) && point.size > 0 && point.passing !== null)
     .sort((a, b) => a.size - b.size);
 
+  const coefficients = calculateGradationCoefficients(points);
+  return { totalWeight, percentageRetained, cumulativePassing, ...coefficients };
+};
+
+export interface GradationPoint {
+  size: number;
+  passing: number | null;
+}
+
+export const calculateGradationCoefficients = (points: GradationPoint[]) => {
+  const validPoints = points
+    .filter((point): point is { size: number; passing: number } => Number.isFinite(point.size) && point.size > 0 && point.passing !== null && Number.isFinite(point.passing))
+    .sort((a, b) => a.size - b.size);
   const interpolate = (target: number): number | null => {
-    for (let index = 0; index < points.length - 1; index += 1) {
-      const first = points[index];
-      const second = points[index + 1];
+    for (let index = 0; index < validPoints.length - 1; index += 1) {
+      const first = validPoints[index];
+      const second = validPoints[index + 1];
       if (first.passing <= target && second.passing >= target && second.passing !== first.passing) {
         const ratio = (target - first.passing) / (second.passing - first.passing);
         return 10 ** (Math.log10(first.size) + ratio * (Math.log10(second.size) - Math.log10(first.size)));
@@ -73,15 +87,14 @@ export const calculateGrading = (rows: GradingRow[]): GradingCalculations => {
   const d60 = interpolate(60);
   const cu = d10 && d60 ? d60 / d10 : null;
   const cc = d10 && d30 && d60 ? (d30 * d30) / (d10 * d60) : null;
-
-  return { totalWeight, percentageRetained, cumulativePassing, d10, d30, d60, cu, cc };
+  return { d10, d30, d60, cu, cc };
 };
 
 export const calculateMoisture = (wetMass: string, dryMass: string) => {
   const wet = numeric(wetMass);
   const dry = numeric(dryMass);
-  const waterWeight = wet > 0 && dry > 0 ? wet - dry : null;
-  const moistureContent = waterWeight !== null && dry > 0 ? (waterWeight / dry) * 100 : null;
+  const waterWeight = wet > 0 && dry > 0 && wet >= dry ? wet - dry : null;
+  const moistureContent = waterWeight !== null ? (waterWeight / dry) * 100 : null;
   return { waterWeight, moistureContent };
 };
 
@@ -148,7 +161,7 @@ const WATER_KINEMATIC_VISCOSITY: Array<[number, number]> = [
 
 const parseNumeric = (value: string | number | undefined | null): number | null => {
   if (value === undefined || value === null) return null;
-  const parsed = typeof value === "number" ? value : Number.parseFloat(value);
+  const parsed = typeof value === "number" ? value : value.trim() ? Number(value) : NaN;
   return Number.isFinite(parsed) ? parsed : null;
 };
 
@@ -186,7 +199,7 @@ export const calculateHydrometer = (
   const specificGravity = parseNumeric(inputs.sG) ?? DEFAULT_SPECIFIC_GRAVITY;
   const suspensionVolume = parseNumeric(inputs.suspensionVolume) ?? DEFAULT_SUSPENSION_VOLUME;
   const hydrometerMass = parseNumeric(inputs.dryWeight);
-  const sampleMass = parseNumeric(totalDryMass) ?? hydrometerMass;
+  const sampleMass = parseNumeric(totalDryMass);
   const temperature = parseNumeric(inputs.temperature);
   const zeroCorrection = parseNumeric(inputs.zeroCorrection) ?? 0;
   const meniscusCorrection = parseNumeric(inputs.meniscusCorrection) ?? DEFAULT_MENISCUS_CORRECTION;
@@ -211,7 +224,7 @@ export const calculateHydrometer = (
       return { ...EMPTY_HYDROMETER_RESULT, time, compositeCorrection };
     }
 
-    const adjustedReading = actual + zeroCorrection;
+    const adjustedReading = actual - zeroCorrection;
     const correctedReading = adjustedReading + compositeCorrection;
     const effectiveDepth = calibration.intercept - calibration.slope * correctedReading;
     const particleDiameter = effectiveDepth > 0 && specificGravity > 1 && time > 0

@@ -188,7 +188,7 @@ const ProjectOverview = () => {
     }
   };
 
-  const openTest = (testKey: string, resultId?: number) => {
+  const openTest = (testKey: string, resultId?: number, newRecord = false) => {
     if (!project) return;
     updateProjectMetadata({
       projectName: project.name,
@@ -203,6 +203,7 @@ const ProjectOverview = () => {
     });
     const params = new URLSearchParams({ projectId: String(project.id) });
     if (resultId) params.set("resultId", String(resultId));
+    if (newRecord) params.set("newRecord", "1");
     navigate(`/tests?${params.toString()}#${testKey}`);
   };
 
@@ -330,7 +331,7 @@ const ProjectOverview = () => {
                             <Edit2 className="h-4 w-4" /> Edit project
                           </Button>
                           {addableTest && (
-                            <Button onClick={() => openTest(addableTest.key)} className="gap-2">
+                            <Button onClick={() => openTest(addableTest.key, undefined, addableTest.key === "grading")} className="gap-2">
                               <Plus className="h-4 w-4" /> Add {addableTest.name}
                             </Button>
                           )}
