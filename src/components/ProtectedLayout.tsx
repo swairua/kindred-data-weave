@@ -8,11 +8,11 @@ const viewForPath = (pathname: string, hash: string): NavigationView => {
   if (pathname.startsWith("/reception") || pathname.startsWith("/storage") || pathname.startsWith("/equipment")) {
     return "reception";
   }
-  if (pathname.startsWith("/tests") && hash === "#coring") return "coring";
   if (pathname.startsWith("/projects")) return "projects";
   if (pathname.startsWith("/results")) return "results";
   if (pathname.startsWith("/users")) return "users";
   if (pathname.startsWith("/settings")) return "settings";
+  if (pathname.startsWith("/logs")) return "logs";
   if (pathname.startsWith("/reports")) return "reports";
   if (pathname.startsWith("/admin")) return "admin";
   if (pathname.startsWith("/profile")) return "profile";

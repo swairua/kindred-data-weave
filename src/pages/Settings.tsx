@@ -50,9 +50,9 @@ interface SettingsRecord {
   [key: string]: unknown;
 }
 
-const Settings = () => {
+const Settings = ({ initialTab = "company" }: { initialTab?: string }) => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("company");
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [company, setCompany] = useState<CompanyInfo | null>(null);
   const [formData, setFormData] = useState<Partial<CompanyInfo>>({});
   const [isLoading, setIsLoading] = useState(true);

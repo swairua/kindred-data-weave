@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useContext } from "react";
-import { LayoutDashboard, FlaskConical, FileText, Hammer, LogOut, Layers, ChevronRight, Sigma, Users, Settings as SettingsIcon, PackageOpen, Package, Wrench, User } from "lucide-react";
+import { LayoutDashboard, FlaskConical, FileText, LogOut, Layers, ChevronRight, Sigma, Users, Settings as SettingsIcon, PackageOpen, Package, Wrench, User, ScrollText } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -22,7 +22,7 @@ import { useSession } from "@/context/SessionContext";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
 import type { ApiUser } from "@/lib/api";
 
-export type NavigationView = "dashboard" | "tests" | "coring" | "reports" | "results" | "projects" | "admin" | "users" | "settings" | "reception" | "profile";
+export type NavigationView = "dashboard" | "tests" | "reports" | "results" | "projects" | "admin" | "users" | "settings" | "logs" | "reception" | "profile";
 
 interface NavigationProps {
   currentView: NavigationView;
@@ -67,6 +67,8 @@ const Navigation = ({
         return "users";
       case "settings":
         return "settings";
+      case "logs":
+        return "audit_log";
       case "admin":
         return "users"; // admin page requires user management permission
       case "profile":
@@ -126,7 +128,6 @@ const Navigation = ({
   const labItems: NavItem[] = [
     { id: "reception", label: "Reception", icon: PackageOpen, path: "/reception" },
     { id: "tests", label: "Testing", icon: FlaskConical, path: project.currentProjectId ? `/tests?projectId=${project.currentProjectId}` : "/record" },
-    { id: "coring", label: "Coring", icon: Hammer, path: project.currentProjectId ? `/tests?projectId=${project.currentProjectId}#coring` : "/tests#coring" },
     { id: "results", label: "Test Results", icon: FileText, path: "/results" },
     { id: "projects", label: "Projects", icon: Layers, path: project.currentProjectId ? `/projects/${project.currentProjectId}` : "/projects" },
   ];
@@ -134,6 +135,7 @@ const Navigation = ({
   const systemItems: NavItem[] = [
     { id: "users", label: "Users", icon: Users, path: "/users" },
     { id: "settings", label: "Settings", icon: SettingsIcon, path: "/settings" },
+    { id: "logs", label: "System Logs", icon: ScrollText, path: "/logs" },
   ];
 
   // Filter items based on permissions
