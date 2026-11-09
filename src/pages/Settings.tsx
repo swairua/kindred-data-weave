@@ -175,7 +175,7 @@ const Settings = () => {
   const loadAuditLog = async () => {
     try {
       setAuditLoading(true);
-      const response = await listRecords<any>("admin_images_audit", { 
+      const response = await listRecords<any>("audit_log", { 
         limit: auditPerPage, 
         offset: (auditPage - 1) * auditPerPage,
         orderBy: "created_at",
@@ -663,9 +663,10 @@ const Settings = () => {
                             <tr className="border-b text-left text-sm text-muted-foreground">
                               <th className="pb-2 pr-4">Date & Time</th>
                               <th className="pb-2 pr-4">Action</th>
-                              <th className="pb-2 pr-4">Image Type</th>
-                              <th className="pb-2 pr-4">File Name</th>
-                              <th className="pb-2 pr-4">Uploaded By</th>
+                              <th className="pb-2 pr-4">Entity</th>
+                              <th className="pb-2 pr-4">Entity ID</th>
+                              <th className="pb-2 pr-4">User</th>
+                              <th className="pb-2 pr-4">IP Address</th>
                               <th className="pb-2 pr-4">Details</th>
                             </tr>
                           </thead>
@@ -677,21 +678,24 @@ const Settings = () => {
                                 </td>
                                 <td className="py-2 pr-4 text-sm">
                                   <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                    entry.action === "upload" ? "bg-green-100 text-green-800" :
+                                    entry.action === "login" ? "bg-green-100 text-green-800" :
+                                    entry.action === "logout" ? "bg-orange-100 text-orange-800" :
+                                    entry.action === "create" ? "bg-blue-100 text-blue-800" :
+                                    entry.action === "update" ? "bg-yellow-100 text-yellow-800" :
                                     entry.action === "delete" ? "bg-red-100 text-red-800" :
-                                    entry.action === "update" ? "bg-blue-100 text-blue-800" :
                                     "bg-gray-100 text-gray-800"
                                   }`}>
                                     {entry.action?.toUpperCase() || "—"}
                                   </span>
                                 </td>
-                                <td className="py-2 pr-4 text-sm">{entry.image_type || "—"}</td>
-                                <td className="py-2 pr-4 text-sm">{entry.original_filename || entry.file_name || "—"}</td>
+                                <td className="py-2 pr-4 text-sm">{entry.entity_type || "—"}</td>
+                                <td className="py-2 pr-4 text-sm">{entry.entity_id !== null && entry.entity_id !== undefined ? String(entry.entity_id) : "—"}</td>
                                 <td className="py-2 pr-4 text-sm">
-                                  {entry.uploaded_by_name ? `${entry.uploaded_by_name} (ID: ${entry.uploaded_by})` : `User ID: ${entry.uploaded_by || "—"}`}
+                                  {entry.user_name ? `${entry.user_name} (ID: ${entry.user_id})` : `User ID: ${entry.user_id || "—"}`}
                                 </td>
+                                <td className="py-2 pr-4 text-sm text-muted-foreground">{entry.ip_address || "—"}</td>
                                 <td className="py-2 pr-4 text-sm text-muted-foreground max-w-xs truncate">
-                                  {entry.details || entry.file_path || "—"}
+                                  {entry.changes ? JSON.stringify(entry.changes) : entry.details || entry.description || "—"}
                                 </td>
                               </tr>
                             ))}

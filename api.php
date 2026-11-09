@@ -317,6 +317,124 @@ function hasTablePermission(mysqli $conn, int $userId, string $tableName): bool
     return (bool) ($row['count'] > 0);
 }
 
+/**
+ * Log an audit entry to the audit_log table
+ * 
+ * @param mysqli $conn Database connection
+ * @param array $data Audit entry data
+ * @return bool true if logged successfully
+ */
+function logAuditEntry(mysqli $conn, array $data): bool
+{
+    $sql = "INSERT INTO `audit_log` 
+        (`company_id`, `user_id`, `action`, `entity_type`, `entity_id`, `changes`, `ip_address`, `user_agent`, `user_name`) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        error_log("Audit log: Prepare failed: " . $conn->error);
+        return false;
+    }
+    
+    $companyId = $data['company_id'] ?? 1;
+    $userId = $data['user_id'] ?? null;
+    $action = $data['action'] ?? 'unknown';
+    $entityType = $data['entity_type'] ?? null;
+    $entityId = $data['entity_id'] ?? null;
+    $changes = $data['changes'] !== null ? json_encode($data['changes']) : null;
+    $ipAddress = $data['ip_address'] ?? ($_SERVER['REMOTE_ADDR'] ?? null);
+    $userAgent = $data['user_agent'] ?? ($_SERVER['HTTP_USER_AGENT'] ?? null);
+    $userName = $data['user_name'] ?? null;
+    
+    $stmt->bind_param('iissssss', $companyId, $userId, $action, $entityType, $entityId, $changes, $ipAddress, $userAgent, $userName);
+    
+    $success = $stmt->execute();
+    if (!$success) {
+        error_log("Audit log: Execute failed: " . $stmt->error);
+    }
+    $stmt->close();
+    
+    return $success;
+}
+
+/**
+ * Get client IP address (handles proxies)
+ */
+function getClientIp(): string
+{
+    if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+        return $_SERVER['HTTP_CLIENT_IP'];
+    }
+    if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        return explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0];
+    }
+    return $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+}
+
+/**
+ * Log user login
+ */
+function logLogin(mysqli $conn, int $userId, string $userName): void
+{
+    logAuditEntry($conn, [
+        'user_id' => $userId,
+        'action' => 'login',
+        'entity_type' => 'session',
+        'ip_address' => getClientIp(),
+        'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
+        'user_name' => $userName,
+    ]);
+}
+
+/**
+ * Log user logout
+ */
+function logLogout(mysqli $conn, int $userId, string $userName): void
+{
+    logAuditEntry($conn, [
+        'user_id' => $userId,
+        'action' => 'logout',
+        'entity_type' => 'session',
+        'ip_address' => getClientIp(),
+        'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
+        'user_name' => $userName,
+    ]);
+}
+
+/**
+ * Log CRUD operations
+ */
+function logCrudOperation(mysqli $conn, string $action, string $entityType, ?int $entityId, int $userId, string $userName, ?array $changes = null): void
+{
+    logAuditEntry($conn, [
+        'user_id' => $userId,
+        'action' => $action, // create, update, delete
+        'entity_type' => $entityType,
+        'entity_id' => $entityId,
+        'changes' => $changes,
+        'ip_address' => getClientIp(),
+        'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
+        'user_name' => $userName,
+    ]);
+}
+
+/**
+ * Log image operations
+ */
+function logImageOperation(mysqli $conn, string $action, string $imageType, int $imageId, string $fileName, int $userId, string $userName): void
+{
+    logAuditEntry($conn, [
+        'user_id' => $userId,
+        'action' => $action, // upload, delete, update
+        'entity_type' => 'image',
+        'entity_id' => $imageId,
+        'changes' => ['image_type' => $imageType, 'file_name' => $fileName],
+        'ip_address' => getClientIp(),
+        'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
+        'user_name' => $userName,
+    ]);
+}
+
 function hashPassword(string $password): string
 {
     return password_hash($password, PASSWORD_DEFAULT);
@@ -770,6 +888,9 @@ try {
         // CRITICAL: Force session to be written to database before responding
         session_write_close();
 
+        // Log successful login
+        logLogin($conn, $userId, $userRow['name']);
+
         respond([
             'message' => 'Logged in successfully',
             'user_id' => $userId,
@@ -783,6 +904,10 @@ try {
     }
 
     if ($action === 'logout') {
+        $user = getCurrentUser($conn);
+        if ($user) {
+            logLogout($conn, (int) $user['id'], $user['name']);
+        }
         // session_destroy() will use our custom handler to delete from the database
         session_destroy();
 
@@ -935,6 +1060,9 @@ try {
             }
 
             $image_id = $conn->insert_id;
+
+            // Log image upload
+            logImageOperation($conn, 'upload', $image_type, $image_id, $file['name'], $userId, $user['name'] ?? '');
 
             respond([
                 'success' => true,
@@ -1593,6 +1721,9 @@ try {
             logAuditSave($conn, $insertId, $userId, 'completed', $dataPoints, 'atterberg');
         }
 
+        // Log CRUD operation
+        logCrudOperation($conn, 'create', $table, $insertId, $userId, $user['name'] ?? '', $payload);
+
         respond([
             'message' => 'Record created',
             'table' => $table,
@@ -1701,6 +1832,9 @@ try {
             logAuditSave($conn, (int) $id, $userId, 'completed', $dataPoints, 'atterberg');
         }
 
+        // Log CRUD operation
+        logCrudOperation($conn, 'update', $table, (int) $id, $userId, $user['name'] ?? '', $payload);
+
         respond([
             'message' => 'Record updated',
             'table' => $table,
@@ -1733,6 +1867,9 @@ try {
         $stmt = $conn->prepare($sql);
         $stmt->bind_param('s', $id);
         $stmt->execute();
+
+        // Log CRUD operation
+        logCrudOperation($conn, 'delete', $table, (int) $id, $userId, $user['name'] ?? '', ['deleted_id' => $id]);
 
         respond([
             'message' => 'Record deleted',
