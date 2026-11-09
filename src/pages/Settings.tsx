@@ -91,6 +91,13 @@ const Settings = () => {
   const [integrations, setIntegrations] = useState<SettingsRecord | null>(null);
   const [integrationsFormData, setIntegrationsFormData] = useState<Partial<SettingsRecord>>({});
 
+  // Audit log state
+  const [auditLog, setAuditLog] = useState<any[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditTotal, setAuditTotal] = useState(0);
+  const auditPerPage = 25;
+
   // Load all settings on mount
   useEffect(() => {
     const loadData = async () => {
@@ -156,6 +163,32 @@ const Settings = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Load audit log when audit tab is active
+  useEffect(() => {
+    if (activeTab === "audit") {
+      loadAuditLog();
+    }
+  }, [activeTab, auditPage]);
+
+  const loadAuditLog = async () => {
+    try {
+      setAuditLoading(true);
+      const response = await listRecords<any>("admin_images_audit", { 
+        limit: auditPerPage, 
+        offset: (auditPage - 1) * auditPerPage,
+        orderBy: "created_at",
+        direction: "DESC"
+      });
+      setAuditLog(response.data || []);
+      setAuditTotal(response.total || 0);
+    } catch (error) {
+      console.error("Failed to load audit log:", error);
+      toast.error("Failed to load audit log");
+    } finally {
+      setAuditLoading(false);
+    }
   };
 
   const handleNestedChange = (setter: React.Dispatch<React.SetStateAction<Partial<SettingsRecord>>>) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -612,10 +645,87 @@ const Settings = () => {
               <Card>
                 <CardHeader>
                   <CardTitle>Audit Log</CardTitle>
-                  <CardDescription>Recent system activity (read-only)</CardDescription>
+                  <CardDescription>Recent system activity - image uploads, changes, and deletions</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground">Audit log entries will be displayed here once the backend endpoint is connected.</p>
+                  {auditLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      <span className="ml-2 text-muted-foreground">Loading audit log...</span>
+                    </div>
+                  ) : auditLog.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-8">No audit log entries found.</p>
+                  ) : (
+                    <>
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b text-left text-sm text-muted-foreground">
+                              <th className="pb-2 pr-4">Date & Time</th>
+                              <th className="pb-2 pr-4">Action</th>
+                              <th className="pb-2 pr-4">Image Type</th>
+                              <th className="pb-2 pr-4">File Name</th>
+                              <th className="pb-2 pr-4">Uploaded By</th>
+                              <th className="pb-2 pr-4">Details</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {auditLog.map((entry) => (
+                              <tr key={entry.id} className="border-b hover:bg-muted/50">
+                                <td className="py-2 pr-4 text-sm">
+                                  {entry.created_at ? new Date(entry.created_at).toLocaleString() : "—"}
+                                </td>
+                                <td className="py-2 pr-4 text-sm">
+                                  <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                    entry.action === "upload" ? "bg-green-100 text-green-800" :
+                                    entry.action === "delete" ? "bg-red-100 text-red-800" :
+                                    entry.action === "update" ? "bg-blue-100 text-blue-800" :
+                                    "bg-gray-100 text-gray-800"
+                                  }`}>
+                                    {entry.action?.toUpperCase() || "—"}
+                                  </span>
+                                </td>
+                                <td className="py-2 pr-4 text-sm">{entry.image_type || "—"}</td>
+                                <td className="py-2 pr-4 text-sm">{entry.original_filename || entry.file_name || "—"}</td>
+                                <td className="py-2 pr-4 text-sm">
+                                  {entry.uploaded_by_name ? `${entry.uploaded_by_name} (ID: ${entry.uploaded_by})` : `User ID: ${entry.uploaded_by || "—"}`}
+                                </td>
+                                <td className="py-2 pr-4 text-sm text-muted-foreground max-w-xs truncate">
+                                  {entry.details || entry.file_path || "—"}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      {/* Pagination */}
+                      {auditTotal > auditPerPage && (
+                        <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                          <p className="text-sm text-muted-foreground">
+                            Showing {((auditPage - 1) * auditPerPage) + 1} to {Math.min(auditPage * auditPerPage, auditTotal)} of {auditTotal} entries
+                          </p>
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => setAuditPage(p => Math.max(1, p - 1))} 
+                              disabled={auditPage <= 1 || auditLoading}
+                            >
+                              Previous
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => setAuditPage(p => p + 1)} 
+                              disabled={auditPage * auditPerPage >= auditTotal || auditLoading}
+                            >
+                              Next
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
