@@ -435,6 +435,19 @@ function logImageOperation(mysqli $conn, string $action, string $imageType, int 
     ]);
 }
 
+const AUDIT_REDACTED_COLUMNS = ['password', 'password_hash', 'token', 'session_token', 'secret'];
+
+function redactAuditRecord(array $record): array
+{
+    foreach ($record as $column => $value) {
+        if (in_array(strtolower((string) $column), AUDIT_REDACTED_COLUMNS, true)) {
+            $record[$column] = '[redacted]';
+        }
+    }
+
+    return $record;
+}
+
 function hashPassword(string $password): string
 {
     return password_hash($password, PASSWORD_DEFAULT);
@@ -1773,7 +1786,10 @@ try {
         }
 
         // Log CRUD operation
-        logCrudOperation($conn, 'create', $table, $insertId, $userId, $user['name'] ?? '', $payload);
+        logCrudOperation($conn, 'create', $table, $insertId, $userId, $user['name'] ?? '', [
+            'table' => $table,
+            'fields' => redactAuditRecord($created ?? $payload),
+        ]);
 
         respond([
             'message' => 'Record created',
@@ -1813,8 +1829,12 @@ try {
         // Prevent user_id from being updated
         unset($payload['user_id']);
 
+        $beforeResult = $conn->query("SELECT * FROM `$table` WHERE `$primaryKey` = '" . $conn->real_escape_string((string) $id) . "' LIMIT 1");
+        $beforeRow = $beforeResult ? $beforeResult->fetch_assoc() : null;
+
         $sets = [];
         $values = [];
+        $auditFields = [];
 
         foreach ($payload as $column => $value) {
             if (!isset($schema['columns'][$column]) || $column === $primaryKey || in_array($column, $schema['autoIncrement'], true)) {
@@ -1823,6 +1843,14 @@ try {
 
             $sets[] = "`$column` = ?";
             $values[] = normalizeValue($value);
+
+            $before = $beforeRow[$column] ?? null;
+            $changed = (!is_scalar($value) && $value !== null) || (string) $before !== (string) $value;
+            if ($changed) {
+                $auditFields[$column] = in_array(strtolower($column), AUDIT_REDACTED_COLUMNS, true)
+                    ? '[redacted]'
+                    : ['from' => $before, 'to' => $value];
+            }
         }
 
         if ($sets === []) {
@@ -1884,7 +1912,10 @@ try {
         }
 
         // Log CRUD operation
-        logCrudOperation($conn, 'update', $table, (int) $id, $userId, $user['name'] ?? '', $payload);
+        logCrudOperation($conn, 'update', $table, (int) $id, $userId, $user['name'] ?? '', [
+            'table' => $table,
+            'fields' => $auditFields,
+        ]);
 
         respond([
             'message' => 'Record updated',
@@ -1914,13 +1945,23 @@ try {
             $whereClause .= " AND `user_id` = $userId";
         }
 
+        $beforeStmt = $conn->prepare(sprintf('SELECT * FROM `%s` WHERE %s LIMIT 1', $table, $whereClause));
+        $beforeStmt->bind_param('s', $id);
+        $beforeStmt->execute();
+        $deletedRow = $beforeStmt->get_result()->fetch_assoc();
+        $beforeStmt->close();
+
         $sql = sprintf('DELETE FROM `%s` WHERE %s', $table, $whereClause);
         $stmt = $conn->prepare($sql);
         $stmt->bind_param('s', $id);
         $stmt->execute();
 
         // Log CRUD operation
-        logCrudOperation($conn, 'delete', $table, (int) $id, $userId, $user['name'] ?? '', ['deleted_id' => $id]);
+        logCrudOperation($conn, 'delete', $table, (int) $id, $userId, $user['name'] ?? '', [
+            'table' => $table,
+            'deleted_id' => $id,
+            'record' => $deletedRow ? redactAuditRecord($deletedRow) : null,
+        ]);
 
         respond([
             'message' => 'Record deleted',
