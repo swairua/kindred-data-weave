@@ -58,6 +58,13 @@ const TEST_TYPE_LABELS: Record<string, string> = {
   rock: "Rock",
   soil: "Soil",
   special: "Special",
+  spt: "SPT",
+  cpt: "CPT",
+  slump: "Slump",
+  ndt: "NDT",
+  schmidt_rock: "Schmidt Hammer",
+  ucs: "UCS",
+  pointload: "Point Load",
 };
 
 const formatTestType = (testType: string | null | undefined): string => {
