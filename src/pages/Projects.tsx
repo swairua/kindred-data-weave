@@ -82,42 +82,42 @@ const Projects = () => {
   const itemsPerPage = 10;
 
   // Load projects and test results from API
-  useEffect(() => {
-    const loadProjects = async () => {
-      try {
-        setIsLoading(true);
-        const [projectsResponse, testResultsResponse] = await Promise.all([
-          listRecords<ApiProjectRow>("projects", { limit: 100 }),
-          listRecords<ApiTestResult>("test_results", { limit: 1000 }),
-        ]);
+  const loadProjects = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const [projectsResponse, testResultsResponse] = await Promise.all([
+        listRecords<ApiProjectRow>("projects", { limit: 100 }),
+        listRecords<ApiTestResult>("test_results", { limit: 1000 }),
+      ]);
 
-        const testResults = testResultsResponse.data || [];
-        setApiTestResults(testResults);
+      const testResults = testResultsResponse.data || [];
+      setApiTestResults(testResults);
 
-        // Count test results by project_id
-        const testCountByProject = new Map<number, number>();
-        testResults.forEach((testResult) => {
-          const count = testCountByProject.get(testResult.project_id) || 0;
-          testCountByProject.set(testResult.project_id, count + 1);
-        });
+      // Count test results by project_id
+      const testCountByProject = new Map<number, number>();
+      testResults.forEach((testResult) => {
+        const count = testCountByProject.get(testResult.project_id) || 0;
+        testCountByProject.set(testResult.project_id, count + 1);
+      });
 
-        // Enrich projects with sample counts
-        const enrichedProjects = (projectsResponse.data || []).map((p) => ({
-          ...p,
-          sample_count: testCountByProject.get(p.id) || 0,
-        }));
+      // Enrich projects with sample counts
+      const enrichedProjects = (projectsResponse.data || []).map((p) => ({
+        ...p,
+        sample_count: testCountByProject.get(p.id) || 0,
+      }));
 
-        setApiProjects(enrichedProjects);
-      } catch (error) {
-        console.error("Failed to load projects:", error);
-        setApiProjects([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadProjects();
+      setApiProjects(enrichedProjects);
+    } catch (error) {
+      console.error("Failed to load projects:", error);
+      setApiProjects([]);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadProjects();
+  }, [loadProjects]);
 
   // Map API data to display format
   const projects = useMemo(() => {
@@ -236,14 +236,25 @@ const Projects = () => {
                         className="h-8 text-xs"
                       />
                     </div>
-                    <Button
-                      onClick={handleNewProject}
-                      className="h-8 w-full gap-1.5 px-3 text-xs sm:w-auto sm:shrink-0"
-                      size="sm"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                      New project
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        onClick={loadProjects}
+                        variant="outline"
+                        size="sm"
+                        className="h-8 gap-1 px-2 text-xs"
+                      >
+                        <Loader2 className={isLoading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} />
+                        Refresh
+                      </Button>
+                      <Button
+                        onClick={handleNewProject}
+                        className="h-8 w-full gap-1.5 px-3 text-xs sm:w-auto sm:shrink-0"
+                        size="sm"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        New project
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
 

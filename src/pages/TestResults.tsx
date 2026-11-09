@@ -76,22 +76,22 @@ const TestResults = () => {
   const itemsPerPage = 10;
 
   // Fetch test results from API (now includes project_name via JOIN)
-  useEffect(() => {
-    const loadTestResults = async () => {
-      try {
-        setIsLoading(true);
-        const response = await listRecords<ApiTestResult>("test_results", { limit: 5000, orderBy: "updated_at", direction: "DESC" });
-        setApiTestResults(response.data || []);
-      } catch (error) {
-        console.error("Failed to load test results:", error);
-        setApiTestResults([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadTestResults();
+  const loadTestResults = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await listRecords<ApiTestResult>("test_results", { limit: 5000, orderBy: "updated_at", direction: "DESC" });
+      setApiTestResults(response.data || []);
+    } catch (error) {
+      console.error("Failed to load test results:", error);
+      setApiTestResults([]);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadTestResults();
+  }, [loadTestResults]);
 
   // Helper function to format test type from test_key
   const formatTestType = (testKey: string): string => {
@@ -268,8 +268,15 @@ const TestResults = () => {
 // Get unique test types from test definitions (all possible test types, not just those with results)
   const testTypes = useMemo(() => {
     const keys = new Set(testDefinitions.map((t: TestDefinition) => t.test_key).filter(Boolean));
+    // Deduplicate by label so the same display name never appears twice in the filter.
+    const seenLabels = new Set<string>();
     return Array.from(keys)
       .map((key) => ({ key, label: formatTestType(key) }))
+      .filter((entry) => {
+        if (seenLabels.has(entry.label)) return false;
+        seenLabels.add(entry.label);
+        return true;
+      })
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [testDefinitions]);
 
@@ -379,7 +386,7 @@ const TestResults = () => {
         <div className="p-3 sm:p-4">
           <Card className="rounded-md border border-border shadow-none">
             <CardHeader className="px-3 py-2.5 sm:px-4">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div className="shrink-0">
                   <CardTitle className="text-sm font-semibold leading-5">Test Records</CardTitle>
                   <CardDescription className="text-[11px] leading-4">
@@ -387,6 +394,15 @@ const TestResults = () => {
                     {totalPages > 1 && ` • Page ${currentPage} of ${totalPages}`}
                   </CardDescription>
                 </div>
+                <Button
+                  onClick={loadTestResults}
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1 px-2 text-xs"
+                >
+                  <Loader2 className={isLoading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} />
+                  Refresh
+                </Button>
               </div>
 
               {/* Filters */}
