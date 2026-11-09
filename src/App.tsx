@@ -11,7 +11,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SessionGuard } from "@/components/SessionGuard";
 import ProtectedLayout from "@/components/ProtectedLayout";
 import Index from "./pages/Index.tsx";
-const Login = lazy(() => import("./pages/Login.tsx"));
+import Login from "./pages/Login.tsx";
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const RecordTestWizard = lazy(() => import("./pages/RecordTestWizard.tsx"));
 const TestResults = lazy(() => import("./pages/TestResults.tsx"));
