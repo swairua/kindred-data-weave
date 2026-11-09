@@ -231,7 +231,10 @@ const getPayloadRecord = (payload: unknown, metadata: RecordMetadata) => {
     try {
       parsedPayload = JSON.parse(payload) as unknown;
     } catch {
-      return emptyRecord(metadata);
+      // A payload that cannot be parsed used to render as a blank form, which
+      // looks exactly like "no data". Fail loudly instead so the record can be
+      // repaired rather than silently overwritten on save.
+      throw new Error("This result's saved data is unreadable (invalid JSON). The record needs to be repaired before it can be opened.");
     }
   }
   if (!isObject(parsedPayload)) return emptyRecord(metadata);
@@ -456,10 +459,16 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
     let active = true;
     setIsLoading(true);
     setError(null);
+    // Do not let a failed lookup leave the previous project's row id in place:
+    // saving would then overwrite a record that belongs to another project.
+    setRecordId(null);
     listRecords<ApiTestResultRow>("test_results", { limit: 5000, orderBy: "updated_at", direction: "DESC" })
       .then((response) => {
         if (!active) return;
         const result = (response.data || []).find((row) => Number(row.project_id) === projectId && row.test_key === "grading" && (!selectedResultId || Number(row.id) === selectedResultId) && row.payload_json);
+        if (selectedResultId && !result) {
+          throw new Error(`Result ${selectedResultId} was not found for this project. It may have been deleted, or it may belong to another user.`);
+        }
         const loadedRecord = getPayloadRecord(result?.payload_json, metadata);
         setRecordId(result?.id ?? null);
         setRecord(loadedRecord);
