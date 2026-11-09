@@ -341,7 +341,7 @@ function logAuditEntry(mysqli $conn, array $data): bool
     $action = $data['action'] ?? 'unknown';
     $entityType = $data['entity_type'] ?? null;
     $entityId = $data['entity_id'] ?? null;
-    $changes = $data['changes'] !== null ? json_encode($data['changes']) : null;
+    $changes = ($data['changes'] ?? null) !== null ? json_encode($data['changes']) : null;
     $ipAddress = $data['ip_address'] ?? ($_SERVER['REMOTE_ADDR'] ?? null);
     $userAgent = $data['user_agent'] ?? ($_SERVER['HTTP_USER_AGENT'] ?? null);
     $userName = $data['user_name'] ?? null;
@@ -980,10 +980,10 @@ try {
 
         // Validate image_type
         $image_type = trim((string) ($_POST['image_type'] ?? $_GET['image_type'] ?? ''));
-        $allowed_types = ['logo', 'contacts', 'stamp', 'pile_before', 'pile_after'];
+        $allowed_types = ['logo', 'contacts', 'stamp', 'pile_before', 'pile_after', 'avatar'];
 
         if (!$image_type || !in_array($image_type, $allowed_types, true)) {
-            respond(['error' => 'Invalid image type. Must be: logo, contacts, stamp, pile_before, or pile_after'], 400);
+            respond(['error' => 'Invalid image type. Must be: logo, contacts, stamp, pile_before, pile_after, or avatar'], 400);
         }
 
         // Check if file was uploaded
