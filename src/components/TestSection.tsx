@@ -42,7 +42,7 @@ interface TestSectionProps {
   exportIndicator?: string;
 }
 
-const TestSection = ({ title, testKey, tooltip, children, onSave, onFinalSave, onClear, onExportPDF, onPrint, onExportXLSX, onExportSmokeCheck, exportSmokeCheckDisabled, smokeCheckStatus, saveStatus = "idle", lastSavedAt, lastSaveError, recordButtonLabel, onRecordClick, actionsPlacement = "header", canExport = true, exportIndicator = "Document available after saving" }: TestSectionProps) => {
+const TestSection = ({ title, testKey, tooltip, children, onSave, onFinalSave, onClear, onExportPDF, onPrint, onExportXLSX, onExportSmokeCheck, exportSmokeCheckDisabled, smokeCheckStatus, saveStatus = "idle", lastSavedAt, lastSaveError, recordButtonLabel, onRecordClick, actionsPlacement = "footer", canExport = true, exportIndicator = "Document available after saving" }: TestSectionProps) => {
   const [localOpen, setLocalOpen] = useState(false);
   const accordion = useTestAccordion();
 

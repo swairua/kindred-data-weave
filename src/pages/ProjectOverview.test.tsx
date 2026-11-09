@@ -137,14 +137,15 @@ describe("ProjectOverview", () => {
     expect(await screen.findByTestId("current-location")).toHaveTextContent("/tests?projectId=42#atterberg");
   });
 
-  it("offers grading for grading projects in the overview and empty state", async () => {
+  it("offers a blank PSD record from a grading project even when one is already saved", async () => {
     overviewMocks.fetchFullProject.mockResolvedValue({ ...project, test_type: "grading" });
-    overviewMocks.listRecords.mockResolvedValue({ data: [] });
+    overviewMocks.listRecords.mockResolvedValue({
+      data: [{ id: 88, project_id: 42, test_key: "grading", name: "Particle Size Distribution", status: "in-progress", updated_at: "2026-06-12" }],
+    });
     renderOverview();
 
-    expect(await screen.findByText("Add a grading test or choose a saved test from the project list.")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Add Grading" }));
-    expect(await screen.findByTestId("current-location")).toHaveTextContent("/tests?projectId=42#grading");
+    fireEvent.click(await screen.findByRole("button", { name: "Add Grading" }));
+    expect(await screen.findByTestId("current-location")).toHaveTextContent("/tests?projectId=42&newRecord=1#grading");
   });
 
   it("updates project metadata by ID and syncs the saved values", async () => {

@@ -11,7 +11,7 @@ import { type RecordMetadata, useTestData } from "@/context/TestDataContext";
 import { captureChartAsBase64 } from "@/lib/chartCapture";
 import { createRecord, deleteRecord, listRecords, updateRecord } from "@/lib/api";
 import { generateParticleSizeDistributionPDF } from "@/lib/psdPdfGenerator";
-import { calculateGrading, calculateHydrometer, calculateMoisture, type GradingRow } from "@/lib/gradingCalculations";
+import { calculateGrading, calculateGradationCoefficients, calculateHydrometer, calculateMoisture, type GradingRow } from "@/lib/gradingCalculations";
 import { mergePsdSeries } from "@/lib/psdChartGeometry";
 import { calculateAashtoGroupIndex, classifySoilAASHTO, classifySoilUSCS, getAashtoEvidenceWarnings } from "@/lib/soilClassification";
 import { toast } from "sonner";
@@ -244,7 +244,9 @@ const formatValue = (value: number | null, decimals = 2) => value === null ? "au
 /** Formats a calculated cell, rendering an absent reading as the "auto" placeholder. */
 const formatCell = (value: number | null | undefined, decimals = 2) => value === null || value === undefined ? "auto" : value.toFixed(decimals);
 const parseNumber = (value: string) => {
-  const parsed = Number.parseFloat(value);
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parsed = Number(trimmed);
   return Number.isFinite(parsed) ? parsed : null;
 };
 
@@ -277,11 +279,11 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
   const fineMass = useMemo(() => {
     const initial = parseNumber(record.samplePreparation.initialDryMass);
     const washed = parseNumber(record.samplePreparation.washedOvenDryMass);
-    return initial !== null && washed !== null ? Math.max(initial - washed, 0) : null;
+    return initial !== null && washed !== null && initial > 0 && washed >= 0 && washed <= initial ? initial - washed : null;
   }, [record.samplePreparation]);
   const finesPercentage = useMemo(() => {
     const initial = parseNumber(record.samplePreparation.initialDryMass);
-    return initial && fineMass !== null ? (fineMass / initial) * 100 : null;
+    return initial !== null && initial > 0 && fineMass !== null ? (fineMass / initial) * 100 : null;
   }, [record.samplePreparation, fineMass]);
   const hydrometer = useMemo(() => calculateHydrometer(
     record.hydrometerRows,
@@ -304,6 +306,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
     }));
     return mergePsdSeries(sievePoints, hydrometerPoints);
   }, [record.sieveRows, calculations.cumulativePassing, hydrometer.results]);
+  const gradation = useMemo(() => calculateGradationCoefficients(psdSeries), [psdSeries]);
   const classificationValues = useMemo(() => {
     const passingAt = (matcher: (size: string) => boolean) => {
       const index = record.sieveRows.findIndex((row) => matcher(row.sieveSize));
@@ -359,9 +362,9 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       bsFines: bsFinesPassing,
       p10: p10Passing,
       p40: p40Passing,
-      plasticityIndex: liquidLimit !== null && plasticLimit !== null ? liquidLimit - plasticLimit : (record.classification.nonPlastic && liquidLimit !== null ? 0 : null),
+      plasticityIndex: record.classification.nonPlastic ? 0 : liquidLimit !== null && plasticLimit !== null ? liquidLimit - plasticLimit : null,
     };
-  }, [record.sieveRows, record.classification.liquidLimit, record.classification.plasticLimit, calculations.cumulativePassing]);
+  }, [record.sieveRows, record.classification.liquidLimit, record.classification.plasticLimit, record.classification.nonPlastic, calculations.cumulativePassing]);
 
   /** USCS / AASHTO symbols follow directly from the computed fractions. */
   const autoClassification = useMemo(() => {
@@ -416,6 +419,8 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
    * and the value only means anything for A-2-6, A-2-7, A-4, A-5, A-6, A-7-5
    * and A-7-6. The A-2-6 / A-2-7 subgroups use the plasticity term on its own.
    */
+  const uscsResult = record.classification.uscs && record.classification.uscs !== "auto" ? record.classification.uscs : autoClassification?.uscsSymbol ?? null;
+  const aashtoResult = record.classification.aashtoGroup && record.classification.aashtoGroup !== "auto" ? record.classification.aashtoGroup : autoClassification?.aashtoGroup ?? null;
   const groupIndex = useMemo(() => {
     const liquidLimit = parseNumber(record.classification.liquidLimit);
     const plasticityIndex = classificationValues.plasticityIndex;
@@ -425,9 +430,9 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       passingNo200,
       liquidLimit,
       plasticityIndex,
-      aashtoGroup: autoClassification?.aashtoGroup ?? null,
+      aashtoGroup: record.classification.aashtoGroup && record.classification.aashtoGroup !== "auto" ? record.classification.aashtoGroup : autoClassification?.aashtoGroup ?? null,
     });
-  }, [record.classification.liquidLimit, classificationValues.plasticityIndex, classificationValues.fines, autoClassification?.aashtoGroup]);
+  }, [record.classification.liquidLimit, record.classification.aashtoGroup, classificationValues.plasticityIndex, classificationValues.fines, autoClassification?.aashtoGroup]);
 
   useEffect(() => {
     if (!projectId) {
@@ -495,6 +500,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
     },
     calculations: {
       ...calculations,
+      ...gradation,
       ...moisture,
       ...hydrometer,
       fineMass,
@@ -504,34 +510,48 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       sieveFinesPercentage: classificationValues.fines,
       plasticityIndex: classificationValues.plasticityIndex,
       groupIndex,
-      uscsSymbol: autoClassification?.uscsSymbol ?? null,
-      aashtoGroup: autoClassification?.aashtoGroup ?? null,
+      uscsSymbol: uscsResult,
+      aashtoGroup: aashtoResult,
     },
-  }), [project.projectName, project.clientName, project.projectDate, project.date, record, calculations, moisture, hydrometer, fineMass, finesPercentage, classificationValues, groupIndex, autoClassification]);
+  }), [project.projectName, project.clientName, project.projectDate, project.date, record, calculations, gradation, moisture, hydrometer, fineMass, finesPercentage, classificationValues, groupIndex, uscsResult, aashtoResult]);
 
   const status = calculations.totalWeight === 0 ? "not-started" : calculations.percentageRetained.some((value) => value > 0) ? "in-progress" : "not-started";
   const save = useCallback(async () => {
-    if (!projectId) throw new Error("Select a project before saving this record");
+    if (!projectId) {
+      const message = "Select a project before saving this record";
+      setError(message);
+      throw new Error(message);
+    }
+    if (!isNewRecord && selectedResultId && !recordId) {
+      const message = "This PSD result could not be found. Reload the project before saving.";
+      setError(message);
+      throw new Error(message);
+    }
     if (record.sieveRows.every((row) => row.weightRetained.trim() === "")) {
-      throw new Error("Enter at least one sieve retained mass before saving this record");
+      const message = "Enter at least one sieve retained mass before saving this record";
+      setError(message);
+      throw new Error(message);
     }
     setSaveStatus("saving");
     setError(null);
     const data = {
       project_id: projectId,
       test_key: "grading",
+      sample_key: record.sampleNumber.trim() || record.label.trim() || crypto.randomUUID(),
+      sample_label: record.label.trim() || null,
+      sample_depth: record.sampleNumber.trim() || null,
       name: "Particle Size Distribution",
       category: "soil",
       status,
       data_points: record.sieveRows.filter((row) => row.weightRetained.trim()).length,
       key_results_json: [
-        { label: "D10", value: formatValue(calculations.d10, 3) },
-        { label: "D30", value: formatValue(calculations.d30, 3) },
-        { label: "D60", value: formatValue(calculations.d60, 3) },
-        { label: "Cu", value: formatValue(calculations.cu) },
-        { label: "Cc", value: formatValue(calculations.cc) },
-        ...(autoClassification ? [{ label: "USCS", value: autoClassification.uscsSymbol }] : []),
-        ...(autoClassification ? [{ label: "AASHTO", value: autoClassification.aashtoGroup }] : []),
+        { label: "D10", value: formatValue(gradation.d10, 3) },
+        { label: "D30", value: formatValue(gradation.d30, 3) },
+        { label: "D60", value: formatValue(gradation.d60, 3) },
+        { label: "Cu", value: formatValue(gradation.cu) },
+        { label: "Cc", value: formatValue(gradation.cc) },
+        ...(uscsResult ? [{ label: "USCS", value: uscsResult }] : []),
+        ...(aashtoResult ? [{ label: "AASHTO", value: aashtoResult }] : []),
         ...(groupIndex === null ? [] : [{ label: "Group Index", value: String(groupIndex) }]),
       ],
       payload_json: payload,
@@ -541,18 +561,8 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       if (recordId) {
         await updateRecord<{ id: number }>("test_results", recordId, data);
       } else {
-        try {
-          const created = await createRecord<{ id: number }>("test_results", data);
-          savedId = created.data?.id ?? created.id ?? null;
-        } catch (createError) {
-          // A unique index on (project_id, test_key) rejects a second row for this project, so
-          // fall back to updating the existing one rather than surfacing a hard error.
-          const existing = await listRecords<ApiTestResultRow>("test_results", { limit: 5000, orderBy: "updated_at", direction: "DESC" });
-          const target = (existing.data || []).find((row) => Number(row.project_id) === projectId && row.test_key === "grading");
-          if (!target) throw createError;
-          await updateRecord<{ id: number }>("test_results", target.id, data);
-          savedId = Number(target.id);
-        }
+        const created = await createRecord<{ id: number }>("test_results", data);
+        savedId = created.data?.id ?? created.id ?? null;
       }
       setRecordId(savedId);
       setSaveStatus("saved");
@@ -560,6 +570,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
         const params = new URLSearchParams(location.search);
         params.delete("newRecord");
         params.delete("sourceProjectId");
+        if (savedId) params.set("resultId", String(savedId));
         navigate({
           pathname: location.pathname,
           search: params.toString() ? `?${params.toString()}` : "",
@@ -572,7 +583,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       setError(saveError instanceof Error ? saveError.message : "Unable to save this record");
       throw saveError;
     }
-  }, [projectId, status, record, calculations, payload, recordId, isNewRecord, location, navigate, autoClassification, groupIndex]);
+  }, [projectId, status, record, gradation, payload, recordId, selectedResultId, isNewRecord, location, navigate, uscsResult, aashtoResult, groupIndex]);
 
   const clear = async () => {
     if (projectId) {
@@ -623,7 +634,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
   const buildPdfOptions = () => ({
     ...exportMetadata,
     record,
-    grading: calculations,
+    grading: { ...calculations, ...gradation },
     hydrometer,
     hydrometerInputs: { ...DEFAULT_HYDROMETER_INPUTS, ...record.hydrometerInputs },
     series: psdSeries,
@@ -635,10 +646,10 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
     uscsDescription: autoClassification?.uscsDescription ?? null,
     aashtoGroup: record.classification.aashtoGroup && record.classification.aashtoGroup !== "auto" ? record.classification.aashtoGroup : (autoClassification?.aashtoGroup ?? record.classification.aashtoGroup),
     groupIndex,
-    uniformityCoefficient: calculations.cu,
-    coefficientOfCurvature: calculations.cc,
-    effectiveSize: calculations.d10,
-    sixtyPercentSize: calculations.d60,
+    uniformityCoefficient: gradation.cu,
+    coefficientOfCurvature: gradation.cc,
+    effectiveSize: gradation.d10,
+    sixtyPercentSize: gradation.d60,
     liquidLimit: parseNumber(record.classification.liquidLimit),
     plasticLimit: parseNumber(record.classification.plasticLimit),
     plasticityIndex: classificationValues.plasticityIndex,
@@ -691,12 +702,13 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
     // The headline numbers, shared by every export so the PDF cannot omit what the
     // spreadsheet of the same test contains.
     const resultFields = [
-      { label: "D10", value: formatValue(calculations.d10, 3) },
-      { label: "D30", value: formatValue(calculations.d30, 3) },
-      { label: "D60", value: formatValue(calculations.d60, 3) },
-      { label: "Cu", value: formatValue(calculations.cu) },
-      { label: "Cc", value: formatValue(calculations.cc) },
-      ...(autoClassification ? [{ label: "USCS", value: autoClassification.uscsSymbol }, { label: "AASHTO", value: autoClassification.aashtoGroup }] : []),
+      { label: "D10", value: formatValue(gradation.d10, 3) },
+      { label: "D30", value: formatValue(gradation.d30, 3) },
+      { label: "D60", value: formatValue(gradation.d60, 3) },
+      { label: "Cu", value: formatValue(gradation.cu) },
+      { label: "Cc", value: formatValue(gradation.cc) },
+      ...(uscsResult ? [{ label: "USCS", value: uscsResult }] : []),
+      ...(aashtoResult ? [{ label: "AASHTO", value: aashtoResult }] : []),
       ...(groupIndex === null ? [] : [{ label: "Group Index", value: String(groupIndex) }]),
     ];
     const chartImages: Record<string, string> = {};
@@ -802,7 +814,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
         </RecordSection>
 
         <RecordSection title="Hydrometer analysis to BS 1377-2:1990:9.5">
-          <div className="grid gap-px overflow-hidden rounded border sm:grid-cols-2" ref={hydrometerNav.ref} onKeyDown={hydrometerNav.onKeyDown}><HydrometerInput label="Dry weight (g)" value={record.hydrometerInputs.dryWeight} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, dryWeight: value })} /><HydrometerInput label="Suspension volume (cm³)" value={record.hydrometerInputs.suspensionVolume} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, suspensionVolume: value })} /><HydrometerInput label="Hydrometer type" value={record.hydrometerInputs.hydrometerType} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, hydrometerType: value })} /><HydrometerInput label="S.G (Mg/m³)" value={record.hydrometerInputs.sG} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, sG: value })} /><HydrometerInput label="Dispersant reading −Ro′ (g/L)" value={record.hydrometerInputs.zeroCorrection} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, zeroCorrection: value })} /><HydrometerInput label="Temperature (°C)" value={record.hydrometerInputs.temperature} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, temperature: value })} /><HydrometerInput label="Meniscus correction Cm (g/L)" value={record.hydrometerInputs.meniscusCorrection} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, meniscusCorrection: value })} /><HydrometerInput label="Stokes constant K (optional)" value={record.hydrometerInputs.kFactor} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, kFactor: value })} /><HydrometerInput label="Temperature correction (g/L, 0 = none)" value={record.hydrometerInputs.temperatureCorrection} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, temperatureCorrection: value })} /></div>
+          <div className="grid gap-px overflow-hidden rounded border sm:grid-cols-2" ref={hydrometerNav.ref} onKeyDown={hydrometerNav.onKeyDown}><HydrometerInput label="Dry weight (g)" value={record.hydrometerInputs.dryWeight} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, dryWeight: value })} /><HydrometerInput label="Suspension volume (cm³)" value={record.hydrometerInputs.suspensionVolume} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, suspensionVolume: value })} /><HydrometerInput label="Hydrometer type" value={record.hydrometerInputs.hydrometerType} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, hydrometerType: value })} /><HydrometerInput label="S.G (Mg/m³)" value={record.hydrometerInputs.sG} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, sG: value })} /><HydrometerInput label="Dispersant blank Ro′ (g/L)" value={record.hydrometerInputs.zeroCorrection} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, zeroCorrection: value })} /><HydrometerInput label="Temperature (°C)" value={record.hydrometerInputs.temperature} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, temperature: value })} /><HydrometerInput label="Meniscus correction Cm (g/L)" value={record.hydrometerInputs.meniscusCorrection} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, meniscusCorrection: value })} /><HydrometerInput label="Stokes constant K (optional)" value={record.hydrometerInputs.kFactor} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, kFactor: value })} /><HydrometerInput label="Temperature correction (g/L, 0 = none)" value={record.hydrometerInputs.temperatureCorrection} onChange={(value) => updateRecordField("hydrometerInputs", { ...record.hydrometerInputs, temperatureCorrection: value })} /></div>
           <div className="overflow-x-auto" ref={readingsNav.ref} onKeyDown={readingsNav.onKeyDown}><table className="record-table min-w-[1080px]"><thead><tr className="h-16"><th>Time, min</th><th>Reading Rn′ (g/L)</th><th>R_d = Rn′ − R_o′ (g/L)</th><th>C_m + C_t (g/L)</th><th>R_h = R_d + C_m + C_t (g/L)</th><th>Effective depth (cm)</th><th>Diameter (mm)</th><th>% finer than D (hydrometer sample)</th><th>% finer than D (whole sample)</th></tr></thead><tbody>{record.hydrometerRows.map((row, index) => {
     const result = hydrometer.results[index];
     return <tr key={row.time} className="h-10"><td className="font-semibold">{row.time}</td><td><Input value={row.actualHydrometer} onChange={(event) => updateHydrometer(index, "actualHydrometer", event.target.value)} className="record-input" /></td><td className="calculated-cell">{formatCell(result?.adjustedReading, 1)}</td><td className="calculated-cell">{formatCell(result?.compositeCorrection ?? null, 2)}</td><td className="calculated-cell">{formatCell(result?.correctedReading, 1)}</td><td className="calculated-cell">{formatCell(result?.effectiveDepth, 2)}</td><td className="calculated-cell">{formatCell(result?.particleDiameter, 4)}</td><td className="calculated-cell">{formatCell(result?.finesInSuspension, 1)}</td><td className="calculated-cell">{formatCell(result?.finesByHydrometer, 1)}</td></tr>;
@@ -812,11 +824,11 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
 
       <RecordSection title="Coefficient of uniformity and curvature">
         <div className="grid gap-px overflow-hidden rounded-md border sm:grid-cols-5">
-          <CalculatedField label="D10 (mm)" value={formatValue(calculations.d10, 4)} />
-          <CalculatedField label="D30 (mm)" value={formatValue(calculations.d30, 4)} />
-          <CalculatedField label="D60 (mm)" value={formatValue(calculations.d60, 4)} />
-          <CalculatedField label="Cu = D60/D10" value={formatValue(calculations.cu, 2)} />
-          <CalculatedField label="Cc = D30²/D10D60" value={formatValue(calculations.cc, 2)} />
+          <CalculatedField label="D10 (mm)" value={formatValue(gradation.d10, 4)} />
+          <CalculatedField label="D30 (mm)" value={formatValue(gradation.d30, 4)} />
+          <CalculatedField label="D60 (mm)" value={formatValue(gradation.d60, 4)} />
+          <CalculatedField label="Cu = D60/D10" value={formatValue(gradation.cu, 2)} />
+          <CalculatedField label="Cc = D30²/D10D60" value={formatValue(gradation.cc, 2)} />
         </div>
       </RecordSection>
 
@@ -828,7 +840,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       <div className="flex flex-wrap items-center justify-end gap-2 print:hidden">
         <Button variant="outline" size="sm" onClick={() => void exportFiles("pdf")}><FileDown className="mr-1.5 h-3.5 w-3.5" />PDF</Button>
         <Button variant="outline" size="sm" onClick={() => void handlePrint()}><Printer className="mr-1.5 h-3.5 w-3.5" />Print</Button>
-        <Button size="sm" onClick={handleSave} disabled={saveStatus === "saving"}>{saveStatus === "saving" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : saveStatus === "saved" ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}{saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved" : "Save"}</Button>
+        <Button size="sm" onClick={handleSave} disabled={saveStatus === "saving" || isLoading}>{saveStatus === "saving" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : saveStatus === "saved" ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}{saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved" : "Save"}</Button>
       </div>
     </div>
   );

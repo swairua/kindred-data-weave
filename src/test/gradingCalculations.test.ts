@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateGrading, calculateHydrometer, calculateMoisture, type HydrometerInputs } from "@/lib/gradingCalculations";
+import { calculateGrading, calculateGradationCoefficients, calculateHydrometer, calculateMoisture, type HydrometerInputs } from "@/lib/gradingCalculations";
 
 /** BS 1377-2:1990 defaults: 152H body, 20 °C, 0.1 meniscus, 1000 cm³ suspension. */
 const BASE_INPUTS: HydrometerInputs = {
@@ -69,9 +69,31 @@ describe("grading calculations", () => {
     expect(result.cc).toBeCloseTo(0.630957, 5);
   });
 
-  it("calculates moisture content from wet and dry masses", () => {
+  it("calculates moisture content and rejects a dry mass greater than the wet mass", () => {
     expect(calculateMoisture("109", "85.5")).toEqual({ waterWeight: 23.5, moistureContent: (23.5 / 85.5) * 100 });
     expect(calculateMoisture("", "85.5")).toEqual({ waterWeight: null, moistureContent: null });
+    expect(calculateMoisture("80", "100")).toEqual({ waterWeight: null, moistureContent: null });
+  });
+
+  it("interpolates gradation coefficients from a merged sieve and hydrometer curve", () => {
+    const result = calculateGradationCoefficients([
+      { size: 0.3, passing: 70 },
+      { size: 0.15, passing: 30 },
+      { size: 0.075, passing: 5 },
+      { size: 0.025, passing: 0 },
+    ]);
+    expect(result.d10).not.toBeNull();
+    expect(result.d30).toBeCloseTo(0.15, 6);
+    expect(result.d60).not.toBeNull();
+    expect(result.cu).not.toBeNull();
+    expect(result.cc).not.toBeNull();
+  });
+
+  it("rejects malformed numeric mass strings instead of parsing a numeric prefix", () => {
+    expect(calculateGrading([
+      { sieveSize: "1", weightRetained: "12abc" },
+      { sieveSize: "0.1", weightRetained: "8" },
+    ]).totalWeight).toBe(8);
   });
 
 describe("hydrometer analysis", () => {
@@ -181,13 +203,19 @@ describe("hydrometer analysis", () => {
     expect(result.results[0].correctedReading).toBeCloseTo(10.5, 6);
   });
 
-  it("adds the zero correction to the actual reading", () => {
+  it("subtracts the dispersant blank from the observed reading", () => {
     const result = calculateHydrometer(
       [{ time: "2", actualHydrometer: "10" }],
       { ...BASE_INPUTS, zeroCorrection: "0.5" },
       "50",
     );
-    expect(result.results[0].adjustedReading).toBeCloseTo(10.5, 6);
+    expect(result.results[0].adjustedReading).toBeCloseTo(9.5, 6);
+  });
+
+  it("does not report whole-sample percentage without the whole-sample mass", () => {
+    const result = calculateHydrometer([{ time: "2", actualHydrometer: "10" }], BASE_INPUTS, "");
+    expect(result.results[0].finesInSuspension).not.toBeNull();
+    expect(result.results[0].finesByHydrometer).toBeNull();
   });
 
   it("follows the published scale calibration of the recorded hydrometer body", () => {

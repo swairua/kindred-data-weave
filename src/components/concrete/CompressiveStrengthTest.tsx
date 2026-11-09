@@ -835,37 +835,10 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
           </tbody>
         </table>
       </div>
-       <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setRows([...rows, emptyCubeRow()])}><Plus className="h-3.5 w-3.5 mr-1" /> Add row</Button>
-          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>Import from field log</Button>
-          <input ref={fileInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleImportFieldLog} />
-        </div>
-        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={isLoadingCubes || isLoadingDetails || isSaving}
-            onClick={async () => {
-              try {
-                const exported = await exportPDF();
-                if (exported !== false) toast.success("Compressive Strength (Cube Test) PDF downloaded");
-              } catch {
-                toast.error("Compressive Strength (Cube Test) PDF download failed");
-              }
-            }}
-          >
-            <FileDown className="h-3.5 w-3.5 mr-1" /> PDF
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => void printPDF()}>
-            <Printer className="h-3.5 w-3.5 mr-1" /> Print
-          </Button>
-          {isSaving ? (
-            <Button size="sm" variant="default" disabled><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Saving...</Button>
-          ) : (
-            <Button size="sm" variant="default" onClick={handleSave}><SaveIcon className="h-3.5 w-3.5 mr-1" /> Save</Button>
-          )}
-        </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Button variant="outline" size="sm" onClick={() => setRows([...rows, emptyCubeRow()])}><Plus className="h-3.5 w-3.5 mr-1" /> Add row</Button>
+        <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>Import from field log</Button>
+        <input ref={fileInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleImportFieldLog} />
       </div>
     </div>
   );
@@ -1074,6 +1047,31 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
             )}
             {renderAnalytics()}
           </aside>
+        </div>
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t pt-3 print:hidden">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={isLoadingCubes || isLoadingDetails || isSaving}
+            onClick={async () => {
+              try {
+                const exported = await exportPDF();
+                if (exported !== false) toast.success("Compressive Strength (Cube Test) PDF downloaded");
+              } catch {
+                toast.error("Compressive Strength (Cube Test) PDF download failed");
+              }
+            }}
+          >
+            <FileDown className="h-3.5 w-3.5 mr-1" /> PDF
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => void printPDF()}>
+            <Printer className="h-3.5 w-3.5 mr-1" /> Print
+          </Button>
+          {isSaving ? (
+            <Button size="sm" variant="default" disabled><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Saving...</Button>
+          ) : (
+            <Button size="sm" variant="default" onClick={handleSave}><SaveIcon className="h-3.5 w-3.5 mr-1" /> Save</Button>
+          )}
         </div>
       </>
     </TestSection>
