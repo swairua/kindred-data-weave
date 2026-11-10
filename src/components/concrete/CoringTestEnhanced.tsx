@@ -61,8 +61,8 @@ const DEPTH_OPTIONS = [
 ];
 
 const CONCRETE_CLASSES = ["45 MPA", "40 MPA", "35 MPA", "30 MPA", "25 MPA", "20 MPA", "Custom"];
-const detailLabelClass = "w-2/5 shrink-0 border-r border-border pr-3 text-xs font-normal leading-tight text-foreground";
-const detailInputClass = "h-8 min-w-0 flex-1 text-xs";
+const detailLabelClass = "w-2/5 shrink-0 border-r-2 border-primary/30 pr-3 text-xs font-medium leading-tight text-foreground";
+const detailInputClass = "h-8 min-w-0 flex-1 text-xs pl-2";
 
 const FAILURE_MODES = [
   "Sparsely distributed aggregates with maximum size approximately 20mm",
