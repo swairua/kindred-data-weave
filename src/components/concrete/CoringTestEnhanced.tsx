@@ -111,8 +111,9 @@ const loadImageAsDataUrl = async (path: string | undefined): Promise<string | un
   try {
     const response = await fetch(url, { credentials: "include" });
     if (!response.ok) {
-      console.warn("[CoringTest] Failed to load image:", url, response.status, response.statusText);
-      return undefined;
+      const errorMsg = `[CoringTest] Failed to load image: ${url} (${response.status} ${response.statusText})`;
+      console.error(errorMsg);
+      throw new Error(errorMsg);
     }
     const blob = await response.blob();
     return await new Promise<string>((resolve, reject) => {
@@ -122,8 +123,9 @@ const loadImageAsDataUrl = async (path: string | undefined): Promise<string | un
       reader.readAsDataURL(blob);
     });
   } catch (error) {
-    console.warn("[CoringTest] Failed to load test image", path, error);
-    return undefined;
+    const errorMsg = `[CoringTest] Failed to load test image ${path}: ${error instanceof Error ? error.message : String(error)}`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
   }
 };
 
@@ -784,32 +786,46 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
 
     try {
       const dateOfTest = formatReportDate(projectDetails.dateOfTest);
-      const cores: CoringCoreReport[] = await Promise.all(rows.map(async (row) => ({
-        depth: row.depth,
-        dateOfTest,
-        diameter: row.diameter,
-        heightBefore: row.lengthBefore,
-        heightAfter: row.lengthAfter,
-        weightInAir: row.weightInAir,
-        density: getDensity(row),
-        area: getArea(row),
-        volume: getVolume(row),
-        load: row.load,
-        coreStrength: getCoreStrength(row),
-        ldRatio: getLDRatio(row),
-        cdFactor: getCdFactor(row),
-        cdcFactor: row.cdcFactor ?? "",
-        cdAccuracyFactor: row.cdAccuracyFactor ?? "",
-        cylinderToCube: row.cylinderToCubeRatio ?? "",
-        caFactor: row.caFactor ?? "",
-        conversionRatio: row.conversionRatio ?? "",
-        correctedStrength: getCorrectedStrength(row),
-        excessVoidage: row.excessVoidage ?? "",
-        failureMode: row.failureMode,
-        comments: row.comments,
-        beforeImage: await loadImageAsDataUrl(row.pileBeforeImage),
-        afterImage: await loadImageAsDataUrl(row.pileAfterImage),
-      })));
+      const cores: CoringCoreReport[] = await Promise.all(rows.map(async (row) => {
+        let beforeImage: string | undefined;
+        let afterImage: string | undefined;
+        try {
+          beforeImage = await loadImageAsDataUrl(row.pileBeforeImage);
+        } catch (e) {
+          toast.error(`Failed to load before image for ${row.coreId}: ${e instanceof Error ? e.message : String(e)}`);
+        }
+        try {
+          afterImage = await loadImageAsDataUrl(row.pileAfterImage);
+        } catch (e) {
+          toast.error(`Failed to load after image for ${row.coreId}: ${e instanceof Error ? e.message : String(e)}`);
+        }
+        return {
+          depth: row.depth,
+          dateOfTest,
+          diameter: row.diameter,
+          heightBefore: row.lengthBefore,
+          heightAfter: row.lengthAfter,
+          weightInAir: row.weightInAir,
+          density: getDensity(row),
+          area: getArea(row),
+          volume: getVolume(row),
+          load: row.load,
+          coreStrength: getCoreStrength(row),
+          ldRatio: getLDRatio(row),
+          cdFactor: getCdFactor(row),
+          cdcFactor: row.cdcFactor ?? "",
+          cdAccuracyFactor: row.cdAccuracyFactor ?? "",
+          cylinderToCube: row.cylinderToCubeRatio ?? "",
+          caFactor: row.caFactor ?? "",
+          conversionRatio: row.conversionRatio ?? "",
+          correctedStrength: getCorrectedStrength(row),
+          excessVoidage: row.excessVoidage ?? "",
+          failureMode: row.failureMode,
+          comments: row.comments,
+          beforeImage,
+          afterImage,
+        };
+      }));
 
       return await buildCoringReportPDF({
         title: "Compressive Strength of Concrete Cores",
@@ -825,7 +841,7 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
       }, cores);
     } catch (error) {
       console.error("PDF export failed:", error);
-      toast.error("PDF export failed. Please try again.");
+      toast.error(`PDF export failed: ${error instanceof Error ? error.message : String(error)}`);
       return null;
     }
   };
