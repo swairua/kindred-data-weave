@@ -47,6 +47,7 @@ const FRAME_INSET = 8;
 const LEFT = 82.8 + FRAME_INSET;
 const WIDTH = 440.8 - FRAME_INSET * 2;
 const COL_W = WIDTH / 3;
+const DIVIDER_AT = COL_W * 0.78;
 const FRAME = { x: 82.8, y: 71, w: 440.8, h: 489 };
 const HEADER = { y: 84, w: 190, h: 70.2 };
 const BAND_H = 8.4;
@@ -90,10 +91,11 @@ const fitFontSize = (doc: jsPDF, text: string, maxW: number, size: number, min: 
   return textWidth <= maxW ? size : Math.max(min, (size * maxW) / textWidth);
 };
 
-const drawCell = (doc: jsPDF, x: number, y: number, w: number, h: number, label: string, value: string) => {
+const drawCell = (doc: jsPDF, x: number, y: number, w: number, h: number, label: string, value: string, dividerAt?: number) => {
   doc.setDrawColor(0);
   doc.setLineWidth(0.4);
   doc.rect(x, y, w, h);
+  if (dividerAt !== undefined) doc.line(x + dividerAt, y, x + dividerAt, y + h);
   const text = value || "—";
   const mid = y + h / 2;
 
@@ -102,7 +104,8 @@ const drawCell = (doc: jsPDF, x: number, y: number, w: number, h: number, label:
   const valueReserve = Math.min(doc.getTextWidth(text), w * 0.35);
 
   doc.setFont("helvetica", "normal");
-  const labelSize = fitFontSize(doc, label, w - valueReserve - 14, 6.5, 4.5);
+  const labelMaxW = dividerAt !== undefined ? dividerAt - 6 : w - valueReserve - 14;
+  const labelSize = fitFontSize(doc, label, labelMaxW, 6.5, 4.5);
   doc.setFontSize(labelSize);
   const labelW = doc.getTextWidth(label);
   doc.setTextColor(60);
@@ -210,10 +213,10 @@ const drawCorePage = (doc: jsPDF, project: CoringProjectInfo, core: CoringCoreRe
   ];
   testRows.forEach((row, r) =>
     row.forEach((cell, c) => {
-      if (cell) drawCell(doc, LEFT + c * COL_W, testTop + r * CELL_H, COL_W, CELL_H, cell[0], cell[1]);
+      if (cell) drawCell(doc, LEFT + c * COL_W, testTop + r * CELL_H, COL_W, CELL_H, cell[0], cell[1], DIVIDER_AT);
     })
   );
-  drawCell(doc, LEFT, testTop + 4 * CELL_H, COL_W, 2 * CELL_H, "Length/ Diameter ratio of Core at preparations", core.ldRatio);
+  drawCell(doc, LEFT, testTop + 4 * CELL_H, COL_W, 2 * CELL_H, "Length/ Diameter ratio of Core at preparations", core.ldRatio, DIVIDER_AT);
   drawCell(doc, LEFT, testTop + testRows.length * CELL_H, WIDTH, CELL_H, "Failure Mode", core.failureMode);
 
   const photos: [string, string | undefined, number][] = [
