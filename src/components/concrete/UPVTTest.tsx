@@ -14,7 +14,7 @@ import { captureChartAsBase64 } from "@/lib/chartCapture";
 
 interface Row { id: string; pathLength: string; transitTime: string }
 
-const UPVTTest = () => {
+const UPVTTest = ({ testKey }: { testKey?: string }) => {
   const project = useProject();
   const [rows, setRows] = useState<Row[]>([
     { id: "U1", pathLength: "", transitTime: "" },
@@ -86,7 +86,7 @@ const UPVTTest = () => {
   const canExport = !!project.currentProjectId || isSaved;
 
   return (
-    <TestSection title="Ultrasonic Pulse Velocity Test (UPVT)" onSave={() => setIsSaved(true)} onClear={() => setRows([{ id: "U1", pathLength: "", transitTime: "" }])} onExportPDF={exportPDF} canExport={canExport}>
+    <TestSection title="Ultrasonic Pulse Velocity Test (UPVT)" testKey={testKey} onSave={() => setIsSaved(true)} onClear={() => setRows([{ id: "U1", pathLength: "", transitTime: "" }])} onExportPDF={exportPDF} canExport={canExport}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">ID</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Path Length (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Transit Time (µs)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Velocity (km/s)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Quality</th><th className="w-10"></th></tr></thead>

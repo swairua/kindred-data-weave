@@ -9,7 +9,7 @@ import { useTestReport } from "@/hooks/useTestReport";
 
 interface Row { depth: string; penetration: string }
 
-const DCPTest = () => {
+const DCPTest = ({ testKey }: { testKey?: string }) => {
   const project = useProject();
   const [rows, setRows] = useState<Row[]>([{ depth: "", penetration: "" },{ depth: "", penetration: "" },{ depth: "", penetration: "" }]);
   const update = (i: number, field: keyof Row, val: string) => { const next = [...rows]; next[i] = { ...next[i], [field]: val }; setRows(next); };
@@ -37,7 +37,7 @@ const DCPTest = () => {
   };
 
   return (
-    <TestSection title="DCP (Dynamic Cone Penetrometer)" onSave={() => {}} onClear={() => setRows([{ depth: "", penetration: "" }])} onExportPDF={exportPDF}>
+    <TestSection title="DCP (Dynamic Cone Penetrometer)" testKey={testKey} onSave={() => {}} onClear={() => setRows([{ depth: "", penetration: "" }])} onExportPDF={exportPDF}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Depth (mm)</th><th className="text-left py-2 px-2 font-medium text-muted-foreground">Penetration per Blow (mm/blow)</th><th className="w-10"></th></tr></thead>
