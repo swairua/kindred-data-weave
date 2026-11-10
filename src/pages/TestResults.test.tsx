@@ -19,9 +19,10 @@ vi.mock("@/context/TestDataContext", () => ({
     projectMetadata: {},
     updateProjectMetadata: contextMocks.updateProjectMetadata,
     testDefinitions: [
-      { test_key: "grading", name: "Particle Size Distribution", category: "soil", sort_order: 1, enabled: true },
-      { test_key: "proctor", name: "Proctor Test", category: "soil", sort_order: 2, enabled: true },
-      { test_key: "compressive", name: "Compressive Strength Test", category: "concrete", sort_order: 3, enabled: true },
+      { test_key: "grading", name: "Particle Size Distribution", category: "soil", sort_order: 2, enabled: true },
+      { test_key: "proctor", name: "Density/Moisture Content Relationship", category: "soil", sort_order: 3, enabled: true },
+      { test_key: "compressive", name: "Compressive Strength Test", category: "concrete", sort_order: 1, enabled: true },
+      { test_key: "atterberg", name: "Atterberg Limits", category: "soil", sort_order: 1, enabled: true },
     ],
   }),
 }));

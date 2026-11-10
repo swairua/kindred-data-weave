@@ -74,9 +74,9 @@ const Dashboard = () => {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
-            { id: "soil", label: "Soil", emoji: "🪨", desc: "Atterberg, CBR, Compaction" },
-            { id: "concrete", label: "Concrete", emoji: "🏗️", desc: "Slump, Cubes, UPVT" },
-            { id: "rock", label: "Rock", emoji: "⛰️", desc: "UCS, Point Load" },
+            { id: "soil", label: "Soil", emoji: "🪨", desc: "Atterberg, PSD, Proctor, SPT, CPT" },
+            { id: "concrete", label: "Concrete", emoji: "🏗️", desc: "Compressive, Slump, NDT, Cores" },
+            { id: "rock", label: "Rock", emoji: "⛰️", desc: "Schmidt Hammer, UCS, Point Load" },
           ].map((m) => (
             <button
               key={m.id}

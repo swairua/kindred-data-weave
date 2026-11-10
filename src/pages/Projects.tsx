@@ -15,6 +15,8 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Layers, Plus, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { type ApiProjectRow } from "@/types/api";
 import { listRecords } from "@/lib/api";
+import { type TestDefinition } from "@/context/TestDataContext";
+import { disabledTestKeys, enabledTestKeys } from "@/lib/testDefinitions";
 import { toast } from "sonner";
 
 interface ApiTestResult {
@@ -64,6 +66,7 @@ const TEST_TYPE_LABELS: Record<string, string> = {
   ndt: "NDT",
   schmidt_rock: "Schmidt Hammer",
   ucs: "UCS",
+  coring: "Coring",
   pointload: "Point Load",
 };
 
@@ -77,6 +80,7 @@ const Projects = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [apiProjects, setApiProjects] = useState<ApiProjectRow[]>([]);
   const [apiTestResults, setApiTestResults] = useState<ApiTestResult[]>([]);
+  const [disabledTestTypeKeys, setDisabledTestTypeKeys] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -85,12 +89,22 @@ const Projects = () => {
   const loadProjects = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [projectsResponse, testResultsResponse] = await Promise.all([
+      const [projectsResponse, testResultsResponse, definitionsResponse] = await Promise.all([
         listRecords<ApiProjectRow>("projects", { limit: 100 }),
         listRecords<ApiTestResult>("test_results", { limit: 1000 }),
+        listRecords<TestDefinition>("test_definitions", { limit: 200 }),
       ]);
 
-      const testResults = testResultsResponse.data || [];
+      // A disabled test is not part of the catalogue, so its results are not counted
+      // and the project it belongs to is not listed.
+      const definitions = definitionsResponse.data || [];
+      const enabledKeys = definitions.length > 0
+        ? enabledTestKeys(definitions)
+        : null;
+
+      const testResults = (testResultsResponse.data || []).filter(
+        (testResult) => !enabledKeys || enabledKeys.has(testResult.test_key),
+      );
       setApiTestResults(testResults);
 
       // Count test results by project_id
@@ -107,6 +121,9 @@ const Projects = () => {
       }));
 
       setApiProjects(enrichedProjects);
+      setDisabledTestTypeKeys(
+        definitions.length > 0 ? disabledTestKeys(definitions) : new Set<string>(),
+      );
     } catch (error) {
       console.error("Failed to load projects:", error);
       setApiProjects([]);
@@ -123,6 +140,9 @@ const Projects = () => {
   const projects = useMemo(() => {
     if (apiProjects.length > 0) {
       return apiProjects
+        // A project whose test type is disabled is not part of the catalogue, so it is
+        // not listed. Projects with no enabled samples are left out too.
+        .filter((p) => !(p.test_type && disabledTestTypeKeys.has(p.test_type)))
         .filter((p) => (p.sample_count ?? 0) > 0)
         .map((p) => ({
           id: p.id,
@@ -135,7 +155,7 @@ const Projects = () => {
         }));
     }
     return [];
-  }, [apiProjects]);
+  }, [apiProjects, disabledTestTypeKeys]);
 
   // Filter projects based on search query
   const filteredProjects = useMemo(() => {

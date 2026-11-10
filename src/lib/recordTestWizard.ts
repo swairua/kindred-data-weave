@@ -2,11 +2,17 @@ import type { RecordMetadata } from "@/context/TestDataContext";
 
 export type Material = "soil" | "concrete" | "rock" | "special";
 
+/**
+ * The tests offered under each material.
+ *
+ * This mirrors the catalogue held in `test_definitions`: only these tests are
+ * selectable, and a test is only offered under the material it belongs to.
+ */
 const ALLOWED_TEST_KEYS: Partial<Record<Material, ReadonlySet<string>>> = {
-  soil: new Set(["atterberg", "grading", "proctor", "cpt", "spt", "cbr", "shear", "consolidation", "schmidt"]),
-  concrete: new Set(["compressive", "slump", "upvt", "schmidt", "ndt", "coring"]),
-  rock: new Set(["ucs", "pointload", "porosity", "schmidt", "schmidt_rock", "ndt"]),
-  special: new Set(["dcp"]),
+  soil: new Set(["atterberg", "grading", "proctor", "spt", "cpt"]),
+  concrete: new Set(["compressive", "slump", "ndt", "coring"]),
+  rock: new Set(["schmidt_rock", "ucs", "pointload"]),
+  special: new Set(),
 };
 
 export const isTestAllowed = (material: Material | null, testKey: string): boolean => {
@@ -18,26 +24,17 @@ export const isTestAllowed = (material: Material | null, testKey: string): boole
 export const isInitialTestValid = (material: Material | null, testKey: string | null, enabled: boolean, registered: boolean): boolean =>
   !!material && !!testKey && enabled && registered && isTestAllowed(material, testKey);
 
+/**
+ * The project `test_type` a test records against.
+ *
+ * A project stores the test it belongs to (e.g. "coring"), so the wizard can
+ * list the matching projects when a test is picked.
+ */
 export const getExpectedTestType = (testKey: string | null): string | null => {
-  if (testKey === "atterberg") return "atterberg";
-  if (testKey === "grading") return "grading";
-  if (testKey === "proctor") return "proctor";
-  if (testKey === "compressive") return "compressive";
-  if (testKey === "spt") return "spt";
-  if (testKey === "cpt") return "cpt";
-  if (testKey === "slump") return "concrete";
-  if (testKey === "schmidt") return "concrete";
-  if (testKey === "ucs") return "rock";
-  if (testKey === "pointload") return "rock";
-  if (testKey === "ndt") return "rock";
-  if (testKey === "cbr") return "soil";
-  if (testKey === "shear") return "soil";
-  if (testKey === "consolidation") return "soil";
-  if (testKey === "upvt") return "concrete";
-  if (testKey === "coring") return "concrete";
-  if (testKey === "porosity") return "rock";
-  if (testKey === "schmidt_rock") return "rock";
-  if (testKey === "dcp") return "special";
+  if (!testKey) return null;
+  if (ALLOWED_TEST_KEYS.soil?.has(testKey)) return testKey;
+  if (ALLOWED_TEST_KEYS.concrete?.has(testKey)) return testKey;
+  if (ALLOWED_TEST_KEYS.rock?.has(testKey)) return testKey;
   return null;
 };
 

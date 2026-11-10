@@ -5,7 +5,6 @@ import { ProjectContext } from "@/context/ProjectContext";
 import { useTestData } from "@/context/TestDataContext";
 import { useSessionKeepAlive } from "@/hooks/useSessionKeepAlive";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -45,6 +44,7 @@ import type { NavigationView } from "@/components/Navigation";
 import { fetchCurrentUser, loginUser, logoutUser, type ApiUser, listRecords, fetchFullProject, debugAuthState, debugApiConnectivity } from "@/lib/api";
 import { registerAllTests } from "@/lib/testRegistration";
 import { registry } from "@/lib/testRegistry";
+import { isTestEnabled } from "@/lib/testDefinitions";
 import { useNavigationLoading } from "@/context/NavigationLoadingContext";
 
 
@@ -100,25 +100,6 @@ const TestsViewContent = ({
   console.log(`[Index] isFocusedMode: ${isFocusedMode}`);
   console.log(`[Index] ============ DECISION: ${isFocusedMode ? '🔶 FOCUSED MODE' : '🔲 NORMAL TEST VIEW'} ============`);
 
-  // Determine active tab from hash (if present) or initialTab or default to "soil"
-  const getActiveTab = (): string => {
-    // If hash matches a test key, determine its category
-    if (isTestKey && selectedFromHash) {
-      for (const [testKey, testSummary] of Object.entries(testData.tests)) {
-        if (testKey === selectedFromHash) {
-          const category = testSummary.category as TestCategory;
-          if (category && ["soil", "concrete", "rock", "special"].includes(category)) {
-            console.log(`[Index] Hash navigation detected: using category "${category}" for test "${selectedFromHash}"`);
-            return category;
-          }
-        }
-      }
-    }
-
-    // Fall back to initialTab or default
-    return initialTab || "soil";
-  };
-
   // Auto-open test when test key hash is present
   useEffect(() => {
     if (isTestKey && selectedFromHash) {
@@ -138,11 +119,9 @@ const TestsViewContent = ({
 
     // Iterate through test data and build categories
     for (const [testKey, testSummary] of Object.entries(testData.tests)) {
-      // Particle size distribution is available in the Soil section.
-      if (testSummary.enabled === false && testKey !== "grading") {
-        continue;
-      }
-      if (testKey === "atterberg") {
+      // Only enabled tests are part of the catalogue. A disabled test is not offered
+      // and must not appear under any class.
+      if (!isTestEnabled(testSummary)) {
         continue;
       }
 
@@ -164,10 +143,23 @@ const TestsViewContent = ({
     return categories;
   }, [testData.tests]);
 
-  const renderTestsByCategory = (category: TestCategory) => {
+  // The three classes the lab offers, stacked in a vertical list.
+  const CATEGORY_SECTIONS: { category: TestCategory; title: string }[] = [
+    { category: "soil", title: "Soil Tests" },
+    { category: "concrete", title: "Concrete Tests" },
+    { category: "rock", title: "Rock Tests" },
+  ];
+
+  const renderCategorySection = (category: TestCategory, title: string) => {
     const tests = testsByCategory[category];
     return (
-      <TabsContent value={category} className="space-y-3">
+      <section key={category} className="space-y-3">
+        <div className="flex items-baseline gap-2 border-b border-border pb-1">
+          <h2 className="text-base font-semibold tracking-tight">{title}</h2>
+          <span className="text-xs text-muted-foreground">
+            {tests.length} test{tests.length === 1 ? "" : "s"}
+          </span>
+        </div>
         {tests.length === 0 ? (
           <Card>
             <CardContent className="pt-6">
@@ -183,7 +175,7 @@ const TestsViewContent = ({
             return <TestComponent key={test.key} testKey={test.key} />;
           })
         )}
-      </TabsContent>
+      </section>
     );
   };
 
@@ -206,15 +198,10 @@ const TestsViewContent = ({
     return <TestComponent testKey={testKey} />;
   }
 
-  const activeTab = getActiveTab() as TestCategory;
-
   return (
-    <Tabs value={activeTab}>
-      {renderTestsByCategory("soil")}
-      {renderTestsByCategory("concrete")}
-      {renderTestsByCategory("rock")}
-      {renderTestsByCategory("special")}
-    </Tabs>
+    <div className="space-y-8">
+      {CATEGORY_SECTIONS.map((section) => renderCategorySection(section.category, section.title))}
+    </div>
   );
 };
 

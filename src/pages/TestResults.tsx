@@ -24,6 +24,7 @@ import { useTestData, type AtterbergRecord, type TestDefinition } from "@/contex
 import { useProject } from "@/context/ProjectContext";
 import { listRecords } from "@/lib/api";
 import { collectSamples, readSampleRecords, recordField, selectSampleRows } from "@/lib/testResultSamples";
+import { isTestEnabled } from "@/lib/testDefinitions";
 import { toast } from "sonner";
 
 const ATTERBERG_TEST_KEYS: readonly string[] = ["atterberg"];
@@ -141,15 +142,27 @@ const TestResults = () => {
   //
   // Atterberg uses payload_json.project.records[] format. Other soil tests (grading, proctor,
   // spt, cpt, cbr, shear, etc.) store data directly in payload_json. We process them separately.
+  //
+  // Rows for a disabled test are not listed: the catalogue only offers enabled tests, so a
+  // disabled test must not appear in the register.
+  const enabledKeys = useMemo(
+    () => new Set(testDefinitions.filter((d) => isTestEnabled(d)).map((d) => d.test_key)),
+    [testDefinitions],
+  );
+
+  const visibleResults = useMemo(
+    () => apiTestResults.filter((row) => enabledKeys.has(row.test_key)),
+    [apiTestResults, enabledKeys],
+  );
 
   const atterbergResults = useMemo(
-    () => collectSamples(apiTestResults.filter((row) => ATTERBERG_TEST_KEYS.includes(row.test_key))),
-    [apiTestResults],
+    () => collectSamples(visibleResults.filter((row) => ATTERBERG_TEST_KEYS.includes(row.test_key))),
+    [visibleResults],
   );
 
   const otherSoilResults = useMemo(
-    () => selectSampleRows(apiTestResults.filter((row) => !ATTERBERG_TEST_KEYS.includes(row.test_key) && !COMPRESSIVE_TEST_KEYS.includes(row.test_key))),
-    [apiTestResults],
+    () => selectSampleRows(visibleResults.filter((row) => !ATTERBERG_TEST_KEYS.includes(row.test_key) && !COMPRESSIVE_TEST_KEYS.includes(row.test_key))),
+    [visibleResults],
   );
 
 // Convert API test results to display format - one row per sample, so a project with
@@ -226,7 +239,7 @@ const TestResults = () => {
 // Compressive & Coring mirror rows (see saveCompressiveTest): one display row per
   // result row, newest first. Sorted together with the soil rows below.
   const compressiveTests = useMemo(() => {
-    const rows = (apiTestResults || [])
+    const rows = (visibleResults || [])
       .filter((row) => COMPRESSIVE_TEST_KEYS.includes(row.test_key))
       .map((row) => {
         const isCoring = row.test_key === "coring";
@@ -255,27 +268,34 @@ const TestResults = () => {
         };
       });
     return rows.sort((a, b) => b.sort_stamp.localeCompare(a.sort_stamp));
-  }, [apiTestResults, getTestName]);
+  }, [visibleResults, getTestName]);
 
   const tests = useMemo(
     () => [...soilTests, ...compressiveTests].sort((a, b) => b.sort_stamp.localeCompare(a.sort_stamp)),
     [soilTests, compressiveTests],
   );
 
-  // Get unique material types from test definitions (all possible test types, not just those with results)
+  // Get unique material types from test definitions (all possible test types, not just those with results).
+  // Only categories that still have an enabled test are offered.
   const materialTypes = useMemo(() => {
-    const types = new Set(testDefinitions.map((t: TestDefinition) => t.category).filter(Boolean));
+    const types = new Set(
+      testDefinitions
+        .filter((t: TestDefinition) => isTestEnabled(t))
+        .map((t: TestDefinition) => t.category)
+        .filter(Boolean),
+    );
     return Array.from(types).sort();
   }, [testDefinitions]);
 
-// Get unique test types from test definitions (all possible test types, not just those with results)
+// Get unique test types from test definitions (all possible test types, not just those with results).
+// Disabled tests are not offered, so they are left out of the dropdown entirely.
   const testTypes = useMemo(() => {
     // One entry per concept: two test keys that describe the same test (e.g. schmidt and
     // schmidt_rock) share a label and collapse into a single friendly option.
     const entries = new Map<string, { label: string; keys: string[] }>();
     for (const def of testDefinitions) {
       const key = def.test_key;
-      if (!key) continue;
+      if (!key || !isTestEnabled(def)) continue;
       const label = formatTestType(key);
       const entry = entries.get(label);
       if (entry) entry.keys.push(key);

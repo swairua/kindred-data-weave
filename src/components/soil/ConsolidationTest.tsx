@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import TestSection from "@/components/TestSection";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,12 @@ import { loadTestResult, saveTestResult } from "@/lib/testResultPersistence";
 
 interface Row { time: string; settlement: string }
 
+interface SavedPayload {
+  rows?: Row[];
+  testedBy?: string;
+  dateTested?: string;
+}
+
 interface ConsolidationTestProps {
   testKey?: string;
 }
@@ -23,9 +29,12 @@ const ConsolidationTest = ({ testKey }: ConsolidationTestProps) => {
   const project = useProject();
   const defaultRows: Row[] = [{ time: "", settlement: "" },{ time: "", settlement: "" },{ time: "", settlement: "" }];
   const [rows, setRows] = useState<Row[]>(project.currentProjectId ? defaultRows : []);
+  const hasProjectSelected = !!project.currentProjectId;
   const projectId = project.currentProjectId ?? null;
   const [recordId, setRecordId] = useState<number | null>(null);
   const [isSaved, setIsSaved] = useState(false);
+  const [testedBy, setTestedBy] = useState("");
+  const [dateTested, setDateTested] = useState("");
   const update = (i: number, field: keyof Row, val: string) => { const next = [...rows]; next[i] = { ...next[i], [field]: val }; setRows(next); };
 
   const chartData = useMemo(() =>
@@ -54,28 +63,14 @@ const ConsolidationTest = ({ testKey }: ConsolidationTestProps) => {
         if (!active || !result) return;
         setRecordId(result.id);
         setIsSaved(true);
-        setRows(result.payload_json?.rows ?? defaultRows);
-        if (result.payload_json?.testedBy) setTestedBy(result.payload_json.testedBy);
-        if (result.payload_json?.dateTested) setDateTested(result.payload_json.dateTested);
+        const payload: Partial<SavedPayload> = (result.payload_json as SavedPayload | null) ?? {};
+        setRows(Array.isArray(payload.rows) && payload.rows.length > 0 ? payload.rows : defaultRows);
+        if (payload.testedBy) setTestedBy(payload.testedBy);
+        if (payload.dateTested) setDateTested(payload.dateTested);
       })
       .catch((error) => console.error("Failed to load consolidation result", error));
     return () => { active = false; };
   }, [projectId]);
-
-  const save = async () => {
-    if (!projectId) throw new Error("Select a project before saving this consolidation test");
-    await saveTestResult(projectId, recordId, {
-      test_key: "consolidation",
-      name: "Consolidation Test",
-      category: "soil",
-      status: rows.length > 0 ? "completed" : "not-started",
-      data_points: rows.length,
-      key_results_json: [{ label: "Max Settlement", value: rows.length > 0 ? `${maxSettlement?.toFixed(2) ?? "0"}` : "" }],
-      payload_json: { rows, testedBy, dateTested },
-    });
-    setRecordId(recordId + 1);
-    setIsSaved(true);
-  };
 
   const chartConfig = { settlement: { label: "Settlement (mm)", color: "hsl(var(--primary))" } };
 
@@ -85,6 +80,21 @@ const ConsolidationTest = ({ testKey }: ConsolidationTestProps) => {
     return [{ label: "Max Settlement", value: maxS }];
   }, [maxSettlement]);
   useTestReport("consolidation", filledConsol, consolResults);
+
+  const save = async () => {
+    if (!projectId) throw new Error("Select a project before saving this consolidation test");
+    const savedId = await saveTestResult(projectId, recordId, {
+      test_key: "consolidation",
+      name: "Consolidation Test",
+      category: "soil",
+      status: filledConsol === 0 ? "not-started" : "completed",
+      data_points: filledConsol,
+      key_results_json: consolResults.filter((result) => result.value),
+      payload_json: { rows, testedBy, dateTested },
+    });
+    setRecordId(savedId);
+    setIsSaved(true);
+  };
 
   const exportPDF = async () => {
     let chartImages = {};

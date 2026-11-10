@@ -14,6 +14,7 @@ import FormCard from "@/components/wizard/FormCard";
 import { listRecords, fetchFullProject, createRecord, listCompressiveTests, isRecordNotFoundError } from "@/lib/api";
 import { type ApiCompressiveTestRow, type ApiProjectRow } from "@/types/api";
 import { getExpectedTestType, hasRequiredSoilSampleMetadata, isInitialTestValid, isTestAllowed, toRecordMetadata, type Material } from "@/lib/recordTestWizard";
+import { isTestEnabled } from "@/lib/testDefinitions";
 import { cn } from "@/lib/utils";
 import { useTestData, type ConcreteTestMetadata, type ProjectMetadata } from "@/context/TestDataContext";
 import { registry } from "@/lib/testRegistry";
@@ -294,9 +295,9 @@ const RecordTestWizard = () => {
   };
 
   const materialOptions = useMemo(() => {
-    const enabledDefinitions = testData.testDefinitions.filter(
-      (definition) => definition.enabled !== false && definition.enabled !== 0,
-    );
+    const enabledDefinitions = testData.testDefinitions
+      .filter((definition) => isTestEnabled(definition))
+      .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
     const categories = new Set(enabledDefinitions.map((definition) => definition.category));
     return (Object.keys(MATERIAL_PRESENTATION) as Material[])
       .filter((category) => categories.has(category))

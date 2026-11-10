@@ -29,8 +29,14 @@ const ADDABLE_TESTS: Record<string, { key: string; name: string; phrase: string 
   grading: { key: "grading", name: "Grading", phrase: "grading" },
   proctor: { key: "proctor", name: "Proctor", phrase: "Proctor" },
   compressive: { key: "compressive", name: "Compressive", phrase: "compressive" },
+  coring: { key: "coring", name: "Coring", phrase: "coring" },
   spt: { key: "spt", name: "SPT", phrase: "SPT" },
   cpt: { key: "cpt", name: "CPT", phrase: "CPT" },
+  slump: { key: "slump", name: "Slump", phrase: "slump" },
+  ndt: { key: "ndt", name: "NDT", phrase: "NDT" },
+  ucs: { key: "ucs", name: "UCS", phrase: "UCS" },
+  schmidt_rock: { key: "schmidt_rock", name: "Schmidt Hammer", phrase: "Schmidt Hammer" },
+  pointload: { key: "pointload", name: "Point Load", phrase: "Point Load" },
 };
 
 type ProjectDraft = {
