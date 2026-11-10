@@ -11,6 +11,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Label } from "@/components/ui/label";
 import { useTestReport } from "@/hooks/useTestReport";
 import { captureChartAsBase64 } from "@/lib/chartCapture";
+import { loadTestResult, saveTestResult } from "@/lib/testResultPersistence";
 
 interface Row { time: string; settlement: string }
 
@@ -22,7 +23,9 @@ const ConsolidationTest = ({ testKey }: ConsolidationTestProps) => {
   const project = useProject();
   const defaultRows: Row[] = [{ time: "", settlement: "" },{ time: "", settlement: "" },{ time: "", settlement: "" }];
   const [rows, setRows] = useState<Row[]>(project.currentProjectId ? defaultRows : []);
-  const hasProjectSelected = !!project.currentProjectId;
+  const projectId = project.currentProjectId ?? null;
+  const [recordId, setRecordId] = useState<number | null>(null);
+  const [isSaved, setIsSaved] = useState(false);
   const update = (i: number, field: keyof Row, val: string) => { const next = [...rows]; next[i] = { ...next[i], [field]: val }; setRows(next); };
 
   const chartData = useMemo(() =>
@@ -40,6 +43,39 @@ const ConsolidationTest = ({ testKey }: ConsolidationTestProps) => {
   // These are simplified calculations - full implementation requires more input parameters
   const maxSettlement = useMemo(() => 
     chartData.length ? Math.max(...chartData.map(d => d.settlement)) : 0, [chartData]);
+
+  // Load saved consolidation data so deep links (resultId + #consolidation) 
+  // show recorded data instead of an empty form.
+  useEffect(() => {
+    if (!projectId) return;
+    let active = true;
+    loadTestResult(projectId, "consolidation")
+      .then((result) => {
+        if (!active || !result) return;
+        setRecordId(result.id);
+        setIsSaved(true);
+        setRows(result.payload_json?.rows ?? defaultRows);
+        if (result.payload_json?.testedBy) setTestedBy(result.payload_json.testedBy);
+        if (result.payload_json?.dateTested) setDateTested(result.payload_json.dateTested);
+      })
+      .catch((error) => console.error("Failed to load consolidation result", error));
+    return () => { active = false; };
+  }, [projectId]);
+
+  const save = async () => {
+    if (!projectId) throw new Error("Select a project before saving this consolidation test");
+    await saveTestResult(projectId, recordId, {
+      test_key: "consolidation",
+      name: "Consolidation Test",
+      category: "soil",
+      status: rows.length > 0 ? "completed" : "not-started",
+      data_points: rows.length,
+      key_results_json: [{ label: "Max Settlement", value: rows.length > 0 ? `${maxSettlement?.toFixed(2) ?? "0"}` : "" }],
+      payload_json: { rows, testedBy, dateTested },
+    });
+    setRecordId(recordId + 1);
+    setIsSaved(true);
+  };
 
   const chartConfig = { settlement: { label: "Settlement (mm)", color: "hsl(var(--primary))" } };
 
@@ -77,6 +113,8 @@ const ConsolidationTest = ({ testKey }: ConsolidationTestProps) => {
 
   const status = filledConsol === 0 ? "No data" : filledConsol < rows.length ? "In progress" : "Complete";
 
+  const canExport = !!project.currentProjectId || isSaved;
+
   interface OverviewMetricProps {
     label: string;
     value: string;
@@ -91,7 +129,7 @@ const ConsolidationTest = ({ testKey }: ConsolidationTestProps) => {
   );
 
   return (
-    <TestSection title="Consolidation" testKey={testKey} onSave={() => {}} onClear={() => setRows([{ time: "", settlement: "" }])} onExportPDF={exportPDF}>
+    <TestSection title="Consolidation" testKey={testKey} onSave={save} onClear={() => setRows([{ time: "", settlement: "" }])} onExportPDF={exportPDF}>
       <div className="space-y-4">
         {/* Overview metrics card */}
         <Card className="border bg-muted/20 shadow-none">
