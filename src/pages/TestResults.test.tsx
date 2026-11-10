@@ -261,7 +261,7 @@ describe("TestResults test type filter", () => {
       .find((element) => element.textContent?.includes("All test types"));
     if (!testTypeTrigger) throw new Error("Test Type filter not rendered");
     fireEvent.click(testTypeTrigger);
-    fireEvent.click(await screen.findByRole("option", { name: "Concrete Cubes — Compressive Strength" }, FIND));
+    fireEvent.click(await screen.findByRole("option", { name: "Compressive Strength" }, FIND));
 
     expect(await screen.findByText("Cube project", undefined, FIND)).toBeInTheDocument();
     expect(screen.queryByText(/Grading sample/)).not.toBeInTheDocument();

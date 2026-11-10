@@ -103,15 +103,18 @@ const TestResults = () => {
       consolidation: "Consolidation Test",
       shear: "Shear Test",
       linearShrinkage: "Linear Shrinkage Test",
-      compressive: "Concrete Cubes — Compressive Strength",
+      // cubes and compressive are the same concrete strength test — one label for both
+      // so the filter shows a single entry (see testTypes dedupe below).
+      compressive: "Compressive Strength",
+      cubes: "Compressive Strength",
       slump: "Slump Test",
       upvt: "UPVT Test",
       ndt: "NDT (Rebound Hammer)",
-      schmidt: "Rebound Hammer Test",
+      // schmidt and schmidt_rock are the same rock rebound hammer test.
+      schmidt: "Schmidt Hammer",
       schmidt_rock: "Schmidt Hammer",
       cpt: "CPT (Cone Penetration Test)",
       coring: "Coring Test",
-      cubes: "Concrete Cubes",
       ucs: "UCS Test",
       pointload: "Point Load Test",
       porosity: "Porosity Test",
@@ -267,17 +270,18 @@ const TestResults = () => {
 
 // Get unique test types from test definitions (all possible test types, not just those with results)
   const testTypes = useMemo(() => {
-    const keys = new Set(testDefinitions.map((t: TestDefinition) => t.test_key).filter(Boolean));
-    // Deduplicate by label so the same display name never appears twice in the filter.
-    const seenLabels = new Set<string>();
-    return Array.from(keys)
-      .map((key) => ({ key, label: formatTestType(key) }))
-      .filter((entry) => {
-        if (seenLabels.has(entry.label)) return false;
-        seenLabels.add(entry.label);
-        return true;
-      })
-      .sort((a, b) => a.label.localeCompare(b.label));
+    // One entry per concept: two test keys that describe the same test (e.g. schmidt and
+    // schmidt_rock) share a label and collapse into a single friendly option.
+    const entries = new Map<string, { label: string; keys: string[] }>();
+    for (const def of testDefinitions) {
+      const key = def.test_key;
+      if (!key) continue;
+      const label = formatTestType(key);
+      const entry = entries.get(label);
+      if (entry) entry.keys.push(key);
+      else entries.set(label, { label, keys: [key] });
+    }
+    return Array.from(entries.values()).sort((a, b) => a.label.localeCompare(b.label));
   }, [testDefinitions]);
 
   const numberedTests = useMemo(
@@ -298,7 +302,9 @@ const TestResults = () => {
     return numberedTests.filter((test) => {
       const materialMatch =
         materialFilter === "all" || test.material_type === materialFilter;
-      const testTypeMatch = testTypeFilter === "all" || test.test_key === testTypeFilter;
+      // The filter value is the label, so a merged entry matches all of its keys
+      // (e.g. "Schmidt Hammer" covers both schmidt and schmidt_rock).
+      const testTypeMatch = testTypeFilter === "all" || formatTestType(test.test_key) === testTypeFilter;
       const searchMatch =
         searchQuery === "" ||
         test.project_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -433,7 +439,7 @@ const TestResults = () => {
                     <SelectContent>
                       <SelectItem value="all">All test types</SelectItem>
                       {testTypes.map((type) => (
-                        <SelectItem key={type.key} value={type.key}>
+                        <SelectItem key={type.label} value={type.label}>
                           {type.label}
                         </SelectItem>
                       ))}
