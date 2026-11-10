@@ -80,8 +80,8 @@ const CORING_ROW_DEFAULTS: CoringRow = {
   diameter: "82",
   lengthBefore: "150",
   lengthAfter: "82",
-  weightInAir: "",
-  load: "",
+  weightInAir: "1200",
+  load: "300",
   depth: "0.0-2.0",
   failureMode: "Sparsely distributed aggregates with maximum size approximately 20mm",
   comments: "",
@@ -161,6 +161,7 @@ const projectId = project.currentProjectId ?? null;
   const [rows, setRows] = useState<CoringRow[]>([
     { ...CORING_ROW_DEFAULTS, coreId: "CR1" },
     { ...CORING_ROW_DEFAULTS, coreId: "CR2" },
+    { ...CORING_ROW_DEFAULTS, coreId: "CR3" },
   ]);
   const [isSaved, setIsSaved] = useState(false);
 const [recordId, setRecordId] = useState<number | null>(null);
@@ -881,7 +882,7 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
       title="Concrete Core Testing (BS EN 12504-1:2009)" 
       testKey={testKey} 
       onSave={handleSave} 
-      onClear={() => setRows([{ ...CORING_ROW_DEFAULTS, coreId: "CR1" }, { ...CORING_ROW_DEFAULTS, coreId: "CR2" }])}
+      onClear={() => setRows([{ ...CORING_ROW_DEFAULTS, coreId: "CR1" }, { ...CORING_ROW_DEFAULTS, coreId: "CR2" }, { ...CORING_ROW_DEFAULTS, coreId: "CR3" }])}
       onExportPDF={exportPDF}
       onPrint={handlePrint}
       canExport={canExport}
