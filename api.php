@@ -1438,9 +1438,10 @@ try {
         // Allow serving images to authenticated users
         $user = getCurrentUser($conn);
 
-        // Get image identifier (either by image_id or image_type for latest)
+        // Get image identifier (either by image_id or image_type for latest, or file_path for coring images)
         $imageId = $_GET['image_id'] ?? $body['image_id'] ?? null;
         $imageType = $_GET['image_type'] ?? $body['image_type'] ?? null;
+        $filePath = $_GET['file_path'] ?? $body['file_path'] ?? null;
 
         $sql = null;
         $params = [];
@@ -1455,8 +1456,49 @@ try {
             $sql = "SELECT id, file_path, mime_type FROM admin_images WHERE image_type = ? ORDER BY id DESC LIMIT 1";
             $params = [$imageType];
             $paramTypes = 's';
+        } elseif ($filePath) {
+            // Serve coring or other uploaded images by file path
+            // Validate the path is within uploads directory
+            $realPath = realpath(__DIR__ . $filePath);
+            $uploadsDir = realpath(__DIR__ . '/uploads/');
+
+            if (!$realPath || !$uploadsDir || strpos($realPath, $uploadsDir) !== 0) {
+                error_log('Image path validation failed for file_path: ' . $filePath);
+                respond(['error' => 'Invalid image path'], 400);
+            }
+
+            if (!file_exists($realPath)) {
+                respond(['error' => 'Image file not found'], 404);
+            }
+
+            // Read and serve the image file with proper headers
+            // CORS headers are already set by CORS configuration at the top of api.php
+            $mimeType = mime_content_type($realPath) ?: 'image/png';
+            $fileSize = filesize($realPath);
+
+            // Clear any previous output
+            if (ob_get_length()) {
+                ob_clean();
+            }
+
+            // Set response headers for image serving
+            http_response_code(200);
+            header('Content-Type: ' . $mimeType);
+            header('Content-Length: ' . $fileSize);
+            header('Content-Disposition: inline; filename=' . basename($realPath));
+            header('Cache-Control: public, max-age=86400'); // Cache for 24 hours
+
+            // Stream the file
+            if (readfile($realPath) === false) {
+                error_log('Image file read failed for file_path: ' . $filePath);
+                http_response_code(500);
+                echo 'Failed to read image';
+                exit;
+            }
+
+            exit;
         } else {
-            respond(['error' => 'Invalid image_id or image_type'], 400);
+            respond(['error' => 'Invalid image_id, image_type, or file_path'], 400);
         }
 
         $stmt = $conn->prepare($sql);

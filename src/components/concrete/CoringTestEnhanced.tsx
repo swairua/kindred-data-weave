@@ -15,7 +15,7 @@ import { pdfFileName, printPDFDocument } from "@/lib/pdfGenerator";
 import { formatReportDate } from "@/lib/compressivePdfGenerator";
 import { useTestReport } from "@/hooks/useTestReport";
 import { useNavigate } from "react-router-dom";
-import { API_BASE_URL, saveReceptionConsignment, listRecords, readRecord, uploadCoringPhoto, discardCoringPhoto } from "@/lib/api";
+import { API_BASE_URL, buildApiUrl, saveReceptionConsignment, listRecords, readRecord, uploadCoringPhoto, discardCoringPhoto } from "@/lib/api";
 import { emptyReceptionConsignment, nextRcNo, emptyReceptionSample, type ReceptionConsignmentInput, type ReceptionSampleInput } from "@/lib/reception";
 import { SessionContext } from "@/context/SessionContext";
 import { toast } from "sonner";
@@ -98,16 +98,21 @@ const CORING_ROW_DEFAULTS: CoringRow = {
 };
 
 const coringImageUrl = (path: string): string => {
-  const base = new URL(API_BASE_URL, window.location.origin);
-  // If path starts with '/', it would resolve against origin instead of API base.
-  // Strip leading '/' so it resolves relative to API_BASE_URL's pathname.
-  const relativePath = path.startsWith("/") ? path.slice(1) : path;
-  return new URL(relativePath, base).toString();
+  // Use serve-image endpoint for proper CORS headers
+  const apiUrl = new URL(buildApiUrl({ action: "serve-image" }));
+  apiUrl.searchParams.set("file_path", path);
+  return apiUrl.toString();
 };
 
 const loadImageAsDataUrl = async (path: string | undefined): Promise<string | undefined> => {
   if (!path) return undefined;
-  const url = coringImageUrl(path);
+  
+  // Use the serve-image API endpoint with file_path parameter for proper CORS headers
+  // This goes through the PHP API which sets Access-Control-Allow-Origin headers
+  const apiUrl = new URL(buildApiUrl({ action: "serve-image" }));
+  apiUrl.searchParams.set("file_path", path);
+  const url = apiUrl.toString();
+  
   try {
     const response = await fetch(url, { credentials: "include" });
     if (!response.ok) {
