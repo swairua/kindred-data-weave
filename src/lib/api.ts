@@ -816,10 +816,13 @@ const mapReceptionFieldDefinition = (value: unknown): ReceptionFieldDefinition =
 
 const mapReceptionPhoto = (value: unknown): ReceptionPhoto => {
   const row = value as Record<string, unknown>;
+  const base = new URL(API_BASE_URL, window.location.origin);
+  const rawPath = String(row.file_path ?? row.filePath ?? "");
+  const relativePath = rawPath.startsWith("/") ? rawPath.slice(1) : rawPath;
   return {
     id: Number(row.id),
     rcNo: String(row.rc_no ?? row.rcNo ?? ""),
-    filePath: new URL(String(row.file_path ?? row.filePath ?? ""), new URL(API_BASE_URL, window.location.origin)).toString(),
+    filePath: new URL(relativePath, base).toString(),
     originalFilename: (row.original_filename ?? row.originalFilename) as string | undefined,
     fileSize: Number(row.file_size ?? row.fileSize) || undefined,
     mimeType: (row.mime_type ?? row.mimeType) as string | undefined,

@@ -97,15 +97,23 @@ const CORING_ROW_DEFAULTS: CoringRow = {
   conversionRatio: "",
 };
 
-const coringImageUrl = (path: string): string =>
-  new URL(path, new URL(API_BASE_URL, window.location.origin)).toString();
+const coringImageUrl = (path: string): string => {
+  const base = new URL(API_BASE_URL, window.location.origin);
+  // If path starts with '/', it would resolve against origin instead of API base.
+  // Strip leading '/' so it resolves relative to API_BASE_URL's pathname.
+  const relativePath = path.startsWith("/") ? path.slice(1) : path;
+  return new URL(relativePath, base).toString();
+};
 
 const loadImageAsDataUrl = async (path: string | undefined): Promise<string | undefined> => {
   if (!path) return undefined;
   const url = coringImageUrl(path);
   try {
     const response = await fetch(url, { credentials: "include" });
-    if (!response.ok) return undefined;
+    if (!response.ok) {
+      console.warn("[CoringTest] Failed to load image:", url, response.status, response.statusText);
+      return undefined;
+    }
     const blob = await response.blob();
     return await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
@@ -114,7 +122,7 @@ const loadImageAsDataUrl = async (path: string | undefined): Promise<string | un
       reader.readAsDataURL(blob);
     });
   } catch (error) {
-    console.warn("Failed to load test image", path, error);
+    console.warn("[CoringTest] Failed to load test image", path, error);
     return undefined;
   }
 };
