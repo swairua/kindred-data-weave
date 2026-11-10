@@ -961,32 +961,32 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
 
       {/* Core Data Entry */}
       <div className="overflow-x-auto mb-4">
-        <table className="w-full text-xs">
+        <table className="w-full text-xs border-collapse">
           <thead>
             <tr className="border-b bg-muted/40">
-              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Core ID *</th>
-              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Depth (m) *</th>
-              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Dia (mm) *</th>
-              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">L Before (mm)</th>
-              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">L After (mm) *</th>
-              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">L/D</th>
-              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Area (m²)</th>
-              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Volume (m³)</th>
-              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Wt Air (g) *</th>
-              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Load (kN) *</th>
-              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Core Str (MPa)</th>
-              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Cd Factor</th>
-              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Cyl/Cube Ratio</th>
-              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Ca Factor</th>
-              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Cdia Factor</th>
-              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Cd Accuracy</th>
-              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Conversion Ratio</th>
-              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Corrected (MPa)</th>
-              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Density (kg/m³)</th>
-              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Excess Voidage (%)</th>
-              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground">Failure Mode</th>
-              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground w-32">Before Test</th>
-              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground w-32">After Test</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground border-r border-border/50">Core ID *</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground border-r border-border/50">Depth (m) *</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground border-r border-border/50">Dia (mm) *</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground border-r border-border/50">L Before (mm)</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground border-r border-border/50">L After (mm) *</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground border-r border-border/50">L/D</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground border-r border-border/50">Area (m²)</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground border-r border-border/50">Volume (m³)</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground border-r border-border/50">Wt Air (g) *</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground border-r border-border/50">Load (kN) *</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground border-r border-border/50">Core Str (MPa)</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground border-r border-border/50">Cd Factor</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground border-r border-border/50">Cyl/Cube Ratio</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground border-r border-border/50">Ca Factor</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground border-r border-border/50">Cdia Factor</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground border-r border-border/50">Cd Accuracy</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground border-r border-border/50">Conversion Ratio</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground border-r border-border/50">Corrected (MPa)</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground border-r border-border/50">Density (kg/m³)</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground border-r border-border/50">Excess Voidage (%)</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground border-r border-border/50">Failure Mode</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground border-r border-border/50 w-32">Before Test</th>
+              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground border-r border-border/50 w-32">After Test</th>
               <th className="w-10"></th>
             </tr>
           </thead>
@@ -996,8 +996,8 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
               const hasRowError = rowErrors.length > 0;
               return (
                 <tr key={i} className={`border-b border-border/50 ${hasRowError ? "bg-destructive/5" : ""}`}>
-                  <td className="py-1 px-1.5"><Input value={row.coreId} onChange={(e) => update(i, "coreId", e.target.value)} className={`h-7 w-16 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "coreId") ? "border-destructive" : ""}`} /></td>
-                  <td className="py-1 px-1.5">
+                  <td className="py-1 px-1.5 border-r border-border/50"><Input value={row.coreId} onChange={(e) => update(i, "coreId", e.target.value)} className={`h-7 w-16 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "coreId") ? "border-destructive" : ""}`} /></td>
+                  <td className="py-1 px-1.5 border-r border-border/50">
                     <Select value={row.depth} onValueChange={(v) => update(i, "depth", v)}>
                       <SelectTrigger className={`h-7 w-24 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "depth") ? "border-destructive" : ""}`}><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -1005,25 +1005,25 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
                       </SelectContent>
                     </Select>
                   </td>
-                  <td className="py-1 px-1.5"><Input type="number" value={row.diameter} onChange={(e) => update(i, "diameter", e.target.value)} className={`h-7 w-16 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "diameter") ? "border-destructive" : ""}`} placeholder="82" /></td>
-                  <td className="py-1 px-1.5"><Input type="number" value={row.lengthBefore} onChange={(e) => update(i, "lengthBefore", e.target.value)} className="h-7 w-20 text-xs" placeholder="150" /></td>
-                  <td className="py-1 px-1.5"><Input type="number" value={row.lengthAfter} onChange={(e) => update(i, "lengthAfter", e.target.value)} className={`h-7 w-20 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "lengthAfter") ? "border-destructive" : ""}`} placeholder="82" /></td>
-                  <td className="py-1 px-1.5"><CalculatedInput value={getLDRatio(row)} className="h-7" /></td>
-                  <td className="py-1 px-1.5"><CalculatedInput value={getArea(row)} className="h-7" /></td>
-                  <td className="py-1 px-1.5"><CalculatedInput value={getVolume(row)} className="h-7" /></td>
-                  <td className="py-1 px-1.5"><Input type="number" value={row.weightInAir} onChange={(e) => update(i, "weightInAir", e.target.value)} className={`h-7 w-20 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "weightInAir") ? "border-destructive" : ""}`} placeholder="0" /></td>
-                  <td className="py-1 px-1.5"><Input type="number" value={row.load} onChange={(e) => update(i, "load", e.target.value)} className={`h-7 w-20 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "load") ? "border-destructive" : ""}`} placeholder="0" /></td>
-                  <td className="py-1 px-1.5"><CalculatedInput value={getCoreStrength(row)} className="h-7" /></td>
-                  <td className="py-1 px-1.5"><CalculatedInput value={getCdFactor(row)} className="h-7" /></td>
-                  <td className="py-1 px-1.5"><Input type="number" value={row.cylinderToCubeRatio} onChange={(e) => update(i, "cylinderToCubeRatio", e.target.value)} className="h-7 w-20 text-xs" placeholder="1.25" step="0.01" /></td>
-                  <td className="py-1 px-1.5"><Input type="number" value={row.caFactor} onChange={(e) => update(i, "caFactor", e.target.value)} className="h-7 w-20 text-xs" placeholder="1.00" step="0.01" /></td>
-                  <td className="py-1 px-1.5"><Input type="number" value={row.cdcFactor} onChange={(e) => update(i, "cdcFactor", e.target.value)} className="h-7 w-20 text-xs" placeholder="1.00" step="0.01" /></td>
-                  <td className="py-1 px-1.5"><Input type="number" value={row.cdAccuracyFactor} onChange={(e) => update(i, "cdAccuracyFactor", e.target.value)} className="h-7 w-20 text-xs" placeholder="1.00" step="0.01" /></td>
-                  <td className="py-1 px-1.5"><Input type="number" value={row.conversionRatio} onChange={(e) => update(i, "conversionRatio", e.target.value)} className="h-7 w-20 text-xs" step="0.01" /></td>
-                  <td className="py-1 px-1.5"><CalculatedInput value={getCorrectedStrength(row)} className="h-7 font-medium" /></td>
-                  <td className="py-1 px-1.5"><CalculatedInput value={getDensity(row)} className="h-7" /></td>
-                  <td className="py-1 px-1.5"><Input type="number" value={row.excessVoidage} onChange={(e) => update(i, "excessVoidage", e.target.value)} className="h-7 w-20 text-xs" placeholder="1.00" step="0.01" /></td>
-                  <td className="py-1 px-1.5">
+                  <td className="py-1 px-1.5 border-r border-border/50"><Input type="number" value={row.diameter} onChange={(e) => update(i, "diameter", e.target.value)} className={`h-7 w-16 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "diameter") ? "border-destructive" : ""}`} placeholder="82" /></td>
+                  <td className="py-1 px-1.5 border-r border-border/50"><Input type="number" value={row.lengthBefore} onChange={(e) => update(i, "lengthBefore", e.target.value)} className="h-7 w-20 text-xs" placeholder="150" /></td>
+                  <td className="py-1 px-1.5 border-r border-border/50"><Input type="number" value={row.lengthAfter} onChange={(e) => update(i, "lengthAfter", e.target.value)} className={`h-7 w-20 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "lengthAfter") ? "border-destructive" : ""}`} placeholder="82" /></td>
+                  <td className="py-1 px-1.5 border-r border-border/50"><CalculatedInput value={getLDRatio(row)} className="h-7" /></td>
+                  <td className="py-1 px-1.5 border-r border-border/50"><CalculatedInput value={getArea(row)} className="h-7" /></td>
+                  <td className="py-1 px-1.5 border-r border-border/50"><CalculatedInput value={getVolume(row)} className="h-7" /></td>
+                  <td className="py-1 px-1.5 border-r border-border/50"><Input type="number" value={row.weightInAir} onChange={(e) => update(i, "weightInAir", e.target.value)} className={`h-7 w-20 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "weightInAir") ? "border-destructive" : ""}`} placeholder="0" /></td>
+                  <td className="py-1 px-1.5 border-r border-border/50"><Input type="number" value={row.load} onChange={(e) => update(i, "load", e.target.value)} className={`h-7 w-20 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "load") ? "border-destructive" : ""}`} placeholder="0" /></td>
+                  <td className="py-1 px-1.5 border-r border-border/50"><CalculatedInput value={getCoreStrength(row)} className="h-7" /></td>
+                  <td className="py-1 px-1.5 border-r border-border/50"><CalculatedInput value={getCdFactor(row)} className="h-7" /></td>
+                  <td className="py-1 px-1.5 border-r border-border/50"><Input type="number" value={row.cylinderToCubeRatio} onChange={(e) => update(i, "cylinderToCubeRatio", e.target.value)} className="h-7 w-20 text-xs" placeholder="1.25" step="0.01" /></td>
+                  <td className="py-1 px-1.5 border-r border-border/50"><Input type="number" value={row.caFactor} onChange={(e) => update(i, "caFactor", e.target.value)} className="h-7 w-20 text-xs" placeholder="1.00" step="0.01" /></td>
+                  <td className="py-1 px-1.5 border-r border-border/50"><Input type="number" value={row.cdcFactor} onChange={(e) => update(i, "cdcFactor", e.target.value)} className="h-7 w-20 text-xs" placeholder="1.00" step="0.01" /></td>
+                  <td className="py-1 px-1.5 border-r border-border/50"><Input type="number" value={row.cdAccuracyFactor} onChange={(e) => update(i, "cdAccuracyFactor", e.target.value)} className="h-7 w-20 text-xs" placeholder="1.00" step="0.01" /></td>
+                  <td className="py-1 px-1.5 border-r border-border/50"><Input type="number" value={row.conversionRatio} onChange={(e) => update(i, "conversionRatio", e.target.value)} className="h-7 w-20 text-xs" step="0.01" /></td>
+                  <td className="py-1 px-1.5 border-r border-border/50"><CalculatedInput value={getCorrectedStrength(row)} className="h-7 font-medium" /></td>
+                  <td className="py-1 px-1.5 border-r border-border/50"><CalculatedInput value={getDensity(row)} className="h-7" /></td>
+                  <td className="py-1 px-1.5 border-r border-border/50"><Input type="number" value={row.excessVoidage} onChange={(e) => update(i, "excessVoidage", e.target.value)} className="h-7 w-20 text-xs" placeholder="1.00" step="0.01" /></td>
+                  <td className="py-1 px-1.5 border-r border-border/50">
                     <Select value={row.failureMode} onValueChange={(v) => update(i, "failureMode", v)}>
                       <SelectTrigger className="h-7 w-full text-xs"><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -1031,7 +1031,7 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
                       </SelectContent>
                     </Select>
                   </td>
-                  <td className="py-1 px-1.5">
+                  <td className="py-1 px-1.5 border-r border-border/50">
                     <div className="flex flex-col gap-1">
                       {row.pileBeforeImage ? (
                         <div className="relative w-28 h-20">
