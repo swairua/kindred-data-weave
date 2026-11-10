@@ -1138,7 +1138,7 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
                     <div key={label} className="space-y-1">
                       <div className="flex h-48 items-center justify-center overflow-hidden rounded border bg-muted/30">
                         {src ? (
-                          <img src={src} alt={`Core ${row.coreId} ${label.toLowerCase()}`} className="h-full w-full object-contain" />
+                          <img src={coringImageUrl(src)} alt={`Core ${row.coreId} ${label.toLowerCase()}`} className="h-full w-full object-contain" />
                         ) : (
                           <span className="text-xs text-muted-foreground">No photo</span>
                         )}
