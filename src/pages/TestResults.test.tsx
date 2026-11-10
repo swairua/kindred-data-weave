@@ -170,7 +170,7 @@ describe("TestResults duplicate handling", () => {
     expect(await screen.findAllByRole("button", { name: "Open →" }, FIND)).toHaveLength(2);
     // Each test type is labelled on its own row.
     expect(screen.getAllByText("Particle Size Distribution").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Proctor Test").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Density/Moisture Content Relationship").length).toBeGreaterThan(0);
   });
   it("leaves a different project's duplicate rows listed", async () => {
     resultsMocks.listRecords.mockResolvedValue({
