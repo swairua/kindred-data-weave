@@ -1009,20 +1009,20 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
                   <td className="py-1 px-1.5"><Input type="number" value={row.diameter} onChange={(e) => update(i, "diameter", e.target.value)} className={`h-7 w-16 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "diameter") ? "border-destructive" : ""}`} placeholder="82" /></td>
                   <td className="py-1 px-1.5"><Input type="number" value={row.lengthBefore} onChange={(e) => update(i, "lengthBefore", e.target.value)} className="h-7 w-20 text-xs" placeholder="150" /></td>
                   <td className="py-1 px-1.5"><Input type="number" value={row.lengthAfter} onChange={(e) => update(i, "lengthAfter", e.target.value)} className={`h-7 w-20 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "lengthAfter") ? "border-destructive" : ""}`} placeholder="82" /></td>
-                  <td className="py-1 px-1.5"><CalculatedInput value={getLDRatio(row)} className="h-7" /></td>
-                  <td className="py-1 px-1.5"><CalculatedInput value={getArea(row)} className="h-7" /></td>
-                  <td className="py-1 px-1.5"><CalculatedInput value={getVolume(row)} className="h-7" /></td>
+                  <td className="py-1 px-1.5"><CalculatedInput value={getLDRatio(row)} className="h-7 w-24 px-1.5" /></td>
+                  <td className="py-1 px-1.5"><CalculatedInput value={getArea(row)} className="h-7 w-24 px-1.5" /></td>
+                  <td className="py-1 px-1.5"><CalculatedInput value={getVolume(row)} className="h-7 w-24 px-1.5" /></td>
                   <td className="py-1 px-1.5"><Input type="number" value={row.weightInAir} onChange={(e) => update(i, "weightInAir", e.target.value)} className={`h-7 w-20 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "weightInAir") ? "border-destructive" : ""}`} placeholder="0" /></td>
                   <td className="py-1 px-1.5"><Input type="number" value={row.load} onChange={(e) => update(i, "load", e.target.value)} className={`h-7 w-20 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "load") ? "border-destructive" : ""}`} placeholder="0" /></td>
-                  <td className="py-1 px-1.5"><CalculatedInput value={getCoreStrength(row)} className="h-7" /></td>
-                  <td className="py-1 px-1.5"><CalculatedInput value={getCdFactor(row)} className="h-7" /></td>
+                  <td className="py-1 px-1.5"><CalculatedInput value={getCoreStrength(row)} className="h-7 w-24 px-1.5" /></td>
+                  <td className="py-1 px-1.5"><CalculatedInput value={getCdFactor(row)} className="h-7 w-24 px-1.5" /></td>
                   <td className="py-1 px-1.5"><Input type="number" value={row.cylinderToCubeRatio} onChange={(e) => update(i, "cylinderToCubeRatio", e.target.value)} className="h-7 w-20 text-xs" placeholder="1.25" step="0.01" /></td>
                   <td className="py-1 px-1.5"><Input type="number" value={row.caFactor} onChange={(e) => update(i, "caFactor", e.target.value)} className="h-7 w-20 text-xs" placeholder="1.00" step="0.01" /></td>
                   <td className="py-1 px-1.5"><Input type="number" value={row.cdcFactor} onChange={(e) => update(i, "cdcFactor", e.target.value)} className="h-7 w-20 text-xs" placeholder="1.00" step="0.01" /></td>
                   <td className="py-1 px-1.5"><Input type="number" value={row.cdAccuracyFactor} onChange={(e) => update(i, "cdAccuracyFactor", e.target.value)} className="h-7 w-20 text-xs" placeholder="1.00" step="0.01" /></td>
                   <td className="py-1 px-1.5"><Input type="number" value={row.conversionRatio} onChange={(e) => update(i, "conversionRatio", e.target.value)} className="h-7 w-20 text-xs" step="0.01" /></td>
-                  <td className="py-1 px-1.5"><CalculatedInput value={getCorrectedStrength(row)} className="h-7 font-medium" /></td>
-                  <td className="py-1 px-1.5"><CalculatedInput value={getDensity(row)} className="h-7" /></td>
+                  <td className="py-1 px-1.5"><CalculatedInput value={getCorrectedStrength(row)} className="h-7 w-24 px-1.5 font-medium" /></td>
+                  <td className="py-1 px-1.5"><CalculatedInput value={getDensity(row)} className="h-7 w-24 px-1.5" /></td>
                   <td className="py-1 px-1.5"><Input type="number" value={row.excessVoidage} onChange={(e) => update(i, "excessVoidage", e.target.value)} className="h-7 w-20 text-xs" placeholder="1.00" step="0.01" /></td>
                   <td className="py-1 px-1.5">
                     <Select value={row.failureMode} onValueChange={(v) => update(i, "failureMode", v)}>
