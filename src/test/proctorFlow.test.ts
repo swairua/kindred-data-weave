@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createElement } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { clearProctorResults, loadProctorResult, saveProctorResult } from "@/lib/proctorPersistence";
-import { airVoidsCurve, airVoidsDensity, calculateProctor, calculateProctorPoint, createProctorPayload, createProctorRows, emptyProctorRecord, fitCompactionCurve, getProctorRecord, sampleCompactionCurve, zeroAirVoidsCurve, zeroAirVoidsDensity, type ProctorRow } from "@/lib/proctorRecords";
+import { airVoidsCurve, airVoidsDensity, assessFieldCompaction, calculateProctor, correctForOversize, calculateProctorPoint, compactionEnergy, createProctorPayload, createProctorRows, emptyProctorRecord, fitCompactionCurve, getProctorRecord, isReportableOptimum, parseAirVoidsTargets, sampleCompactionCurve, zeroAirVoidsCurve, zeroAirVoidsDensity, type ProctorRow } from "@/lib/proctorRecords";
 import { getExpectedTestType, hasRequiredSoilSampleMetadata, isInitialTestValid, isTestAllowed, toRecordMetadata } from "@/lib/recordTestWizard";
 import ProctorTest from "@/components/soil/ProctorTest";
 
@@ -174,7 +174,7 @@ describe("Proctor calculations", () => {
     expect(summary.mdd!).toBeGreaterThan(2200 / (1 + 15 / 105));
   });
 
-  it("uses the local curve around the measured maximum for the sheet's OMC and MDD", () => {
+  it("fits one least-squares parabola through all plotted points for the OMC and MDD", () => {
     const fit = fitCompactionCurve([
       { moisture: 9.1, dryDensity: 1412 },
       { moisture: 11.3, dryDensity: 1453 },
@@ -185,8 +185,79 @@ describe("Proctor calculations", () => {
     ]);
 
     expect(fit).not.toBeNull();
-    expect(fit!.omc).toBeCloseTo(14.73, 2);
-    expect(fit!.mdd).toBeCloseTo(1496.75, 1);
+    expect(fit!.omc).toBeCloseTo(14.462, 3);
+    expect(fit!.mdd).toBeCloseTo(1489.22, 1);
+    expect(fit!.rSquared).toBeCloseTo(0.9734, 3);
+  });
+
+  it("rejects a parabola whose vertex falls outside the neighbours of the measured maximum", () => {
+    // The measured peak is at 14, but the parabola's vertex lands near 11.6, below its neighbour at 12.
+    expect(fitCompactionCurve([
+      { moisture: 10, dryDensity: 1880 },
+      { moisture: 12, dryDensity: 1890 },
+      { moisture: 14, dryDensity: 1900 },
+      { moisture: 16, dryDensity: 1700 },
+      { moisture: 18, dryDensity: 1600 },
+    ])).toBeNull();
+  });
+
+  it("reports only a bracketed curve through at least five points as reportable", () => {
+    const threePoints = calculateProctor([point(), point({ moistureAdded: "70", containerWetMass: "150", containerDryMass: "132" }), point({ moistureAdded: "90", mouldWetMass: "3200", containerWetMass: "150", containerDryMass: "135" })], "1000");
+    expect(threePoints.optimumSource).toBe("curve");
+    expect(isReportableOptimum(threePoints)).toBe(false);
+    expect(isReportableOptimum(calculateProctor([point()], "1000"))).toBe(false);
+  });
+
+  it("computes compaction energy from the recorded effort in kJ per cubic metre", () => {
+    const standard = { layers: "3", blowsPerLayer: "27", rammerMass: "2.5", dropHeight: "300" };
+    const modified = { layers: "5", blowsPerLayer: "27", rammerMass: "4.5", dropHeight: "450" };
+    expect(compactionEnergy(standard, "1000")).toBeCloseTo(595.96, 2);
+    expect(compactionEnergy(modified, "1000")).toBeCloseTo(2681.8, 1);
+    expect(compactionEnergy({ ...standard, layers: "" }, "1000")).toBeNull();
+    expect(compactionEnergy(standard, "0")).toBeNull();
+  });
+
+  it("parses a list of air voids percentages and ignores invalid entries", () => {
+    expect(parseAirVoidsTargets("10, 5 ,5;abc, 0, 120")).toEqual([5, 10]);
+    expect(parseAirVoidsTargets("")).toEqual([]);
+  });
+
+  it("corrects the maximum dry density and optimum moisture for oversize particles", () => {
+    // 20 % oversize at Gs 2.65 in a 1800 kg/m3 finer fraction (ASTM D4718).
+    const corrected = correctForOversize(1800, 12, 20, 2.65);
+    expect(corrected.mdd).toBeCloseTo(1923.4, 0);
+    expect(corrected.omc).toBeCloseTo(9.6, 9);
+    expect(correctForOversize(1800, 12, 0, 2.65)).toEqual({ mdd: 1800, omc: 12 });
+  });
+
+  it("assesses field relative compaction against the reference maximum dry density", () => {
+    expect(assessFieldCompaction(1700, 1800, 95)).toEqual({ relativeCompaction: (1700 / 1800) * 100, acceptance: "fail" });
+    expect(assessFieldCompaction(1800, 1800, 95).acceptance).toBe("pass");
+    expect(assessFieldCompaction(1700, 1800, null).acceptance).toBe("no-limit");
+    expect(assessFieldCompaction(null, 1800, 95)).toEqual({ relativeCompaction: null, acceptance: "not-assessed" });
+  });
+
+  it("warns when a measured point plots above the zero air voids line", () => {
+    // A 3000 kg/m3 bulk density at 10 % moisture gives 2727 kg/m3, which Gs 2.7 cannot reach (2126 kg/m3).
+    const rows = [point({ mouldWetMass: "4000" })];
+    expect(calculateProctor(rows, "1000", 2.7).warnings.join(" ")).toMatch(/1 point plots above the zero air voids line/);
+    expect(calculateProctor(rows, "1000").warnings.join(" ")).not.toMatch(/zero air voids/);
+  });
+
+  it("warns when the specific gravity is outside the range of mineral soils", () => {
+    const rows = [point()];
+    expect(calculateProctor(rows, "1000", 2).warnings.join(" ")).toMatch(/Specific gravity 2 is outside the 2.4 to 2.9 range/);
+    expect(calculateProctor(rows, "1000", 2.7).warnings.join(" ")).not.toMatch(/outside the 2.4 to 2.9 range/);
+    expect(calculateProctor(rows, "1000").warnings.join(" ")).not.toMatch(/outside the 2.4 to 2.9 range/);
+  });
+
+  it("does not report an optimum from a curve that fits the points poorly", () => {
+    expect(isReportableOptimum({
+      omc: 14, mdd: 1500, bulkDensity: 1700, optimumSource: "curve", curve: null, rSquared: 0.97, pointCount: 5, warnings: [],
+    })).toBe(true);
+    expect(isReportableOptimum({
+      omc: 14, mdd: 1500, bulkDensity: 1700, optimumSource: "curve", curve: null, rSquared: 0.85, pointCount: 5, warnings: [],
+    })).toBe(false);
   });
 
   it("flags the curve-validity problems BS 1377-4:1990, 3.3 would not accept", () => {
@@ -314,13 +385,13 @@ describe("Proctor calculations", () => {
     expect(record.standardMouldVolume).toBe("1000");
     expect(record.modifiedMouldVolume).toBe("1000");
     expect(record.specificGravity).toBe("");
-    expect(record.airVoidsTarget).toBe("5");
+    expect(record.airVoidsTarget).toBe("5, 10");
 
     const loaded = getProctorRecord({ project: { records: [{ specificGravity: "2.72", airVoidsTarget: "10" }] } });
     expect(loaded.specificGravity).toBe("2.72");
     expect(loaded.airVoidsTarget).toBe("10");
-    // An older payload with no specific gravity still loads and falls back to the 5% line.
-    expect(getProctorRecord({ project: { records: [{}] } }).airVoidsTarget).toBe("5");
+    // An older payload with no specific gravity still loads and falls back to the 5% and 10% lines.
+    expect(getProctorRecord({ project: { records: [{}] } }).airVoidsTarget).toBe("5, 10");
   });
 
   it("normalizes legacy v1 rows without discarding directly-entered values", () => {
@@ -488,10 +559,11 @@ describe("Proctor record page", () => {
     expect(await screen.findByText(/Record results/)).toBeInTheDocument();
     expect(screen.getByText(/No data/)).toBeInTheDocument();
 
+    // Moisture 10-20% with the dry density peaking at 16%, so the curve is bracketed.
     fillPoints(
       ["50", "60", "70", "80", "90", "100"],
-      ["3000", "3000", "3000", "3000", "3000", "3000"],
-      ["140", "140", "140", "140", "140", "140"],
+      ["3155", "3223", "3277", "3319", "3346", "3358"],
+      ["140", "142", "144", "146", "148", "150"],
       ["130", "130", "130", "130", "130", "130"],
     );
 
@@ -513,6 +585,25 @@ describe("Proctor record page", () => {
     fireEvent.mouseDown(screen.getByRole("tab", { name: "Modified" }), { button: 0 });
     expect(await screen.findByText(/No data/)).toBeInTheDocument();
     expect(screen.getByText(/0\/6 modified points/)).toBeInTheDocument();
+  });
+
+  it("keeps the record In progress while the dry density has not turned over, and shows compaction energy", async () => {
+    render(createElement(MemoryRouter, null, createElement(ProctorTest, { testKey: "proctor" })));
+    expect(await screen.findByText(/Record results/)).toBeInTheDocument();
+    expect(screen.getByText(/596 kJ\/m³/)).toBeInTheDocument();
+
+    fillPoints(
+      ["50", "60", "70"],
+      ["3155", "3223", "3277"],
+      ["140", "142", "144"],
+      ["130", "130", "130"],
+    );
+    for (const letter of "ABC") {
+      fireEvent.change(screen.getByLabelText(`Container No., point ${letter}`), { target: { value: letter } });
+    }
+
+    expect(await screen.findByText(/In progress/)).toBeInTheDocument();
+    expect(screen.getByText(/Maximum dry density sits on the outermost completed point/)).toBeInTheDocument();
   });
 
   it("accepts a specific gravity and saves it with the record", async () => {

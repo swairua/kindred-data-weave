@@ -18,6 +18,14 @@ export interface ProctorRow {
 
 export type ProctorMethod = "standard" | "modified";
 
+/** Compaction effort as recorded on the sheet; blank means the field was not entered. */
+export interface ProctorEffort {
+  layers: string;
+  blowsPerLayer: string;
+  rammerMass: string;
+  dropHeight: string;
+}
+
 export interface ProctorRecord {
   label: string;
   sampleNumber: string;
@@ -33,10 +41,24 @@ export interface ProctorRecord {
   modifiedMouldVolume: string;
   standardRows: ProctorRow[];
   modifiedRows: ProctorRow[];
+  standardEffort: ProctorEffort;
+  modifiedEffort: ProctorEffort;
   /** Particle density of the soil, used to plot the zero air voids line. Blank when not determined. */
   specificGravity: string;
-  /** Air voids percentage for the second saturation line on the chart (5 is common in UK practice). */
+  /** Air voids percentages for the saturation lines drawn on the chart, comma separated. The zero air voids line is always drawn. */
   airVoidsTarget: string;
+  /** Percentage of the sample by dry mass removed as oversize before compaction. */
+  oversizePercent: string;
+  /** Oven-dried relative density of the oversize particles. */
+  oversizeSpecificGravity: string;
+  /** Field dry density of the total sample, compared with the laboratory maximum. */
+  fieldDryDensity: string;
+  /** Specified minimum relative compaction, as a percentage of maximum dry density. Blank when no limit applies. */
+  requiredRelativeCompaction: string;
+  /** Optimum moisture content as reported on the source test sheet. Blank when not reported. */
+  reportedOmc: string;
+  /** Maximum dry density as reported on the source test sheet. Blank when not reported. */
+  reportedMdd: string;
 }
 
 export interface ProctorPointCalculation {
@@ -51,7 +73,7 @@ export interface ProctorPointCalculation {
 /** Where OMC/MDD came from: the fitted compaction curve, the best measured point, or nothing usable. */
 export type ProctorOptimumSource = "curve" | "peak-point" | "none";
 
-/** Local peak parabola through the three readings around the measured maximum. */
+/** Least-squares parabola through the plotted points. */
 export interface ProctorCurveFit {
   a: number;
   b: number;
@@ -105,6 +127,10 @@ export const createProctorRows = (): ProctorRow[] => Array.from({ length: 6 }, (
   containerTare: "",
 }));
 
+// BS 1377-4:1990, 3.3.2.1 (2.5 kg rammer) and 3.5 (4.5 kg rammer), 1 L mould.
+const STANDARD_EFFORT: ProctorEffort = { layers: "3", blowsPerLayer: "27", rammerMass: "2.5", dropHeight: "300" };
+const MODIFIED_EFFORT: ProctorEffort = { layers: "5", blowsPerLayer: "27", rammerMass: "4.5", dropHeight: "450" };
+
 export const emptyProctorRecord = (metadata: RecordMetadata = {}): ProctorRecord => ({
   label: metadata.sampleId || "",
   sampleNumber: metadata.sampleNumber || "",
@@ -121,8 +147,16 @@ export const emptyProctorRecord = (metadata: RecordMetadata = {}): ProctorRecord
   modifiedMouldVolume: "1000",
   standardRows: createProctorRows(),
   modifiedRows: createProctorRows(),
+  standardEffort: { ...STANDARD_EFFORT },
+  modifiedEffort: { ...MODIFIED_EFFORT },
   specificGravity: "",
-  airVoidsTarget: "5",
+  airVoidsTarget: "5, 10",
+  oversizePercent: "",
+  oversizeSpecificGravity: "",
+  fieldDryDensity: "",
+  requiredRelativeCompaction: "",
+  reportedOmc: "",
+  reportedMdd: "",
 });
 
 const isObject = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
@@ -136,6 +170,21 @@ const emptyCalculation = (): ProctorPointCalculation => ({
   moistureContent: null,
   dryDensity: null,
 });
+
+const GRAVITY = 9.81;
+
+/** Compaction energy per unit volume, kJ/m3: layers x blows x rammer weight x drop height / mould volume. */
+export const compactionEnergy = (effort: ProctorEffort, mouldVolumeCm3: string): number | null => {
+  const layers = parseValue(effort.layers);
+  const blowsPerLayer = parseValue(effort.blowsPerLayer);
+  const rammerMass = parseValue(effort.rammerMass);
+  const dropHeight = parseValue(effort.dropHeight);
+  const volume = parseValue(mouldVolumeCm3);
+  const inputs = [layers, blowsPerLayer, rammerMass, dropHeight, volume];
+  if (inputs.some((value) => value === null || !Number.isFinite(value) || value <= 0)) return null;
+  const joulesPerCubicMetre = (layers! * blowsPerLayer! * rammerMass! * GRAVITY * (dropHeight! / 1000)) / (volume! * 1e-6);
+  return joulesPerCubicMetre / 1000;
+};
 
 // ---------------------------------------------------------------------------------------
 // Compaction curve - BS 1377-4:1990, 3.3 dry density/moisture content relationship
@@ -152,6 +201,9 @@ const CURVE_RECOMMENDED_POINTS = 5;
 
 /** A weaker fit than this is flagged so the technician re-checks the readings. */
 const CURVE_MIN_R_SQUARED = 0.9;
+
+/** Particle density range of mineral soils; values outside it usually mean a placeholder or a transcription error. */
+const MINERAL_SOIL_GS_RANGE = { min: 2.4, max: 2.9 };
 
 /** The five measured masses a technician must record before a point can be calculated. */
 type ProctorMeasurementField =
@@ -187,10 +239,9 @@ const solve3 = (m: number[][], v: number[]): number[] | null => {
 };
 
 /**
- * Fits a parabola through the three readings bracketing the measured maximum, then reads the
- * vertex as OMC/MDD. This follows the plotted-curve method without letting distant points flatten
- * the peak. The fit is rejected unless the peak is bracketed and the vertex stays between its
- * neighboring moisture contents.
+ * Least-squares parabola through all plotted points, read at its vertex as OMC/MDD. The fit is
+ * rejected unless the curve opens downward and the vertex lies between the neighbours of the
+ * measured maximum, so the peak is bracketed.
  */
 export const fitCompactionCurve = (points: ProctorCurvePoint[]): ProctorCurveFit | null => {
   const samples = points
@@ -204,10 +255,15 @@ export const fitCompactionCurve = (points: ProctorCurvePoint[]): ProctorCurveFit
   if (samples.filter((point) => point.dryDensity === peakDensity).length !== 1) return null;
   if (peakIndex === 0 || peakIndex === samples.length - 1) return null;
 
-  const neighbors = samples.slice(peakIndex - 1, peakIndex + 2);
+  const power = (k: number) => samples.reduce((sum, point) => sum + point.moisture ** k, 0);
+  const moment = (k: number) => samples.reduce((sum, point) => sum + point.moisture ** k * point.dryDensity, 0);
   const solved = solve3(
-    neighbors.map(({ moisture }) => [1, moisture, moisture ** 2]),
-    neighbors.map(({ dryDensity }) => dryDensity),
+    [
+      [power(0), power(1), power(2)],
+      [power(1), power(2), power(3)],
+      [power(2), power(3), power(4)],
+    ],
+    [moment(0), moment(1), moment(2)],
   );
   if (!solved) return null;
   const [c, b, a] = solved;
@@ -216,7 +272,7 @@ export const fitCompactionCurve = (points: ProctorCurvePoint[]): ProctorCurveFit
   const omc = -b / (2 * a);
   const mdd = a * omc * omc + b * omc + c;
   if (!Number.isFinite(omc) || !Number.isFinite(mdd) || mdd <= 0) return null;
-  if (omc < neighbors[0].moisture || omc > neighbors[2].moisture) return null;
+  if (omc < samples[peakIndex - 1].moisture || omc > samples[peakIndex + 1].moisture) return null;
 
   const mean = samples.reduce((sum, point) => sum + point.dryDensity, 0) / samples.length;
   const totalSpread = samples.reduce((sum, point) => sum + (point.dryDensity - mean) ** 2, 0);
@@ -253,6 +309,48 @@ export const airVoidsDensity = (
   if (saturation === null) return null;
   if (!Number.isFinite(airVoidsPercent) || airVoidsPercent < 0 || airVoidsPercent >= 100) return null;
   return saturation * (1 - airVoidsPercent / 100);
+};
+
+/** Air voids percentages typed as a list such as "5, 10"; invalid entries are ignored. */
+export const parseAirVoidsTargets = (value: string): number[] => [
+  ...new Set(
+    value.split(/[\s,;]+/)
+      .map((item) => Number(item))
+      .filter((percent) => Number.isFinite(percent) && percent > 0 && percent < 100),
+  ),
+].sort((a, b) => a - b);
+
+/**
+ * ASTM D4718 correction of the finer-fraction maximum dry density and optimum moisture to the
+ * total sample. The oversize is assumed to carry no water, so all of it sits in the finer fraction.
+ */
+export const correctForOversize = (
+  mdd: number,
+  omc: number,
+  oversizePercent: number,
+  oversizeSpecificGravity: number,
+): { mdd: number; omc: number } => {
+  const oversizeFraction = oversizePercent / 100;
+  return {
+    mdd: 1 / (oversizeFraction / (oversizeSpecificGravity * WATER_DENSITY) + (1 - oversizeFraction) / mdd),
+    omc: (1 - oversizeFraction) * omc,
+  };
+};
+
+export type FieldAcceptance = "pass" | "fail" | "no-limit" | "not-assessed";
+
+/** Relative compaction of a field density against the reference maximum dry density. */
+export const assessFieldCompaction = (
+  fieldDryDensity: number | null,
+  referenceMdd: number | null,
+  requiredPercent: number | null,
+): { relativeCompaction: number | null; acceptance: FieldAcceptance } => {
+  if (fieldDryDensity === null || referenceMdd === null || referenceMdd <= 0) {
+    return { relativeCompaction: null, acceptance: "not-assessed" };
+  }
+  const relativeCompaction = (fieldDryDensity / referenceMdd) * 100;
+  if (requiredPercent === null) return { relativeCompaction, acceptance: "no-limit" };
+  return { relativeCompaction, acceptance: relativeCompaction >= requiredPercent ? "pass" : "fail" };
 };
 
 const sampleRange = (from: number, to: number, samples: number): number[] => {
@@ -302,7 +400,7 @@ const emptySummary = (): ProctorSummary => ({
 });
 
 /** Flags the cases where BS 1377-4:1990, 3.3 would not accept the reported optimum at face value. */
-const proctorWarnings = (points: ProctorCurvePoint[], fit: ProctorCurveFit | null): string[] => {
+const proctorWarnings = (points: ProctorCurvePoint[], fit: ProctorCurveFit | null, specificGravity: number | null): string[] => {
   const warnings: string[] = [];
   if (points.length < CURVE_RECOMMENDED_POINTS) {
     warnings.push(
@@ -320,9 +418,36 @@ const proctorWarnings = (points: ProctorCurvePoint[], fit: ProctorCurveFit | nul
   if (fit && fit.rSquared < CURVE_MIN_R_SQUARED) {
     warnings.push(`Curve fit is poor (R2 = ${fit.rSquared.toFixed(2)}); check the readings and that the points bracket the peak.`);
   }
+  if (specificGravity !== null) {
+    if (specificGravity < MINERAL_SOIL_GS_RANGE.min || specificGravity > MINERAL_SOIL_GS_RANGE.max) {
+      warnings.push(
+        `Specific gravity ${specificGravity} is outside the ${MINERAL_SOIL_GS_RANGE.min} to ${MINERAL_SOIL_GS_RANGE.max} range of mineral soils; measure particle density before relying on the zero air voids lines.`,
+      );
+    }
+    const aboveZeroAirVoids = points.filter((point) => {
+      const limit = zeroAirVoidsDensity(specificGravity, point.moisture);
+      return limit !== null && point.dryDensity > limit;
+    }).length;
+    if (aboveZeroAirVoids > 0) {
+      warnings.push(
+        `${aboveZeroAirVoids} point${aboveZeroAirVoids === 1 ? " plots" : "s plot"} above the zero air voids line, which no compacted soil can reach; check the masses or the specific gravity.`,
+      );
+    }
+  }
   return warnings;
 };
 
+
+const normalizeEffort = (value: unknown, fallback: ProctorEffort): ProctorEffort => {
+  const source = isObject(value) ? value : {};
+  const field = (key: keyof ProctorEffort) => source[key] === undefined ? fallback[key] : readString(source[key]);
+  return {
+    layers: field("layers"),
+    blowsPerLayer: field("blowsPerLayer"),
+    rammerMass: field("rammerMass"),
+    dropHeight: field("dropHeight"),
+  };
+};
 
 const normalizeRows = (value: unknown, fallback: ProctorRow[]): ProctorRow[] => {
   if (!Array.isArray(value)) return fallback;
@@ -367,8 +492,16 @@ export const normalizeProctorRecord = (value: unknown, metadata: RecordMetadata 
     modifiedMouldVolume: readString(source.modifiedMouldVolume) || fallback.modifiedMouldVolume,
     standardRows: normalizeRows(source.standardRows, fallback.standardRows),
     modifiedRows: normalizeRows(source.modifiedRows, fallback.modifiedRows),
+    standardEffort: normalizeEffort(source.standardEffort, STANDARD_EFFORT),
+    modifiedEffort: normalizeEffort(source.modifiedEffort, MODIFIED_EFFORT),
     specificGravity: readString(source.specificGravity),
     airVoidsTarget: readString(source.airVoidsTarget) || fallback.airVoidsTarget,
+    oversizePercent: readString(source.oversizePercent),
+    oversizeSpecificGravity: readString(source.oversizeSpecificGravity),
+    fieldDryDensity: readString(source.fieldDryDensity),
+    requiredRelativeCompaction: readString(source.requiredRelativeCompaction),
+    reportedOmc: readString(source.reportedOmc),
+    reportedMdd: readString(source.reportedMdd),
   };
 };
 
@@ -429,15 +562,26 @@ export const calculateProctorPoint = (row: ProctorRow, mouldVolume: string): Pro
   return { wetMaterialMass, bulkDensity, waterMass, drySoilMass, moistureContent, dryDensity };
 };
 
+/** Only a bracketed fitted curve through enough points is reportable as complete (BS 1377-4:1990, 3.3). */
+export const isReportableOptimum = (summary: ProctorSummary): boolean =>
+  summary.optimumSource === "curve"
+  && summary.pointCount >= CURVE_RECOMMENDED_POINTS
+  && summary.rSquared !== null
+  && summary.rSquared >= CURVE_MIN_R_SQUARED;
+
 /**
  * Optimum moisture content and maximum dry density for one compaction method.
  *
  * BS 1377-4:1990, 3.3 determines these by drawing a smooth dry density/moisture content curve
- * through the plotted points and reading its peak. A local parabola through the three readings
- * around the measured maximum estimates that peak; unsupported fits fall back to the densest
- * measurement, and the caller is told which basis was used plus any reason to distrust it.
+ * through the plotted points and reading its peak. A least-squares parabola through the plotted
+ * points estimates that peak; unsupported fits fall back to the densest measurement, and the
+ * caller is told which basis was used plus any reason to distrust it.
  */
-export const calculateProctor = (rows: ProctorRow[], mouldVolume: string): ProctorSummary => {
+export const calculateProctor = (
+  rows: ProctorRow[],
+  mouldVolume: string,
+  specificGravity: number | null = null,
+): ProctorSummary => {
   const measured = rows
     .map((row) => calculateProctorPoint(row, mouldVolume))
     .filter((point): point is ProctorPointCalculation & { moistureContent: number; dryDensity: number } =>
@@ -448,7 +592,7 @@ export const calculateProctor = (rows: ProctorRow[], mouldVolume: string): Proct
     .map((point) => ({ moisture: point.moistureContent, dryDensity: point.dryDensity }))
     .sort((a, b) => a.moisture - b.moisture);
   const fit = fitCompactionCurve(points);
-  const warnings = proctorWarnings(points, fit);
+  const warnings = proctorWarnings(points, fit, specificGravity);
 
   if (fit) {
     return {

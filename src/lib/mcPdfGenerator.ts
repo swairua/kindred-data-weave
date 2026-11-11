@@ -12,7 +12,7 @@ import {
   type McPoint,
   type McVoidLine,
 } from "./mcChartGeometry";
-import { calculateProctorPoint, type ProctorRow, type ProctorSummary } from "./proctorRecords";
+import { calculateProctorPoint, type FieldAcceptance, type ProctorEffort, type ProctorRow, type ProctorSummary } from "./proctorRecords";
 
 /**
  * Density/moisture content relationship report laid out like the sheet issued
@@ -66,6 +66,19 @@ export interface McRecordView {
   rows: ProctorRow[];
 }
 
+export interface MoistureDensityPdfExtras {
+  effort: ProctorEffort;
+  energy: number | null;
+  /** Oversize-corrected MDD and OMC for the total sample, when an oversize fraction was recorded. */
+  oversize: { percent: number; specificGravity: number; mdd: number; omc: number } | null;
+  field: {
+    dryDensity: number;
+    relativeCompaction: number | null;
+    requiredPercent: number | null;
+    acceptance: FieldAcceptance;
+  } | null;
+}
+
 export interface MoistureDensityPdfOptions {
   projectName?: string;
   clientName?: string;
@@ -87,6 +100,7 @@ export interface MoistureDensityPdfOptions {
   voidLines: McVoidLine[];
   /** html2canvas capture of the on-screen chart, when one was produced. */
   chartImage: string | null;
+  extras?: MoistureDensityPdfExtras;
   skipDownload?: boolean;
 }
 
@@ -247,46 +261,108 @@ const drawMoistureTable = (d: jsPDF, x: number, y: number, o: MoistureDensityPdf
  * Height the results block will occupy, so the page-break decision can account for
  * it as well as the graph.
  */
-const resultsBlockHeight = (o: MoistureDensityPdfOptions, rowH = ROW_H): number => {
-  const rows = 2 + (o.summary.rSquared !== null ? 1 : 0) + o.summary.warnings.length;
-  return rows * rowH;
+const acceptanceText = (field: NonNullable<MoistureDensityPdfExtras["field"]>): string => {
+  const required = field.requiredPercent === null ? "" : ` (min. ${num(field.requiredPercent, 0)}%)`;
+  if (field.acceptance === "pass") return `Pass${required}`;
+  if (field.acceptance === "fail") return `Fail${required}`;
+  if (field.acceptance === "no-limit") return "No limit set";
+  return BLANK;
 };
 
-/** Maximum dry density, bulk density and optimum moisture content, as printed below the graph. */
-const drawResults = (d: jsPDF, x: number, y: number, o: MoistureDensityPdfOptions, rowH = ROW_H): number => {
-  const { summary } = o;
-  let cy = drawCells(d, x, y, rowH, [
-    { w: 44, text: "Maximum Dry Density (kg/m³):", label: true, bold: true, size: 5.8 },
-    { w: 26, text: num(summary.mdd, 0), align: "center", bold: true },
-    { w: 60, text: "Optimum Moisture Content (%):", label: true, bold: true, size: 5.8, align: "right" },
-    { w: 60, text: num(summary.omc, 1), align: "center", bold: true },
-  ]);
-  cy = drawCells(d, x, cy, rowH, [
-    { w: 44, text: "Bulk Density (kg/m³):", label: true, bold: true, size: 5.8 },
-    { w: 26, text: num(summary.bulkDensity, 0), align: "center", bold: true },
-    { w: 60, text: "Determined from:", label: true, bold: true, size: 5.8, align: "right" },
-    {
-      w: 60,
-      text: summary.optimumSource === "curve"
-        ? "Fitted compaction curve"
-        : summary.optimumSource === "peak-point" ? "Highest measured point" : BLANK,
-      align: "center",
-    },
-  ]);
-
-  const extra: Cell[] = [];
+/** One ruled row of results per entry, so long lines wrap onto their own row rather than overflowing. */
+const resultRows = (o: MoistureDensityPdfOptions): Cell[][] => {
+  const { summary, extras } = o;
+  const rows: Cell[][] = [
+    [
+      { w: 44, text: "Maximum Dry Density (kg/m³):", label: true, bold: true, size: 5.8 },
+      { w: 26, text: num(summary.mdd, 0), align: "center", bold: true },
+      { w: 60, text: "Optimum Moisture Content (%):", label: true, bold: true, size: 5.8, align: "right" },
+      { w: 60, text: num(summary.omc, 1), align: "center", bold: true },
+    ],
+    [
+      { w: 44, text: "Bulk Density (kg/m³):", label: true, bold: true, size: 5.8 },
+      { w: 26, text: num(summary.bulkDensity, 0), align: "center", bold: true },
+      { w: 60, text: "Determined from:", label: true, bold: true, size: 5.8, align: "right" },
+      {
+        w: 60,
+        text: summary.optimumSource === "curve"
+          ? "Fitted compaction curve"
+          : summary.optimumSource === "peak-point" ? "Highest measured point" : BLANK,
+        align: "center",
+      },
+    ],
+  ];
   if (summary.rSquared !== null) {
-    extra.push({ w: 44, text: "Curve R²:", label: true, bold: true, size: 5.8 });
-    extra.push({ w: 26, text: summary.rSquared.toFixed(4), align: "center" });
-    extra.push({ w: 60, text: "Particle density (Gs):", label: true, bold: true, size: 5.8, align: "right" });
-    extra.push({ w: 60, text: num(Number.parseFloat(o.record.specificGravity), 2), align: "center" });
+    rows.push([
+      { w: 44, text: "Curve R²:", label: true, bold: true, size: 5.8 },
+      { w: 26, text: summary.rSquared.toFixed(4), align: "center" },
+      { w: 60, text: "Particle density (Gs):", label: true, bold: true, size: 5.8, align: "right" },
+      { w: 60, text: num(Number.parseFloat(o.record.specificGravity), 2), align: "center" },
+    ]);
+  }
+  if (o.record.reportedMdd || o.record.reportedOmc) {
+    rows.push([
+      { w: 44, text: "Reported MDD (kg/m³):", label: true, bold: true, size: 5.8 },
+      { w: 26, text: o.record.reportedMdd || BLANK, align: "center" },
+      { w: 60, text: "Reported OMC (%):", label: true, bold: true, size: 5.8, align: "right" },
+      { w: 60, text: o.record.reportedOmc || BLANK, align: "center" },
+    ]);
+  }
+  if (extras) {
+    rows.push([
+      { w: 44, text: "Compaction energy (kJ/m³):", label: true, bold: true, size: 5.8 },
+      { w: 26, text: num(extras.energy, 0), align: "center" },
+      { w: 60, text: "Compaction effort:", label: true, bold: true, size: 5.8, align: "right" },
+      {
+        w: 60,
+        text: `${text(extras.effort.layers)} layers × ${text(extras.effort.blowsPerLayer)} blows, ${text(extras.effort.rammerMass)} kg rammer, ${text(extras.effort.dropHeight)} mm drop`,
+        align: "center",
+        size: 5.6,
+      },
+    ]);
+    if (extras.oversize) {
+      rows.push([
+        { w: 44, text: "Total-sample MDD (kg/m³):", label: true, bold: true, size: 5.8 },
+        { w: 26, text: num(extras.oversize.mdd, 0), align: "center", bold: true },
+        { w: 60, text: "Total-sample OMC (%):", label: true, bold: true, size: 5.8, align: "right" },
+        { w: 60, text: num(extras.oversize.omc, 1), align: "center", bold: true },
+      ]);
+      rows.push([
+        { w: 44, text: "Oversize removed (%):", label: true, bold: true, size: 5.8 },
+        { w: 26, text: num(extras.oversize.percent, 1), align: "center" },
+        { w: 60, text: "Oversize relative density:", label: true, bold: true, size: 5.8, align: "right" },
+        { w: 60, text: num(extras.oversize.specificGravity, 2), align: "center" },
+      ]);
+    }
+    if (extras.field) {
+      rows.push([
+        { w: 44, text: "Field dry density (kg/m³):", label: true, bold: true, size: 5.8 },
+        { w: 26, text: num(extras.field.dryDensity, 0), align: "center" },
+        { w: 60, text: "Relative compaction (%):", label: true, bold: true, size: 5.8, align: "right" },
+        {
+          w: 60,
+          text: extras.field.relativeCompaction === null
+            ? BLANK
+            : `${num(extras.field.relativeCompaction, 1)}  ${acceptanceText(extras.field)}`.trim(),
+          align: "center",
+        },
+      ]);
+    }
   }
   summary.warnings.forEach((warning) => {
-    extra.push({ w: 46, text: "Warning:", label: true, bold: true, size: 5.8 });
-    extra.push({ w: 144, text: warning, size: 5.6 });
+    rows.push([
+      { w: 46, text: "Warning:", label: true, bold: true, size: 5.8 },
+      { w: 144, text: warning, size: 5.6 },
+    ]);
   });
-  return extra.length === 0 ? cy : drawCells(d, x, cy, rowH, extra);
+  return rows;
 };
+
+const resultsBlockHeight = (o: MoistureDensityPdfOptions, rowH = ROW_H): number => resultRows(o).length * rowH;
+
+/** Maximum dry density, bulk density and optimum moisture content, as printed below the graph. */
+const drawResults = (d: jsPDF, x: number, y: number, o: MoistureDensityPdfOptions, rowH = ROW_H): number =>
+  resultRows(o).reduce((cy, cells) => drawCells(d, x, cy, rowH, cells), y);
 /**
  * The graph block is authored in the same 384.28-unit space as the on-screen
  * SVG. That space came off an A4 page in points, so one unit is 0.352778 mm and
