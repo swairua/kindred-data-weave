@@ -1009,8 +1009,8 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
                   <td className="py-1 px-1.5"><Input type="number" value={row.lengthBefore} onChange={(e) => update(i, "lengthBefore", e.target.value)} className="h-7 w-20 text-xs" placeholder="150" /></td>
                   <td className="py-1 px-1.5"><Input type="number" value={row.lengthAfter} onChange={(e) => update(i, "lengthAfter", e.target.value)} className={`h-7 w-20 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "lengthAfter") ? "border-destructive" : ""}`} placeholder="82" /></td>
                   <td className="py-1 px-1.5"><CalculatedInput value={getLDRatio(row)} className="h-7 w-24 px-1.5" /></td>
-                  <td className="py-1 px-1.5"><CalculatedInput value={getArea(row)} className="h-7 w-24 px-1.5" /></td>
-                  <td className="py-1 px-1.5"><CalculatedInput value={getVolume(row)} className="h-7 w-24 px-1.5" /></td>
+                  <td className="py-1 px-1.5"><CalculatedInput value={getArea(row)} className="h-7 w-28 px-1.5 text-xs" /></td>
+                  <td className="py-1 px-1.5"><CalculatedInput value={getVolume(row)} className="h-7 w-28 px-1.5 text-xs" /></td>
                   <td className="py-1 px-1.5"><Input type="number" value={row.weightInAir} onChange={(e) => update(i, "weightInAir", e.target.value)} className={`h-7 w-20 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "weightInAir") ? "border-destructive" : ""}`} placeholder="0" /></td>
                   <td className="py-1 px-1.5"><Input type="number" value={row.load} onChange={(e) => update(i, "load", e.target.value)} className={`h-7 w-20 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "load") ? "border-destructive" : ""}`} placeholder="0" /></td>
                   <td className="py-1 px-1.5"><CalculatedInput value={getCoreStrength(row)} className="h-7 w-24 px-1.5" /></td>
