@@ -11,7 +11,7 @@ import { type RecordMetadata, useTestData } from "@/context/TestDataContext";
 import { captureChartAsBase64 } from "@/lib/chartCapture";
 import { createRecord, deleteRecord, listRecords, updateRecord } from "@/lib/api";
 import { generateParticleSizeDistributionPDF } from "@/lib/psdPdfGenerator";
-import { calculateGrading, calculateGradationCoefficients, calculateHydrometer, calculateMoisture, type GradingRow } from "@/lib/gradingCalculations";
+import { calculateGrading, panMass, calculateGradationCoefficients, calculateHydrometer, calculateMoisture, type GradingRow } from "@/lib/gradingCalculations";
 import { mergePsdSeries } from "@/lib/psdChartGeometry";
 import { calculateAashtoGroupIndex, classifySoilAASHTO, classifySoilUSCS, getAashtoEvidenceWarnings, rateAashtoGroup } from "@/lib/soilClassification";
 import { toast } from "sonner";
@@ -295,15 +295,25 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
   );
   const calculations = useMemo(() => calculateGrading(sieveRows), [sieveRows]);
   const moisture = useMemo(() => calculateMoisture(record.moisture.wetMass, record.moisture.dryMass), [record.moisture]);
-  const fineMass = useMemo(() => {
-    const initial = parseNumber(record.samplePreparation.initialDryMass);
-    const washed = parseNumber(record.samplePreparation.washedOvenDryMass);
-    return initial !== null && washed !== null && initial > 0 && washed >= 0 && washed <= initial ? initial - washed : null;
-  }, [record.samplePreparation]);
-  const finesPercentage = useMemo(() => {
-    const initial = parseNumber(record.samplePreparation.initialDryMass);
-    return initial !== null && initial > 0 && fineMass !== null ? (fineMass / initial) * 100 : null;
-  }, [record.samplePreparation, fineMass]);
+  // Fines are what the pan holds out of the sieved mass, so they come from the sieve table
+  // rather than a separately typed washed mass that can disagree with it.
+  const fineMass = useMemo(() => panMass(sieveRows), [sieveRows]);
+  const washedOvenDryMass = useMemo(
+    () => fineMass === null ? null : calculations.totalWeight - fineMass,
+    [fineMass, calculations.totalWeight],
+  );
+  const finesPercentage = useMemo(
+    () => fineMass === null || calculations.totalWeight <= 0 ? null : (fineMass / calculations.totalWeight) * 100,
+    [fineMass, calculations.totalWeight],
+  );
+  const preparedRecord = useMemo<GradingRecord>(() => ({
+    ...record,
+    sieveRows,
+    samplePreparation: {
+      ...record.samplePreparation,
+      washedOvenDryMass: washedOvenDryMass === null ? "" : washedOvenDryMass.toFixed(2),
+    },
+  }), [record, sieveRows, washedOvenDryMass]);
   const hydrometer = useMemo(() => calculateHydrometer(
     record.hydrometerRows,
     { ...DEFAULT_HYDROMETER_INPUTS, ...record.hydrometerInputs },
@@ -522,7 +532,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       title: project.projectName,
       clientName: project.clientName,
       date: project.projectDate || project.date,
-      records: [{ ...record, sieveRows }],
+      records: [preparedRecord],
     },
     calculations: {
       ...calculations,
@@ -539,7 +549,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       uscsSymbol: uscsResult,
       aashtoGroup: aashtoResult,
     },
-  }), [project.projectName, project.clientName, project.projectDate, project.date, record, sieveRows, calculations, gradation, moisture, hydrometer, fineMass, finesPercentage, classificationValues, groupIndex, uscsResult, aashtoResult]);
+  }), [project.projectName, project.clientName, project.projectDate, project.date, preparedRecord, calculations, gradation, moisture, hydrometer, fineMass, finesPercentage, classificationValues, groupIndex, uscsResult, aashtoResult]);
 
   const status = calculations.totalWeight === 0 ? "not-started" : calculations.percentageRetained.some((value) => value > 0) ? "in-progress" : "not-started";
   const save = useCallback(async () => {
@@ -659,7 +669,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
   /** The BS 1377-2 sheet, shared by the download and the print window. */
   const buildPdfOptions = () => ({
     ...exportMetadata,
-    record,
+    record: preparedRecord,
     grading: { ...calculations, ...gradation },
     hydrometer,
     hydrometerInputs: { ...DEFAULT_HYDROMETER_INPUTS, ...record.hydrometerInputs },
@@ -783,7 +793,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
         <RecordSection title="Sample preparation">
           <div className="grid gap-px overflow-hidden rounded-md border sm:grid-cols-2">
             <RecordField label="Initial air-dried mass (g) *" value={record.samplePreparation.initialDryMass} placeholder="e.g. 669" onChange={(value) => updateNested("samplePreparation", "initialDryMass", value)} />
-            <RecordField label="Washed & oven-dried mass (g) *" value={record.samplePreparation.washedOvenDryMass} placeholder="e.g. 480" onChange={(value) => updateNested("samplePreparation", "washedOvenDryMass", value)} />
+            <CalculatedField label="Washed & oven-dried mass (g)" value={washedOvenDryMass === null ? "auto" : washedOvenDryMass.toFixed(1)} />
             <CalculatedField label="Fine mass (g)" value={fineMass === null ? "auto" : fineMass.toFixed(1)} />
             <CalculatedField label="Fines %" value={formatValue(finesPercentage, 1)} />
           </div>

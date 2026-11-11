@@ -95,6 +95,26 @@ const savedResults = [
       },
     },
   },
+  {
+    // Sieved 176.4 g: 40.22 g on No. 4, 9.35 g on 0.15 mm, 126.83 g in the pan. The stored
+    // washed mass is stale (151.6 g, the mass left over from quartering) and must be ignored.
+    id: "93",
+    project_id: "42",
+    test_key: "grading",
+    payload_json: {
+      project: {
+        records: [{
+          sampleNumber: "Quartered sample",
+          samplePreparation: { initialDryMass: "328.0", washedOvenDryMass: "151.6" },
+          sieveRows: [
+            { sieveSize: "4.75 (No. 4)", weightRetained: "40.22" },
+            { sieveSize: "0.15", weightRetained: "9.35" },
+            { sieveSize: "<0.063", weightRetained: "126.83" },
+          ],
+        }],
+      },
+    },
+  },
 ];
 
 beforeAll(() => {
@@ -244,6 +264,21 @@ describe("GradingTest selected record", () => {
     expect(screen.getByText("No. 10 passing P10 (%)").closest("label")).toHaveTextContent("auto");
     expect(screen.getByText("No. 40 passing P40 (%)").closest("label")).toHaveTextContent("auto");
     expect(screen.getByText("Fines (%)").closest("label")).toHaveTextContent("20.0");
+  });
+
+  it("derives fines and washed mass from the sieve table, ignoring a stale washed value", async () => {
+    render(
+      <MemoryRouter initialEntries={["/tests?projectId=42&resultId=93#grading"]}>
+        <ProjectContext.Provider value={{ projectName: "Grading project", clientName: "Client", date: "2026-06-12", currentProjectId: 42 }}>
+          <GradingTest testKey="grading" />
+        </ProjectContext.Provider>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Quartered sample")).toBeInTheDocument();
+    expect(screen.getByText("Fines %").parentElement).toHaveTextContent("71.9");
+    expect(screen.getByText("Fine mass (g)").parentElement).toHaveTextContent("126.8");
+    expect(screen.getByText("Washed & oven-dried mass (g)").parentElement).toHaveTextContent("49.6");
   });
 
   it("verifies A-1-b from P40 while flagging only the missing No. 10", async () => {
