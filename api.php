@@ -1392,15 +1392,27 @@ try {
             $sourceTable = 'admin_images';
         }
 
+        $uploadsRoot = realpath(__DIR__ . '/uploads/');
+
         if (!$row) {
+            // Some coring images predate the upload-coring-photo/admin_images rows: the
+            // path is only referenced from the test result payload while the file itself
+            // still lives under /uploads/. Remove the orphan so "delete" behaves the same
+            // for every image instead of failing with a misleading 404.
+            $orphanPath = realpath(__DIR__ . $filePath);
+            if ($orphanPath && $uploadsRoot && strpos($orphanPath, $uploadsRoot) === 0) {
+                if (is_file($orphanPath)) {
+                    @unlink($orphanPath);
+                }
+                respond(['success' => true, 'message' => 'Photo deleted']);
+            }
             respond(['error' => 'Photo not found or already linked'], 404);
         }
 
+        // Unlink inside the uploads tree; /uploads/coring/ is nested below /uploads/,
+        // so the single root check covers both new and legacy paths.
         $realPath = realpath(__DIR__ . $row['file_path']);
-        $coringDir = realpath(__DIR__ . '/uploads/coring/');
-        $uploadsDir = realpath(__DIR__ . '/uploads/');
-        $validDir = $coringDir ?: $uploadsDir;
-        if ($realPath && $validDir && strpos($realPath, $validDir) === 0 && file_exists($realPath)) {
+        if ($realPath && $uploadsRoot && strpos($realPath, $uploadsRoot) === 0 && is_file($realPath)) {
             @unlink($realPath);
         }
 
