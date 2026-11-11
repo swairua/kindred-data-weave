@@ -253,6 +253,21 @@ const parseNumber = (value: string) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const PAN_REMAINDER_SIZE = "<0.075";
+
+/** The <0.075 pan mass is the dry mass less every other retained mass; blank until both are entered. */
+const withPanRemainder = (rows: GradingRow[], dryMass: string): GradingRow[] => {
+  const index = rows.findIndex((row) => row.sieveSize === PAN_REMAINDER_SIZE);
+  if (index < 0) return rows;
+  const dry = parseNumber(dryMass);
+  const otherMasses = rows.flatMap((row, rowIndex) => rowIndex === index ? [] : [parseNumber(row.weightRetained)]);
+  const enteredOthers = otherMasses.filter((mass): mass is number => mass !== null);
+  const remainder = dry !== null && dry > 0 && enteredOthers.length > 0
+    ? (dry - enteredOthers.reduce((sum, mass) => sum + mass, 0)).toFixed(2)
+    : "";
+  return rows.map((row, rowIndex) => rowIndex === index ? { ...row, weightRetained: remainder } : row);
+};
+
 const GradingTest = ({ testKey }: GradingTestProps) => {
   const project = useProject();
   const testData = useTestData();
@@ -277,7 +292,11 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
-  const calculations = useMemo(() => calculateGrading(record.sieveRows), [record.sieveRows]);
+  const sieveRows = useMemo(
+    () => withPanRemainder(record.sieveRows, record.samplePreparation.initialDryMass),
+    [record.sieveRows, record.samplePreparation.initialDryMass],
+  );
+  const calculations = useMemo(() => calculateGrading(sieveRows), [sieveRows]);
   const moisture = useMemo(() => calculateMoisture(record.moisture.wetMass, record.moisture.dryMass), [record.moisture]);
   const fineMass = useMemo(() => {
     const initial = parseNumber(record.samplePreparation.initialDryMass);
@@ -505,7 +524,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       title: project.projectName,
       clientName: project.clientName,
       date: project.projectDate || project.date,
-      records: [record],
+      records: [{ ...record, sieveRows }],
     },
     calculations: {
       ...calculations,
@@ -522,7 +541,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       uscsSymbol: uscsResult,
       aashtoGroup: aashtoResult,
     },
-  }), [project.projectName, project.clientName, project.projectDate, project.date, record, calculations, gradation, moisture, hydrometer, fineMass, finesPercentage, classificationValues, groupIndex, uscsResult, aashtoResult]);
+  }), [project.projectName, project.clientName, project.projectDate, project.date, record, sieveRows, calculations, gradation, moisture, hydrometer, fineMass, finesPercentage, classificationValues, groupIndex, uscsResult, aashtoResult]);
 
   const status = calculations.totalWeight === 0 ? "not-started" : calculations.percentageRetained.some((value) => value > 0) ? "in-progress" : "not-started";
   const save = useCallback(async () => {
@@ -821,7 +840,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
 
       <div className="grid gap-3 md:grid-cols-[3fr_5fr]">
         <RecordSection title="Wet & dry sieve analysis to BS 1377-2:1990:9.2/9.3">
-          <div className="overflow-x-auto" ref={sieveNav.ref} onKeyDown={sieveNav.onKeyDown}><table className="record-table grading-sieve-table w-full table-fixed"><thead><tr className="h-16"><th>Sieve size (mm)</th><th>Retained mass (g)</th><th>% retained</th><th>Cumulative passing (%)</th></tr></thead><tbody>{record.sieveRows.map((row, index) => <tr key={`${row.sieveSize}-${index}`} className="h-10"><td className="font-semibold">{row.sieveSize}</td><td><Input type="number" min="0" value={row.weightRetained} onChange={(event) => updateSieve(index, event.target.value)} className="record-input h-7 min-w-0 w-full px-1 text-center" /></td><td className="calculated-cell">{calculations.totalWeight > 0 ? calculations.percentageRetained[index].toFixed(1) : "auto"}</td><td className="calculated-cell">{calculations.cumulativePassing[index] === null ? "auto" : calculations.cumulativePassing[index]?.toFixed(1)}</td></tr>)}<tr className="h-10 font-semibold"><td>TOTAL</td><td className="calculated-cell">{calculations.totalWeight ? calculations.totalWeight.toFixed(1) : "auto"}</td><td className="calculated-cell">{calculations.totalWeight ? "100.0" : "auto"}</td><td className="calculated-cell">—</td></tr>{Array.from({ length: sieveFillerRows }, (_, index) => <tr key={`sieve-filler-${index}`} className="h-10"><td /><td /><td /><td /></tr>)}</tbody></table></div>
+          <div className="overflow-x-auto" ref={sieveNav.ref} onKeyDown={sieveNav.onKeyDown}><table className="record-table grading-sieve-table w-full table-fixed"><thead><tr className="h-16"><th>Sieve size (mm)</th><th>Retained mass (g)</th><th>% retained</th><th>Cumulative passing (%)</th></tr></thead><tbody>{sieveRows.map((row, index) => <tr key={`${row.sieveSize}-${index}`} className="h-10"><td className="font-semibold">{row.sieveSize}</td><td><Input type="number" min="0" value={row.weightRetained} readOnly={row.sieveSize === PAN_REMAINDER_SIZE} placeholder={row.sieveSize === PAN_REMAINDER_SIZE ? "auto" : undefined} onChange={(event) => updateSieve(index, event.target.value)} className="record-input h-7 min-w-0 w-full px-1 text-center" /></td><td className="calculated-cell">{calculations.totalWeight > 0 ? calculations.percentageRetained[index].toFixed(1) : "auto"}</td><td className="calculated-cell">{calculations.cumulativePassing[index] === null ? "auto" : calculations.cumulativePassing[index]?.toFixed(1)}</td></tr>)}<tr className="h-10 font-semibold"><td>TOTAL</td><td className="calculated-cell">{calculations.totalWeight ? calculations.totalWeight.toFixed(1) : "auto"}</td><td className="calculated-cell">{calculations.totalWeight ? "100.0" : "auto"}</td><td className="calculated-cell">—</td></tr>{Array.from({ length: sieveFillerRows }, (_, index) => <tr key={`sieve-filler-${index}`} className="h-10"><td /><td /><td /><td /></tr>)}</tbody></table></div>
         </RecordSection>
 
         <RecordSection title="Hydrometer analysis to BS 1377-2:1990:9.5">
