@@ -15,7 +15,7 @@ import { pdfFileName, printPDFDocument } from "@/lib/pdfGenerator";
 import { formatReportDate } from "@/lib/compressivePdfGenerator";
 import { useTestReport } from "@/hooks/useTestReport";
 import { useNavigate } from "react-router-dom";
-import { API_BASE_URL, buildApiUrl, saveReceptionConsignment, listRecords, readRecord, uploadCoringPhoto, discardCoringPhoto } from "@/lib/api";
+import { API_BASE_URL, buildApiUrl, getSessionToken, saveReceptionConsignment, listRecords, readRecord, uploadCoringPhoto, discardCoringPhoto } from "@/lib/api";
 import { emptyReceptionConsignment, nextRcNo, emptyReceptionSample, type ReceptionConsignmentInput, type ReceptionSampleInput } from "@/lib/reception";
 import { SessionContext } from "@/context/SessionContext";
 import { toast } from "sonner";
@@ -98,29 +98,41 @@ const CORING_ROW_DEFAULTS: CoringRow = {
 };
 
 const coringImageUrl = (path: string): string => {
-  // Direct file URL for coring image previews (matches upload location)
-  return `https://lab.wayrus.co.ke${path}`;
+  // Normalise coring image paths so they always resolve to
+  // https://lab.wayrus.co.ke/uploads/coring/filename.jpg
+  // regardless of how the path is stored in the database.
+  let p = path.startsWith("/") ? path : "/" + path;
+  if (p.startsWith("/uploads/") && !p.startsWith("/uploads/coring/")) {
+    const afterUploads = p.slice("/uploads/".length);
+    p = "/uploads/coring/" + afterUploads;
+  }
+  // Use serve-image endpoint with session token for proper CORS/auth headers
+  const apiUrl = new URL(buildApiUrl());
+  apiUrl.searchParams.set("action", "serve-image");
+  apiUrl.searchParams.set("file_path", p);
+  return apiUrl.toString();
 };
 
 const loadImageAsDataUrl = async (path: string | undefined): Promise<string | undefined> => {
   if (!path) return undefined;
-  
-  // Direct file URL for coring images (matches upload location at /uploads/coring/)
-  const url = `https://lab.wayrus.co.ke${path}`;
+   
+  // Normalise coring image paths so they always resolve to
+  // https://lab.wayrus.co.ke/uploads/coring/filename.jpg
+  let p = path.startsWith("/") ? path : "/" + path;
+  if (p.startsWith("/uploads/") && !p.startsWith("/uploads/coring/")) {
+    const afterUploads = p.slice("/uploads/".length);
+    p = "/uploads/coring/" + afterUploads;
+  }
+  const apiUrl = new URL(buildApiUrl());
+  apiUrl.searchParams.set("action", "serve-image");
+  apiUrl.searchParams.set("file_path", p);
+  const url = apiUrl.toString();
+  const sessionToken = getSessionToken();
   
   try {
-    const response = await fetch(url, { credentials: "include" });
-    if (!response.ok) {
-      const errorMsg = `[CoringTest] Failed to load image: ${url} (${response.status} ${response.statusText})`;
-      console.error(errorMsg);
-      throw new Error(errorMsg);
-    }
-    const blob = await response.blob();
-    return await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
+    const response = await fetch(url, { 
+      credentials: "include",
+      headers: sessionToken ? { "X-Session-Token": sessionToken } : {} 
     });
   } catch (error) {
     const errorMsg = `[CoringTest] Failed to load test image ${path}: ${error instanceof Error ? error.message : String(error)}`;
@@ -564,6 +576,12 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
     }
     
     try {
+      // Replace: delete the existing image before uploading the new one
+      const existingPath = rows[index]?.[field];
+      if (existingPath) {
+        await discardCoringPhoto(existingPath);
+      }
+
       const filePath = await uploadCoringPhoto(file, field === "pileBeforeImage" ? "before" : "after");
 
       if (filePath.includes("..") || filePath.includes("//")) {

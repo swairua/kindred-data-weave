@@ -1,6 +1,7 @@
 import { jsPDF } from "jspdf";
 import { fetchAdminImagesAsBase64, type AdminImages } from "./imageUtils";
 import { imageParts } from "./pdfGenerator";
+import { getSessionToken } from "./api";
 
 export interface CoringProjectInfo {
   title: string;
@@ -72,6 +73,28 @@ const drawFittedImage = (doc: jsPDF, dataUrl: string, x: number, y: number, w: n
     doc.addImage(base64, format, dx, y + (h - dh) / 2, dw, dh, undefined, "FAST");
   } catch (error) {
     console.warn("[CoringPDF] Could not place image:", error);
+  }
+};
+
+/** Fetch a remote image and convert it to a base64 data URL for embedding in the PDF. */
+const fetchImageAsDataUrl = async (url: string): Promise<string | null> => {
+  try {
+    const sessionToken = getSessionToken();
+    const response = await fetch(url, { 
+      credentials: "include",
+      headers: sessionToken ? { "X-Session-Token": sessionToken } : {} 
+    });
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.warn("[CoringPDF] Could not fetch image:", url, error);
+    return null;
   }
 };
 
@@ -273,8 +296,15 @@ export const buildCoringReportPDF = async (project: CoringProjectInfo, cores: Co
     console.warn("[CoringPDF] Could not load header/stamp images, exporting without them:", error);
   }
 
+  // Fetch core before/after images as base64 data URLs for PDF embedding
+  const coresWithImages = await Promise.all(cores.map(async (core) => {
+    const beforeDataUrl = core.beforeImage ? await fetchImageAsDataUrl(`https://lab.wayrus.co.ke${core.beforeImage}`) : null;
+    const afterDataUrl = core.afterImage ? await fetchImageAsDataUrl(`https://lab.wayrus.co.ke${core.afterImage}`) : null;
+    return { ...core, beforeImage: beforeDataUrl, afterImage: afterDataUrl };
+  }));
+
   const doc = new jsPDF({ unit: "pt", format: "letter" });
-  cores.forEach((core, index) => {
+  coresWithImages.forEach((core, index) => {
     if (index > 0) doc.addPage();
     drawCorePage(doc, project, core, images);
   });
