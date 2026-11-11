@@ -12,12 +12,15 @@ import {
   airVoidsCurve,
   calculateProctor,
   calculateProctorPoint,
+  compactionEnergy,
   createProctorPayload,
   emptyProctorRecord,
   getProctorRecord,
+  isReportableOptimum,
   sampleCompactionCurve,
   zeroAirVoidsCurve,
   type ProctorCurvePoint,
+  type ProctorEffort,
   type ProctorMethod,
   type ProctorPointCalculation,
   type ProctorRecord,
@@ -76,6 +79,9 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
   const mouldVolume = type === "standard" ? record.standardMouldVolume : record.modifiedMouldVolume;
   const setRowsKey = type === "standard" ? "standardRows" : "modifiedRows";
   const setVolumeKey = type === "standard" ? "standardMouldVolume" : "modifiedMouldVolume";
+  const effort = type === "standard" ? record.standardEffort : record.modifiedEffort;
+  const setEffortKey = type === "standard" ? "standardEffort" : "modifiedEffort";
+  const energy = compactionEnergy(effort, mouldVolume);
 
   useEffect(() => {
     // A record started from an existing project (?newRecord=1) opens blank with no row id,
@@ -161,13 +167,14 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
   // Completion is judged on the method on screen, as in the other soil records, so a record that
   // only carries the standard test can still be reported as complete.
   const startedRows = rows.filter(isRowStarted).length;
-  const filledRows = pointCalculations.filter((point, index) =>
-    point.moistureContent !== null
+  const isPointComplete = (point: ProctorPointCalculation, row: ProctorRow) => point.moistureContent !== null
     && point.dryDensity !== null
-    && hasValue(rows[index].moistureAdded)
-    && hasValue(rows[index].containerNumber),
-  ).length;
-  const status = startedRows === 0 ? "No data" : filledRows < rows.length ? "In progress" : "Complete";
+    && hasValue(row.moistureAdded)
+    && hasValue(row.containerNumber);
+  const filledRows = pointCalculations.filter((point, index) => isPointComplete(point, rows[index])).length;
+  const everyStartedRowComplete = rows.every((row, index) => !isRowStarted(row) || isPointComplete(pointCalculations[index], row));
+  const isComplete = startedRows > 0 && everyStartedRowComplete && isReportableOptimum(optimum);
+  const status = startedRows === 0 ? "No data" : isComplete ? "Complete" : "In progress";
   useTestReport("proctor", totalPoints, resultFields, undefined, startedPoints);
 
   const updateRow = (index: number, field: ProctorInputField, value: string) => {
@@ -180,6 +187,11 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
 
   const updateMouldVolume = (value: string) => {
     setRecord((current) => ({ ...current, [setVolumeKey]: value }));
+    setSaveStatus("idle");
+  };
+
+  const updateEffort = (field: keyof ProctorEffort, value: string) => {
+    setRecord((current) => ({ ...current, [setEffortKey]: { ...current[setEffortKey], [field]: value } }));
     setSaveStatus("idle");
   };
 
@@ -218,9 +230,7 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
     setSaveStatus("saving");
     setError(null);
     // Completion follows the method on screen so a standard-only test is still reportable.
-    const recordStatus = totalPoints === 0
-      ? (startedPoints === 0 ? "not-started" : "in-progress")
-      : filledRows < rows.length ? "in-progress" : "completed";
+    const recordStatus = startedPoints === 0 ? "not-started" : isComplete ? "completed" : "in-progress";
     const payload = createProctorPayload({
       title: project.projectName,
       clientName: project.clientName,
@@ -359,6 +369,13 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
             <Button variant="outline" size="sm" className="h-7 text-[11px]" onClick={addRow} disabled={rows.length >= MAX_POINTS}>Add point</Button>
           </div>
         </div>
+        <div className="flex flex-wrap items-center gap-3 border-b px-3 py-2 text-[10px] text-muted-foreground">
+          <label className="flex items-center gap-2"><span>Layers</span><Input aria-label={`${methodLabel(type)} layers`} type="number" min="1" step="1" value={effort.layers} onChange={(event) => updateEffort("layers", event.target.value)} className="record-input h-7 w-16" /></label>
+          <label className="flex items-center gap-2"><span>Blows per layer</span><Input aria-label={`${methodLabel(type)} blows per layer`} type="number" min="1" step="1" value={effort.blowsPerLayer} onChange={(event) => updateEffort("blowsPerLayer", event.target.value)} className="record-input h-7 w-16" /></label>
+          <label className="flex items-center gap-2"><span>Rammer mass (kg)</span><Input aria-label={`${methodLabel(type)} rammer mass`} type="number" min="0" step="any" value={effort.rammerMass} onChange={(event) => updateEffort("rammerMass", event.target.value)} className="record-input h-7 w-20" /></label>
+          <label className="flex items-center gap-2"><span>Drop height (mm)</span><Input aria-label={`${methodLabel(type)} drop height`} type="number" min="0" step="any" value={effort.dropHeight} onChange={(event) => updateEffort("dropHeight", event.target.value)} className="record-input h-7 w-20" /></label>
+          <span className="ml-auto">Compaction energy <strong className="font-mono text-foreground">{energy === null ? "—" : energy.toFixed(0)} kJ/m³</strong></span>
+        </div>
         <div
           className="overflow-x-auto"
           ref={gridNav.ref}
@@ -399,6 +416,7 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
           fitted={fittedPoints}
           voidLines={voidLines}
         />
+        {specificGravity === null && <p className="mt-2 text-[10px] text-muted-foreground">Enter specific gravity to draw the zero air voids line.</p>}
         <div className="mt-3 grid gap-px overflow-hidden rounded-md border sm:grid-cols-2 lg:grid-cols-4">
           <ResultField label="Maximum Dry Density (kg/m³)" value={displayDensity(optimum.mdd)} />
           <ResultField label="Bulk Density at OMC (kg/m³)" value={displayDensity(optimum.bulkDensity)} />
