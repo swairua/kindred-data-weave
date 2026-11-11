@@ -82,7 +82,7 @@ interface GradingPayload {
   calculations: ReturnType<typeof calculateGrading> & ReturnType<typeof calculateMoisture> & ReturnType<typeof calculateHydrometer> & {
     fineMass: number | null;
     finesPercentage: number | null;
-    initialOvenDryMass: number | null;
+    moistureCorrectedMass: number | null;
     gravelPercentage: number | null;
     sandPercentage: number | null;
     sieveFinesPercentage: number | null;
@@ -291,25 +291,23 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
   const [error, setError] = useState<string | null>(null);
 
   const moisture = useMemo(() => calculateMoisture(record.moisture.wetMass, record.moisture.dryMass), [record.moisture]);
-  const initialOvenDryMass = useMemo(() => {
+  const moistureCorrectedMass = useMemo(() => {
     const initialMass = parseNumber(record.samplePreparation.initialDryMass);
-    const wetMass = parseNumber(record.moisture.wetMass);
-    const dryMass = parseNumber(record.moisture.dryMass);
     if (initialMass === null) return null;
-    if (moisture.waterWeight === null || wetMass === null || dryMass === null || wetMass <= 0) return initialMass;
-    return initialMass * dryMass / wetMass;
-  }, [record.samplePreparation.initialDryMass, record.moisture.wetMass, record.moisture.dryMass, moisture.waterWeight]);
+    if (moisture.moistureContent === null) return initialMass;
+    return initialMass - (initialMass * moisture.moistureContent) / 100;
+  }, [record.samplePreparation.initialDryMass, moisture.moistureContent]);
   const sieveRows = useMemo(
-    () => withPanRemainder(record.sieveRows, initialOvenDryMass),
-    [record.sieveRows, initialOvenDryMass],
+    () => withPanRemainder(record.sieveRows, moistureCorrectedMass),
+    [record.sieveRows, moistureCorrectedMass],
   );
   const calculations = useMemo(() => calculateGrading(sieveRows), [sieveRows]);
   // Fines are what the pan holds out of the sieved mass, so they come from the sieve table
   // rather than a separately typed washed mass that can disagree with it.
   const fineMass = useMemo(() => panMass(sieveRows), [sieveRows]);
   const washedOvenDryMass = useMemo(
-    () => fineMass === null || initialOvenDryMass === null ? null : initialOvenDryMass - fineMass,
-    [fineMass, initialOvenDryMass],
+    () => fineMass === null || moistureCorrectedMass === null ? null : moistureCorrectedMass - fineMass,
+    [fineMass, moistureCorrectedMass],
   );
   const finesPercentage = useMemo(
     () => fineMass === null || calculations.totalWeight <= 0 ? null : (fineMass / calculations.totalWeight) * 100,
@@ -326,8 +324,8 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
   const hydrometer = useMemo(() => calculateHydrometer(
     record.hydrometerRows,
     { ...DEFAULT_HYDROMETER_INPUTS, ...record.hydrometerInputs },
-    initialOvenDryMass === null ? "" : String(initialOvenDryMass),
-  ), [record.hydrometerRows, record.hydrometerInputs, initialOvenDryMass]);
+    moistureCorrectedMass === null ? "" : String(moistureCorrectedMass),
+  ), [record.hydrometerRows, record.hydrometerInputs, moistureCorrectedMass]);
   /**
    * One grading series for the BS sheet: sieve cumulative passing, extended
    * below the finest sieve by the hydrometer diameters. `mergePsdSeries` keeps
@@ -549,7 +547,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       ...moisture,
       ...hydrometer,
       fineMass,
-      initialOvenDryMass,
+      moistureCorrectedMass,
       finesPercentage,
       gravelPercentage: classificationValues.gravel,
       sandPercentage: classificationValues.sand,
@@ -559,7 +557,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       uscsSymbol: uscsResult,
       aashtoGroup: aashtoResult,
     },
-  }), [project.projectName, project.clientName, project.projectDate, project.date, preparedRecord, calculations, gradation, moisture, hydrometer, fineMass, initialOvenDryMass, finesPercentage, classificationValues, groupIndex, uscsResult, aashtoResult]);
+  }), [project.projectName, project.clientName, project.projectDate, project.date, preparedRecord, calculations, gradation, moisture, hydrometer, fineMass, moistureCorrectedMass, finesPercentage, classificationValues, groupIndex, uscsResult, aashtoResult]);
 
   const status = calculations.totalWeight === 0 ? "not-started" : calculations.percentageRetained.some((value) => value > 0) ? "in-progress" : "not-started";
   const save = useCallback(async () => {
@@ -803,7 +801,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
         <RecordSection title="Sample preparation">
           <div className="grid gap-px overflow-hidden rounded-md border sm:grid-cols-2">
             <RecordField label="Initial air-dried mass (g) *" value={record.samplePreparation.initialDryMass} placeholder="e.g. 669" onChange={(value) => updateNested("samplePreparation", "initialDryMass", value)} />
-            <CalculatedField label="Initial oven-dry equivalent (g)" value={initialOvenDryMass === null ? "auto" : initialOvenDryMass.toFixed(1)} />
+            <CalculatedField label="Moisture-corrected initial mass (g)" value={moistureCorrectedMass === null ? "auto" : moistureCorrectedMass.toFixed(1)} />
             <CalculatedField label="Washed & oven-dried mass (g)" value={washedOvenDryMass === null ? "auto" : washedOvenDryMass.toFixed(1)} />
             <CalculatedField label="Fine mass (g)" value={fineMass === null ? "auto" : fineMass.toFixed(1)} />
             <CalculatedField label="Fines %" value={formatValue(finesPercentage, 1)} />
