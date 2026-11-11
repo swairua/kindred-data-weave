@@ -28,7 +28,7 @@ import { fetchAdminImagesAsBase64, type AdminImages } from "./imageUtils";
 import { pdfFileName } from "./pdfGenerator";
 
 /** Page margins. A4 landscape is 297 x 210 mm. */
-const MARGIN = 10;
+const MARGIN = 6;
 /** Width available to the page furniture (the table is inset, like the reference). */
 const CONTENT_W = 277;
 /** The reference table spans 71.8pt..816.5pt of an 841.92pt-wide page. */
@@ -331,23 +331,23 @@ const drawCellText = (
     const comment = r.comment ?? "";
     if (modeOfFailure.trim() !== "") {
       d.setFont("times", "bold");
-      d.setFontSize(7.5);
+      d.setFontSize(9);
       d.setTextColor(...COLORS.dark);
       d.text("MODE OF FAILURE:", TABLE_X, cy);
       d.setFont("times", "normal");
       const lines = d.splitTextToSize(modeOfFailure, TABLE_W - 32) as string[];
-      lines.forEach((line, index) => d.text(line, TABLE_X + 32, cy + index * 3.4));
-      cy += Math.max(ID_ROW_H, lines.length * 3.4 + 1);
+      lines.forEach((line, index) => d.text(line, TABLE_X + 32, cy + index * 4.2));
+      cy += Math.max(ID_ROW_H, lines.length * 4.2 + 1);
     }
     if (comment.trim() !== "") {
       d.setFont("times", "bold");
-      d.setFontSize(7.5);
+      d.setFontSize(9);
       d.setTextColor(...COLORS.dark);
       d.text("COMMENT:", TABLE_X, cy);
       d.setFont("times", "normal");
       const lines = d.splitTextToSize(comment, TABLE_W - 22) as string[];
-      lines.forEach((line, index) => d.text(line, TABLE_X + 22, cy + index * 3.4));
-      cy += Math.max(ID_ROW_H, lines.length * 3.4 + 1);
+      lines.forEach((line, index) => d.text(line, TABLE_X + 22, cy + index * 4.2));
+      cy += Math.max(ID_ROW_H, lines.length * 4.2 + 1);
     }
     return cy;
   };
@@ -403,8 +403,8 @@ const drawIdentification = (d: jsPDF, o: CompressiveStrengthPdfOptions, y: numbe
       d.setDrawColor(...COLORS.grid);
       d.setLineWidth(0.2);
       d.rect(cx, cy, cell.w, ID_ROW_H);
-      drawCellText(d, cell.label, cx, cy, labelW, ID_ROW_H, 6.5, true);
-      drawCellText(d, cell.value, cx + labelW, cy, valueW, ID_ROW_H, 7.5);
+      drawCellText(d, cell.label, cx, cy, labelW, ID_ROW_H, 8, true);
+      drawCellText(d, cell.value, cx + labelW, cy, valueW, ID_ROW_H, 9);
       cx += cell.w;
     }
     cy += ID_ROW_H;
@@ -436,21 +436,21 @@ const drawTableHeader = (d: jsPDF, y: number): number => {
     // the drawCellText calls in between would otherwise leave a stale black.
     if (!grouped) {
       fillStrokeRect(d, x, y, col.w, HEADER_H, COLORS.headerBg);
-      drawCellText(d, col.label, x, y, col.w, HEADER_H, 6.5, true);
+      drawCellText(d, col.label, x, y, col.w, HEADER_H, 8, true);
     } else if (hasSubLabels) {
       // Two-line group name over the top two bands, letters on the bottom band.
       fillStrokeRect(d, x, y, width, bandH * 2, COLORS.headerBg);
-      drawCellText(d, col.group as string, x, y, width, bandH * 2, 6.5, true);
+      drawCellText(d, col.group as string, x, y, width, bandH * 2, 8, true);
       for (let k = 0; k < span; k += 1) {
         const sub = COLS[i + k];
         const sx = x + COLS.slice(i, i + k).reduce((sum, c) => sum + c.w, 0);
         fillStrokeRect(d, sx, y + bandH * 2, sub.w, bandH, COLORS.headerBg);
-        drawCellText(d, sub.label, sx, y + bandH * 2, sub.w, bandH, 6.5, true);
+        drawCellText(d, sub.label, sx, y + bandH * 2, sub.w, bandH, 8, true);
       }
     } else {
       // Merged heading with no sub-labels (Remarks/Comments).
       fillStrokeRect(d, x, y, width, HEADER_H, COLORS.headerBg);
-      drawCellText(d, col.group as string, x, y, width, HEADER_H, 6.5, true);
+      drawCellText(d, col.group as string, x, y, width, HEADER_H, 8, true);
     }
     x += width;
     i += span;
@@ -493,7 +493,7 @@ const drawRow = (d: jsPDF, values: string[], y: number, rowH: number) => {
     d.setLineWidth(0.2);
     d.rect(x, y, col.w, rowH);
     d.setFont("times", index === BOLD_COLUMN ? "bold" : "normal");
-    const size = fitText(d, value, col.w - 1.6, rowH >= 4 ? 7.5 : 6.5, 4);
+    const size = fitText(d, value, col.w - 1.6, rowH >= 4 ? 9 : 8, 5);
     d.setFontSize(size);
     d.setTextColor(...COLORS.dark);
     // Baseline "middle" keeps the value inside short rows; the old
@@ -507,10 +507,10 @@ const drawRow = (d: jsPDF, values: string[], y: number, rowH: number) => {
 const measureTerms = (d: jsPDF): number => {
   let h = 0;
   const intro = d.splitTextToSize(TERMS_INTRO, TABLE_W - 8) as string[];
-  h += intro.length * 3.4 + 1.2;
+  h += intro.length * 4.2 + 1.4;
   TERMS.forEach((term, index) => {
     const lines = d.splitTextToSize(`${index + 1}.  ${term}`, TABLE_W - 8) as string[];
-    h += lines.length * 3.4 + 0.6;
+    h += lines.length * 4.2 + 0.8;
   });
   return h + 2;
 };
@@ -518,23 +518,23 @@ const measureTerms = (d: jsPDF): number => {
 const drawTerms = (d: jsPDF, y: number): void => {
   let cy = y;
   d.setFont("times", "bold");
-  d.setFontSize(6.5);
+  d.setFontSize(8);
   d.setTextColor(...COLORS.dark);
   (d.splitTextToSize(TERMS_INTRO, TABLE_W - 8) as string[]).forEach((line) => {
     d.text(line, TABLE_X + 4, cy);
-    cy += 3.4;
+    cy += 4.2;
   });
-  cy += 1.2;
+  cy += 1.4;
   d.setFont("times", "normal");
-  d.setFontSize(6.5);
+  d.setFontSize(8);
   d.setTextColor(...COLORS.dark);
   TERMS.forEach((term, index) => {
     const lines = d.splitTextToSize(`${index + 1}.  ${term}`, TABLE_W - 8) as string[];
     lines.forEach((line) => {
       d.text(line, TABLE_X + 4, cy);
-      cy += 3.4;
+      cy += 4.2;
     });
-    cy += 0.6;
+    cy += 0.8;
   });
 };
 
@@ -544,7 +544,7 @@ const drawFooter = (d: jsPDF, o: CompressiveStrengthPdfOptions, images: AdminIma
   d.line(TABLE_X, y - 4, TABLE_X + TABLE_W, y - 4);
   const stampSpace = images.stamp ? 30 : 0;
   const colW = (TABLE_W - stampSpace) / 3;
-  d.setFontSize(7.5);
+  d.setFontSize(9);
   d.setFont("times", "bold");
   d.setTextColor(...COLORS.dark);
   d.text(`TESTED BY:  ${text(o.testedBy)}`, TABLE_X, y);
@@ -558,20 +558,20 @@ const drawFooter = (d: jsPDF, o: CompressiveStrengthPdfOptions, images: AdminIma
     try {
       // Top edge sits on the content boundary so the stamp never climbs into the terms.
       const { base64, format } = imageParts(images.stamp);
-      d.addImage(base64, format, TABLE_X + TABLE_W - 26, y - 6, 22, 22, undefined, "FAST");
+      d.addImage(base64, format, TABLE_X + TABLE_W - 34, y - 8, 30, 30, undefined, "FAST");
     } catch { /* the stamp is optional */ }
   }
 
   d.setFont("times", "normal");
-  d.setFontSize(7);
+  d.setFontSize(8);
   d.text(
     "Specialists In: Non-Destructive Testing, Materials Testing and Inspection, Quality Assurance, Failure Investigations,",
     TABLE_X,
-    y + 20,
+    y + 24,
   );
-  d.setFontSize(7);
+  d.setFontSize(8);
   d.setTextColor(120, 120, 120);
-  d.text(`Page ${page} of ${pages}`, TABLE_X + TABLE_W, y + 20, { align: "right" });
+  d.text(`Page ${page} of ${pages}`, TABLE_X + TABLE_W, y + 24, { align: "right" });
 };
 
 /** Title, laboratory identity and the rule beneath, as on the reference. */
@@ -581,9 +581,9 @@ const drawTitleBlock = (
   images: AdminImages,
   y: number,
 ): { frameTop: number; endY: number } => {
-  const imgW = 62;
-  const imgH = 20;
-  d.setFontSize(7.5);
+  const imgW = 74;
+  const imgH = 26;
+  d.setFontSize(9);
   d.setFont("times", "normal");
   d.setTextColor(...COLORS.dark);
   d.text("Compressive Strength of Concrete Cubes Report", MARGIN, y);
@@ -606,14 +606,14 @@ const drawTitleBlock = (
   if (!hasImages && addressLines.length > 0) {
     // No letterhead images configured: print the address as text instead of
     // leaving an empty band, so the sheet always carries the lab identity.
-    d.setFontSize(7.5);
+    d.setFontSize(9);
     d.setFont("times", "normal");
     d.setTextColor(...COLORS.dark);
     for (const line of addressLines) {
-      cy += 3.6;
+      cy += 4.4;
       d.text(line, MARGIN + CONTENT_W / 2, cy, { align: "center" });
     }
-    cy += 3;
+    cy += 4;
   } else if (!hasImages) {
     cy += 3;
   }
@@ -627,7 +627,7 @@ const drawTitleBlock = (
   d.setLineWidth(0.4);
   d.line(TABLE_X + TABLE_W / 2 - titleW / 2, cy + 1.2, TABLE_X + TABLE_W / 2 + titleW / 2, cy + 1.2);
   cy += 5;
-  d.setFontSize(8.5);
+  d.setFontSize(10);
   d.setFont("times", "normal");
   d.text("BS EN 12390 - 3 : 2002", TABLE_X + TABLE_W / 2, cy, { align: "center" });
   // The standard reference stays above the blue frame, which starts just beneath it.
@@ -635,7 +635,7 @@ const drawTitleBlock = (
   const contentTop = frameTop + FRAME_PADDING;
   if (o.labOrganization) {
     const orgY = contentTop + 3;
-    d.setFontSize(8);
+    d.setFontSize(9);
     d.setFont("times", "bold");
     d.text(o.labOrganization, TABLE_X + TABLE_W / 2, orgY, { align: "center" });
     return { frameTop, endY: orgY + 3 };
