@@ -1,7 +1,7 @@
 import { jsPDF } from "jspdf";
 import { fetchAdminImagesAsBase64, type AdminImages } from "./imageUtils";
 import { imageParts } from "./pdfGenerator";
-import { buildApiUrl, getSessionToken } from "./api";
+import { getSessionToken } from "./api";
 
 export interface CoringProjectInfo {
   title: string;
@@ -309,11 +309,13 @@ export const buildCoringReportPDF = async (project: CoringProjectInfo, cores: Co
     console.warn("[CoringPDF] Could not load header/stamp images, exporting without them:", error);
   }
 
-  // Fetch core before/after images as base64 data URLs for PDF embedding
-  const coresWithImages = await Promise.all(cores.map(async (core) => {
-    const beforeDataUrl = core.beforeImage ? await fetchImageAsDataUrl(coringImageServeUrl(core.beforeImage)) : null;
-    const afterDataUrl = core.afterImage ? await fetchImageAsDataUrl(coringImageServeUrl(core.afterImage)) : null;
-    return { ...core, beforeImage: beforeDataUrl, afterImage: afterDataUrl };
+  // Fetch core before/after images as base64 data URLs for PDF embedding.
+  // beforeImage/afterImage are already base64 data URLs passed in from the
+  // caller (CoringTestEnhanced.tsx calls loadImageAsDataUrl before this).
+  const coresWithImages = cores.map((core) => ({
+    ...core,
+    beforeImage: core.beforeImage || null,
+    afterImage: core.afterImage || null,
   }));
 
   const doc = new jsPDF({ unit: "pt", format: "letter" });
