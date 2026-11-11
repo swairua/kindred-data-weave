@@ -64,7 +64,6 @@ $sampleNotes = 'BS 1377-2:1990 9.2/9.3/9.4 & 9.5';
 
 // Sample preparation + moisture
 $initDryMass   = '328.0';
-$washedDryMass = '176.4';
 $moistWetMass  = '186.5';
 $moistDryMass  = '149.0';
 
@@ -478,9 +477,14 @@ if ($fines !== null && $llNum > 0 && $piNum > 0) {
     $groupIndex = php_calculateAashtoGroupIndex($fines, $llNum, $piNum, $aashtoGroup);
 }
 
-$fineMass = php_numeric($initDryMass) - php_numeric($washedDryMass);
-$fineMass = max($fineMass, 0);
-$finesPercentage = php_numeric($initDryMass) > 0 ? ($fineMass / php_numeric($initDryMass)) * 100 : null;
+$fineMass = 0.0;
+foreach ($sieveRowsFormatted as $row) {
+    if (str_starts_with(strtolower(trim($row['sieveSize'])), '<')) {
+        $fineMass += php_numeric($row['weightRetained']);
+    }
+}
+$washedDryMass = number_format($calculations['totalWeight'] - $fineMass, 2, '.', '');
+$finesPercentage = $calculations['totalWeight'] > 0 ? ($fineMass / $calculations['totalWeight']) * 100 : null;
 
 // Classification section
 $classification = [

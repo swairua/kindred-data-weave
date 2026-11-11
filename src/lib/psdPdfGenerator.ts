@@ -303,8 +303,9 @@ const drawPreparation = (d: jsPDF, x: number, y: number, o: ParticleSizeDistribu
   const rightW = CONTENT_W - leftW - gapW;
   const initial = parse(o.record.samplePreparation.initialDryMass);
   const washed = parse(o.record.samplePreparation.washedOvenDryMass);
-  const fineMass = initial !== null && washed !== null ? Math.max(initial - washed, 0) : null;
-  const finesPercent = initial && fineMass !== null ? (fineMass / initial) * 100 : null;
+  const sieved = o.grading.totalWeight;
+  const fineMass = washed !== null && sieved > 0 ? Math.max(sieved - washed, 0) : null;
+  const finesPercent = fineMass !== null ? (fineMass / sieved) * 100 : null;
   const moisture = calculateMoisture(o.record.moisture.wetMass, o.record.moisture.dryMass);
 
   const pair = (panelW: number, labelW: number, unit: string, labelText: string, value: string): Cell[] => [

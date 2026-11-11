@@ -43,6 +43,12 @@ const isPanRow = (sieveSize: string) => {
   return label === "pan" || label.startsWith("<");
 };
 
+/** Mass weighed in the pan rows: the fines that pass the finest sieve. Null until a pan row is weighed. */
+export const panMass = (rows: GradingRow[]): number | null => {
+  const weighed = rows.filter((row) => isPanRow(row.sieveSize) && row.weightRetained.trim() !== "");
+  return weighed.length > 0 ? weighed.reduce((sum, row) => sum + numeric(row.weightRetained), 0) : null;
+};
+
 export const calculateGrading = (rows: GradingRow[]): GradingCalculations => {
   const totalWeight = rows.reduce((sum, row) => sum + numeric(row.weightRetained), 0);
   const percentageRetained = rows.map((row) => totalWeight > 0 ? (numeric(row.weightRetained) / totalWeight) * 100 : 0);
