@@ -1,5 +1,7 @@
-import { cleanup, render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter, useLocation } from "react-router-dom";
+import { SessionContext } from "@/context/SessionContext";
+import { toast } from "sonner";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import Index from "@/pages/Index";
 
@@ -7,6 +9,7 @@ const indexMocks = vi.hoisted(() => ({
   fetchCurrentUser: vi.fn(),
   listRecords: vi.fn(),
   fetchFullProject: vi.fn(),
+  logout: vi.fn(),
 }));
 
 vi.mock("@/lib/api", () => ({
@@ -22,8 +25,8 @@ vi.mock("@/lib/api", () => ({
   deleteRecord: vi.fn(),
 }));
 
-vi.mock("@/context/TestDataContext", () => ({
-  useTestData: () => ({
+vi.mock("@/context/TestDataContext", () => {
+  const testData = {
     tests: {
       atterberg: { id: "atterberg", name: "Atterberg Limits", category: "soil", status: "not-started", dataPoints: 0, keyResults: [], enabled: true, sortOrder: 1 },
       grading: { id: "grading", name: "Particle Size Distribution", category: "soil", status: "not-started", dataPoints: 0, keyResults: [], enabled: true, sortOrder: 2 },
@@ -48,33 +51,49 @@ vi.mock("@/context/TestDataContext", () => ({
     concreteTestMetadata: null,
     resetProjectData: vi.fn(),
     currentProjectId: null,
-  }),
-}));
+  };
+  return { useTestData: () => testData };
+});
 
 vi.mock("@/components/Navigation", () => ({ default: () => null }));
-vi.mock("@/hooks/useSessionKeepAlive", () => ({ useSessionKeepAlive: () => {} }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-const renderIndex = () =>
+const LocationDisplay = () => {
+  const location = useLocation();
+  return <div data-testid="location">{location.pathname}{location.search}{location.hash}</div>;
+};
+
+const renderIndex = (path = "/tests") =>
   render(
-    <MemoryRouter initialEntries={["/tests"]}>
-      <SidebarProvider>
-        <Index initialTab="soil" />
-      </SidebarProvider>
+    <MemoryRouter initialEntries={[path]}>
+      <SessionContext.Provider value={{
+        user: { id: 1, name: "Tester", email: "t@e.com" },
+        logout: indexMocks.logout,
+        refreshUser: vi.fn(),
+      }}>
+        <SidebarProvider>
+          <LocationDisplay />
+          <Index initialTab="soil" />
+        </SidebarProvider>
+      </SessionContext.Provider>
     </MemoryRouter>,
   );
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  indexMocks.fetchCurrentUser.mockResolvedValue({ id: 1, name: "Tester", email: "t@e.com" });
+  indexMocks.listRecords.mockResolvedValue({ data: [] });
+  indexMocks.fetchFullProject.mockResolvedValue({});
+  indexMocks.logout.mockResolvedValue(undefined);
+});
 
 afterEach(cleanup);
 
 describe("Record test page layout", () => {
   it("stacks the three classes vertically, each with its catalogue tests", async () => {
-    indexMocks.fetchCurrentUser.mockResolvedValue({ id: 1, name: "Tester", email: "t@e.com" });
-    indexMocks.listRecords.mockResolvedValue({ data: [] });
-    indexMocks.fetchFullProject.mockResolvedValue({});
-
     renderIndex();
 
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await screen.findByRole("heading", { name: "Soil Tests" });
 
     // The three classes are stacked vertically, one after the other.
     const headings = screen.getAllByRole("heading").map((h) => h.textContent?.trim());
@@ -96,5 +115,26 @@ describe("Record test page layout", () => {
 
     // A disabled test is not listed.
     expect(screen.queryByText("Porosity Test")).not.toBeInTheDocument();
+  });
+
+  it("preserves a focused URL when the background session ping fails", async () => {
+    indexMocks.fetchCurrentUser.mockRejectedValue(new Error("Failed to fetch"));
+    indexMocks.fetchFullProject.mockResolvedValue({ id: 42, name: "Focused project" });
+    const path = "/tests?projectId=42&debug=1#atterberg";
+
+    renderIndex(path);
+
+    await waitFor(() => expect(indexMocks.fetchFullProject).toHaveBeenCalledWith(42));
+    await waitFor(() => expect(indexMocks.listRecords).toHaveBeenCalledWith("projects", { limit: 100 }));
+    await waitFor(() => expect(indexMocks.fetchCurrentUser).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Loaded project: Focused project"));
+    expect(screen.getByTestId("location")).toHaveTextContent(path);
+    expect(screen.getByText("Atterberg Limits Testing")).toBeInTheDocument();
+    expect(screen.getByText("Tester")).toBeInTheDocument();
+    expect(screen.getByText("t@e.com")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Soil Tests" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Logout" }));
+    expect(indexMocks.logout).toHaveBeenCalledTimes(1);
   });
 });

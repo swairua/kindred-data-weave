@@ -16,7 +16,7 @@ import { buildCoringReportPDF, type CoringCoreReport } from "@/lib/coringReportP
 import { pdfFileName, printPDFDocument } from "@/lib/pdfGenerator";
 import { formatReportDate } from "@/lib/compressivePdfGenerator";
 import { useTestReport } from "@/hooks/useTestReport";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { API_BASE_URL, buildApiUrl, getSessionToken, saveReceptionConsignment, listRecords, readRecord, uploadCoringPhoto, discardCoringPhoto } from "@/lib/api";
 import { emptyReceptionConsignment, nextRcNo, emptyReceptionSample, type ReceptionConsignmentInput, type ReceptionSampleInput } from "@/lib/reception";
 import { SessionContext } from "@/context/SessionContext";
@@ -177,6 +177,7 @@ export const CoringTest = ({ testKey }: CoringTestProps) => {
   const project = useProject();
 const projectId = project.currentProjectId ?? null;
   const navigate = useNavigate();
+  const location = useLocation();
   const user = useContext(SessionContext)?.user;
   const [rows, setRows] = useState<CoringRow[]>([
     { ...CORING_ROW_DEFAULTS, coreId: "CR1" },
@@ -209,9 +210,6 @@ const [recordId, setRecordId] = useState<number | null>(null);
   const [rcNo, setRcNo] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Load existing test data from resultId URL parameter
-  const loadStartedRef = useRef<number | null>(null);
-
   // Both load effects below hit the API (one lists every test_result, which can take a
   // few seconds). If the user uploads/deletes a photo or edits a field before the slow
   // response lands, applying it would silently revert their change — which makes uploads
@@ -223,24 +221,29 @@ const [recordId, setRecordId] = useState<number | null>(null);
   }, []);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(location.search);
     const resultIdParam = Number.parseInt(params.get("resultId") || "", 10);
     const projectIdParam = Number.parseInt(params.get("projectId") || "", 10);
 
     if (!Number.isInteger(resultIdParam) || resultIdParam <= 0) return;
     if (!Number.isInteger(projectIdParam) || projectIdParam <= 0) return;
-    if (loadStartedRef.current === resultIdParam) return;
-
-    loadStartedRef.current = resultIdParam;
-    const active = true;
+    let active = true;
+    setRecordId(null);
+    setIsSaved(false);
 
     const loadData = async () => {
       setIsLoading(true);
       try {
         const record = await readRecord("test_results", resultIdParam);
         const row = (record as { data?: unknown }).data;
+        if (!active) return;
         if (row && typeof row === "object") {
           const data = row as Record<string, unknown>;
+          if (Number(data.project_id) !== projectIdParam || data.test_key !== "coring") {
+            throw new Error("The selected result does not belong to this project or test");
+          }
+          setRecordId(resultIdParam);
+          setIsSaved(true);
 
           // A late response must not clobber edits/uploads the user already made.
           if (userTouchedRef.current) return;
@@ -248,6 +251,9 @@ const [recordId, setRecordId] = useState<number | null>(null);
           // Load project details from payload_json
           if (data.payload_json && typeof data.payload_json === "object") {
             const payload = data.payload_json as Record<string, unknown>;
+            if (payload.projectDetails && typeof payload.projectDetails === "object") {
+              setProjectDetails(prev => ({ ...prev, ...(payload.projectDetails as Record<string, unknown>) }));
+            }
             if (payload.test && typeof payload.test === "object") {
               const test = payload.test as Record<string, unknown>;
               setProjectDetails(prev => ({
@@ -265,10 +271,10 @@ const [recordId, setRecordId] = useState<number | null>(null);
             }
             
             // Load cores from payload_json
-            if (payload.test && typeof payload.test === "object") {
-              const testData = payload.test as Record<string, unknown>;
-              if (testData.cores && Array.isArray(testData.cores)) {
-                const cores = testData.cores as Array<Record<string, unknown>>;
+            {
+              const testData = payload.test && typeof payload.test === "object" ? payload.test as Record<string, unknown> : {};
+              const cores = Array.isArray(testData.cores) ? testData.cores : payload.rows;
+              if (Array.isArray(cores)) {
                 const loadedRows = cores.map((core, i) => ({
                   coreId: (core.coreId as string) || (core.mark as string) || `CR${i + 1}`,
                   diameter: String(core.diameter ?? ""),
@@ -296,19 +302,22 @@ const [recordId, setRecordId] = useState<number | null>(null);
           }
         }
       } catch (error) {
-        console.error("[CoringTestEnhanced] Failed to load saved test:", error);
-        toast.error("Couldn't load the saved test data");
+        if (active) {
+          console.error("[CoringTestEnhanced] Failed to load saved test:", error);
+          toast.error("Couldn't load the saved test data");
+        }
       } finally {
-        setIsLoading(false);
+        if (active) setIsLoading(false);
       }
     };
 
     loadData();
-    return () => { /* cleanup */ };
-  }, []);
+    return () => { active = false; };
+  }, [location.search]);
 
   useEffect(() => {
-    if (!projectId) return;
+    const resultId = Number(new URLSearchParams(location.search).get("resultId"));
+    if (!projectId || (Number.isInteger(resultId) && resultId > 0)) return;
     let active = true;
     loadTestResult(projectId, "coring")
       .then((result) => {
@@ -350,7 +359,7 @@ const [recordId, setRecordId] = useState<number | null>(null);
       })
       .catch((error) => console.error("Failed to load coring result", error));
     return () => { active = false; };
-  }, [projectId]);
+  }, [projectId, location.search]);
     const getLDRatio = useCallback((row: CoringRow) => {
     const d = parseFloat(row.diameter);
     const l = parseFloat(row.lengthAfter);
