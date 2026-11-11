@@ -25,7 +25,7 @@ const exportState = vi.hoisted(() => ({
     sampledSubmittedBy: "J. Doe",
     dateSubmitted: "2025-01-10",
     dateTested: "2025-01-12",
-    testedBy: "J. Doe",
+    testedBy: "S. Technician",
   },
 }));
 
@@ -100,6 +100,7 @@ describe("Proctor PDF export", () => {
     moistureAdded.forEach((value, index) => {
       const suffix = `, point ${"ABCDEFGHIJ"[index]}`;
       fireEvent.change(screen.getByLabelText(`Moisture addition (cc)${suffix}`), { target: { value } });
+      fireEvent.change(screen.getByLabelText(`Container No.${suffix}`), { target: { value: `C${index + 1}` } });
       fireEvent.change(screen.getByLabelText(`Wt of mould + wet material (g)${suffix}`), { target: { value: mouldWetMass[index] } });
       fireEvent.change(screen.getByLabelText(`Wt of mould (g)${suffix}`), { target: { value: "1000" } });
       fireEvent.change(screen.getByLabelText(`Wt of container + wet material (g)${suffix}`), { target: { value: containerWetMass[index] } });
@@ -145,7 +146,8 @@ describe("Proctor PDF export", () => {
     // The capture looks the chart up with getElementById, so the id must reach the element.
     expect(document.getElementById("proctor-chart")).not.toBeNull();
 
-    fillPoints(["50", "70", "90"], ["3000", "3100", "3200"], ["140", "142", "145"], ["130", "132", "135"]);
+    fillPoints(["50", "70", "90"], ["3100", "3200", "3000"], ["140", "142", "145"], ["130", "132", "135"]);
+    expect(document.querySelectorAll("#proctor-chart circle")).toHaveLength(3);
 
     await choosePdfExport();
 
@@ -156,7 +158,9 @@ describe("Proctor PDF export", () => {
     expect(payload.chartImage).toBe("data:image/png;base64,iVBORw0KGgo=");
 
     // The signature line and the record's own test date, not the project date.
-    expect(payload.testedBy).toBe("J. Doe");
+    expect(payload.testedBy).toBe("S. Technician");
+    expect((payload.record as { sampleNumber: string }).sampleNumber).toBe("4");
+    expect((payload.record as { rows: Array<{ containerNumber: string }> }).rows.map((row) => row.containerNumber)).toEqual(["C1", "C2", "C3", "", "", ""]);
     expect(payload.dateTested).toBe("2025-01-12");
     expect(payload.dateReported).toBe("2025-02-20");
     expect(payload.checkedBy).toBe("R. Checker");

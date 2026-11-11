@@ -118,6 +118,7 @@ describe("Proctor wizard flow", () => {
   it("requires PSD-equivalent sample details and transfers them to record metadata", () => {
     expect(hasRequiredSoilSampleMetadata({ ...completeSample, sampleNo: " " })).toBe(false);
     expect(hasRequiredSoilSampleMetadata(completeSample)).toBe(true);
+    expect(toRecordMetadata({ ...completeSample, testedBy: "S. Technician" }).testedBy).toBe("S. Technician");
     expect(toRecordMetadata(completeSample)).toEqual({
       sampleId: "BH-04",
       sampleNumber: "2",
@@ -171,6 +172,21 @@ describe("Proctor calculations", () => {
     expect(summary.curve?.a).toBeCloseTo(-12.01269, 4);
     expect(summary.omc!).toBeLessThan((15 / 105) * 100);
     expect(summary.mdd!).toBeGreaterThan(2200 / (1 + 15 / 105));
+  });
+
+  it("uses the local curve around the measured maximum for the sheet's OMC and MDD", () => {
+    const fit = fitCompactionCurve([
+      { moisture: 9.1, dryDensity: 1412 },
+      { moisture: 11.3, dryDensity: 1453 },
+      { moisture: 13.4, dryDensity: 1488 },
+      { moisture: 15.6, dryDensity: 1493 },
+      { moisture: 17.6, dryDensity: 1456 },
+      { moisture: 19.8, dryDensity: 1410 },
+    ]);
+
+    expect(fit).not.toBeNull();
+    expect(fit!.omc).toBeCloseTo(14.73, 2);
+    expect(fit!.mdd).toBeCloseTo(1496.75, 1);
   });
 
   it("flags the curve-validity problems BS 1377-4:1990, 3.3 would not accept", () => {
@@ -464,7 +480,7 @@ describe("Proctor record page", () => {
     expect(screen.getByText("Fitted curve (R2 1.000)")).toBeInTheDocument();
     // Only three of the five recommended moisture contents were entered.
     expect(screen.getByText(/Only 3 moisture contents completed/)).toBeInTheDocument();
-    expect(screen.getByText(/3\/6 standard points/)).toBeInTheDocument();
+    expect(screen.getByText(/0\/6 standard points/)).toBeInTheDocument();
   });
 
   it("reaches Complete for a filled method even when the other method is empty", async () => {
@@ -479,7 +495,18 @@ describe("Proctor record page", () => {
       ["130", "130", "130", "130", "130", "130"],
     );
 
-    // Completion is judged on the method on screen, not on all twelve points of both methods.
+    // Calculated masses alone do not complete a point without its recorded container number.
+    expect(await screen.findByText(/In progress/)).toBeInTheDocument();
+    expect(screen.getByText(/0\/6 standard points/)).toBeInTheDocument();
+
+    for (let index = 0; index < 6; index += 1) {
+      fireEvent.change(screen.getByLabelText(`Container No., point ${"ABCDEF"[index]}`), { target: { value: `C${index + 1}` } });
+    }
+    fireEvent.change(screen.getByLabelText("Moisture addition (cc), point A"), { target: { value: "" } });
+    expect(screen.getByText(/In progress/)).toBeInTheDocument();
+    expect(screen.getByText(/5\/6 standard points/)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Moisture addition (cc), point A"), { target: { value: "50" } });
     expect(await screen.findByText(/Complete/)).toBeInTheDocument();
     expect(screen.getByText(/6\/6 standard points/)).toBeInTheDocument();
 

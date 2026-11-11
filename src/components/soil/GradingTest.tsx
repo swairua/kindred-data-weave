@@ -274,7 +274,9 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
   const searchParams = new URLSearchParams(location.search);
   const isNewRecord = searchParams.get("newRecord") === "1";
   const resultIdValue = Number.parseInt(searchParams.get("resultId") || "", 10);
-  const selectedResultId = Number.isInteger(resultIdValue) && resultIdValue > 0 ? resultIdValue : null;
+  const selectedResultId = location.hash === "#grading" && Number.isInteger(resultIdValue) && resultIdValue > 0
+    ? resultIdValue
+    : null;
   const projectId = project.currentProjectId ?? null;
   const metadata = useMemo(() => testData.recordMetadata.grading || {}, [testData.recordMetadata.grading]);
   const metadataKey = JSON.stringify(metadata);

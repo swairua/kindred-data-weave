@@ -445,17 +445,17 @@ export const FORMULA_SECTIONS: FormulaSection[] = [
       {
         heading: "Optimum moisture content and maximum dry density",
         formulas: [
-          "fit rho_d = a*w^2 + b*w + c by least squares (normal equations), minimum 3 distinct moistures",
+          "fit rho_d = a*w^2 + b*w + c through the three readings around the measured maximum",
           "OMC = -b / (2a),  MDD = a*OMC^2 + b*OMC + c",
-          "R^2 = 1 - SUM(residual^2) / SUM((rho_d - mean)^2)",
+          "R^2 = 1 - SUM(residual^2) / SUM((rho_d - mean)^2), checked against all plotted readings",
         ],
         variables: [
           { symbol: "OMC", meaning: "optimum moisture content (%)" },
           { symbol: "MDD", meaning: "maximum dry density (kg/m3)" },
         ],
         notes: [
-          "The fit is accepted only for a downward-opening curve (a < 0) whose vertex lies within the measured range (+/- 2% margin).",
-          "When no parabola can be supported, OMC/MDD fall back to the single densest measured point (reported as peak-point basis).",
+          "The measured maximum must be bracketed; the local fit must open downward and its vertex must lie between the neighboring moisture contents.",
+          "When no local parabola can be supported, OMC/MDD fall back to the single densest measured point (reported as peak-point basis).",
         ],
         sourceModule: "proctorRecords",
         sourceFunctions: ["fitCompactionCurve", "calculateProctor"],
@@ -467,7 +467,7 @@ export const FORMULA_SECTIONS: FormulaSection[] = [
           "air voids na: rho_d(na) = ZAV * (1 - na / 100)",
         ],
         variables: [
-          { symbol: "Gs", meaning: "specific gravity of solids (default 2.65)" },
+          { symbol: "Gs", meaning: "measured specific gravity of soil solids" },
           { symbol: "na", meaning: "target air voids content (%)" },
         ],
         notes: [
