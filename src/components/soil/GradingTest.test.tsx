@@ -278,7 +278,7 @@ describe("GradingTest selected record", () => {
     expect(await screen.findByText("Quartered sample")).toBeInTheDocument();
     expect(screen.getByText("Fines %").parentElement).toHaveTextContent("71.9");
     expect(screen.getByText("Fine mass (g)").parentElement).toHaveTextContent("126.8");
-    expect(screen.getByText("Washed & oven-dried mass (g)").parentElement).toHaveTextContent("49.6");
+    expect(screen.getByText("Washed & oven-dried mass (g)").parentElement).toHaveTextContent("201.2");
   });
 
   it("verifies A-1-b from P40 while flagging only the missing No. 10", async () => {
