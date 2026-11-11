@@ -7,8 +7,7 @@ const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
 // In development (localhost), use the proxied path to bypass CORS
 // In production, use the full URL to the actual API server
 // If VITE_API_BASE_URL is set, always use that
-export const API_BASE_URL = configuredApiBaseUrl ||
-  (import.meta.env.DEV ? "/api.php" : "https://lab.wayrus.co.ke/api.php");
+export const API_BASE_URL = configuredApiBaseUrl || "https://lab.wayrus.co.ke/api.php";
 
 // Log API configuration on module load
 console.log("[API] === CONFIGURATION ===");
