@@ -202,6 +202,9 @@ const CURVE_RECOMMENDED_POINTS = 5;
 /** A weaker fit than this is flagged so the technician re-checks the readings. */
 const CURVE_MIN_R_SQUARED = 0.9;
 
+/** Particle density range of mineral soils; values outside it usually mean a placeholder or a transcription error. */
+const MINERAL_SOIL_GS_RANGE = { min: 2.4, max: 2.9 };
+
 /** The five measured masses a technician must record before a point can be calculated. */
 type ProctorMeasurementField =
   | "mouldWetMass"
@@ -416,6 +419,11 @@ const proctorWarnings = (points: ProctorCurvePoint[], fit: ProctorCurveFit | nul
     warnings.push(`Curve fit is poor (R2 = ${fit.rSquared.toFixed(2)}); check the readings and that the points bracket the peak.`);
   }
   if (specificGravity !== null) {
+    if (specificGravity < MINERAL_SOIL_GS_RANGE.min || specificGravity > MINERAL_SOIL_GS_RANGE.max) {
+      warnings.push(
+        `Specific gravity ${specificGravity} is outside the ${MINERAL_SOIL_GS_RANGE.min} to ${MINERAL_SOIL_GS_RANGE.max} range of mineral soils; measure particle density before relying on the zero air voids lines.`,
+      );
+    }
     const aboveZeroAirVoids = points.filter((point) => {
       const limit = zeroAirVoidsDensity(specificGravity, point.moisture);
       return limit !== null && point.dryDensity > limit;

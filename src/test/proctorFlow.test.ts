@@ -244,6 +244,13 @@ describe("Proctor calculations", () => {
     expect(calculateProctor(rows, "1000").warnings.join(" ")).not.toMatch(/zero air voids/);
   });
 
+  it("warns when the specific gravity is outside the range of mineral soils", () => {
+    const rows = [point()];
+    expect(calculateProctor(rows, "1000", 2).warnings.join(" ")).toMatch(/Specific gravity 2 is outside the 2.4 to 2.9 range/);
+    expect(calculateProctor(rows, "1000", 2.7).warnings.join(" ")).not.toMatch(/outside the 2.4 to 2.9 range/);
+    expect(calculateProctor(rows, "1000").warnings.join(" ")).not.toMatch(/outside the 2.4 to 2.9 range/);
+  });
+
   it("does not report an optimum from a curve that fits the points poorly", () => {
     expect(isReportableOptimum({
       omc: 14, mdd: 1500, bulkDensity: 1700, optimumSource: "curve", curve: null, rSquared: 0.97, pointCount: 5, warnings: [],
