@@ -1145,39 +1145,6 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
           )}
         </CardContent>
       </Card>
-
-      {/* Test Photographs */}
-      {rows.some(r => r.pileBeforeImage || r.pileAfterImage) && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="text-sm">Test Photographs</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {rows.filter(r => r.pileBeforeImage || r.pileAfterImage).map(row => (
-              <div key={row.coreId} className="space-y-2">
-                <Label className="text-xs">Core {row.coreId}</Label>
-                <div className="grid grid-cols-2 gap-4">
-                  {[
-                    { src: row.pileBeforeImage, label: "Before test" },
-                    { src: row.pileAfterImage, label: "After test" },
-                  ].map(({ src, label }) => (
-                    <div key={label} className="space-y-1">
-                      <div className="flex h-48 items-center justify-center overflow-hidden rounded border bg-muted/30">
-                        {src ? (
-                          <img src={coringImageUrl(src)} alt={`Core ${row.coreId} ${label.toLowerCase()}`} className="h-full w-full object-contain" />
-                        ) : (
-                          <span className="text-xs text-muted-foreground">No photo</span>
-                        )}
-                      </div>
-                      <p className="text-center text-xs text-muted-foreground">{label}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
     </TestSection>
   );
 };
