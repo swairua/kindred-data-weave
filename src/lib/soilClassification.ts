@@ -397,6 +397,14 @@ export const calculateAashtoGroupIndex = ({
   return Math.floor(Math.max(liquidTerm + plasticityTerm, 0) + 0.5);
 };
 
+export const rateAashtoGroup = (aashtoGroup: string | null, groupIndex: number | null): string | null => {
+  const family = aashtoGroup?.match(/^A-(\d)/)?.[1];
+  if (!family || groupIndex === null) return null;
+  if (family === "1" || family === "2" || family === "3") return groupIndex <= 4 ? "Excellent–Good" : "Fair–Poor";
+  if (family >= "4" && family <= "7") return "Fair–Poor";
+  return null;
+};
+
 /**
  * Calculate Atterberg-based soil behavior indices
  */
