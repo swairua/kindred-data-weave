@@ -73,6 +73,9 @@ describe("dump", () => {
         moisture: { wetMass: "186.5", dryMass: "149.0" }, sieveRows: FULL_SIEVE, hydrometerRows: FULL_HYDROMETER,
       },
       grading, hydrometer, hydrometerInputs, series,
+      moistureCorrectedMass: 245.5,
+      preparationFineMass: grading.totalWeight - 176.4,
+      preparationFinesPercentage: ((grading.totalWeight - 176.4) / grading.totalWeight) * 100,
       chartImage: null,
       gravelPercentage: 22.8, sandPercentage: 5.3, finesPercentage: 71.9,
       uscsSymbol: "MH", uscsDescription: "GRAVELLY ELASTIC SILT", aashtoGroup: "A-7-5", groupIndex: 3,
@@ -82,4 +85,3 @@ describe("dump", () => {
     expect(true).toBe(true);
   });
 });
-

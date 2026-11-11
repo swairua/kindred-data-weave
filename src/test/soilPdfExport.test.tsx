@@ -267,5 +267,37 @@ describe("Particle Size Distribution PDF export", () => {
     // (5)(0.15) + 0.01(25)(1) = 1.0, reported as 1.
     expect(payload.groupIndex).toBe(1);
   });
+
+  it("passes moisture-corrected preparation masses to the PDF", async () => {
+    exportState.rows = [{
+      id: "91",
+      project_id: "42",
+      test_key: "grading",
+      payload_json: {
+        project: {
+          records: [{
+            sampleNumber: "Moisture export sample",
+            samplePreparation: { initialDryMass: "120" },
+            moisture: { wetMass: "512", dryMass: "500" },
+            sieveRows: [
+              { sieveSize: "4.75 (No. 4)", weightRetained: "100" },
+              { sieveSize: "<0.075", weightRetained: "" },
+            ],
+          }],
+        },
+      },
+    }];
+
+    render(createElement(MemoryRouter, null, createElement(GradingTest, { testKey: "grading" })));
+    expect(await screen.findByText(/Record results/)).toBeInTheDocument();
+    await choosePdfExport();
+
+    await waitFor(() => expect(exportState.psdPdfPayloads).toHaveLength(1));
+    const payload = exportState.psdPdfPayloads[0];
+    expect(payload.moistureCorrectedMass).toBeCloseTo(117.12, 5);
+    expect(payload.preparationFineMass).toBeCloseTo(17.12, 5);
+    expect(payload.preparationFinesPercentage).toBeCloseTo((17.12 / 117.12) * 100, 5);
+    expect((payload.record as { samplePreparation: { washedOvenDryMass: string } }).samplePreparation.washedOvenDryMass).toBe("100.00");
+  });
 });
 });
