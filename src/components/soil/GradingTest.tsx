@@ -82,6 +82,7 @@ interface GradingPayload {
   calculations: ReturnType<typeof calculateGrading> & ReturnType<typeof calculateMoisture> & ReturnType<typeof calculateHydrometer> & {
     fineMass: number | null;
     finesPercentage: number | null;
+    initialOvenDryMass: number | null;
     gravelPercentage: number | null;
     sandPercentage: number | null;
     sieveFinesPercentage: number | null;
@@ -253,10 +254,10 @@ const parseNumber = (value: string) => {
 const PAN_REMAINDER_SIZE = "<0.075";
 
 /** The <0.075 pan mass is the dry mass less every other retained mass; blank until both are entered. */
-const withPanRemainder = (rows: GradingRow[], dryMass: string): GradingRow[] => {
+const withPanRemainder = (rows: GradingRow[], dryMass: number | null): GradingRow[] => {
   const index = rows.findIndex((row) => row.sieveSize === PAN_REMAINDER_SIZE);
   if (index < 0) return rows;
-  const dry = parseNumber(dryMass);
+  const dry = dryMass;
   const otherMasses = rows.flatMap((row, rowIndex) => rowIndex === index ? [] : [parseNumber(row.weightRetained)]);
   const enteredOthers = otherMasses.filter((mass): mass is number => mass !== null);
   const remainder = dry !== null && dry > 0 && enteredOthers.length > 0
@@ -289,18 +290,26 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
+  const moisture = useMemo(() => calculateMoisture(record.moisture.wetMass, record.moisture.dryMass), [record.moisture]);
+  const initialOvenDryMass = useMemo(() => {
+    const initialMass = parseNumber(record.samplePreparation.initialDryMass);
+    const wetMass = parseNumber(record.moisture.wetMass);
+    const dryMass = parseNumber(record.moisture.dryMass);
+    if (initialMass === null) return null;
+    if (moisture.waterWeight === null || wetMass === null || dryMass === null || wetMass <= 0) return initialMass;
+    return initialMass * dryMass / wetMass;
+  }, [record.samplePreparation.initialDryMass, record.moisture.wetMass, record.moisture.dryMass, moisture.waterWeight]);
   const sieveRows = useMemo(
-    () => withPanRemainder(record.sieveRows, record.samplePreparation.initialDryMass),
-    [record.sieveRows, record.samplePreparation.initialDryMass],
+    () => withPanRemainder(record.sieveRows, initialOvenDryMass),
+    [record.sieveRows, initialOvenDryMass],
   );
   const calculations = useMemo(() => calculateGrading(sieveRows), [sieveRows]);
-  const moisture = useMemo(() => calculateMoisture(record.moisture.wetMass, record.moisture.dryMass), [record.moisture]);
   // Fines are what the pan holds out of the sieved mass, so they come from the sieve table
   // rather than a separately typed washed mass that can disagree with it.
   const fineMass = useMemo(() => panMass(sieveRows), [sieveRows]);
   const washedOvenDryMass = useMemo(
-    () => fineMass === null ? null : parseNumber(record.samplePreparation.initialDryMass) - fineMass,
-    [fineMass, record.samplePreparation.initialDryMass],
+    () => fineMass === null || initialOvenDryMass === null ? null : initialOvenDryMass - fineMass,
+    [fineMass, initialOvenDryMass],
   );
   const finesPercentage = useMemo(
     () => fineMass === null || calculations.totalWeight <= 0 ? null : (fineMass / calculations.totalWeight) * 100,
@@ -317,8 +326,8 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
   const hydrometer = useMemo(() => calculateHydrometer(
     record.hydrometerRows,
     { ...DEFAULT_HYDROMETER_INPUTS, ...record.hydrometerInputs },
-    record.samplePreparation.initialDryMass,
-  ), [record.hydrometerRows, record.hydrometerInputs, record.samplePreparation.initialDryMass]);
+    initialOvenDryMass === null ? "" : String(initialOvenDryMass),
+  ), [record.hydrometerRows, record.hydrometerInputs, initialOvenDryMass]);
   /**
    * One grading series for the BS sheet: sieve cumulative passing, extended
    * below the finest sieve by the hydrometer diameters. `mergePsdSeries` keeps
@@ -540,6 +549,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       ...moisture,
       ...hydrometer,
       fineMass,
+      initialOvenDryMass,
       finesPercentage,
       gravelPercentage: classificationValues.gravel,
       sandPercentage: classificationValues.sand,
@@ -549,7 +559,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       uscsSymbol: uscsResult,
       aashtoGroup: aashtoResult,
     },
-  }), [project.projectName, project.clientName, project.projectDate, project.date, preparedRecord, calculations, gradation, moisture, hydrometer, fineMass, finesPercentage, classificationValues, groupIndex, uscsResult, aashtoResult]);
+  }), [project.projectName, project.clientName, project.projectDate, project.date, preparedRecord, calculations, gradation, moisture, hydrometer, fineMass, initialOvenDryMass, finesPercentage, classificationValues, groupIndex, uscsResult, aashtoResult]);
 
   const status = calculations.totalWeight === 0 ? "not-started" : calculations.percentageRetained.some((value) => value > 0) ? "in-progress" : "not-started";
   const save = useCallback(async () => {
@@ -793,6 +803,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
         <RecordSection title="Sample preparation">
           <div className="grid gap-px overflow-hidden rounded-md border sm:grid-cols-2">
             <RecordField label="Initial air-dried mass (g) *" value={record.samplePreparation.initialDryMass} placeholder="e.g. 669" onChange={(value) => updateNested("samplePreparation", "initialDryMass", value)} />
+            <CalculatedField label="Initial oven-dry equivalent (g)" value={initialOvenDryMass === null ? "auto" : initialOvenDryMass.toFixed(1)} />
             <CalculatedField label="Washed & oven-dried mass (g)" value={washedOvenDryMass === null ? "auto" : washedOvenDryMass.toFixed(1)} />
             <CalculatedField label="Fine mass (g)" value={fineMass === null ? "auto" : fineMass.toFixed(1)} />
             <CalculatedField label="Fines %" value={formatValue(finesPercentage, 1)} />

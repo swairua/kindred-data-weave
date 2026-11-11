@@ -115,6 +115,24 @@ const savedResults = [
       },
     },
   },
+  {
+    id: "94",
+    project_id: "42",
+    test_key: "grading",
+    payload_json: {
+      project: {
+        records: [{
+          sampleNumber: "Moisture corrected sample",
+          samplePreparation: { initialDryMass: "600" },
+          moisture: { wetMass: "512", dryMass: "500" },
+          sieveRows: [
+            { sieveSize: "4.75 (No. 4)", weightRetained: "480" },
+            { sieveSize: "<0.075", weightRetained: "" },
+          ],
+        }],
+      },
+    },
+  },
 ];
 
 beforeAll(() => {
@@ -279,6 +297,22 @@ describe("GradingTest selected record", () => {
     expect(screen.getByText("Fines %").parentElement).toHaveTextContent("71.9");
     expect(screen.getByText("Fine mass (g)").parentElement).toHaveTextContent("126.8");
     expect(screen.getByText("Washed & oven-dried mass (g)").parentElement).toHaveTextContent("201.2");
+  });
+
+  it("corrects the sieve mass balance to oven-dry equivalent using preparation moisture", async () => {
+    render(
+      <MemoryRouter initialEntries={["/tests?projectId=42&resultId=94#grading"]}>
+        <ProjectContext.Provider value={{ projectName: "Grading project", clientName: "Client", date: "2026-06-12", currentProjectId: 42 }}>
+          <GradingTest testKey="grading" />
+        </ProjectContext.Provider>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Moisture corrected sample")).toBeInTheDocument();
+    expect(screen.getByText("Initial oven-dry equivalent (g)").parentElement).toHaveTextContent("585.9");
+    expect(screen.getByText("Washed & oven-dried mass (g)").parentElement).toHaveTextContent("480.0");
+    expect(screen.getByText("Fine mass (g)").parentElement).toHaveTextContent("105.9");
+    expect(screen.getByText("Fines %").parentElement).toHaveTextContent("18.1");
   });
 
   it("verifies A-1-b from P40 while flagging only the missing No. 10", async () => {
