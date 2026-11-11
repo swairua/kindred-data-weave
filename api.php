@@ -1290,23 +1290,27 @@ try {
             respond(['error' => 'Invalid file extension'], 400);
         }
 
-        // Coring photos live in /uploads/coring/ so preview and upload paths match.
-        $upload_dir = __DIR__ . '/uploads/coring/';
-        if (!is_dir($upload_dir)) {
-            if (!@mkdir($upload_dir, 0755, true)) {
-                error_log('Coring upload directory creation failed');
-                respond(['error' => 'Failed to create upload directory'], 500);
-            }
+    // Coring photos live in /uploads/coring/ so preview and upload paths match.
+    $upload_dir = __DIR__ . '/uploads/coring/';
+    if (!is_dir($upload_dir)) {
+        if (!@mkdir($upload_dir, 0755, true)) {
+            error_log('Coring upload directory creation failed');
+            respond(['error' => 'Failed to create upload directory'], 500);
         }
+    }
 
-        $filename = 'coring_' . $imageType . '_' . date('Ymd_His') . '_' . bin2hex(random_bytes(6)) . '.' . $ext;
-        $file_path = $upload_dir . $filename;
-        $relative_path = '/uploads/coring/' . $filename;
+    $filename = 'coring_' . $imageType . '_' . date('Ymd_His') . '_' . bin2hex(random_bytes(6)) . '.' . $ext;
+    $file_path = $upload_dir . $filename;
+    $relative_path = '/uploads/coring/' . $filename;
 
-        if (!@move_uploaded_file($file['tmp_name'], $file_path)) {
-            error_log('Coring photo move failed');
-            respond(['error' => 'Failed to save uploaded file'], 500);
-        }
+    error_log('Coring photo upload started: type=' . $imageType . ', file=' . $file['name'] . ', size=' . $file['size'] . ', user=' . $userId);
+
+    if (!@move_uploaded_file($file['tmp_name'], $file_path)) {
+        error_log('Coring photo move failed: file=' . $file['name'] . ', user=' . $userId);
+        respond(['error' => 'Failed to save uploaded file'], 500);
+    }
+
+    error_log('Coring photo saved to disk: path=' . $relative_path . ', user=' . $userId);
 
         try {
             $stmt = $conn->prepare(
@@ -1333,6 +1337,8 @@ try {
 
             $photo_id = $conn->insert_id;
 
+            error_log('Coring photo DB insert complete: id=' . $photo_id . ', path=' . $relative_path . ', user=' . $userId);
+
             respond([
                 'success' => true,
                 'message' => 'Photo uploaded successfully',
@@ -1342,10 +1348,10 @@ try {
             ], 200);
 
         } catch (Exception $e) {
-            error_log('Coring photo database insert failed (' . get_class($e) . ')');
+            error_log('Coring photo database insert failed (' . get_class($e) . '): ' . $e->getMessage() . ', user=' . $userId);
             if (file_exists($file_path)) {
                 if (!@unlink($file_path)) {
-                    error_log('Coring photo cleanup failed');
+                    error_log('Coring photo cleanup failed: path=' . $file_path . ', user=' . $userId);
                 }
             }
             respond(['error' => 'Failed to save photo to database', 'details' => $e->getMessage()], 500);
