@@ -299,12 +299,12 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
   // rather than a separately typed washed mass that can disagree with it.
   const fineMass = useMemo(() => panMass(sieveRows), [sieveRows]);
   const washedOvenDryMass = useMemo(
-    () => fineMass === null ? null : calculations.totalWeight - fineMass,
-    [fineMass, calculations.totalWeight],
+    () => fineMass === null ? null : parseNumber(record.samplePreparation.initialDryMass) - fineMass,
+    [fineMass, record.samplePreparation.initialDryMass],
   );
   const finesPercentage = useMemo(
     () => fineMass === null || calculations.totalWeight <= 0 ? null : (fineMass / calculations.totalWeight) * 100,
-    [fineMass, calculations.totalWeight],
+    [fineMass, record.samplePreparation.initialDryMass],
   );
   const preparedRecord = useMemo<GradingRecord>(() => ({
     ...record,
