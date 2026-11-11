@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef, useContext } from "react";
+import { Fragment, useState, useMemo, useEffect, useCallback, useRef, useContext } from "react";
 import TestSection from "@/components/TestSection";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -986,8 +986,6 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground border-r border-border/50">Density (kg/m³)</th>
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground border-r border-border/50">Excess Voidage (%)</th>
               <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground border-r border-border/50">Failure Mode</th>
-              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground border-r border-border/50 w-36">Before Test</th>
-              <th className="text-left py-1.5 px-1.5 font-medium text-muted-foreground border-r border-border/50 w-36">After Test</th>
               <th className="w-12"></th>
             </tr>
           </thead>
@@ -996,7 +994,8 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
               const rowErrors = validationErrors.filter(e => e.rowIndex === i);
               const hasRowError = rowErrors.length > 0;
               return (
-                <tr key={i} className={`border-b border-border/50 ${hasRowError ? "bg-destructive/5" : ""}`}>
+                <Fragment key={i}>
+                <tr className={`border-b border-border/50 ${hasRowError ? "bg-destructive/5" : ""}`}>
                   <td className="py-1 px-1.5"><Input value={row.coreId} onChange={(e) => update(i, "coreId", e.target.value)} className={`h-7 w-16 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "coreId") ? "border-destructive" : ""}`} /></td>
                   <td className="py-1 px-1.5">
                     <Select value={row.depth} onValueChange={(v) => update(i, "depth", v)}>
@@ -1010,8 +1009,8 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
                   <td className="py-1 px-1.5"><Input type="number" value={row.lengthBefore} onChange={(e) => update(i, "lengthBefore", e.target.value)} className="h-7 w-20 text-xs" placeholder="150" /></td>
                   <td className="py-1 px-1.5"><Input type="number" value={row.lengthAfter} onChange={(e) => update(i, "lengthAfter", e.target.value)} className={`h-7 w-20 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "lengthAfter") ? "border-destructive" : ""}`} placeholder="82" /></td>
                   <td className="py-1 px-1.5"><CalculatedInput value={getLDRatio(row)} className="h-7 w-24 px-1.5" /></td>
-                  <td className="py-1 px-1.5"><CalculatedInput value={getArea(row)} className="h-7 w-24 px-1.5" /></td>
-                  <td className="py-1 px-1.5"><CalculatedInput value={getVolume(row)} className="h-7 w-24 px-1.5" /></td>
+                  <td className="py-1 px-1.5"><CalculatedInput value={getArea(row)} className="h-7 w-28 px-1.5 text-xs" /></td>
+                  <td className="py-1 px-1.5"><CalculatedInput value={getVolume(row)} className="h-7 w-28 px-1.5 text-xs" /></td>
                   <td className="py-1 px-1.5"><Input type="number" value={row.weightInAir} onChange={(e) => update(i, "weightInAir", e.target.value)} className={`h-7 w-20 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "weightInAir") ? "border-destructive" : ""}`} placeholder="0" /></td>
                   <td className="py-1 px-1.5"><Input type="number" value={row.load} onChange={(e) => update(i, "load", e.target.value)} className={`h-7 w-20 text-xs ${validationErrors.some(e => e.rowIndex === i && e.field === "load") ? "border-destructive" : ""}`} placeholder="0" /></td>
                   <td className="py-1 px-1.5"><CalculatedInput value={getCoreStrength(row)} className="h-7 w-24 px-1.5" /></td>
@@ -1032,44 +1031,49 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
                       </SelectContent>
                     </Select>
                   </td>
-                  <td className="py-1 px-1.5">
-                    <div className="flex flex-col gap-1">
-                      {row.pileBeforeImage ? (
-                        <div className="relative w-28 h-20">
-                          <img src={coringImageUrl(row.pileBeforeImage)} alt="Before" className="w-full h-full object-cover rounded border" />
-                          <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-5 w-5 p-0" onClick={() => removeCoringImage(i, "pileBeforeImage")}><Trash2 className="h-3 w-3" /></Button>
-                        </div>
-                      ) : (
-                        <label className="relative cursor-pointer">
-                          <input type="file" accept="image/*" className="sr-only" onChange={(e) => e.target.files[0] && handleImageUpload(i, "pileBeforeImage", e.target.files[0])} />
-                          <div className="w-28 h-20 border-2 border-dashed border-border rounded flex items-center justify-center bg-muted/50">
-                            <Upload className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-[10px] text-muted-foreground">Before</span>
-                          </div>
-                        </label>
-                      )}
-                    </div>
-                  </td>
-                  <td className="py-1 px-1.5">
-                    <div className="flex flex-col gap-1">
-                      {row.pileAfterImage ? (
-                        <div className="relative w-28 h-20">
-                          <img src={coringImageUrl(row.pileAfterImage)} alt="After" className="w-full h-full object-cover rounded border" />
-                          <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-5 w-5 p-0" onClick={() => removeCoringImage(i, "pileAfterImage")}><Trash2 className="h-3 w-3" /></Button>
-                        </div>
-                      ) : (
-                        <label className="relative cursor-pointer">
-                          <input type="file" accept="image/*" className="sr-only" onChange={(e) => e.target.files[0] && handleImageUpload(i, "pileAfterImage", e.target.files[0])} />
-                          <div className="w-28 h-20 border-2 border-dashed border-border rounded flex items-center justify-center bg-muted/50">
-                            <Upload className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-[10px] text-muted-foreground">After</span>
-                          </div>
-                        </label>
-                      )}
-                    </div>
-                  </td>
                   <td className="py-1 px-1"><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeCoringRow(i)}><X className="h-3 w-3" /></Button></td>
                 </tr>
+                <tr className="border-b border-border/50 bg-muted/20">
+                  <td colSpan={22} className="py-2 px-1.5">
+                    <div className="flex gap-6">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] font-medium text-muted-foreground">Before test</span>
+                        {row.pileBeforeImage ? (
+                          <div className="relative w-28 h-20">
+                            <img src={coringImageUrl(row.pileBeforeImage)} alt="Before" className="w-full h-full object-cover rounded border" />
+                            <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-5 w-5 p-0" onClick={() => removeCoringImage(i, "pileBeforeImage")}><Trash2 className="h-3 w-3" /></Button>
+                          </div>
+                        ) : (
+                          <label className="relative cursor-pointer">
+                            <input type="file" accept="image/*" className="sr-only" onChange={(e) => e.target.files[0] && handleImageUpload(i, "pileBeforeImage", e.target.files[0])} />
+                            <div className="w-28 h-20 border-2 border-dashed border-border rounded flex items-center justify-center bg-muted/50">
+                              <Upload className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-[10px] text-muted-foreground">Before</span>
+                            </div>
+                          </label>
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] font-medium text-muted-foreground">After test</span>
+                        {row.pileAfterImage ? (
+                          <div className="relative w-28 h-20">
+                            <img src={coringImageUrl(row.pileAfterImage)} alt="After" className="w-full h-full object-cover rounded border" />
+                            <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-5 w-5 p-0" onClick={() => removeCoringImage(i, "pileAfterImage")}><Trash2 className="h-3 w-3" /></Button>
+                          </div>
+                        ) : (
+                          <label className="relative cursor-pointer">
+                            <input type="file" accept="image/*" className="sr-only" onChange={(e) => e.target.files[0] && handleImageUpload(i, "pileAfterImage", e.target.files[0])} />
+                            <div className="w-28 h-20 border-2 border-dashed border-border rounded flex items-center justify-center bg-muted/50">
+                              <Upload className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-[10px] text-muted-foreground">After</span>
+                            </div>
+                          </label>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                </Fragment>
               );
             })}
           </tbody>
@@ -1141,39 +1145,6 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
           )}
         </CardContent>
       </Card>
-
-      {/* Test Photographs */}
-      {rows.some(r => r.pileBeforeImage || r.pileAfterImage) && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="text-sm">Test Photographs</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {rows.filter(r => r.pileBeforeImage || r.pileAfterImage).map(row => (
-              <div key={row.coreId} className="space-y-2">
-                <Label className="text-xs">Core {row.coreId}</Label>
-                <div className="grid grid-cols-2 gap-4">
-                  {[
-                    { src: row.pileBeforeImage, label: "Before test" },
-                    { src: row.pileAfterImage, label: "After test" },
-                  ].map(({ src, label }) => (
-                    <div key={label} className="space-y-1">
-                      <div className="flex h-48 items-center justify-center overflow-hidden rounded border bg-muted/30">
-                        {src ? (
-                          <img src={coringImageUrl(src)} alt={`Core ${row.coreId} ${label.toLowerCase()}`} className="h-full w-full object-contain" />
-                        ) : (
-                          <span className="text-xs text-muted-foreground">No photo</span>
-                        )}
-                      </div>
-                      <p className="text-center text-xs text-muted-foreground">{label}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
     </TestSection>
   );
 };

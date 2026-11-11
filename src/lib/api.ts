@@ -1173,7 +1173,7 @@ export const linkCoringPhotos = async (
 export const discardCoringPhoto = async (filePath: string): Promise<void> => {
   try {
     await apiRequest<ApiWriteResponse<null>>(
-      { method: "DELETE", body: JSON.stringify({ file_path: filePath }) },
+      { method: "POST", body: JSON.stringify({ file_path: filePath }) },
       { action: "delete-coring-photo" },
     );
   } catch (error) {

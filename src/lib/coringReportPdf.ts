@@ -113,7 +113,8 @@ const drawCell = (doc: jsPDF, x: number, y: number, w: number, h: number, label:
 
   doc.setFont("helvetica", "bold");
   doc.setTextColor(0);
-  const valueSize = fitFontSize(doc, text, w - labelW - 14, 8, 6);
+  const valueMaxW = dividerAt !== undefined ? w - dividerAt - 4 : w - labelW - 14;
+  const valueSize = fitFontSize(doc, text, valueMaxW, 8, 6);
   doc.setFontSize(valueSize);
   doc.text(text, x + w - 2, mid + valueSize * 0.35, { align: "right" });
 };
@@ -245,21 +246,23 @@ const drawCorePage = (doc: jsPDF, project: CoringProjectInfo, core: CoringCoreRe
   doc.text("Comments:", LEFT + 2, COMMENTS_TOP + 6);
   doc.setFont("helvetica", "normal");
   doc.text(commentLines, LEFT + 44, COMMENTS_TOP + 6);
-  const voidageTop = COMMENTS_TOP + 6 + Math.max(commentLines.length, 1) * 9;
+  const voidageTop = COMMENTS_TOP + 6 + Math.max(commentLines.length, 1) * 11;
+  doc.setFontSize(7.5);
   doc.setFont("helvetica", "bold");
-  doc.text("Excess Voidage:", LEFT + 2, voidageTop);
+  const voidageLabel = "Excess Voidage:";
+  doc.text(voidageLabel, LEFT + 2, voidageTop);
+  const voidageLabelW = doc.getTextWidth(voidageLabel);
   doc.setFont("helvetica", "normal");
-  doc.text(core.excessVoidage ? `${core.excessVoidage}%` : "—", LEFT + 44, voidageTop);
+  doc.text(core.excessVoidage ? `${core.excessVoidage}%` : "—", LEFT + 2 + voidageLabelW + 6, voidageTop);
 
-  const signatureTop = voidageTop + 6;
-  const signatureCellW = (WIDTH - STAMP_AREA) / 3;
-  drawCell(doc, LEFT, signatureTop, signatureCellW, SIGNATURE_H, "Tested by", project.testedBy);
-  drawCell(doc, LEFT + signatureCellW, signatureTop, signatureCellW, SIGNATURE_H, "Date Reported", project.dateReported);
-  drawCell(doc, LEFT + signatureCellW * 2, signatureTop, signatureCellW, SIGNATURE_H, "Checked by", project.checkedBy);
-
+  const signatureTop = voidageTop + 8;
+  const signatureCellW = WIDTH / 3;
   if (images.stamp) {
     drawFittedImage(doc, images.stamp, LEFT + WIDTH - 50, signatureTop - 14, 48, 48);
   }
+  drawCell(doc, LEFT, signatureTop, signatureCellW, SIGNATURE_H, "Tested by", project.testedBy);
+  drawCell(doc, LEFT + signatureCellW, signatureTop, signatureCellW, SIGNATURE_H, "Date Reported", project.dateReported);
+  drawCell(doc, LEFT + signatureCellW * 2, signatureTop, signatureCellW, SIGNATURE_H, "Checked by", project.checkedBy);
 };
 
 export const buildCoringReportPDF = async (project: CoringProjectInfo, cores: CoringCoreReport[]): Promise<jsPDF> => {

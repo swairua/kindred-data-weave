@@ -11,9 +11,9 @@ import { type RecordMetadata, useTestData } from "@/context/TestDataContext";
 import { captureChartAsBase64 } from "@/lib/chartCapture";
 import { createRecord, deleteRecord, listRecords, updateRecord } from "@/lib/api";
 import { generateParticleSizeDistributionPDF } from "@/lib/psdPdfGenerator";
-import { calculateGrading, calculateGradationCoefficients, calculateHydrometer, calculateMoisture, type GradingRow } from "@/lib/gradingCalculations";
+import { calculateGrading, panMass, calculateGradationCoefficients, calculateHydrometer, calculateMoisture, type GradingRow } from "@/lib/gradingCalculations";
 import { mergePsdSeries } from "@/lib/psdChartGeometry";
-import { calculateAashtoGroupIndex, classifySoilAASHTO, classifySoilUSCS, getAashtoEvidenceWarnings } from "@/lib/soilClassification";
+import { calculateAashtoGroupIndex, classifySoilAASHTO, classifySoilUSCS, getAashtoEvidenceWarnings, rateAashtoGroup } from "@/lib/soilClassification";
 import { toast } from "sonner";
 
 interface GradingTestProps {
@@ -33,7 +33,6 @@ interface MoistureSection {
 interface ClassificationSection {
   uscs: string;
   aashtoGroup: string;
-  aashtoRating: string;
   liquidLimit: string;
   plasticLimit: string;
   plasticityIndex: string;
@@ -122,7 +121,6 @@ const EMPTY_HYDROMETER_ROWS: HydrometerRow[] = HYDROMETER_TIMES.map((time) => ({
 const DEFAULT_CLASSIFICATION: ClassificationSection = {
   uscs: "auto",
   aashtoGroup: "auto",
-  aashtoRating: "auto",
   liquidLimit: "",
   plasticLimit: "",
   plasticityIndex: "auto",
@@ -194,7 +192,6 @@ const normalizeRecord = (value: unknown, metadata: RecordMetadata): GradingRecor
     classification: {
       uscs: readString(classification.uscs) || DEFAULT_CLASSIFICATION.uscs,
       aashtoGroup: readString(classification.aashtoGroup) || DEFAULT_CLASSIFICATION.aashtoGroup,
-      aashtoRating: readString(classification.aashtoRating) || DEFAULT_CLASSIFICATION.aashtoRating,
       liquidLimit: readString(classification.liquidLimit),
       plasticLimit: readString(classification.plasticLimit),
       plasticityIndex: readString(classification.plasticityIndex) || DEFAULT_CLASSIFICATION.plasticityIndex,
@@ -253,6 +250,21 @@ const parseNumber = (value: string) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const PAN_REMAINDER_SIZE = "<0.075";
+
+/** The <0.075 pan mass is the dry mass less every other retained mass; blank until both are entered. */
+const withPanRemainder = (rows: GradingRow[], dryMass: string): GradingRow[] => {
+  const index = rows.findIndex((row) => row.sieveSize === PAN_REMAINDER_SIZE);
+  if (index < 0) return rows;
+  const dry = parseNumber(dryMass);
+  const otherMasses = rows.flatMap((row, rowIndex) => rowIndex === index ? [] : [parseNumber(row.weightRetained)]);
+  const enteredOthers = otherMasses.filter((mass): mass is number => mass !== null);
+  const remainder = dry !== null && dry > 0 && enteredOthers.length > 0
+    ? (dry - enteredOthers.reduce((sum, mass) => sum + mass, 0)).toFixed(2)
+    : "";
+  return rows.map((row, rowIndex) => rowIndex === index ? { ...row, weightRetained: remainder } : row);
+};
+
 const GradingTest = ({ testKey }: GradingTestProps) => {
   const project = useProject();
   const testData = useTestData();
@@ -277,17 +289,31 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
-  const calculations = useMemo(() => calculateGrading(record.sieveRows), [record.sieveRows]);
+  const sieveRows = useMemo(
+    () => withPanRemainder(record.sieveRows, record.samplePreparation.initialDryMass),
+    [record.sieveRows, record.samplePreparation.initialDryMass],
+  );
+  const calculations = useMemo(() => calculateGrading(sieveRows), [sieveRows]);
   const moisture = useMemo(() => calculateMoisture(record.moisture.wetMass, record.moisture.dryMass), [record.moisture]);
-  const fineMass = useMemo(() => {
-    const initial = parseNumber(record.samplePreparation.initialDryMass);
-    const washed = parseNumber(record.samplePreparation.washedOvenDryMass);
-    return initial !== null && washed !== null && initial > 0 && washed >= 0 && washed <= initial ? initial - washed : null;
-  }, [record.samplePreparation]);
-  const finesPercentage = useMemo(() => {
-    const initial = parseNumber(record.samplePreparation.initialDryMass);
-    return initial !== null && initial > 0 && fineMass !== null ? (fineMass / initial) * 100 : null;
-  }, [record.samplePreparation, fineMass]);
+  // Fines are what the pan holds out of the sieved mass, so they come from the sieve table
+  // rather than a separately typed washed mass that can disagree with it.
+  const fineMass = useMemo(() => panMass(sieveRows), [sieveRows]);
+  const washedOvenDryMass = useMemo(
+    () => fineMass === null ? null : calculations.totalWeight - fineMass,
+    [fineMass, calculations.totalWeight],
+  );
+  const finesPercentage = useMemo(
+    () => fineMass === null || calculations.totalWeight <= 0 ? null : (fineMass / calculations.totalWeight) * 100,
+    [fineMass, calculations.totalWeight],
+  );
+  const preparedRecord = useMemo<GradingRecord>(() => ({
+    ...record,
+    sieveRows,
+    samplePreparation: {
+      ...record.samplePreparation,
+      washedOvenDryMass: washedOvenDryMass === null ? "" : washedOvenDryMass.toFixed(2),
+    },
+  }), [record, sieveRows, washedOvenDryMass]);
   const hydrometer = useMemo(() => calculateHydrometer(
     record.hydrometerRows,
     { ...DEFAULT_HYDROMETER_INPUTS, ...record.hydrometerInputs },
@@ -436,6 +462,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       aashtoGroup: record.classification.aashtoGroup && record.classification.aashtoGroup !== "auto" ? record.classification.aashtoGroup : autoClassification?.aashtoGroup ?? null,
     });
   }, [record.classification.liquidLimit, record.classification.aashtoGroup, classificationValues.plasticityIndex, classificationValues.fines, autoClassification?.aashtoGroup]);
+  const aashtoRating = rateAashtoGroup(aashtoResult, groupIndex);
 
   useEffect(() => {
     if (!projectId) {
@@ -505,7 +532,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       title: project.projectName,
       clientName: project.clientName,
       date: project.projectDate || project.date,
-      records: [record],
+      records: [preparedRecord],
     },
     calculations: {
       ...calculations,
@@ -522,7 +549,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       uscsSymbol: uscsResult,
       aashtoGroup: aashtoResult,
     },
-  }), [project.projectName, project.clientName, project.projectDate, project.date, record, calculations, gradation, moisture, hydrometer, fineMass, finesPercentage, classificationValues, groupIndex, uscsResult, aashtoResult]);
+  }), [project.projectName, project.clientName, project.projectDate, project.date, preparedRecord, calculations, gradation, moisture, hydrometer, fineMass, finesPercentage, classificationValues, groupIndex, uscsResult, aashtoResult]);
 
   const status = calculations.totalWeight === 0 ? "not-started" : calculations.percentageRetained.some((value) => value > 0) ? "in-progress" : "not-started";
   const save = useCallback(async () => {
@@ -642,7 +669,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
   /** The BS 1377-2 sheet, shared by the download and the print window. */
   const buildPdfOptions = () => ({
     ...exportMetadata,
-    record,
+    record: preparedRecord,
     grading: { ...calculations, ...gradation },
     hydrometer,
     hydrometerInputs: { ...DEFAULT_HYDROMETER_INPUTS, ...record.hydrometerInputs },
@@ -766,7 +793,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
         <RecordSection title="Sample preparation">
           <div className="grid gap-px overflow-hidden rounded-md border sm:grid-cols-2">
             <RecordField label="Initial air-dried mass (g) *" value={record.samplePreparation.initialDryMass} placeholder="e.g. 669" onChange={(value) => updateNested("samplePreparation", "initialDryMass", value)} />
-            <RecordField label="Washed & oven-dried mass (g) *" value={record.samplePreparation.washedOvenDryMass} placeholder="auto" onChange={(value) => updateNested("samplePreparation", "washedOvenDryMass", value)} />
+            <CalculatedField label="Washed & oven-dried mass (g)" value={washedOvenDryMass === null ? "auto" : washedOvenDryMass.toFixed(1)} />
             <CalculatedField label="Fine mass (g)" value={fineMass === null ? "auto" : fineMass.toFixed(1)} />
             <CalculatedField label="Fines %" value={formatValue(finesPercentage, 1)} />
           </div>
@@ -793,15 +820,13 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
         </div>
         <div className="mt-px grid gap-px overflow-hidden rounded-md border sm:grid-cols-2">
           <EditableCell label="USCS" value={autoClassification ? `${autoClassification.uscsSymbol} — ${autoClassification.uscsDescription}` : "auto"} calculated />
-          <span className="text-xs text-muted-foreground ml-1">(calculated from sieve data)</span>
           <EditableCell label="USCS override" value={record.classification.uscs} onChange={(value) => updateNested("classification", "uscs", value)} />
         </div>
         <div className="mt-px grid gap-px overflow-hidden rounded-md border sm:grid-cols-4">
           <EditableCell label="AASHTO group" value={autoClassification ? autoClassification.aashtoGroup : "auto"} calculated />
-          <span className="text-xs text-muted-foreground ml-1">(calculated from sieve data)</span>
           <EditableCell label="Group Index" value={groupIndex === null ? "auto" : String(groupIndex)} calculated />
           <EditableCell label="AASHTO override" value={record.classification.aashtoGroup} onChange={(value) => updateNested("classification", "aashtoGroup", value)} />
-          <EditableCell label="Rating" value={record.classification.aashtoRating} onChange={(value) => updateNested("classification", "aashtoRating", value)} />
+          <EditableCell label="Rating" value={aashtoRating ?? "auto"} calculated />
         </div>
         <div className="mt-2 border-t pt-2">
           <div className="mb-px bg-muted/60 px-2 py-1 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Atterberg</div>
@@ -821,7 +846,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
 
       <div className="grid gap-3 md:grid-cols-[3fr_5fr]">
         <RecordSection title="Wet & dry sieve analysis to BS 1377-2:1990:9.2/9.3">
-          <div className="overflow-x-auto" ref={sieveNav.ref} onKeyDown={sieveNav.onKeyDown}><table className="record-table grading-sieve-table w-full table-fixed"><thead><tr className="h-16"><th>Sieve size (mm)</th><th>Retained mass (g)</th><th>% retained</th><th>Cumulative passing (%)</th></tr></thead><tbody>{record.sieveRows.map((row, index) => <tr key={`${row.sieveSize}-${index}`} className="h-10"><td className="font-semibold">{row.sieveSize}</td><td><Input type="number" min="0" value={row.weightRetained} onChange={(event) => updateSieve(index, event.target.value)} className="record-input h-7 min-w-0 w-full px-1 text-center" /></td><td className="calculated-cell">{calculations.totalWeight > 0 ? calculations.percentageRetained[index].toFixed(1) : "auto"}</td><td className="calculated-cell">{calculations.cumulativePassing[index] === null ? "auto" : calculations.cumulativePassing[index]?.toFixed(1)}</td></tr>)}<tr className="h-10 font-semibold"><td>TOTAL</td><td className="calculated-cell">{calculations.totalWeight ? calculations.totalWeight.toFixed(1) : "auto"}</td><td className="calculated-cell">{calculations.totalWeight ? "100.0" : "auto"}</td><td className="calculated-cell">—</td></tr>{Array.from({ length: sieveFillerRows }, (_, index) => <tr key={`sieve-filler-${index}`} className="h-10"><td /><td /><td /><td /></tr>)}</tbody></table></div>
+          <div className="overflow-x-auto" ref={sieveNav.ref} onKeyDown={sieveNav.onKeyDown}><table className="record-table grading-sieve-table w-full table-fixed"><thead><tr className="h-16"><th>Sieve size (mm)</th><th>Retained mass (g)</th><th>% retained</th><th>Cumulative passing (%)</th></tr></thead><tbody>{sieveRows.map((row, index) => <tr key={`${row.sieveSize}-${index}`} className="h-10"><td className="font-semibold">{row.sieveSize}</td><td><Input type="number" min="0" value={row.weightRetained} readOnly={row.sieveSize === PAN_REMAINDER_SIZE} placeholder={row.sieveSize === PAN_REMAINDER_SIZE ? "auto" : undefined} onChange={(event) => updateSieve(index, event.target.value)} className="record-input h-7 min-w-0 w-full px-1 text-center" /></td><td className="calculated-cell">{calculations.totalWeight > 0 ? calculations.percentageRetained[index].toFixed(1) : "auto"}</td><td className="calculated-cell">{calculations.cumulativePassing[index] === null ? "auto" : calculations.cumulativePassing[index]?.toFixed(1)}</td></tr>)}<tr className="h-10 font-semibold"><td>TOTAL</td><td className="calculated-cell">{calculations.totalWeight ? calculations.totalWeight.toFixed(1) : "auto"}</td><td className="calculated-cell">{calculations.totalWeight ? "100.0" : "auto"}</td><td className="calculated-cell">—</td></tr>{Array.from({ length: sieveFillerRows }, (_, index) => <tr key={`sieve-filler-${index}`} className="h-10"><td /><td /><td /><td /></tr>)}</tbody></table></div>
         </RecordSection>
 
         <RecordSection title="Hydrometer analysis to BS 1377-2:1990:9.5">
