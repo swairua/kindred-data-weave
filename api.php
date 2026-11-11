@@ -1402,15 +1402,13 @@ try {
             // Some coring images predate the upload-coring-photo/admin_images rows: the
             // path is only referenced from the test result payload while the file itself
             // still lives under /uploads/. Remove the orphan so "delete" behaves the same
-            // for every image instead of failing with a misleading 404.
+            // for every image instead of failing with a misleading 404. If the physical
+            // file is already gone, that's fine — the frontend reference is what matters.
             $orphanPath = realpath(__DIR__ . $filePath);
-            if ($orphanPath && $uploadsRoot && strpos($orphanPath, $uploadsRoot) === 0) {
-                if (is_file($orphanPath)) {
-                    @unlink($orphanPath);
-                }
-                respond(['success' => true, 'message' => 'Photo deleted']);
+            if ($orphanPath && $uploadsRoot && strpos($orphanPath, $uploadsRoot) === 0 && is_file($orphanPath)) {
+                @unlink($orphanPath);
             }
-            respond(['error' => 'Photo not found or already linked'], 404);
+            respond(['success' => true, 'message' => 'Photo deleted']);
         }
 
         // Unlink inside the uploads tree; /uploads/coring/ is nested below /uploads/,
