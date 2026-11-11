@@ -1290,7 +1290,11 @@ try {
             respond(['error' => 'Invalid file extension'], 400);
         }
 
-        $upload_dir = __DIR__ . '/uploads/coring/';
+        // Coring photos live in the same /uploads/ directory as the images the preview
+        // already serves (legacy pile_before_/pile_after_ files). Keeping one location
+        // means every image URL is https://<host>/uploads/<file>, with no /uploads/coring
+        // variant to reconcile.
+        $upload_dir = __DIR__ . '/uploads/';
         if (!is_dir($upload_dir)) {
             if (!@mkdir($upload_dir, 0755, true)) {
                 error_log('Coring upload directory creation failed');
@@ -1300,7 +1304,7 @@ try {
 
         $filename = 'coring_' . $imageType . '_' . date('Ymd_His') . '_' . bin2hex(random_bytes(6)) . '.' . $ext;
         $file_path = $upload_dir . $filename;
-        $relative_path = '/uploads/coring/' . $filename;
+        $relative_path = '/uploads/' . $filename;
 
         if (!@move_uploaded_file($file['tmp_name'], $file_path)) {
             error_log('Coring photo move failed');
@@ -1357,14 +1361,17 @@ try {
 
         $body = $body ?: [];
         $filePath = $body['file_path'] ?? '';
-        if (!is_string($filePath) || !preg_match('#^/uploads/(coring/|pile_before_|pile_after_)[A-Za-z0-9_.\-]+$#', $filePath)) {
+        if (!is_string($filePath) || !preg_match('#^/uploads/(coring/|coring_before_|coring_after_|pile_before_|pile_after_)[A-Za-z0-9_.\-]+$#', $filePath)) {
             respond(['error' => 'Invalid file_path'], 400);
         }
 
-        // Check coring_photos first (new uploads via upload-coring-photo)
+        // Check coring_photos first (new uploads via upload-coring-photo).
+        // A row may already be linked to a test result (link-coring-photos runs on save),
+        // so do not filter on test_result_id here: the file_path is unique per upload and
+        // the owner check is what protects other users' photos.
         $stmt = $conn->prepare(
             "SELECT id, file_path FROM coring_photos
-             WHERE file_path = ? AND uploaded_by = ? AND test_result_id IS NULL LIMIT 1"
+             WHERE file_path = ? AND uploaded_by = ? LIMIT 1"
         );
         if (!$stmt) {
             respond(['error' => 'Database error'], 500);
@@ -1438,7 +1445,7 @@ try {
         $projectId = (int) ($body['project_id'] ?? 0);
         $testResultId = (int) ($body['test_result_id'] ?? 0);
         $filePaths = is_array($body['file_paths'] ?? null) ? $body['file_paths'] : [];
-        $filePaths = array_values(array_filter($filePaths, static fn($p) => is_string($p) && preg_match('#^/uploads/(coring/|pile_before_|pile_after_)[A-Za-z0-9_.\-]+$#', $p)));
+        $filePaths = array_values(array_filter($filePaths, static fn($p) => is_string($p) && preg_match('#^/uploads/(coring/|coring_before_|coring_after_|pile_before_|pile_after_)[A-Za-z0-9_.\-]+$#', $p)));
 
         if ($projectId <= 0 || $testResultId <= 0) {
             respond(['error' => 'project_id and test_result_id are required'], 400);
