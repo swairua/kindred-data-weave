@@ -1290,11 +1290,8 @@ try {
             respond(['error' => 'Invalid file extension'], 400);
         }
 
-        // Coring photos live in the same /uploads/ directory as the images the preview
-        // already serves (legacy pile_before_/pile_after_ files). Keeping one location
-        // means every image URL is https://<host>/uploads/<file>, with no /uploads/coring
-        // variant to reconcile.
-        $upload_dir = __DIR__ . '/uploads/';
+        // Coring photos live in /uploads/coring/ so preview and upload paths match.
+        $upload_dir = __DIR__ . '/uploads/coring/';
         if (!is_dir($upload_dir)) {
             if (!@mkdir($upload_dir, 0755, true)) {
                 error_log('Coring upload directory creation failed');
@@ -1304,7 +1301,7 @@ try {
 
         $filename = 'coring_' . $imageType . '_' . date('Ymd_His') . '_' . bin2hex(random_bytes(6)) . '.' . $ext;
         $file_path = $upload_dir . $filename;
-        $relative_path = '/uploads/' . $filename;
+        $relative_path = '/uploads/coring/' . $filename;
 
         if (!@move_uploaded_file($file['tmp_name'], $file_path)) {
             error_log('Coring photo move failed');
