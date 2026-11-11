@@ -1361,6 +1361,7 @@ try {
             respond(['error' => 'Invalid file_path'], 400);
         }
 
+        // Check coring_photos first (new uploads via upload-coring-photo)
         $stmt = $conn->prepare(
             "SELECT id, file_path FROM coring_photos
              WHERE file_path = ? AND uploaded_by = ? AND test_result_id IS NULL LIMIT 1"
@@ -1372,6 +1373,24 @@ try {
         $stmt->execute();
         $row = $stmt->get_result()->fetch_assoc();
         $stmt->close();
+
+        $sourceTable = 'coring_photos';
+
+        // Fallback: check admin_images for legacy uploads via the general upload action
+        if (!$row) {
+            $stmt = $conn->prepare(
+                "SELECT id, file_path FROM admin_images
+                 WHERE file_path = ? AND uploaded_by = ? AND image_type IN ('pile_before', 'pile_after') LIMIT 1"
+            );
+            if (!$stmt) {
+                respond(['error' => 'Database error'], 500);
+            }
+            $stmt->bind_param('si', $filePath, $userId);
+            $stmt->execute();
+            $row = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            $sourceTable = 'admin_images';
+        }
 
         if (!$row) {
             respond(['error' => 'Photo not found or already linked'], 404);
@@ -1385,7 +1404,7 @@ try {
             @unlink($realPath);
         }
 
-        $stmt = $conn->prepare("DELETE FROM coring_photos WHERE id = ?");
+        $stmt = $conn->prepare("DELETE FROM {$sourceTable} WHERE id = ?");
         if (!$stmt) {
             respond(['error' => 'Database error'], 500);
         }
@@ -1394,7 +1413,7 @@ try {
         $stmt->execute();
         $stmt->close();
 
-        respond(['success' => true, 'message' => 'Photo deleted'], 200);
+        respond(['success' => true, 'message' => 'Photo deleted']);
     }
 
     if ($action === 'link-coring-photos') {
