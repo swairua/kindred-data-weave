@@ -8,7 +8,7 @@ export type Material = "soil" | "concrete" | "rock" | "special";
  * This mirrors the catalogue held in `test_definitions`: only these tests are
  * selectable, and a test is only offered under the material it belongs to.
  */
-const ALLOWED_TEST_KEYS: Partial<Record<Material, ReadonlySet<string>>> = {
+export const ALLOWED_TEST_KEYS: Partial<Record<Material, ReadonlySet<string>>> = {
   soil: new Set(["atterberg", "grading", "proctor", "spt", "cpt"]),
   concrete: new Set(["compressive", "slump", "ndt", "coring"]),
   rock: new Set(["schmidt_rock", "ucs", "pointload"]),

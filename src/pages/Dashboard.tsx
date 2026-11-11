@@ -31,7 +31,9 @@ const Dashboard = () => {
   const { tests } = useTestData();
   const navigate = useNavigate();
   const [selectedTest, setSelectedTest] = useState<TestSummary | null>(null);
-  const [showDisabled, setShowDisabled] = useState(true);
+  // Disabled tests stay out of sight by default: the dashboard should show the
+  // catalogue the lab offers. The toggle is there for an explicit look behind it.
+  const [showDisabled, setShowDisabled] = useState(false);
 
   const testList = useMemo(() => Object.values(tests), [tests]);
 

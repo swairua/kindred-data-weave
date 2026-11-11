@@ -183,27 +183,27 @@ interface TestDataContextType {
   currentProjectId: number | null;
 }
 
-const defaultTests: Record<string, TestSummary> = {
-  grading: { id: "grading", name: "Particle Size Distribution", category: "soil", status: "not-started", dataPoints: 0, keyResults: [] },
-  atterberg: { id: "atterberg", name: "Atterberg Limits", category: "soil", status: "not-started", dataPoints: 0, keyResults: [] },
-  proctor: { id: "proctor", name: "Density/Moisture Content Relationship", category: "soil", status: "not-started", dataPoints: 0, keyResults: [] },
-  cpt: { id: "cpt", name: "Cone Penetration Test (CPT)", category: "soil", status: "not-started", dataPoints: 0, keyResults: [], enabled: true },
-  cbr: { id: "cbr", name: "CBR", category: "soil", status: "not-started", dataPoints: 0, keyResults: [] },
-  schmidt: { id: "schmidt", name: "NDT (Rebound Hammer)", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [] },
-  shear: { id: "shear", name: "Shear Test", category: "soil", status: "not-started", dataPoints: 0, keyResults: [] },
-  consolidation: { id: "consolidation", name: "Consolidation", category: "soil", status: "not-started", dataPoints: 0, keyResults: [] },
-  slump: { id: "slump", name: "Slump Test", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [] },
-  compressive: { id: "compressive", name: "Compressive Strength Test", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [] },
-  upvt: { id: "upvt", name: "UPVT", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [] },
-  coring: { id: "coring", name: "Coring", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [], enabled: true },
-  cubes: { id: "cubes", name: "Concrete Cubes", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [] },
-  ucs: { id: "ucs", name: "Unconfined Compressive Strength", category: "rock", status: "not-started", dataPoints: 0, keyResults: [] },
-  pointload: { id: "pointload", name: "Point Load Index", category: "rock", status: "not-started", dataPoints: 0, keyResults: [] },
-  porosity: { id: "porosity", name: "Porosity", category: "rock", status: "not-started", dataPoints: 0, keyResults: [] },
-  schmidt_rock: { id: "schmidt_rock", name: "Schmidt Hammer", category: "rock", status: "not-started", dataPoints: 0, keyResults: [], enabled: true },
-  ndt: { id: "ndt", name: "NDT (Rebound Hammer)", category: "rock", status: "not-started", dataPoints: 0, keyResults: [], enabled: true },
-  spt: { id: "spt", name: "Standard Penetration Test (SPT)", category: "soil", status: "not-started", dataPoints: 0, keyResults: [], enabled: true },
-  dcp: { id: "dcp", name: "DCP", category: "special", status: "not-started", dataPoints: 0, keyResults: [] },
+// The catalogue the laboratory offers, mirrored from the `test_definitions` rows
+// (5 soil, 4 concrete, 3 rock). `test_definitions` stays the source of truth:
+// these defaults only cover the window before that list arrives and the case where
+// the API cannot be reached. A stale entry here would put a test the lab does not
+// offer on the page, so this list must stay in step with the enabled catalogue.
+export const defaultTests: Record<string, TestSummary> = {
+  // Soil
+  atterberg: { id: "atterberg", name: "Atterberg Limits", category: "soil", status: "not-started", dataPoints: 0, keyResults: [], enabled: true, sortOrder: 1 },
+  grading: { id: "grading", name: "Particle Size Distribution", category: "soil", status: "not-started", dataPoints: 0, keyResults: [], enabled: true, sortOrder: 2 },
+  proctor: { id: "proctor", name: "Density/Moisture Content Relationship", category: "soil", status: "not-started", dataPoints: 0, keyResults: [], enabled: true, sortOrder: 3 },
+  spt: { id: "spt", name: "SPT Test", category: "soil", status: "not-started", dataPoints: 0, keyResults: [], enabled: true, sortOrder: 4 },
+  cpt: { id: "cpt", name: "Cone Penetration Test (CPT)", category: "soil", status: "not-started", dataPoints: 0, keyResults: [], enabled: true, sortOrder: 5 },
+  // Concrete
+  compressive: { id: "compressive", name: "Compressive Strength Test", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [], enabled: true, sortOrder: 1 },
+  slump: { id: "slump", name: "Slump Test", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [], enabled: true, sortOrder: 2 },
+  ndt: { id: "ndt", name: "NDT (Rebound Hammer)", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [], enabled: true, sortOrder: 3 },
+  coring: { id: "coring", name: "Compressive Strength of Concrete Cores (BS EN 12504-1)", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [], enabled: true, sortOrder: 4 },
+  // Rock
+  schmidt_rock: { id: "schmidt_rock", name: "Schmidt Hammer Test", category: "rock", status: "not-started", dataPoints: 0, keyResults: [], enabled: true, sortOrder: 1 },
+  ucs: { id: "ucs", name: "UCS Test", category: "rock", status: "not-started", dataPoints: 0, keyResults: [], enabled: true, sortOrder: 2 },
+  pointload: { id: "pointload", name: "Point Load Test", category: "rock", status: "not-started", dataPoints: 0, keyResults: [], enabled: true, sortOrder: 3 },
 };
 
 const TestDataContext = createContext<TestDataContextType>({

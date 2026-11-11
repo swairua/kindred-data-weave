@@ -1,4 +1,5 @@
 import { useTestData } from "@/context/TestDataContext";
+import { isTestEnabled } from "@/lib/testDefinitions";
 import { useProject } from "@/context/ProjectContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,10 @@ import { useState } from "react";
 const Reports = () => {
   const { tests, concreteTestMetadata } = useTestData();
   const project = useProject();
-  const testList = Object.values(tests);
+  // Only the tests the lab offers belong in a report: a disabled test must not
+  // show up in an exported list even when it still holds recorded data.
+  const testList = Object.values(tests).filter((t) => isTestEnabled(t));
+  const enabledTests = Object.fromEntries(testList.map((t) => [t.id, t]));
   const testsWithData = testList.filter(t => t.dataPoints > 0);
   const [isCompressiveExporting, setIsCompressiveExporting] = useState(false);
 
@@ -123,13 +127,13 @@ const Reports = () => {
   };
 
   const handleSummaryPDF = () => {
-    generateProjectSummaryReport(project, tests);
+    generateProjectSummaryReport(project, enabledTests);
     toast.success("Project summary report downloaded");
   };
 
 
   const handleDashboardPDF = () => {
-    generateDashboardReport(project, tests);
+    generateDashboardReport(project, enabledTests);
     toast.success("Dashboard export downloaded");
   };
 
