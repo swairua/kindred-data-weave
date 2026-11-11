@@ -82,6 +82,7 @@ interface GradingPayload {
   calculations: ReturnType<typeof calculateGrading> & ReturnType<typeof calculateMoisture> & ReturnType<typeof calculateHydrometer> & {
     fineMass: number | null;
     finesPercentage: number | null;
+    moistureCorrectedMass: number | null;
     gravelPercentage: number | null;
     sandPercentage: number | null;
     sieveFinesPercentage: number | null;
@@ -253,10 +254,10 @@ const parseNumber = (value: string) => {
 const PAN_REMAINDER_SIZE = "<0.075";
 
 /** The <0.075 pan mass is the dry mass less every other retained mass; blank until both are entered. */
-const withPanRemainder = (rows: GradingRow[], dryMass: string): GradingRow[] => {
+const withPanRemainder = (rows: GradingRow[], dryMass: number | null): GradingRow[] => {
   const index = rows.findIndex((row) => row.sieveSize === PAN_REMAINDER_SIZE);
   if (index < 0) return rows;
-  const dry = parseNumber(dryMass);
+  const dry = dryMass;
   const otherMasses = rows.flatMap((row, rowIndex) => rowIndex === index ? [] : [parseNumber(row.weightRetained)]);
   const enteredOthers = otherMasses.filter((mass): mass is number => mass !== null);
   const remainder = dry !== null && dry > 0 && enteredOthers.length > 0
@@ -289,18 +290,36 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
+  const moisture = useMemo(() => calculateMoisture(record.moisture.wetMass, record.moisture.dryMass), [record.moisture]);
+  const moistureCorrectedMass = useMemo(() => {
+    const initialMass = parseNumber(record.samplePreparation.initialDryMass);
+    if (initialMass === null) return null;
+    if (moisture.moistureContent === null) return initialMass;
+    return initialMass - (initialMass * moisture.moistureContent) / 100;
+  }, [record.samplePreparation.initialDryMass, moisture.moistureContent]);
+  const measuredRetainedMass = useMemo(
+    () => record.sieveRows.reduce((total, row) => {
+      if (row.sieveSize === PAN_REMAINDER_SIZE) return total;
+      return total + Math.max(parseNumber(row.weightRetained) ?? 0, 0);
+    }, 0),
+    [record.sieveRows],
+  );
+  const massBalanceExcess = moistureCorrectedMass === null ? 0 : measuredRetainedMass - moistureCorrectedMass;
+  const hasImpossibleMassBalance = massBalanceExcess > 0.01;
+  const massBalanceMessage = hasImpossibleMassBalance
+    ? `Mass balance error: measured sieve masses total ${measuredRetainedMass.toFixed(1)} g, exceeding the moisture-corrected initial mass (${moistureCorrectedMass?.toFixed(1)} g) by ${massBalanceExcess.toFixed(1)} g. Correct the entered masses before saving or exporting.`
+    : null;
   const sieveRows = useMemo(
-    () => withPanRemainder(record.sieveRows, record.samplePreparation.initialDryMass),
-    [record.sieveRows, record.samplePreparation.initialDryMass],
+    () => withPanRemainder(record.sieveRows, moistureCorrectedMass),
+    [record.sieveRows, moistureCorrectedMass],
   );
   const calculations = useMemo(() => calculateGrading(sieveRows), [sieveRows]);
-  const moisture = useMemo(() => calculateMoisture(record.moisture.wetMass, record.moisture.dryMass), [record.moisture]);
   // Fines are what the pan holds out of the sieved mass, so they come from the sieve table
   // rather than a separately typed washed mass that can disagree with it.
   const fineMass = useMemo(() => panMass(sieveRows), [sieveRows]);
   const washedOvenDryMass = useMemo(
-    () => fineMass === null ? null : parseNumber(record.samplePreparation.initialDryMass) - fineMass,
-    [fineMass, record.samplePreparation.initialDryMass],
+    () => fineMass === null || moistureCorrectedMass === null ? null : moistureCorrectedMass - fineMass,
+    [fineMass, moistureCorrectedMass],
   );
   const finesPercentage = useMemo(
     () => fineMass === null || calculations.totalWeight <= 0 ? null : (fineMass / calculations.totalWeight) * 100,
@@ -317,8 +336,8 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
   const hydrometer = useMemo(() => calculateHydrometer(
     record.hydrometerRows,
     { ...DEFAULT_HYDROMETER_INPUTS, ...record.hydrometerInputs },
-    record.samplePreparation.initialDryMass,
-  ), [record.hydrometerRows, record.hydrometerInputs, record.samplePreparation.initialDryMass]);
+    moistureCorrectedMass === null ? "" : String(moistureCorrectedMass),
+  ), [record.hydrometerRows, record.hydrometerInputs, moistureCorrectedMass]);
   /**
    * One grading series for the BS sheet: sieve cumulative passing, extended
    * below the finest sieve by the hydrometer diameters. `mergePsdSeries` keeps
@@ -540,6 +559,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       ...moisture,
       ...hydrometer,
       fineMass,
+      moistureCorrectedMass,
       finesPercentage,
       gravelPercentage: classificationValues.gravel,
       sandPercentage: classificationValues.sand,
@@ -549,7 +569,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       uscsSymbol: uscsResult,
       aashtoGroup: aashtoResult,
     },
-  }), [project.projectName, project.clientName, project.projectDate, project.date, preparedRecord, calculations, gradation, moisture, hydrometer, fineMass, finesPercentage, classificationValues, groupIndex, uscsResult, aashtoResult]);
+  }), [project.projectName, project.clientName, project.projectDate, project.date, preparedRecord, calculations, gradation, moisture, hydrometer, fineMass, moistureCorrectedMass, finesPercentage, classificationValues, groupIndex, uscsResult, aashtoResult]);
 
   const status = calculations.totalWeight === 0 ? "not-started" : calculations.percentageRetained.some((value) => value > 0) ? "in-progress" : "not-started";
   const save = useCallback(async () => {
@@ -567,6 +587,10 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       const message = "Enter at least one sieve retained mass before saving this record";
       setError(message);
       throw new Error(message);
+    }
+    if (massBalanceMessage) {
+      setError(massBalanceMessage);
+      throw new Error(massBalanceMessage);
     }
     setSaveStatus("saving");
     setError(null);
@@ -619,7 +643,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       setError(saveError instanceof Error ? saveError.message : "Unable to save this record");
       throw saveError;
     }
-  }, [projectId, status, record, gradation, payload, recordId, selectedResultId, isNewRecord, location, navigate, uscsResult, aashtoResult, groupIndex]);
+  }, [projectId, status, record, gradation, payload, recordId, selectedResultId, isNewRecord, location, navigate, uscsResult, aashtoResult, groupIndex, massBalanceMessage]);
 
   const clear = async () => {
     if (projectId) {
@@ -671,6 +695,9 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
     ...exportMetadata,
     record: preparedRecord,
     grading: { ...calculations, ...gradation },
+    moistureCorrectedMass,
+    preparationFineMass: fineMass,
+    preparationFinesPercentage: finesPercentage,
     hydrometer,
     hydrometerInputs: { ...DEFAULT_HYDROMETER_INPUTS, ...record.hydrometerInputs },
     series: psdSeries,
@@ -692,6 +719,10 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
   });
 
   const handlePrint = async () => {
+    if (massBalanceMessage) {
+      setError(massBalanceMessage);
+      return;
+    }
     try {
       // Hand the processed sheet itself to a browser tab and let that tab print
       // it — never the on-screen report page.
@@ -711,6 +742,10 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
   };
 
   const exportFiles = async (type: "pdf" | "xlsx") => {
+    if (massBalanceMessage) {
+      setError(massBalanceMessage);
+      return;
+    }
     const tables = [{
       headers: ["Sieve size (mm)", "Retained mass (g)", "% retained", "Cumulative passing (%)"],
       // Empty tables read as "auto", exactly as on screen — never 0.0%.
@@ -793,10 +828,12 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
         <RecordSection title="Sample preparation">
           <div className="grid gap-px overflow-hidden rounded-md border sm:grid-cols-2">
             <RecordField label="Initial air-dried mass (g) *" value={record.samplePreparation.initialDryMass} placeholder="e.g. 669" onChange={(value) => updateNested("samplePreparation", "initialDryMass", value)} />
+            <CalculatedField label="Moisture-corrected initial mass (g)" value={moistureCorrectedMass === null ? "auto" : moistureCorrectedMass.toFixed(1)} />
             <CalculatedField label="Washed & oven-dried mass (g)" value={washedOvenDryMass === null ? "auto" : washedOvenDryMass.toFixed(1)} />
             <CalculatedField label="Fine mass (g)" value={fineMass === null ? "auto" : fineMass.toFixed(1)} />
             <CalculatedField label="Fines %" value={formatValue(finesPercentage, 1)} />
           </div>
+          {massBalanceMessage && <p role="alert" className="mt-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">{massBalanceMessage}</p>}
         </RecordSection>
         <RecordSection title="Moisture content at preparation">
           <div className="grid gap-px overflow-hidden rounded-md border sm:grid-cols-2">
@@ -874,9 +911,9 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
 
       <section className="record-card flex flex-col gap-3 px-4 py-3 text-[10px] sm:flex-row sm:items-center sm:justify-between"><div><span className="text-muted-foreground">TESTED BY</span><div className="font-semibold uppercase">{record.testedBy || "—"}</div></div><div><span className="text-muted-foreground">DATE REPORTED</span><div className="font-semibold">{project.dateReported || "—"}</div></div></section>
       <div className="flex flex-wrap items-center justify-end gap-2 print:hidden">
-        <Button variant="outline" size="sm" onClick={() => void exportFiles("pdf")}><FileDown className="mr-1.5 h-3.5 w-3.5" />PDF</Button>
-        <Button variant="outline" size="sm" onClick={() => void handlePrint()}><Printer className="mr-1.5 h-3.5 w-3.5" />Print</Button>
-        <Button size="sm" onClick={handleSave} disabled={saveStatus === "saving" || isLoading}>{saveStatus === "saving" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : saveStatus === "saved" ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}{saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved" : "Save"}</Button>
+        <Button variant="outline" size="sm" onClick={() => void exportFiles("pdf")} disabled={hasImpossibleMassBalance || isLoading}><FileDown className="mr-1.5 h-3.5 w-3.5" />PDF</Button>
+        <Button variant="outline" size="sm" onClick={() => void handlePrint()} disabled={hasImpossibleMassBalance || isLoading}><Printer className="mr-1.5 h-3.5 w-3.5" />Print</Button>
+        <Button size="sm" onClick={handleSave} disabled={saveStatus === "saving" || isLoading || hasImpossibleMassBalance}>{saveStatus === "saving" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : saveStatus === "saved" ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}{saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved" : "Save"}</Button>
       </div>
     </div>
   );

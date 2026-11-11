@@ -115,6 +115,41 @@ const savedResults = [
       },
     },
   },
+  {
+    id: "94",
+    project_id: "42",
+    test_key: "grading",
+    payload_json: {
+      project: {
+        records: [{
+          sampleNumber: "Moisture corrected sample",
+          samplePreparation: { initialDryMass: "600" },
+          moisture: { wetMass: "512", dryMass: "500" },
+          sieveRows: [
+            { sieveSize: "4.75 (No. 4)", weightRetained: "480" },
+            { sieveSize: "<0.075", weightRetained: "" },
+          ],
+        }],
+      },
+    },
+  },
+  {
+    id: "95",
+    project_id: "42",
+    test_key: "grading",
+    payload_json: {
+      project: {
+        records: [{
+          sampleNumber: "Invalid mass balance sample",
+          samplePreparation: { initialDryMass: "100" },
+          sieveRows: [
+            { sieveSize: "4.75 (No. 4)", weightRetained: "101" },
+            { sieveSize: "<0.075", weightRetained: "" },
+          ],
+        }],
+      },
+    },
+  },
 ];
 
 beforeAll(() => {
@@ -279,6 +314,39 @@ describe("GradingTest selected record", () => {
     expect(screen.getByText("Fines %").parentElement).toHaveTextContent("71.9");
     expect(screen.getByText("Fine mass (g)").parentElement).toHaveTextContent("126.8");
     expect(screen.getByText("Washed & oven-dried mass (g)").parentElement).toHaveTextContent("201.2");
+  });
+
+  it("applies the diagram moisture subtraction to the sieve mass balance", async () => {
+    render(
+      <MemoryRouter initialEntries={["/tests?projectId=42&resultId=94#grading"]}>
+        <ProjectContext.Provider value={{ projectName: "Grading project", clientName: "Client", date: "2026-06-12", currentProjectId: 42 }}>
+          <GradingTest testKey="grading" />
+        </ProjectContext.Provider>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Moisture corrected sample")).toBeInTheDocument();
+    expect(screen.getByText("Moisture-corrected initial mass (g)").parentElement).toHaveTextContent("585.6");
+    expect(screen.getByText("Washed & oven-dried mass (g)").parentElement).toHaveTextContent("480.0");
+    expect(screen.getByText("Fine mass (g)").parentElement).toHaveTextContent("105.6");
+    expect(screen.getByText("Fines %").parentElement).toHaveTextContent("18.0");
+  });
+
+  it("flags an impossible mass balance and blocks save and PDF actions", async () => {
+    render(
+      <MemoryRouter initialEntries={["/tests?projectId=42&resultId=95#grading"]}>
+        <ProjectContext.Provider value={{ projectName: "Grading project", clientName: "Client", date: "2026-06-12", currentProjectId: 42 }}>
+          <GradingTest testKey="grading" />
+        </ProjectContext.Provider>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Invalid mass balance sample")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("measured sieve masses total 101.0 g");
+    expect(screen.getByRole("alert")).toHaveTextContent("exceeding the moisture-corrected initial mass (100.0 g) by 1.0 g");
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "PDF" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Print" })).toBeDisabled();
   });
 
   it("verifies A-1-b from P40 while flagging only the missing No. 10", async () => {

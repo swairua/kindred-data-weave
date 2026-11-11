@@ -5,7 +5,7 @@ import { jsPDF } from "jspdf";
 vi.mock("@/lib/imageUtils", () => ({ fetchAdminImagesAsBase64: async () => ({}) }));
 
 import { generateParticleSizeDistributionPDF, type PsdRecordView } from "@/lib/psdPdfGenerator";
-import { calculateGrading, calculateHydrometer } from "@/lib/gradingCalculations";
+import { calculateGrading, calculateHydrometer, calculateMoisture } from "@/lib/gradingCalculations";
 import { mergePsdSeries } from "@/lib/psdChartGeometry";
 
 const hydrometerInputs = {
@@ -45,6 +45,10 @@ const build = async (
   const record = makeRecord(sieveRows, hydrometerRows);
   const grading = calculateGrading(sieveRows);
   const hydrometer = calculateHydrometer(hydrometerRows, hydrometerInputs, "176.4");
+  const moisture = calculateMoisture(record.moisture.wetMass, record.moisture.dryMass);
+  const moistureCorrectedMass = 328 - (328 * (moisture.moistureContent ?? 0)) / 100;
+  const preparationFineMass = Math.max(grading.totalWeight - 176.4, 0);
+  const preparationFinesPercentage = grading.totalWeight > 0 ? (preparationFineMass / grading.totalWeight) * 100 : null;
   return generateParticleSizeDistributionPDF({
     projectName: "KIRIAINI AHP",
     clientName: "SDHUD",
@@ -56,6 +60,9 @@ const build = async (
     labOrganization: "Cransfield Materials Testing Center",
     record,
     grading,
+    moistureCorrectedMass,
+    preparationFineMass,
+    preparationFinesPercentage,
     hydrometer,
     hydrometerInputs,
     series: mergePsdSeries(
@@ -164,11 +171,13 @@ describe("Particle Size Distribution PDF page layout", () => {
     expect(width).toBeLessThanOrEqual(available);
   });
 
-  it("prints the two-line reference title and no Generated stamp", async () => {
+  it("prints the dynamic moisture-corrected preparation mass and no Generated stamp", async () => {
     const doc = await build(FULL_SIEVE);
     const content = pageContent(doc);
     expect(content).toContain("PARTICLE SIZE DISTRIBUTION");
     expect(content).toContain("BS 1377");
+    expect(content).toContain("Moisture-corrected initial mass");
+    expect(content).toContain("245.5");
     expect(content).not.toContain("Generated:");
   });
 

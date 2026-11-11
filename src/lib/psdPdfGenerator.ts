@@ -127,6 +127,9 @@ export interface ParticleSizeDistributionPdfOptions {
   labOrganization?: string;
   record: PsdRecordView;
   grading: GradingCalculations;
+  moistureCorrectedMass: number | null;
+  preparationFineMass: number | null;
+  preparationFinesPercentage: number | null;
   hydrometer: HydrometerCalculations;
   hydrometerInputs: HydrometerInputs;
   /** Merged sieve + hydrometer grading series in millimetres and per cent passing. */
@@ -303,9 +306,6 @@ const drawPreparation = (d: jsPDF, x: number, y: number, o: ParticleSizeDistribu
   const rightW = CONTENT_W - leftW - gapW;
   const initial = parse(o.record.samplePreparation.initialDryMass);
   const washed = parse(o.record.samplePreparation.washedOvenDryMass);
-  const sieved = o.grading.totalWeight;
-  const fineMass = washed !== null && sieved > 0 ? Math.max(sieved - washed, 0) : null;
-  const finesPercent = fineMass !== null ? (fineMass / sieved) * 100 : null;
   const moisture = calculateMoisture(o.record.moisture.wetMass, o.record.moisture.dryMass);
 
   const pair = (panelW: number, labelW: number, unit: string, labelText: string, value: string): Cell[] => [
@@ -315,9 +315,10 @@ const drawPreparation = (d: jsPDF, x: number, y: number, o: ParticleSizeDistribu
 
   let left = drawCells(d, x, y, rowH, [{ w: leftW, text: "Sample preparation details", bold: true, label: true }]);
   left = drawCells(d, x, left, rowH, pair(leftW, 46.5, "(gm)", "Initial quartered and air dried mass", text(initial)));
+  left = drawCells(d, x, left, rowH, pair(leftW, 46.5, "(gm)", "Moisture-corrected initial mass", num(o.moistureCorrectedMass)));
   left = drawCells(d, x, left, rowH, pair(leftW, 46.5, "(gm)", "Washed and oven dried mass", text(washed)));
-  left = drawCells(d, x, left, rowH, pair(leftW, 46.5, "(gm)", "Fine mass", num(fineMass)));
-  drawCells(d, x, left, rowH, pair(leftW, 46.5, "(%)", "Fines percent", num(finesPercent)));
+  left = drawCells(d, x, left, rowH, pair(leftW, 46.5, "(gm)", "Fine mass", num(o.preparationFineMass)));
+  drawCells(d, x, left, rowH, pair(leftW, 46.5, "(%)", "Fines percent", num(o.preparationFinesPercentage)));
 
   const rx = x + leftW + gapW;
   let right = drawCells(d, rx, y, rowH, [{ w: rightW, text: "Moisture content at sample preparations", bold: true, label: true }]);
@@ -327,7 +328,7 @@ const drawPreparation = (d: jsPDF, x: number, y: number, o: ParticleSizeDistribu
   right = drawCells(d, rx, right, rowH, rightPair("(gm)", "Wet weight of water", num(moisture.waterWeight)));
   drawCells(d, rx, right, rowH, rightPair("(%)", "Moisture content", num(moisture.moistureContent)));
 
-  return y + rowH * 5;
+  return y + rowH * 6;
 };
 
 const drawClassification = (d: jsPDF, x: number, y: number, o: ParticleSizeDistributionPdfOptions, rowH: number): number => {
@@ -835,7 +836,7 @@ export const generateParticleSizeDistributionPDF = async (options: ParticleSizeD
   // Fixed overhead above the tables: title block + 3 spacers +
   // header/preparation/classification rows + the hydrometer parameter band.
   const tableBottomFor = (rowH: number): number =>
-    titleBottom + 3 * SPACER_H + 13 * rowH + HYDRO_PARAMS_H + tableBlockFor(rowH);
+    titleBottom + 3 * SPACER_H + 14 * rowH + HYDRO_PARAMS_H + tableBlockFor(rowH);
 
   // Single-pass fit: shrink rows first, then the graph (never below
   // MIN_BLOCK_H, the chart is mandatory). One page only — no addPage here.

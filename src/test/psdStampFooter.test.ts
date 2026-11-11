@@ -7,7 +7,7 @@ const STAMP_PNG =
 vi.mock("@/lib/imageUtils", () => ({ fetchAdminImagesAsBase64: async () => ({ stamp: STAMP_PNG }) }));
 
 import { generateParticleSizeDistributionPDF } from "@/lib/psdPdfGenerator";
-import { calculateGrading, calculateHydrometer } from "@/lib/gradingCalculations";
+import { calculateGrading, calculateHydrometer, calculateMoisture } from "@/lib/gradingCalculations";
 import { mergePsdSeries } from "@/lib/psdChartGeometry";
 
 const hydrometerInputs = {
@@ -64,6 +64,10 @@ const build = async () => {
   };
   const grading = calculateGrading(SIEVE);
   const hydrometer = calculateHydrometer(HYDRO, hydrometerInputs, "176.4");
+  const moisture = calculateMoisture(record.moisture.wetMass, record.moisture.dryMass);
+  const moistureCorrectedMass = 328 - (328 * (moisture.moistureContent ?? 0)) / 100;
+  const preparationFineMass = Math.max(grading.totalWeight - 176.4, 0);
+  const preparationFinesPercentage = grading.totalWeight > 0 ? (preparationFineMass / grading.totalWeight) * 100 : null;
   return generateParticleSizeDistributionPDF({
     projectName: "KIRIAINI AHP",
     clientName: "SDHUD",
@@ -75,6 +79,9 @@ const build = async () => {
     labOrganization: "Cransfield Materials Testing Center",
     record,
     grading,
+    moistureCorrectedMass,
+    preparationFineMass,
+    preparationFinesPercentage,
     hydrometer,
     hydrometerInputs,
     series: mergePsdSeries(
