@@ -73,7 +73,7 @@ describe("Record test page layout", () => {
     indexMocks.listRecords.mockResolvedValue({ data: [] });
     indexMocks.fetchFullProject.mockResolvedValue({});
 
-    renderIndex("/tests?projectId=59&resultId=418#coring");
+    renderIndex("/tests?projectId=59&resultId=418#coring&reload=1794402157314");
 
     expect(await screen.findByText("Concrete Core Testing (BS EN 12504-1:2009)")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Soil Tests" })).not.toBeInTheDocument();

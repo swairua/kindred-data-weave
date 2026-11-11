@@ -79,14 +79,15 @@ const TestsViewContent = ({
   const testData = useTestData();
   const location = useLocation();
   const navigate = useNavigate();
-  if (location.hash && !registry.hasTest(location.hash.slice(1))) {
+  const hashTestKey = location.hash.slice(1).split("&", 1)[0];
+  if (hashTestKey && !registry.hasTest(hashTestKey)) {
     registerAllTests();
   }
   const { setOpenTestKey } = useTestAccordion();
   const projectCtx = useContext(ProjectContext);
 
-  // Get the test key from hash (e.g., #atterberg)
-  const selectedFromHash = location.hash.slice(1); // Remove '#'
+  // Test hashes may carry reload metadata after the test key, e.g. #coring&reload=123.
+  const selectedFromHash = hashTestKey;
 
   // Check if hash value is a test key
   const isTestKey = selectedFromHash !== "" && (
