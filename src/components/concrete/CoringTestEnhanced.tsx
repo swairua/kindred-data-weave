@@ -181,6 +181,7 @@ const projectId = project.currentProjectId ?? null;
     { ...CORING_ROW_DEFAULTS, coreId: "CR2" },
     { ...CORING_ROW_DEFAULTS, coreId: "CR3" },
   ]);
+  const [activeCoreIndex, setActiveCoreIndex] = useState(0);
   const [isSaved, setIsSaved] = useState(false);
 const [recordId, setRecordId] = useState<number | null>(null);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
@@ -555,6 +556,12 @@ const removeCoringImage = (index: number, field: "pileBeforeImage" | "pileAfterI
     markUserTouched();
     const paths = [rows[index]?.pileBeforeImage, rows[index]?.pileAfterImage].filter((p): p is string => Boolean(p));
     setRows(rows.filter((_, j) => j !== index));
+    setActiveCoreIndex((activeIndex) => {
+      if (rows.length <= 1) return 0;
+      if (index < activeIndex) return activeIndex - 1;
+      if (index === activeIndex) return Math.min(index, rows.length - 2);
+      return activeIndex;
+    });
     paths.forEach((path) => void discardCoringPhoto(path));
   };
 
@@ -917,13 +924,15 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
 
   const canExport = !!project.currentProjectId || isSaved;
   const hasValidationErrors = validationErrors.length > 0;
+  const selectedCoreIndex = Math.min(activeCoreIndex, Math.max(rows.length - 1, 0));
+  const activeCore = rows[selectedCoreIndex];
 
   return (
     <TestSection 
       title="Concrete Core Testing (BS EN 12504-1:2009)" 
       testKey={testKey} 
       onSave={handleSave} 
-      onClear={() => { markUserTouched(); setRows([{ ...CORING_ROW_DEFAULTS, coreId: "CR1" }, { ...CORING_ROW_DEFAULTS, coreId: "CR2" }, { ...CORING_ROW_DEFAULTS, coreId: "CR3" }]); }}
+      onClear={() => { markUserTouched(); setRows([{ ...CORING_ROW_DEFAULTS, coreId: "CR1" }, { ...CORING_ROW_DEFAULTS, coreId: "CR2" }, { ...CORING_ROW_DEFAULTS, coreId: "CR3" }]); setActiveCoreIndex(0); }}
       onExportPDF={exportPDF}
       onPrint={handlePrint}
       canExport={canExport}
@@ -1001,8 +1010,50 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
         </CardContent>
       </Card>
 
+      <div className="mb-4 flex items-center gap-2 print:hidden" data-testid="coring-core-strip">
+        <span className="shrink-0 text-xs text-muted-foreground">
+          {rows.length ? `Core ${selectedCoreIndex + 1} of ${rows.length}` : "No cores"}
+        </span>
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pb-1">
+          {rows.map((row, index) => {
+            const isActive = index === selectedCoreIndex;
+            const strength = getCorrectedStrength(row);
+            return (
+              <button
+                key={`${row.coreId}-${index}`}
+                type="button"
+                onClick={() => setActiveCoreIndex(index)}
+                aria-current={isActive}
+                title={row.coreId}
+                data-testid={`coring-core-${index + 1}`}
+                data-active={isActive ? "true" : "false"}
+                className={`shrink-0 whitespace-nowrap rounded-md border px-2.5 py-1 text-left text-[11px] leading-tight transition-colors ${isActive ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:bg-muted/40"}`}
+              >
+                <span className="font-medium">{index + 1}. {row.coreId || `CR${index + 1}`}</span>
+                {strength ? <span className="ml-1.5 text-[10px] opacity-80">{strength} MPa</span> : null}
+              </button>
+            );
+          })}
+          <Button
+            type="button"
+            onClick={() => {
+              markUserTouched();
+              const nextRows = [...rows, { ...CORING_ROW_DEFAULTS, coreId: `CR${rows.length + 1}` }];
+              setRows(nextRows);
+              setActiveCoreIndex(nextRows.length - 1);
+            }}
+            size="sm"
+            variant="outline"
+            className="shrink-0 gap-1.5"
+            data-testid="coring-add-core"
+          >
+            <Plus className="h-3.5 w-3.5" /> Add Core
+          </Button>
+        </div>
+      </div>
+
       {/* Core Data Entry */}
-      <div className="overflow-x-auto mb-4">
+      {rows.length > 0 && <div className="overflow-x-auto mb-4">
         <table className="w-full text-xs border-collapse">
           <thead>
             <tr className="border-b bg-muted/40">
@@ -1032,6 +1083,7 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
           </thead>
           <tbody>
             {rows.map((row, i) => {
+              if (i !== selectedCoreIndex) return null;
               const rowErrors = validationErrors.filter(e => e.rowIndex === i);
               const hasRowError = rowErrors.length > 0;
               return (
@@ -1119,21 +1171,17 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
             })}
           </tbody>
         </table>
-      </div>
-
-      <Button variant="outline" size="sm" className="mb-4" onClick={() => { markUserTouched(); setRows([...rows, { ...CORING_ROW_DEFAULTS, coreId: `CR${rows.length + 1}` }]); }}>
-        <Plus className="h-3.5 w-3.5 mr-1" /> Add Core
-      </Button>
+      </div>}
 
       {/* Comments */}
-      <div className="mb-4 grid grid-cols-2 gap-4">
-        {rows.map((row, i) => (
+      {activeCore && <div className="mb-4 grid grid-cols-2 gap-4">
+        {rows.map((row, i) => i === selectedCoreIndex && (
           <div key={i} className="space-y-1">
             <Label className="text-xs">Comments - Core {row.coreId}</Label>
             <Input value={row.comments} onChange={(e) => update(i, "comments", e.target.value)} className="h-8 text-xs" placeholder="Sparsely distributed aggregates..." />
           </div>
         ))}
-      </div>
+      </div>}
 
       {/* Reception / Project Creation Actions */}
       <Card className="mb-4 border-primary">
