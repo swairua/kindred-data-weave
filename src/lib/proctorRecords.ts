@@ -55,6 +55,10 @@ export interface ProctorRecord {
   fieldDryDensity: string;
   /** Specified minimum relative compaction, as a percentage of maximum dry density. Blank when no limit applies. */
   requiredRelativeCompaction: string;
+  /** Optimum moisture content as reported on the source test sheet. Blank when not reported. */
+  reportedOmc: string;
+  /** Maximum dry density as reported on the source test sheet. Blank when not reported. */
+  reportedMdd: string;
 }
 
 export interface ProctorPointCalculation {
@@ -151,6 +155,8 @@ export const emptyProctorRecord = (metadata: RecordMetadata = {}): ProctorRecord
   oversizeSpecificGravity: "",
   fieldDryDensity: "",
   requiredRelativeCompaction: "",
+  reportedOmc: "",
+  reportedMdd: "",
 });
 
 const isObject = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
@@ -486,6 +492,8 @@ export const normalizeProctorRecord = (value: unknown, metadata: RecordMetadata 
     oversizeSpecificGravity: readString(source.oversizeSpecificGravity),
     fieldDryDensity: readString(source.fieldDryDensity),
     requiredRelativeCompaction: readString(source.requiredRelativeCompaction),
+    reportedOmc: readString(source.reportedOmc),
+    reportedMdd: readString(source.reportedMdd),
   };
 };
 

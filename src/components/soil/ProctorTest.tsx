@@ -49,7 +49,9 @@ type ProctorRecordTextField =
   | "oversizePercent"
   | "oversizeSpecificGravity"
   | "fieldDryDensity"
-  | "requiredRelativeCompaction";
+  | "requiredRelativeCompaction"
+  | "reportedOmc"
+  | "reportedMdd";
 
 const POINT_LABELS = ["A", "B", "C", "D", "E", "F"];
 /** BS 1377-4:1990, 3.3 is the 2.5 kg rammer method and 3.5 the 4.5 kg rammer method. */
@@ -452,6 +454,16 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
           <ResultField label="Bulk Density at OMC (kg/m³)" value={displayDensity(optimum.bulkDensity)} />
           <ResultField label="Optimum Moisture Content (%)" value={displayMoisture(optimum.omc)} />
           <ResultField label="Determined From" value={optimum.optimumSource === "curve" ? `Fitted curve (R2 ${optimum.rSquared === null ? "—" : optimum.rSquared.toFixed(3)})` : optimum.optimumSource === "peak-point" ? "Densest measured point" : "—"} />
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground">
+          <label className="flex items-center gap-2" title="Maximum dry density printed on the source test sheet.">
+            <span>Reported MDD (kg/m³)</span>
+            <Input aria-label="Reported maximum dry density" type="number" min="0" step="any" value={record.reportedMdd} onChange={(event) => updateRecordField("reportedMdd", event.target.value)} className="record-input h-7 w-24" />
+          </label>
+          <label className="flex items-center gap-2" title="Optimum moisture content printed on the source test sheet.">
+            <span>Reported OMC (%)</span>
+            <Input aria-label="Reported optimum moisture content" type="number" min="0" step="any" value={record.reportedOmc} onChange={(event) => updateRecordField("reportedOmc", event.target.value)} className="record-input h-7 w-20" />
+          </label>
         </div>
         {optimum.warnings.length > 0 && (
           <ul className="mt-2 list-disc space-y-0.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-[10px] text-amber-900 dark:text-amber-200">
