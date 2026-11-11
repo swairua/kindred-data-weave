@@ -4,8 +4,6 @@ import { Button } from "@/components/ui/button";
 import { AlertCircle, CheckCircle2, ChevronDown, ChevronRight, FileDown, FlaskConical, Loader2, Plus, Printer, Save, Sheet, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import ProjectHeader from "@/components/ProjectHeader";
-import { useProject } from "@/context/ProjectContext";
 import { useTestAccordion } from "@/context/TestAccordionContext";
 
 type SmokeCheckItemStatus = "idle" | "running" | "success" | "error";
@@ -49,14 +47,6 @@ const TestSection = ({ title, testKey, tooltip, children, onSave, onFinalSave, o
   // Use accordion context if testKey is provided, otherwise use local state
   const isOpen = testKey ? accordion.openTestKey === testKey : localOpen;
   const setOpen = testKey ? (value: boolean) => accordion.setOpenTestKey(value ? testKey : null) : setLocalOpen;
-
-  const project = useProject();
-  const hasHeaderHandlers =
-    !!project.onProjectNameChange &&
-    !!project.onClientNameChange &&
-    !!project.onLoadProject &&
-    !!project.onStartNewProject &&
-    !!project.onMetadataChange;
 
   // Safety check: ensure children is a valid React node to prevent "Objects are not valid as a React child" errors
   const safeChildren = (() => {
@@ -392,23 +382,6 @@ const TestSection = ({ title, testKey, tooltip, children, onSave, onFinalSave, o
       </CardHeader>
       {isOpen && (
         <CardContent className="px-3 pb-3 pt-0 space-y-2">
-          {hasHeaderHandlers && (
-            <div className="rounded-md border bg-muted/20 p-2 print:hidden">
-              <ProjectHeader
-                projectName={project.projectName}
-                clientName={project.clientName}
-                date={project.date}
-                projectHistory={project.projectHistory ?? []}
-                isLoadingProjects={project.isLoadingProjects ?? false}
-                projectMetadata={project.projectMetadata ?? {}}
-                onProjectNameChange={project.onProjectNameChange!}
-                onClientNameChange={project.onClientNameChange!}
-                onLoadProject={project.onLoadProject!}
-                onStartNewProject={project.onStartNewProject!}
-                onMetadataChange={project.onMetadataChange!}
-              />
-            </div>
-          )}
           {safeChildren}
           {actionsPlacement === "footer" && <div className="pt-2">{actions}</div>}
         </CardContent>
