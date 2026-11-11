@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createElement } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { clearProctorResults, loadProctorResult, saveProctorResult } from "@/lib/proctorPersistence";
-import { airVoidsCurve, airVoidsDensity, calculateProctor, calculateProctorPoint, compactionEnergy, createProctorPayload, createProctorRows, emptyProctorRecord, fitCompactionCurve, getProctorRecord, isReportableOptimum, sampleCompactionCurve, zeroAirVoidsCurve, zeroAirVoidsDensity, type ProctorRow } from "@/lib/proctorRecords";
+import { airVoidsCurve, airVoidsDensity, assessFieldCompaction, calculateProctor, correctForOversize, calculateProctorPoint, compactionEnergy, createProctorPayload, createProctorRows, emptyProctorRecord, fitCompactionCurve, getProctorRecord, isReportableOptimum, parseAirVoidsTargets, sampleCompactionCurve, zeroAirVoidsCurve, zeroAirVoidsDensity, type ProctorRow } from "@/lib/proctorRecords";
 import { getExpectedTestType, hasRequiredSoilSampleMetadata, isInitialTestValid, isTestAllowed, toRecordMetadata } from "@/lib/recordTestWizard";
 import ProctorTest from "@/components/soil/ProctorTest";
 
@@ -217,6 +217,42 @@ describe("Proctor calculations", () => {
     expect(compactionEnergy(standard, "0")).toBeNull();
   });
 
+  it("parses a list of air voids percentages and ignores invalid entries", () => {
+    expect(parseAirVoidsTargets("10, 5 ,5;abc, 0, 120")).toEqual([5, 10]);
+    expect(parseAirVoidsTargets("")).toEqual([]);
+  });
+
+  it("corrects the maximum dry density and optimum moisture for oversize particles", () => {
+    // 20 % oversize at Gs 2.65 in a 1800 kg/m3 finer fraction (ASTM D4718).
+    const corrected = correctForOversize(1800, 12, 20, 2.65);
+    expect(corrected.mdd).toBeCloseTo(1923.4, 0);
+    expect(corrected.omc).toBeCloseTo(9.6, 9);
+    expect(correctForOversize(1800, 12, 0, 2.65)).toEqual({ mdd: 1800, omc: 12 });
+  });
+
+  it("assesses field relative compaction against the reference maximum dry density", () => {
+    expect(assessFieldCompaction(1700, 1800, 95)).toEqual({ relativeCompaction: (1700 / 1800) * 100, acceptance: "fail" });
+    expect(assessFieldCompaction(1800, 1800, 95).acceptance).toBe("pass");
+    expect(assessFieldCompaction(1700, 1800, null).acceptance).toBe("no-limit");
+    expect(assessFieldCompaction(null, 1800, 95)).toEqual({ relativeCompaction: null, acceptance: "not-assessed" });
+  });
+
+  it("warns when a measured point plots above the zero air voids line", () => {
+    // A 3000 kg/m3 bulk density at 10 % moisture gives 2727 kg/m3, which Gs 2.7 cannot reach (2126 kg/m3).
+    const rows = [point({ mouldWetMass: "4000" })];
+    expect(calculateProctor(rows, "1000", 2.7).warnings.join(" ")).toMatch(/1 point plots above the zero air voids line/);
+    expect(calculateProctor(rows, "1000").warnings.join(" ")).not.toMatch(/zero air voids/);
+  });
+
+  it("does not report an optimum from a curve that fits the points poorly", () => {
+    expect(isReportableOptimum({
+      omc: 14, mdd: 1500, bulkDensity: 1700, optimumSource: "curve", curve: null, rSquared: 0.97, pointCount: 5, warnings: [],
+    })).toBe(true);
+    expect(isReportableOptimum({
+      omc: 14, mdd: 1500, bulkDensity: 1700, optimumSource: "curve", curve: null, rSquared: 0.85, pointCount: 5, warnings: [],
+    })).toBe(false);
+  });
+
   it("flags the curve-validity problems BS 1377-4:1990, 3.3 would not accept", () => {
     const rising = [
       point({ containerWetMass: "150", containerDryMass: "135", mouldWetMass: "3200" }),
@@ -342,13 +378,13 @@ describe("Proctor calculations", () => {
     expect(record.standardMouldVolume).toBe("1000");
     expect(record.modifiedMouldVolume).toBe("1000");
     expect(record.specificGravity).toBe("");
-    expect(record.airVoidsTarget).toBe("5");
+    expect(record.airVoidsTarget).toBe("5, 10");
 
     const loaded = getProctorRecord({ project: { records: [{ specificGravity: "2.72", airVoidsTarget: "10" }] } });
     expect(loaded.specificGravity).toBe("2.72");
     expect(loaded.airVoidsTarget).toBe("10");
-    // An older payload with no specific gravity still loads and falls back to the 5% line.
-    expect(getProctorRecord({ project: { records: [{}] } }).airVoidsTarget).toBe("5");
+    // An older payload with no specific gravity still loads and falls back to the 5% and 10% lines.
+    expect(getProctorRecord({ project: { records: [{}] } }).airVoidsTarget).toBe("5, 10");
   });
 
   it("normalizes legacy v1 rows without discarding directly-entered values", () => {

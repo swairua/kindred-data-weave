@@ -45,8 +45,16 @@ export interface ProctorRecord {
   modifiedEffort: ProctorEffort;
   /** Particle density of the soil, used to plot the zero air voids line. Blank when not determined. */
   specificGravity: string;
-  /** Air voids percentage for the second saturation line on the chart (5 is common in UK practice). */
+  /** Air voids percentages for the saturation lines drawn on the chart, comma separated. The zero air voids line is always drawn. */
   airVoidsTarget: string;
+  /** Percentage of the sample by dry mass removed as oversize before compaction. */
+  oversizePercent: string;
+  /** Oven-dried relative density of the oversize particles. */
+  oversizeSpecificGravity: string;
+  /** Field dry density of the total sample, compared with the laboratory maximum. */
+  fieldDryDensity: string;
+  /** Specified minimum relative compaction, as a percentage of maximum dry density. Blank when no limit applies. */
+  requiredRelativeCompaction: string;
 }
 
 export interface ProctorPointCalculation {
@@ -138,7 +146,11 @@ export const emptyProctorRecord = (metadata: RecordMetadata = {}): ProctorRecord
   standardEffort: { ...STANDARD_EFFORT },
   modifiedEffort: { ...MODIFIED_EFFORT },
   specificGravity: "",
-  airVoidsTarget: "5",
+  airVoidsTarget: "5, 10",
+  oversizePercent: "",
+  oversizeSpecificGravity: "",
+  fieldDryDensity: "",
+  requiredRelativeCompaction: "",
 });
 
 const isObject = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
@@ -290,6 +302,48 @@ export const airVoidsDensity = (
   return saturation * (1 - airVoidsPercent / 100);
 };
 
+/** Air voids percentages typed as a list such as "5, 10"; invalid entries are ignored. */
+export const parseAirVoidsTargets = (value: string): number[] => [
+  ...new Set(
+    value.split(/[\s,;]+/)
+      .map((item) => Number(item))
+      .filter((percent) => Number.isFinite(percent) && percent > 0 && percent < 100),
+  ),
+].sort((a, b) => a - b);
+
+/**
+ * ASTM D4718 correction of the finer-fraction maximum dry density and optimum moisture to the
+ * total sample. The oversize is assumed to carry no water, so all of it sits in the finer fraction.
+ */
+export const correctForOversize = (
+  mdd: number,
+  omc: number,
+  oversizePercent: number,
+  oversizeSpecificGravity: number,
+): { mdd: number; omc: number } => {
+  const oversizeFraction = oversizePercent / 100;
+  return {
+    mdd: 1 / (oversizeFraction / (oversizeSpecificGravity * WATER_DENSITY) + (1 - oversizeFraction) / mdd),
+    omc: (1 - oversizeFraction) * omc,
+  };
+};
+
+export type FieldAcceptance = "pass" | "fail" | "no-limit" | "not-assessed";
+
+/** Relative compaction of a field density against the reference maximum dry density. */
+export const assessFieldCompaction = (
+  fieldDryDensity: number | null,
+  referenceMdd: number | null,
+  requiredPercent: number | null,
+): { relativeCompaction: number | null; acceptance: FieldAcceptance } => {
+  if (fieldDryDensity === null || referenceMdd === null || referenceMdd <= 0) {
+    return { relativeCompaction: null, acceptance: "not-assessed" };
+  }
+  const relativeCompaction = (fieldDryDensity / referenceMdd) * 100;
+  if (requiredPercent === null) return { relativeCompaction, acceptance: "no-limit" };
+  return { relativeCompaction, acceptance: relativeCompaction >= requiredPercent ? "pass" : "fail" };
+};
+
 const sampleRange = (from: number, to: number, samples: number): number[] => {
   if (!Number.isFinite(from) || !Number.isFinite(to) || samples < 2) return [];
   const step = (to - from) / (samples - 1);
@@ -337,7 +391,7 @@ const emptySummary = (): ProctorSummary => ({
 });
 
 /** Flags the cases where BS 1377-4:1990, 3.3 would not accept the reported optimum at face value. */
-const proctorWarnings = (points: ProctorCurvePoint[], fit: ProctorCurveFit | null): string[] => {
+const proctorWarnings = (points: ProctorCurvePoint[], fit: ProctorCurveFit | null, specificGravity: number | null): string[] => {
   const warnings: string[] = [];
   if (points.length < CURVE_RECOMMENDED_POINTS) {
     warnings.push(
@@ -354,6 +408,17 @@ const proctorWarnings = (points: ProctorCurvePoint[], fit: ProctorCurveFit | nul
   }
   if (fit && fit.rSquared < CURVE_MIN_R_SQUARED) {
     warnings.push(`Curve fit is poor (R2 = ${fit.rSquared.toFixed(2)}); check the readings and that the points bracket the peak.`);
+  }
+  if (specificGravity !== null) {
+    const aboveZeroAirVoids = points.filter((point) => {
+      const limit = zeroAirVoidsDensity(specificGravity, point.moisture);
+      return limit !== null && point.dryDensity > limit;
+    }).length;
+    if (aboveZeroAirVoids > 0) {
+      warnings.push(
+        `${aboveZeroAirVoids} point${aboveZeroAirVoids === 1 ? " plots" : "s plot"} above the zero air voids line, which no compacted soil can reach; check the masses or the specific gravity.`,
+      );
+    }
   }
   return warnings;
 };
@@ -417,6 +482,10 @@ export const normalizeProctorRecord = (value: unknown, metadata: RecordMetadata 
     modifiedEffort: normalizeEffort(source.modifiedEffort, MODIFIED_EFFORT),
     specificGravity: readString(source.specificGravity),
     airVoidsTarget: readString(source.airVoidsTarget) || fallback.airVoidsTarget,
+    oversizePercent: readString(source.oversizePercent),
+    oversizeSpecificGravity: readString(source.oversizeSpecificGravity),
+    fieldDryDensity: readString(source.fieldDryDensity),
+    requiredRelativeCompaction: readString(source.requiredRelativeCompaction),
   };
 };
 
@@ -479,7 +548,10 @@ export const calculateProctorPoint = (row: ProctorRow, mouldVolume: string): Pro
 
 /** Only a bracketed fitted curve through enough points is reportable as complete (BS 1377-4:1990, 3.3). */
 export const isReportableOptimum = (summary: ProctorSummary): boolean =>
-  summary.optimumSource === "curve" && summary.pointCount >= CURVE_RECOMMENDED_POINTS;
+  summary.optimumSource === "curve"
+  && summary.pointCount >= CURVE_RECOMMENDED_POINTS
+  && summary.rSquared !== null
+  && summary.rSquared >= CURVE_MIN_R_SQUARED;
 
 /**
  * Optimum moisture content and maximum dry density for one compaction method.
@@ -489,7 +561,11 @@ export const isReportableOptimum = (summary: ProctorSummary): boolean =>
  * points estimates that peak; unsupported fits fall back to the densest measurement, and the
  * caller is told which basis was used plus any reason to distrust it.
  */
-export const calculateProctor = (rows: ProctorRow[], mouldVolume: string): ProctorSummary => {
+export const calculateProctor = (
+  rows: ProctorRow[],
+  mouldVolume: string,
+  specificGravity: number | null = null,
+): ProctorSummary => {
   const measured = rows
     .map((row) => calculateProctorPoint(row, mouldVolume))
     .filter((point): point is ProctorPointCalculation & { moistureContent: number; dryDensity: number } =>
@@ -500,7 +576,7 @@ export const calculateProctor = (rows: ProctorRow[], mouldVolume: string): Proct
     .map((point) => ({ moisture: point.moistureContent, dryDensity: point.dryDensity }))
     .sort((a, b) => a.moisture - b.moisture);
   const fit = fitCompactionCurve(points);
-  const warnings = proctorWarnings(points, fit);
+  const warnings = proctorWarnings(points, fit, specificGravity);
 
   if (fit) {
     return {

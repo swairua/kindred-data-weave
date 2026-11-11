@@ -10,15 +10,19 @@ import { useGridArrowNavigation } from "@/hooks/useGridArrowNavigation";
 import { useTestData } from "@/context/TestDataContext";
 import {
   airVoidsCurve,
+  assessFieldCompaction,
   calculateProctor,
   calculateProctorPoint,
   compactionEnergy,
+  correctForOversize,
   createProctorPayload,
   emptyProctorRecord,
   getProctorRecord,
   isReportableOptimum,
+  parseAirVoidsTargets,
   sampleCompactionCurve,
   zeroAirVoidsCurve,
+  type FieldAcceptance,
   type ProctorCurvePoint,
   type ProctorEffort,
   type ProctorMethod,
@@ -38,6 +42,14 @@ interface ProctorTestProps {
 }
 
 type ProctorInputField = Exclude<keyof ProctorRow, "legacy">;
+type ProctorRecordTextField =
+  | "testedBy"
+  | "specificGravity"
+  | "airVoidsTarget"
+  | "oversizePercent"
+  | "oversizeSpecificGravity"
+  | "fieldDryDensity"
+  | "requiredRelativeCompaction";
 
 const POINT_LABELS = ["A", "B", "C", "D", "E", "F"];
 /** BS 1377-4:1990, 3.3 is the 2.5 kg rammer method and 3.5 the 4.5 kg rammer method. */
@@ -115,15 +127,14 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
   }, [projectId, location.search, metadataKey, metadata]);
 
   const pointCalculations = useMemo(() => rows.map((row) => calculateProctorPoint(row, mouldVolume)), [rows, mouldVolume]);
-  const optimum = useMemo(() => calculateProctor(rows, mouldVolume), [rows, mouldVolume]);
   const measuredPoints = useMemo(() => pointCalculations
     .filter((point): point is ProctorPointCalculation & { moistureContent: number; dryDensity: number } =>
       point.moistureContent !== null && point.dryDensity !== null)
     .map((point) => ({ moisture: point.moistureContent, dryDensity: point.dryDensity }))
     .sort((a, b) => a.moisture - b.moisture), [pointCalculations]);
   const specificGravity = optionalNumber(record.specificGravity);
-  const airVoidsTarget = optionalNumber(record.airVoidsTarget);
-  const hasAirVoidsLine = specificGravity !== null && airVoidsTarget !== null && airVoidsTarget > 0;
+  const airVoidsTargets = useMemo(() => parseAirVoidsTargets(record.airVoidsTarget), [record.airVoidsTarget]);
+  const optimum = useMemo(() => calculateProctor(rows, mouldVolume, specificGravity), [rows, mouldVolume, specificGravity]);
   // The fitted curve and the saturation lines are sampled over the measured range,
   // which is where the compaction graph is read from.
   const moistureRange = useMemo<[number, number] | null>(() => {
@@ -134,13 +145,10 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
     () => (optimum.curve && moistureRange ? sampleCompactionCurve(optimum.curve, moistureRange) : []),
     [optimum.curve, moistureRange],
   );
-  // The printed sheet plots the 0 %, 5 % and 10 % air voids lines. The record's own
-  // target is drawn too when it is not one of those, so the extra line is never lost.
+  // The zero air voids line is always drawn; each entered air voids percentage adds a line below it.
   const voidLines = useMemo<McVoidLine[]>(() => {
     if (specificGravity === null || !moistureRange) return [];
-    const percents = [0, 5, 10];
-    if (hasAirVoidsLine && !percents.includes(airVoidsTarget!)) percents.push(airVoidsTarget!);
-    return percents
+    return [0, ...airVoidsTargets]
       .map((percent) => ({
         percent,
         points: (percent === 0
@@ -148,11 +156,22 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
           : airVoidsCurve(percent, specificGravity!, moistureRange)) as ProctorCurvePoint[],
       }))
       .filter((line) => line.points.length > 1);
-  }, [specificGravity, moistureRange, hasAirVoidsLine, airVoidsTarget]);
+  }, [specificGravity, moistureRange, airVoidsTargets]);
   const summaries = useMemo(() => ({
-    standard: calculateProctor(record.standardRows, record.standardMouldVolume),
-    modified: calculateProctor(record.modifiedRows, record.modifiedMouldVolume),
-  }), [record.standardRows, record.standardMouldVolume, record.modifiedRows, record.modifiedMouldVolume]);
+    standard: calculateProctor(record.standardRows, record.standardMouldVolume, specificGravity),
+    modified: calculateProctor(record.modifiedRows, record.modifiedMouldVolume, specificGravity),
+  }), [record.standardRows, record.standardMouldVolume, record.modifiedRows, record.modifiedMouldVolume, specificGravity]);
+  const oversizeRemoved = optionalNumber(record.oversizePercent);
+  const oversizeGs = optionalNumber(record.oversizeSpecificGravity);
+  const oversizeInputs = oversizeRemoved !== null && oversizeRemoved > 0 && oversizeRemoved < 100 && oversizeGs !== null && oversizeGs > 0
+    ? { percent: oversizeRemoved, specificGravity: oversizeGs }
+    : null;
+  const oversizeCorrected = oversizeInputs && optimum.mdd !== null && optimum.omc !== null
+    ? correctForOversize(optimum.mdd, optimum.omc, oversizeInputs.percent, oversizeInputs.specificGravity)
+    : null;
+  const fieldDryDensity = optionalNumber(record.fieldDryDensity);
+  const requiredCompaction = optionalNumber(record.requiredRelativeCompaction);
+  const fieldAssessment = assessFieldCompaction(fieldDryDensity, oversizeCorrected?.mdd ?? optimum.mdd, requiredCompaction);
   const resultFields = useMemo(() => [
     { label: "Standard OMC", value: summaries.standard.omc === null ? "" : `${displayMoisture(summaries.standard.omc)}%` },
     { label: "Standard MDD", value: summaries.standard.mdd === null ? "" : `${displayDensity(summaries.standard.mdd)} kg/m³` },
@@ -200,7 +219,7 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
     setSaveStatus("idle");
   };
 
-  const updateRecordField = (field: "specificGravity" | "airVoidsTarget", value: string) => {
+  const updateRecordField = (field: ProctorRecordTextField, value: string) => {
     setRecord((current) => ({ ...current, [field]: value }));
     setSaveStatus("idle");
   };
@@ -304,6 +323,17 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
       fitted: fittedPoints,
       voidLines,
       chartImage: await captureChart(),
+      extras: {
+        effort,
+        energy,
+        oversize: oversizeInputs && oversizeCorrected ? { ...oversizeInputs, ...oversizeCorrected } : null,
+        field: fieldDryDensity === null ? null : {
+          dryDensity: fieldDryDensity,
+          relativeCompaction: fieldAssessment.relativeCompaction,
+          requiredPercent: requiredCompaction,
+          acceptance: fieldAssessment.acceptance,
+        },
+      },
       skipDownload: action === "print",
     });
     if (action === "print") {
@@ -362,9 +392,9 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
               <span>Specific gravity, Gs</span>
               <Input aria-label="Specific gravity" type="number" min="0" step="any" value={record.specificGravity} onChange={(event) => updateRecordField("specificGravity", event.target.value)} className="record-input h-7 w-20" placeholder="2.70" />
             </label>
-            <label className="flex items-center gap-2 text-[10px] text-muted-foreground" title="Second saturation line plotted below the zero air voids line.">
-              <span>Air voids (%)</span>
-              <Input aria-label="Target air voids percentage" type="number" min="0" max="99" step="any" value={record.airVoidsTarget} onChange={(event) => updateRecordField("airVoidsTarget", event.target.value)} className="record-input h-7 w-16" placeholder="5" />
+            <label className="flex items-center gap-2 text-[10px] text-muted-foreground" title="Air voids lines plotted below the zero air voids line, as a comma separated list.">
+              <span>Air voids lines (%)</span>
+              <Input aria-label="Target air voids percentage" type="text" value={record.airVoidsTarget} onChange={(event) => updateRecordField("airVoidsTarget", event.target.value)} className="record-input h-7 w-24" placeholder="5, 10" />
             </label>
             <Button variant="outline" size="sm" className="h-7 text-[11px]" onClick={addRow} disabled={rows.length >= MAX_POINTS}>Add point</Button>
           </div>
@@ -430,6 +460,36 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
         )}
       </section>
 
+      <section className="record-card p-3">
+        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Oversize and field compaction</h3>
+        <div className="flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground">
+          <label className="flex items-center gap-2" title="Share of the sample by dry mass removed before compaction (ASTM D4718).">
+            <span>Oversize removed (%)</span>
+            <Input aria-label="Oversize removed percentage" type="number" min="0" max="99" step="any" value={record.oversizePercent} onChange={(event) => updateRecordField("oversizePercent", event.target.value)} className="record-input h-7 w-20" placeholder="0" />
+          </label>
+          <label className="flex items-center gap-2" title="Oven-dried relative density of the oversize particles.">
+            <span>Oversize Gs</span>
+            <Input aria-label="Oversize specific gravity" type="number" min="0" step="any" value={record.oversizeSpecificGravity} onChange={(event) => updateRecordField("oversizeSpecificGravity", event.target.value)} className="record-input h-7 w-20" placeholder="2.65" />
+          </label>
+          <label className="flex items-center gap-2">
+            <span>Field dry density (kg/m³)</span>
+            <Input aria-label="Field dry density" type="number" min="0" step="any" value={record.fieldDryDensity} onChange={(event) => updateRecordField("fieldDryDensity", event.target.value)} className="record-input h-7 w-24" />
+          </label>
+          <label className="flex items-center gap-2">
+            <span>Required relative compaction (%)</span>
+            <Input aria-label="Required relative compaction" type="number" min="0" step="any" value={record.requiredRelativeCompaction} onChange={(event) => updateRecordField("requiredRelativeCompaction", event.target.value)} className="record-input h-7 w-20" />
+          </label>
+        </div>
+        {oversizeRemoved !== null && oversizeRemoved > 0 && oversizeGs === null && <p className="mt-2 text-[10px] text-muted-foreground">Enter the oversize relative density to correct the MDD and OMC.</p>}
+        {oversizeRemoved !== null && oversizeRemoved > 30 && <p className="mt-2 text-[10px] text-amber-700 dark:text-amber-300">The ASTM D4718 correction is valid up to 30% oversize.</p>}
+        <div className="mt-3 grid gap-px overflow-hidden rounded-md border sm:grid-cols-2 lg:grid-cols-4">
+          <ResultField label="Total-sample MDD (kg/m³)" value={oversizeCorrected ? displayDensity(oversizeCorrected.mdd) : "—"} />
+          <ResultField label="Total-sample OMC (%)" value={oversizeCorrected ? displayMoisture(oversizeCorrected.omc) : "—"} />
+          <ResultField label="Relative compaction (%)" value={displayMoisture(fieldAssessment.relativeCompaction)} />
+          <ResultField label="Acceptance" value={acceptanceLabel(fieldAssessment.acceptance, requiredCompaction)} />
+        </div>
+      </section>
+
       <section className="record-card flex flex-col gap-2 px-3 py-2 text-[10px] sm:flex-row sm:items-center sm:justify-between">
         <label className="flex items-center gap-2"><span className="text-muted-foreground">TESTED BY</span><Input aria-label="Tested by" value={record.testedBy} onChange={(event) => updateRecordField("testedBy", event.target.value)} className="record-input h-7 w-40" /></label>
         <div className="sm:text-right"><span className="text-muted-foreground">STATUS</span><div className="font-semibold">{status} · {filledRows}/{rows.length} {type} points</div></div>
@@ -447,6 +507,13 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
       </div>
     </div>
   );
+};
+
+const acceptanceLabel = (acceptance: FieldAcceptance, requiredPercent: number | null): string => {
+  if (acceptance === "pass") return `Pass (min. ${requiredPercent}%)`;
+  if (acceptance === "fail") return `Fail (min. ${requiredPercent}%)`;
+  if (acceptance === "no-limit") return "No limit set";
+  return "—";
 };
 
 const ProctorInputRow = ({ label, rows, field, onChange, textInput = false }: {
