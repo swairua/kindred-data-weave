@@ -198,9 +198,11 @@ function addFooter(doc: jsPDF, data: PDFData, images: AdminImages): void {
   }
 }
 
-export const pdfFileName = (projectName: string | undefined, fallback: string) => {
-  const name = (projectName ?? "").replace(/[\\/:*?"<>|]/g, "").replace(/\s+/g, " ").trim();
-  return `${name || fallback}.pdf`;
+export const pdfFileName = (projectName: string | undefined, testType: string, fallback?: string) => {
+  const safeProjectName = (projectName ?? "").replace(/[\\/:*?"<>|]/g, "").replace(/\s+/g, " ").trim();
+  const safeTestType = testType.replace(/[\\/:*?"<>|]/g, "").replace(/\s+/g, "_").trim();
+  const base = safeProjectName ? `${safeTestType}_${safeProjectName}` : safeTestType;
+  return `${base || fallback || "Report"}.pdf`;
 };
 
 export const generateTestPDF = async (data: PDFData) => {
