@@ -113,7 +113,8 @@ const drawCell = (doc: jsPDF, x: number, y: number, w: number, h: number, label:
 
   doc.setFont("helvetica", "bold");
   doc.setTextColor(0);
-  const valueSize = fitFontSize(doc, text, w - labelW - 14, 8, 6);
+  const valueMaxW = dividerAt !== undefined ? w - dividerAt - 4 : w - labelW - 14;
+  const valueSize = fitFontSize(doc, text, valueMaxW, 8, 6);
   doc.setFontSize(valueSize);
   doc.text(text, x + w - 2, mid + valueSize * 0.35, { align: "right" });
 };
