@@ -1,7 +1,7 @@
 import { jsPDF } from "jspdf";
 import { fetchAdminImagesAsBase64, type AdminImages } from "./imageUtils";
 import { imageParts } from "./pdfGenerator";
-import { getSessionToken } from "./api";
+import { buildApiUrl, getSessionToken } from "./api";
 
 export interface CoringProjectInfo {
   title: string;
@@ -74,6 +74,19 @@ const drawFittedImage = (doc: jsPDF, dataUrl: string, x: number, y: number, w: n
   } catch (error) {
     console.warn("[CoringPDF] Could not place image:", error);
   }
+};
+
+/** Build an authenticated serve-image URL for a coring image path. */
+const coringImageServeUrl = (path: string): string => {
+  let p = path.startsWith("/") ? path : "/" + path;
+  if (p.startsWith("/uploads/") && !p.startsWith("/uploads/coring/")) {
+    const afterUploads = p.slice("/uploads/".length);
+    p = "/uploads/coring/" + afterUploads;
+  }
+  const apiUrl = new URL(buildApiUrl());
+  apiUrl.searchParams.set("action", "serve-image");
+  apiUrl.searchParams.set("file_path", p);
+  return apiUrl.toString();
 };
 
 /** Fetch a remote image and convert it to a base64 data URL for embedding in the PDF. */
@@ -298,8 +311,8 @@ export const buildCoringReportPDF = async (project: CoringProjectInfo, cores: Co
 
   // Fetch core before/after images as base64 data URLs for PDF embedding
   const coresWithImages = await Promise.all(cores.map(async (core) => {
-    const beforeDataUrl = core.beforeImage ? await fetchImageAsDataUrl(`https://lab.wayrus.co.ke${core.beforeImage}`) : null;
-    const afterDataUrl = core.afterImage ? await fetchImageAsDataUrl(`https://lab.wayrus.co.ke${core.afterImage}`) : null;
+    const beforeDataUrl = core.beforeImage ? await fetchImageAsDataUrl(coringImageServeUrl(core.beforeImage)) : null;
+    const afterDataUrl = core.afterImage ? await fetchImageAsDataUrl(coringImageServeUrl(core.afterImage)) : null;
     return { ...core, beforeImage: beforeDataUrl, afterImage: afterDataUrl };
   }));
 
