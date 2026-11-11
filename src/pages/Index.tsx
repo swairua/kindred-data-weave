@@ -79,6 +79,9 @@ const TestsViewContent = ({
   const testData = useTestData();
   const location = useLocation();
   const navigate = useNavigate();
+  if (location.hash && !registry.hasTest(location.hash.slice(1))) {
+    registerAllTests();
+  }
   const { setOpenTestKey } = useTestAccordion();
   const projectCtx = useContext(ProjectContext);
 
@@ -86,10 +89,13 @@ const TestsViewContent = ({
   const selectedFromHash = location.hash.slice(1); // Remove '#'
 
   // Check if hash value is a test key
-  const isTestKey = selectedFromHash !== "" && registry.hasTest(selectedFromHash);
+  const isTestKey = selectedFromHash !== "" && (
+    registry.hasTest(selectedFromHash)
+    || Object.prototype.hasOwnProperty.call(testData.tests, selectedFromHash)
+  );
 
   // Determine if we're in "focused mode" (showing only one test from wizard)
-  const isFocusedMode = selectedFromHash && isTestKey;
+  const isFocusedMode = !!selectedFromHash && (isTestKey || !/^\d+$/.test(selectedFromHash));
 
   console.log(`[Index] ============ ROUTING LOGIC DEBUG ============`);
   console.log(`[Index] location.hash: "${location.hash}"`);
@@ -190,7 +196,7 @@ const TestsViewContent = ({
       return (
         <Card>
           <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Test component not found: {testKey}</p>
+            <p className="text-sm text-muted-foreground">Test component not available: {testKey}</p>
           </CardContent>
         </Card>
       );

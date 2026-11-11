@@ -80,6 +80,17 @@ describe("Record test page layout", () => {
     expect(screen.queryByText(/Result 418 was not found for this project/)).not.toBeInTheDocument();
   });
 
+  it("does not fall back to unrelated tests for an unavailable test hash", async () => {
+    indexMocks.fetchCurrentUser.mockResolvedValue({ id: 1, name: "Tester", email: "t@e.com" });
+    indexMocks.listRecords.mockResolvedValue({ data: [] });
+    indexMocks.fetchFullProject.mockResolvedValue({});
+
+    renderIndex("/tests#unavailable-test");
+
+    expect(await screen.findByText("Test component not available: unavailable-test")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Soil Tests" })).not.toBeInTheDocument();
+  });
+
   it("stacks the three classes vertically, each with its catalogue tests", async () => {
     indexMocks.fetchCurrentUser.mockResolvedValue({ id: 1, name: "Tester", email: "t@e.com" });
     indexMocks.listRecords.mockResolvedValue({ data: [] });
