@@ -13,7 +13,7 @@ import { createRecord, deleteRecord, listRecords, updateRecord } from "@/lib/api
 import { generateParticleSizeDistributionPDF } from "@/lib/psdPdfGenerator";
 import { calculateGrading, calculateGradationCoefficients, calculateHydrometer, calculateMoisture, type GradingRow } from "@/lib/gradingCalculations";
 import { mergePsdSeries } from "@/lib/psdChartGeometry";
-import { calculateAashtoGroupIndex, classifySoilAASHTO, classifySoilUSCS, getAashtoEvidenceWarnings } from "@/lib/soilClassification";
+import { calculateAashtoGroupIndex, classifySoilAASHTO, classifySoilUSCS, getAashtoEvidenceWarnings, rateAashtoGroup } from "@/lib/soilClassification";
 import { toast } from "sonner";
 
 interface GradingTestProps {
@@ -33,7 +33,6 @@ interface MoistureSection {
 interface ClassificationSection {
   uscs: string;
   aashtoGroup: string;
-  aashtoRating: string;
   liquidLimit: string;
   plasticLimit: string;
   plasticityIndex: string;
@@ -122,7 +121,6 @@ const EMPTY_HYDROMETER_ROWS: HydrometerRow[] = HYDROMETER_TIMES.map((time) => ({
 const DEFAULT_CLASSIFICATION: ClassificationSection = {
   uscs: "auto",
   aashtoGroup: "auto",
-  aashtoRating: "auto",
   liquidLimit: "",
   plasticLimit: "",
   plasticityIndex: "auto",
@@ -194,7 +192,6 @@ const normalizeRecord = (value: unknown, metadata: RecordMetadata): GradingRecor
     classification: {
       uscs: readString(classification.uscs) || DEFAULT_CLASSIFICATION.uscs,
       aashtoGroup: readString(classification.aashtoGroup) || DEFAULT_CLASSIFICATION.aashtoGroup,
-      aashtoRating: readString(classification.aashtoRating) || DEFAULT_CLASSIFICATION.aashtoRating,
       liquidLimit: readString(classification.liquidLimit),
       plasticLimit: readString(classification.plasticLimit),
       plasticityIndex: readString(classification.plasticityIndex) || DEFAULT_CLASSIFICATION.plasticityIndex,
@@ -455,6 +452,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       aashtoGroup: record.classification.aashtoGroup && record.classification.aashtoGroup !== "auto" ? record.classification.aashtoGroup : autoClassification?.aashtoGroup ?? null,
     });
   }, [record.classification.liquidLimit, record.classification.aashtoGroup, classificationValues.plasticityIndex, classificationValues.fines, autoClassification?.aashtoGroup]);
+  const aashtoRating = rateAashtoGroup(aashtoResult, groupIndex);
 
   useEffect(() => {
     if (!projectId) {
@@ -785,7 +783,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
         <RecordSection title="Sample preparation">
           <div className="grid gap-px overflow-hidden rounded-md border sm:grid-cols-2">
             <RecordField label="Initial air-dried mass (g) *" value={record.samplePreparation.initialDryMass} placeholder="e.g. 669" onChange={(value) => updateNested("samplePreparation", "initialDryMass", value)} />
-            <RecordField label="Washed & oven-dried mass (g) *" value={record.samplePreparation.washedOvenDryMass} placeholder="auto" onChange={(value) => updateNested("samplePreparation", "washedOvenDryMass", value)} />
+            <RecordField label="Washed & oven-dried mass (g) *" value={record.samplePreparation.washedOvenDryMass} placeholder="e.g. 480" onChange={(value) => updateNested("samplePreparation", "washedOvenDryMass", value)} />
             <CalculatedField label="Fine mass (g)" value={fineMass === null ? "auto" : fineMass.toFixed(1)} />
             <CalculatedField label="Fines %" value={formatValue(finesPercentage, 1)} />
           </div>
@@ -818,7 +816,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
           <EditableCell label="AASHTO group" value={autoClassification ? autoClassification.aashtoGroup : "auto"} calculated />
           <EditableCell label="Group Index" value={groupIndex === null ? "auto" : String(groupIndex)} calculated />
           <EditableCell label="AASHTO override" value={record.classification.aashtoGroup} onChange={(value) => updateNested("classification", "aashtoGroup", value)} />
-          <EditableCell label="Rating" value={record.classification.aashtoRating} onChange={(value) => updateNested("classification", "aashtoRating", value)} />
+          <EditableCell label="Rating" value={aashtoRating ?? "auto"} calculated />
         </div>
         <div className="mt-2 border-t pt-2">
           <div className="mb-px bg-muted/60 px-2 py-1 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Atterberg</div>
