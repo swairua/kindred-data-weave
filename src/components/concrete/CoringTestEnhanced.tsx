@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import CalculatedInput from "@/components/CalculatedInput";
 import { Plus, X, Upload, Trash2, ArrowLeft, FilePlus, Loader2, AlertCircle, CheckCircle, Save, Printer } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
@@ -182,6 +184,10 @@ const projectId = project.currentProjectId ?? null;
     { ...CORING_ROW_DEFAULTS, coreId: "CR3" },
   ]);
   const [activeCoreIndex, setActiveCoreIndex] = useState(0);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [reportAction, setReportAction] = useState<"pdf" | "print" | null>(null);
+  const [selectedReportCores, setSelectedReportCores] = useState<Set<number>>(new Set());
+  const [isBuildingReport, setIsBuildingReport] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 const [recordId, setRecordId] = useState<number | null>(null);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
@@ -819,28 +825,41 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
     }
   };
 
-  const buildReport = async (): Promise<jsPDF | null> => {
-    const errors = [...validateAllRows(), ...validateProjectDetails()];
+  const buildReport = async (reportRows: CoringRow[]): Promise<jsPDF | null> => {
+    const reportErrors: ValidationError[] = [];
+    const seenIds = new Set<string>();
+    reportRows.forEach((row) => {
+      const rowIndex = rows.indexOf(row);
+      if (seenIds.has(row.coreId.trim())) {
+        reportErrors.push({ rowIndex, field: "coreId", message: "Duplicate core ID" });
+      }
+      seenIds.add(row.coreId.trim());
+      reportErrors.push(...validateRow(row, rowIndex));
+    });
+    if (reportRows.length === rows.length && rows.length < 3) {
+      reportErrors.push({ rowIndex: -1, field: "rows", message: "At least 3 cores are required to report a mean strength" });
+    }
+    const errors = [...reportErrors, ...validateProjectDetails()];
     if (errors.length > 0) {
       setValidationErrors(errors);
-      toast.error("Please fix validation errors before exporting PDF");
+      toast.error("Please fix validation errors before generating the report");
       return null;
     }
 
     // Additional validation for PDF generation
     if (!projectDetails.projectName.trim()) {
-      toast.error("Project Name cannot be empty for PDF export");
+      toast.error("Project Name cannot be empty for the report");
       return null;
     }
     
     if (!projectDetails.sampleNo.trim()) {
-      toast.error("Sample Number cannot be empty for PDF export");
+      toast.error("Sample Number cannot be empty for the report");
       return null;
     }
 
     try {
       const dateOfTest = formatReportDate(projectDetails.dateOfTest);
-      const cores: CoringCoreReport[] = await Promise.all(rows.map(async (row) => {
+      const cores: CoringCoreReport[] = await Promise.all(reportRows.map(async (row) => {
         let beforeImage: string | undefined;
         let afterImage: string | undefined;
         try {
@@ -894,18 +913,54 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
         dateReported: formatReportDate(projectDetails.dateReported),
       }, cores);
     } catch (error) {
-      console.error("PDF export failed:", error);
-      toast.error(`PDF export failed: ${error instanceof Error ? error.message : String(error)}`);
+      console.error("Report generation failed:", error);
+      toast.error(`Report generation failed: ${error instanceof Error ? error.message : String(error)}`);
       return null;
     }
   };
 
-  const exportPDF = async () => {
-    const doc = await buildReport();
-    if (!doc) return false;
-    doc.save(pdfFileName(projectDetails.projectName, "Coring_Report"));
-    toast.success("PDF generated successfully");
-    return true;
+  const openReportSelection = (action: "pdf" | "print") => {
+    if (rows.length === 0) {
+      toast.info("No cores to include in the report");
+      return false;
+    }
+    setSelectedReportCores(new Set(rows.map((_, index) => index)));
+    setReportAction(action);
+    setReportDialogOpen(true);
+    return false;
+  };
+
+  const exportPDF = () => openReportSelection("pdf");
+
+  const handlePrint = () => {
+    openReportSelection("print");
+  };
+
+  const confirmReportSelection = async () => {
+    if (!reportAction || selectedReportCores.size === 0 || isBuildingReport) return;
+    const action = reportAction;
+    const reportRows = rows.filter((_, index) => selectedReportCores.has(index));
+    setIsBuildingReport(true);
+    try {
+      const doc = await buildReport(reportRows);
+      if (!doc) {
+        setReportDialogOpen(false);
+        return;
+      }
+      if (action === "pdf") {
+        doc.save(pdfFileName(projectDetails.projectName, "Coring_Report"));
+        toast.success("PDF generated successfully");
+        setReportDialogOpen(false);
+      } else {
+        setReportDialogOpen(false);
+        printPDFDocument(doc);
+      }
+    } catch (error) {
+      console.error("Report generation failed:", error);
+      toast.error(`Report generation failed: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setIsBuildingReport(false);
+    }
   };
 
   const strengths = rows.map(r => parseFloat(getCorrectedStrength(r))).filter(Boolean);
@@ -916,11 +971,6 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
     { label: "Cores Tested", value: strengths.length ? String(strengths.length) : "" },
   ], [avgStrength, strengths.length]);
   useTestReport("coring", strengths.length, results);
-
-  const handlePrint = async () => {
-    const doc = await buildReport();
-    if (doc) printPDFDocument(doc);
-  };
 
   const canExport = !!project.currentProjectId || isSaved;
   const hasValidationErrors = validationErrors.length > 0;
@@ -1234,6 +1284,50 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={reportDialogOpen} onOpenChange={(open) => { if (!isBuildingReport) setReportDialogOpen(open); }}>
+        <DialogContent className="max-w-md" data-testid="coring-report-selection">
+          <DialogHeader>
+            <DialogTitle>{reportAction === "print" ? "Print cores" : "Export cores as PDF"}</DialogTitle>
+            <DialogDescription>
+              Select which cores to include. A report will be generated for the selected cores.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center justify-between text-xs">
+            <button type="button" className="text-primary hover:underline" onClick={() => setSelectedReportCores(new Set(rows.map((_, index) => index)))}>
+              Select all
+            </button>
+            <button type="button" className="text-primary hover:underline" onClick={() => setSelectedReportCores(new Set())}>
+              Clear
+            </button>
+          </div>
+          <div className="max-h-72 space-y-2 overflow-y-auto">
+            {rows.map((row, index) => (
+              <label key={`${row.coreId}-${index}`} className="flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2 text-sm">
+                <Checkbox
+                  checked={selectedReportCores.has(index)}
+                  onCheckedChange={(checked) => {
+                    setSelectedReportCores((previous) => {
+                      const next = new Set(previous);
+                      if (checked === true) next.add(index);
+                      else next.delete(index);
+                      return next;
+                    });
+                  }}
+                />
+                <span className="font-medium">{index + 1}. {row.coreId}</span>
+                <span className="ml-auto text-xs text-muted-foreground">Depth {row.depth} m</span>
+              </label>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setReportDialogOpen(false)} disabled={isBuildingReport}>Cancel</Button>
+            <Button type="button" onClick={confirmReportSelection} disabled={selectedReportCores.size === 0 || isBuildingReport}>
+              {isBuildingReport ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generating…</> : reportAction === "print" ? `Print ${selectedReportCores.size} selected` : `Generate PDF (${selectedReportCores.size})`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </TestSection>
   );
 };
