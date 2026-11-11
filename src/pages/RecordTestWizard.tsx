@@ -142,7 +142,10 @@ const RecordTestWizard = () => {
   const initialMaterial = searchParams.get("material") as Material | null;
   const initialTest = searchParams.get("test") as string | null;
   const projectIdParam = searchParams.get("projectId");
-  const projectIdFromParam = projectIdParam ? parseInt(projectIdParam, 10) : null;
+  const parsedProjectId = projectIdParam ? parseInt(projectIdParam, 10) : null;
+  const projectIdFromParam = parsedProjectId !== null && Number.isInteger(parsedProjectId) && parsedProjectId > 0
+    ? parsedProjectId
+    : null;
   // Reception handoff: /record?material=concrete&test=compressive&labId=26-0418/01
   // pre-fills the sample id so the test stays linked to the logged sample.
   const labIdFromParam = searchParams.get("labId") || searchParams.get("labRef");
@@ -164,17 +167,27 @@ const RecordTestWizard = () => {
       const raw = sessionStorage.getItem(STORAGE_KEY);
       if (raw) {
         const restored = { ...defaults, ...JSON.parse(raw) } as WizardState;
-        // The URL wins over a restored draft: arriving from Reception must
-        // always start on the sample the lab just logged.
-        if (labIdFromParam) {
+        const selectionChanged = (initialMaterial !== null && restored.material !== initialMaterial)
+          || (initialTest !== null && restored.testKey !== initialTest);
+        const projectChanged = projectIdFromParam !== null && restored.projectId !== projectIdFromParam;
+
+        if (selectionChanged || projectChanged) {
           return {
-            ...restored,
-            material: restored.material ?? initialMaterial,
-            testKey: restored.testKey ?? initialTest,
-            sampleId: labIdFromParam,
+            ...emptyState,
+            material: initialMaterial ?? restored.material,
+            testKey: initialTest ?? restored.testKey,
+            projectId: projectIdFromParam,
+            sampleId: labIdFromParam || emptyState.sampleId,
           };
         }
-        return restored;
+
+        return {
+          ...restored,
+          material: initialMaterial ?? restored.material,
+          testKey: initialTest ?? restored.testKey,
+          projectId: projectIdFromParam ?? restored.projectId,
+          sampleId: labIdFromParam || restored.sampleId,
+        };
       }
     } catch {
       // Unreadable or unavailable session storage: start from the defaults.
@@ -258,7 +271,7 @@ const RecordTestWizard = () => {
     };
     preloadProjectFromParam();
     return () => { active = false; };
-  }, [projectIdFromParam, testData]);
+  }, [projectIdFromParam, testData.updateProjectMetadata]);
 
   // Load compressive tests when selecting compressive strength test
   useEffect(() => {

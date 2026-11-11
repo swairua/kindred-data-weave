@@ -28,6 +28,7 @@ vi.mock("@/context/TestDataContext", () => ({
       atterberg: { id: "atterberg", name: "Atterberg Limits", category: "soil", status: "not-started", dataPoints: 0, keyResults: [], enabled: true, sortOrder: 1 },
       grading: { id: "grading", name: "Particle Size Distribution", category: "soil", status: "not-started", dataPoints: 0, keyResults: [], enabled: true, sortOrder: 2 },
       compressive: { id: "compressive", name: "Compressive Strength Test", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [], enabled: true, sortOrder: 1 },
+      coring: { id: "coring", name: "Coring", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [], enabled: true, sortOrder: 2 },
       ndt: { id: "ndt", name: "NDT (Rebound Hammer)", category: "concrete", status: "not-started", dataPoints: 0, keyResults: [], enabled: true, sortOrder: 3 },
       schmidt_rock: { id: "schmidt_rock", name: "Schmidt Hammer Test", category: "rock", status: "not-started", dataPoints: 0, keyResults: [], enabled: true, sortOrder: 1 },
       ucs: { id: "ucs", name: "UCS Test", category: "rock", status: "not-started", dataPoints: 0, keyResults: [], enabled: true, sortOrder: 2 },
@@ -55,9 +56,9 @@ vi.mock("@/components/Navigation", () => ({ default: () => null }));
 vi.mock("@/hooks/useSessionKeepAlive", () => ({ useSessionKeepAlive: () => {} }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-const renderIndex = () =>
+const renderIndex = (initialEntry = "/tests") =>
   render(
-    <MemoryRouter initialEntries={["/tests"]}>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <SidebarProvider>
         <Index initialTab="soil" />
       </SidebarProvider>
@@ -67,6 +68,18 @@ const renderIndex = () =>
 afterEach(cleanup);
 
 describe("Record test page layout", () => {
+  it("opens only Coring from its test hash even when the result ID is stale", async () => {
+    indexMocks.fetchCurrentUser.mockResolvedValue({ id: 1, name: "Tester", email: "t@e.com" });
+    indexMocks.listRecords.mockResolvedValue({ data: [] });
+    indexMocks.fetchFullProject.mockResolvedValue({});
+
+    renderIndex("/tests?projectId=59&resultId=418#coring");
+
+    expect(await screen.findByText("Concrete Core Testing (BS EN 12504-1:2009)")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Soil Tests" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Result 418 was not found for this project/)).not.toBeInTheDocument();
+  });
+
   it("stacks the three classes vertically, each with its catalogue tests", async () => {
     indexMocks.fetchCurrentUser.mockResolvedValue({ id: 1, name: "Tester", email: "t@e.com" });
     indexMocks.listRecords.mockResolvedValue({ data: [] });

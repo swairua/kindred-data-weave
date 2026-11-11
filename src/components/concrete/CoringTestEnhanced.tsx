@@ -241,6 +241,7 @@ const [recordId, setRecordId] = useState<number | null>(null);
         const row = (record as { data?: unknown }).data;
         if (row && typeof row === "object") {
           const data = row as Record<string, unknown>;
+          if (data.test_key !== "coring" || Number(data.project_id) !== projectIdParam) return;
 
           // A late response must not clobber edits/uploads the user already made.
           if (userTouchedRef.current) return;

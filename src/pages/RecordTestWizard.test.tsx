@@ -11,9 +11,11 @@ const wizardMocks = vi.hoisted(() => ({
   refreshTestDefinitions: vi.fn(),
   updateProjectMetadata: vi.fn(),
   testDefinitions: [
+    { test_key: "atterberg", name: "Atterberg Limits", category: "soil", sort_order: 0, enabled: true },
     { test_key: "proctor", name: "Density/Moisture Content Relationship", category: "soil", sort_order: 1, enabled: true },
     { test_key: "grading", name: "Particle Size Distribution", category: "soil", sort_order: 2, enabled: true },
     { test_key: "compressive", name: "Compressive Strength", category: "concrete", sort_order: 1, enabled: true },
+    { test_key: "coring", name: "Coring", category: "concrete", sort_order: 2, enabled: true },
   ],
 }));
 
@@ -79,6 +81,36 @@ beforeEach(() => {
 });
 
 describe("RecordTestWizard selection flow", () => {
+  it("uses the URL test and project instead of a conflicting saved draft", async () => {
+    sessionStorage.setItem("cransfield_record_wizard", JSON.stringify({
+      material: "soil",
+      testKey: "atterberg",
+      projectId: 12,
+      templateProjectId: 12,
+      projectName: "Stale project",
+      clientName: "Stale client",
+      sampleId: "STALE-SAMPLE",
+    }));
+    wizardMocks.fetchFullProject.mockResolvedValueOnce({
+      id: 59,
+      name: "Coring project",
+      client_name: "Coring client",
+    });
+    renderWizard("/record?material=concrete&test=coring&projectId=59");
+
+    expect(await screen.findByText("Pick an existing project or create a new one.")).toBeInTheDocument();
+    expect(screen.queryByText("Use an existing project as a template or create a new one.")).not.toBeInTheDocument();
+    await waitFor(() => expect(JSON.parse(sessionStorage.getItem("cransfield_record_wizard") ?? "{}")).toMatchObject({
+      material: "concrete",
+      testKey: "coring",
+      projectId: 59,
+      projectName: "Coring project",
+      clientName: "Coring client",
+      templateProjectId: null,
+      sampleId: "",
+    }));
+  });
+
   it("shows materials without bottom navigation and opens the selected material's tests", async () => {
     renderWizard("/record");
 

@@ -169,6 +169,19 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("GradingTest selected record", () => {
+  it("ignores a result ID when the URL selects a different test", async () => {
+    render(
+      <MemoryRouter initialEntries={["/tests?projectId=42&resultId=999#coring"]}>
+        <ProjectContext.Provider value={{ projectName: "Grading project", clientName: "Client", date: "2026-06-12", currentProjectId: 42 }}>
+          <GradingTest testKey="grading" />
+        </ProjectContext.Provider>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Selected sample")).toBeInTheDocument();
+    expect(screen.queryByText("Result 999 was not found for this project. It may have been deleted, or it may belong to another user.")).not.toBeInTheDocument();
+  });
+
   it("opens blank when a new record is started from an existing project", async () => {
     render(
       <MemoryRouter initialEntries={["/tests?newRecord=1&fromProject=44&sourceProjectId=42#grading"]}>
