@@ -812,12 +812,10 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
         </div>
         <div className="mt-px grid gap-px overflow-hidden rounded-md border sm:grid-cols-2">
           <EditableCell label="USCS" value={autoClassification ? `${autoClassification.uscsSymbol} — ${autoClassification.uscsDescription}` : "auto"} calculated />
-          <span className="text-xs text-muted-foreground ml-1">(calculated from sieve data)</span>
           <EditableCell label="USCS override" value={record.classification.uscs} onChange={(value) => updateNested("classification", "uscs", value)} />
         </div>
         <div className="mt-px grid gap-px overflow-hidden rounded-md border sm:grid-cols-4">
           <EditableCell label="AASHTO group" value={autoClassification ? autoClassification.aashtoGroup : "auto"} calculated />
-          <span className="text-xs text-muted-foreground ml-1">(calculated from sieve data)</span>
           <EditableCell label="Group Index" value={groupIndex === null ? "auto" : String(groupIndex)} calculated />
           <EditableCell label="AASHTO override" value={record.classification.aashtoGroup} onChange={(value) => updateNested("classification", "aashtoGroup", value)} />
           <EditableCell label="Rating" value={record.classification.aashtoRating} onChange={(value) => updateNested("classification", "aashtoRating", value)} />
