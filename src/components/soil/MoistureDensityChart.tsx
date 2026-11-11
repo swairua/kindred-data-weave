@@ -49,6 +49,7 @@ interface MoistureDensityChartProps {
 
 export default function MoistureDensityChart({ points, fitted, voidLines, id, className }: MoistureDensityChartProps) {
   const scales = mcScales(points, [fitted, ...voidLines.map((line) => line.points)]);
+  const measured = toMcPlotPoints(points, PLOT.w, PLOT.h, scales.x, scales.y);
   const curve = toMcPlotPoints(fitted, PLOT.w, PLOT.h, scales.x, scales.y);
   /** Converts a plotted position back into absolute millimetres on the sheet. */
   const place = (point: { x: number; y: number }) => ({ x: PLOT.x + point.x, y: PLOT.y + point.y });
@@ -104,6 +105,10 @@ export default function MoistureDensityChart({ points, fitted, voidLines, id, cl
         {/* The fitted compaction curve is the chart's only curve, matching the
             single-curve laboratory sheets. */}
         {curve.length > 1 && <path d={mcCurvePath(curve.map(place))} fill="none" stroke={CURVE_COLOR} strokeWidth={0.74} />}
+        {measured.map((point, index) => {
+          const position = place(point);
+          return <circle key={`measured-${index}`} cx={position.x} cy={position.y} r={2.2} fill={CURVE_COLOR} />;
+        })}
 {scales.y.ticks.map((value) => (
           <text
             key={`y-label-${value}`}

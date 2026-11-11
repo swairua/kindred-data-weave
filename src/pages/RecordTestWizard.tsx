@@ -82,6 +82,7 @@ interface WizardState {
   sampleDepthFrom: string;
   sampleDepthTo: string;
   sampledSubmittedBy: string;
+  testedBy: string;
   sampleDateSubmitted: string;
   sampleDateTested: string;
   sampleNotes: string;
@@ -116,6 +117,7 @@ const emptyState: WizardState = {
   sampleDepthFrom: "",
   sampleDepthTo: "",
   sampledSubmittedBy: "Cransfield",
+  testedBy: "",
   sampleDateSubmitted: "",
   sampleDateTested: "",
   sampleNotes: "",
@@ -639,7 +641,9 @@ const RecordTestWizard = () => {
     testData.updateProjectMetadata(projectMetadata);
 
     if (isGradingTest || isProctorTest) {
-      testData.updateRecordMetadata(state.testKey!, toRecordMetadata(state));
+      const recordMetadata = toRecordMetadata(state);
+      if (isProctorTest) recordMetadata.testedBy = state.testedBy;
+      testData.updateRecordMetadata(state.testKey!, recordMetadata);
     }
 
     // If concrete material, also push concrete test details to context.
@@ -1316,6 +1320,12 @@ const RecordTestWizard = () => {
                         onChange={(e) => update("sampleDateTested", e.target.value)}
                       />
                     </div>
+                    {isProctorTest && (
+                      <div className="space-y-2 sm:col-span-2">
+                        <Label htmlFor="proctor-tested-by">Tested by</Label>
+                        <Input id="proctor-tested-by" value={state.testedBy} onChange={(e) => update("testedBy", e.target.value)} />
+                      </div>
+                    )}
                   </div>
                 </FormCard>
               </>

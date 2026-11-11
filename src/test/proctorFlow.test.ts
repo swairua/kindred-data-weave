@@ -118,6 +118,7 @@ describe("Proctor wizard flow", () => {
   it("requires PSD-equivalent sample details and transfers them to record metadata", () => {
     expect(hasRequiredSoilSampleMetadata({ ...completeSample, sampleNo: " " })).toBe(false);
     expect(hasRequiredSoilSampleMetadata(completeSample)).toBe(true);
+    expect(toRecordMetadata({ ...completeSample, testedBy: "S. Technician" }).testedBy).toBe("S. Technician");
     expect(toRecordMetadata(completeSample)).toEqual({
       sampleId: "BH-04",
       sampleNumber: "2",
@@ -464,7 +465,7 @@ describe("Proctor record page", () => {
     expect(screen.getByText("Fitted curve (R2 1.000)")).toBeInTheDocument();
     // Only three of the five recommended moisture contents were entered.
     expect(screen.getByText(/Only 3 moisture contents completed/)).toBeInTheDocument();
-    expect(screen.getByText(/3\/6 standard points/)).toBeInTheDocument();
+    expect(screen.getByText(/0\/6 standard points/)).toBeInTheDocument();
   });
 
   it("reaches Complete for a filled method even when the other method is empty", async () => {
@@ -479,7 +480,18 @@ describe("Proctor record page", () => {
       ["130", "130", "130", "130", "130", "130"],
     );
 
-    // Completion is judged on the method on screen, not on all twelve points of both methods.
+    // Calculated masses alone do not complete a point without its recorded container number.
+    expect(await screen.findByText(/In progress/)).toBeInTheDocument();
+    expect(screen.getByText(/0\/6 standard points/)).toBeInTheDocument();
+
+    for (let index = 0; index < 6; index += 1) {
+      fireEvent.change(screen.getByLabelText(`Container No., point ${"ABCDEF"[index]}`), { target: { value: `C${index + 1}` } });
+    }
+    fireEvent.change(screen.getByLabelText("Moisture addition (cc), point A"), { target: { value: "" } });
+    expect(screen.getByText(/In progress/)).toBeInTheDocument();
+    expect(screen.getByText(/5\/6 standard points/)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Moisture addition (cc), point A"), { target: { value: "50" } });
     expect(await screen.findByText(/Complete/)).toBeInTheDocument();
     expect(screen.getByText(/6\/6 standard points/)).toBeInTheDocument();
 

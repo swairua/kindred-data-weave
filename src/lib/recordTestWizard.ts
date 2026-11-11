@@ -44,6 +44,7 @@ export interface SoilSampleMetadataInput {
   sampleDepthFrom: string;
   sampleDepthTo: string;
   sampledSubmittedBy: string;
+  testedBy?: string;
   sampleDateSubmitted: string;
   sampleDateTested: string;
   sampleNotes: string;
@@ -67,5 +68,5 @@ export const toRecordMetadata = (sample: SoilSampleMetadataInput): RecordMetadat
   sampleNotes: sample.sampleNotes,
   dateSubmitted: sample.sampleDateSubmitted,
   dateTested: sample.sampleDateTested,
-  testedBy: sample.sampledSubmittedBy,
+  testedBy: sample.testedBy || sample.sampledSubmittedBy,
 });

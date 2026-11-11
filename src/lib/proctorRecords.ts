@@ -24,6 +24,7 @@ export interface ProctorRecord {
   sampleDepthFrom: string;
   sampleDepthTo: string;
   sampledSubmittedBy: string;
+  testedBy: string;
   dateSubmitted: string;
   dateTested: string;
   sampleNotes: string;
@@ -109,7 +110,8 @@ export const emptyProctorRecord = (metadata: RecordMetadata = {}): ProctorRecord
   sampleNumber: metadata.sampleNumber || "",
   sampleDepthFrom: metadata.sampleDepthFrom || "",
   sampleDepthTo: metadata.sampleDepthTo || "",
-  sampledSubmittedBy: metadata.sampledSubmittedBy || metadata.testedBy || "",
+  sampledSubmittedBy: metadata.sampledSubmittedBy || "",
+  testedBy: metadata.testedBy || "",
   dateSubmitted: metadata.dateSubmitted || "",
   dateTested: metadata.dateTested || "",
   sampleNotes: metadata.sampleNotes || "",
@@ -373,7 +375,8 @@ export const normalizeProctorRecord = (value: unknown, metadata: RecordMetadata 
     sampleNumber: readString(source.sampleNumber) || fallback.sampleNumber,
     sampleDepthFrom: readString(source.sampleDepthFrom) || fallback.sampleDepthFrom,
     sampleDepthTo: readString(source.sampleDepthTo) || fallback.sampleDepthTo,
-    sampledSubmittedBy: readString(source.sampledSubmittedBy) || readString(source.testedBy) || fallback.sampledSubmittedBy,
+    sampledSubmittedBy: readString(source.sampledSubmittedBy) || fallback.sampledSubmittedBy,
+    testedBy: readString(source.testedBy) || fallback.testedBy,
     dateSubmitted: readString(source.dateSubmitted) || fallback.dateSubmitted,
     dateTested: readString(source.dateTested) || fallback.dateTested,
     sampleNotes: readString(source.sampleNotes) || fallback.sampleNotes,

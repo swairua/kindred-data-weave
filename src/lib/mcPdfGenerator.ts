@@ -163,12 +163,14 @@ const drawHeader = (d: jsPDF, x: number, y: number, o: MoistureDensityPdfOptions
     { w: 20, text: text(record.dateTested || o.dateTested) },
   ]);
   cy = drawCells(d, x, cy, rowH, [
-    { w: 22, text: "Sample ID:", label: true, bold: true },
+    { w: 20, text: "Sample ID:", label: true, bold: true },
     { w: 18, text: text(record.label) },
-    { w: 24, text: "Sample depth (M):", label: true, bold: true },
-    { w: 22, text: text(depth) },
-    { w: 36, text: "Sampled and Submitted by:", label: true, bold: true },
-    { w: 68, text: text(record.sampledSubmittedBy) },
+    { w: 26, text: "Sample depth (M):", label: true, bold: true },
+    { w: 20, text: text(depth) },
+    { w: 20, text: "Sample No:", label: true, bold: true },
+    { w: 18, text: text(record.sampleNumber) },
+    { w: 38, text: "Sampled and submitted by:", label: true, bold: true, size: 5.8 },
+    { w: 30, text: text(record.sampledSubmittedBy) },
   ]);
   return cy;
 };
@@ -229,8 +231,8 @@ const drawMoistureTable = (d: jsPDF, x: number, y: number, o: MoistureDensityPdf
 
   let cy = drawCells(d, x, y, headerH, [
     { w: columns.caption, text: "Container No", label: true, bold: true },
-    ...perRow((index) => POINT_LABELS[index] || String(index + 1)).map((caption) => ({
-      w: columns.point, text: caption, label: true, bold: true, align: "center" as const,
+    ...rows.map((row) => ({
+      w: columns.point, text: text(row.containerNumber), label: true, bold: true, align: "center" as const,
     })),
   ]);
   cy = dataRow(d, x, cy, rowH, columns, "Container + wet (g)", perRow((index) => text(rows[index]?.containerWetMass)));
@@ -400,6 +402,11 @@ const curve = mcCurveSamples(toMcPlotPoints(o.fitted, plot.w, plot.h, scales.x, 
     }
   }
 
+  d.setFillColor(...COLORS.curve);
+  toMcPlotPoints(o.points, plot.w, plot.h, scales.x, scales.y).forEach((point) => {
+    d.circle(plot.x + point.x, plot.y + point.y, 2.2 * scale, "F");
+  });
+
   // Reset the draw colour: jsPDF keeps the last one for whatever is drawn next,
   // which would otherwise leave the rules under the results block red.
   d.setDrawColor(...COLORS.dark);
@@ -488,7 +495,7 @@ const drawFooter = (d: jsPDF, o: MoistureDensityPdfOptions, images: AdminImages,
   d.setFontSize(8);
   d.setFont("helvetica", "bold");
   d.setTextColor(...COLORS.dark);
-  d.text(`Tested by ${text(o.testedBy || o.record.sampledSubmittedBy)}`, MARGIN, y);
+  d.text(`Tested by ${text(o.testedBy)}`, MARGIN, y);
   d.text(`Date reported ${text(o.dateReported)}`, MARGIN + column, y);
   d.text("Checked by:", MARGIN + column * 2, y);
 

@@ -161,7 +161,12 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
   // Completion is judged on the method on screen, as in the other soil records, so a record that
   // only carries the standard test can still be reported as complete.
   const startedRows = rows.filter(isRowStarted).length;
-  const filledRows = pointCalculations.filter((point) => point.moistureContent !== null && point.dryDensity !== null).length;
+  const filledRows = pointCalculations.filter((point, index) =>
+    point.moistureContent !== null
+    && point.dryDensity !== null
+    && hasValue(rows[index].moistureAdded)
+    && hasValue(rows[index].containerNumber),
+  ).length;
   const status = startedRows === 0 ? "No data" : filledRows < rows.length ? "In progress" : "Complete";
   useTestReport("proctor", totalPoints, resultFields, undefined, startedPoints);
 
@@ -270,7 +275,7 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
       dateReported: project.dateReported,
       checkedBy: project.checkedBy,
       // The record shows this as "TESTED BY"; without it the report printed a blank signature line.
-      testedBy: record.sampledSubmittedBy,
+      testedBy: record.testedBy,
       method: type,
       record: {
         label: record.label,
@@ -408,7 +413,7 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
       </section>
 
       <section className="record-card flex flex-col gap-2 px-3 py-2 text-[10px] sm:flex-row sm:items-center sm:justify-between">
-        <div><span className="text-muted-foreground">TESTED BY</span><div className="font-semibold uppercase">{record.sampledSubmittedBy || "—"}</div></div>
+        <label className="flex items-center gap-2"><span className="text-muted-foreground">TESTED BY</span><Input aria-label="Tested by" value={record.testedBy} onChange={(event) => updateRecordField("testedBy", event.target.value)} className="record-input h-7 w-40" /></label>
         <div className="sm:text-right"><span className="text-muted-foreground">STATUS</span><div className="font-semibold">{status} · {filledRows}/{rows.length} {type} points</div></div>
       </section>
 
