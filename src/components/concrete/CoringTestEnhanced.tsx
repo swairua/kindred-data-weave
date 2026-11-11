@@ -173,7 +173,7 @@ const [recordId, setRecordId] = useState<number | null>(null);
     tower: "TOWER A",
     concreteClass: "45 MPA",
     ageOfConcrete: "over 28 days",
-    dateOfTest: new Date().toISOString().split("T")[0],
+    dateOfTest: "",
     dateReported: "",
     testedBy: "PUAL N",
     checkedBy: "PUAL N",
@@ -186,6 +186,16 @@ const [recordId, setRecordId] = useState<number | null>(null);
 
   // Load existing test data from resultId URL parameter
   const loadStartedRef = useRef<number | null>(null);
+
+  // Both load effects below hit the API (one lists every test_result, which can take a
+  // few seconds). If the user uploads/deletes a photo or edits a field before the slow
+  // response lands, applying it would silently revert their change — which makes uploads
+  // and deletes look like they "only work in the front end". Once the user has touched
+  // the form, late loaders must not overwrite their state.
+  const userTouchedRef = useRef(false);
+  const markUserTouched = useCallback(() => {
+    userTouchedRef.current = true;
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -206,6 +216,9 @@ const [recordId, setRecordId] = useState<number | null>(null);
         const row = (record as { data?: unknown }).data;
         if (row && typeof row === "object") {
           const data = row as Record<string, unknown>;
+
+          // A late response must not clobber edits/uploads the user already made.
+          if (userTouchedRef.current) return;
           
           // Load project details from payload_json
           if (data.payload_json && typeof data.payload_json === "object") {
@@ -232,11 +245,11 @@ const [recordId, setRecordId] = useState<number | null>(null);
               if (testData.cores && Array.isArray(testData.cores)) {
                 const cores = testData.cores as Array<Record<string, unknown>>;
                 const loadedRows = cores.map((core, i) => ({
-                  coreId: (core.mark as string) || `CR${i + 1}`,
+                  coreId: (core.coreId as string) || (core.mark as string) || `CR${i + 1}`,
                   diameter: String(core.diameter ?? ""),
                   lengthBefore: String(core.lengthBefore ?? ""),
                   lengthAfter: String(core.lengthAfter ?? ""),
-                  weightInAir: String(core.weight ?? ""),
+                  weightInAir: String(core.weightInAir ?? core.weight ?? ""),
                   load: String(core.load ?? ""),
                   depth: (core.depth as string) || "0.0-2.0",
                   failureMode: (core.failureMode as string) || "Sparsely distributed aggregates with maximum size approximately 20mm",
@@ -245,7 +258,7 @@ const [recordId, setRecordId] = useState<number | null>(null);
                   pileAfterImage: (core.pileAfterImage as string) ?? (core.afterImage as string) ?? "",
                   area: String(core.area ?? ""),
                   volume: String(core.volume ?? ""),
-                  cylinderToCubeRatio: String(core.cylCubeRatio ?? "1.25"),
+                  cylinderToCubeRatio: String(core.cylinderToCubeRatio ?? core.cylCubeRatio ?? "1.25"),
                   caFactor: String(core.caFactor ?? "1.00"),
                   excessVoidage: String(core.excessVoidage ?? "1.00"),
                   cdcFactor: String(core.cdcFactor ?? "1.00"),
@@ -277,6 +290,8 @@ const [recordId, setRecordId] = useState<number | null>(null);
         if (!active || !result) return;
         setRecordId(result.id);
         setIsSaved(true);
+        // Same guard as the other loader: keep whatever the user has already changed.
+        if (userTouchedRef.current) return;
         const saved = result.payload_json as Record<string, unknown> | null;
         if (saved && typeof saved === "object") {
           if (Array.isArray(saved.rows)) {
@@ -377,6 +392,7 @@ const [recordId, setRecordId] = useState<number | null>(null);
   }, []);
 
 const update = useCallback((i: number, field: keyof CoringRow, val: string) => {
+    markUserTouched();
     // Sanitize input to prevent XSS and injection attacks
     const sanitizedVal = sanitizeInput(val);
     
@@ -415,7 +431,7 @@ const update = useCallback((i: number, field: keyof CoringRow, val: string) => {
     });
     // Clear validation error for this field when user types
     setValidationErrors(prev => prev.filter(e => !(e.rowIndex === i && e.field === field)));
-  }, []);
+  }, [markUserTouched]);
 
   const updateProjectDetail = useCallback((field: string, val: string) => {
     // Sanitize input and validate project details
@@ -518,6 +534,7 @@ const removeCoringImage = (index: number, field: "pileBeforeImage" | "pileAfterI
   };
 
   const removeCoringRow = (index: number) => {
+    markUserTouched();
     const paths = [rows[index]?.pileBeforeImage, rows[index]?.pileAfterImage].filter((p): p is string => Boolean(p));
     setRows(rows.filter((_, j) => j !== index));
     paths.forEach((path) => void discardCoringPhoto(path));
@@ -559,13 +576,13 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
         return;
       }
 
+      markUserTouched();
       setRows(prev => {
         const next = [...prev];
         next[index] = { ...next[index], [field]: filePath };
         return next;
       });
-      toast.success(`${field === "pileBeforeImage" ? "Before" : "After"} test image uploaded`);
-    } catch (error) {
+      toast.success(`${field === "pileBeforeImage" ? "Before" : "After"} test image uploaded`);    } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       console.error("Image upload failed:", error);
       toast.error(`Upload failed: ${errorMessage}`);
@@ -882,7 +899,7 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
       title="Concrete Core Testing (BS EN 12504-1:2009)" 
       testKey={testKey} 
       onSave={handleSave} 
-      onClear={() => setRows([{ ...CORING_ROW_DEFAULTS, coreId: "CR1" }, { ...CORING_ROW_DEFAULTS, coreId: "CR2" }, { ...CORING_ROW_DEFAULTS, coreId: "CR3" }])}
+      onClear={() => { markUserTouched(); setRows([{ ...CORING_ROW_DEFAULTS, coreId: "CR1" }, { ...CORING_ROW_DEFAULTS, coreId: "CR2" }, { ...CORING_ROW_DEFAULTS, coreId: "CR3" }]); }}
       onExportPDF={exportPDF}
       onPrint={handlePrint}
       canExport={canExport}
@@ -1080,7 +1097,7 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
         </table>
       </div>
 
-      <Button variant="outline" size="sm" className="mb-4" onClick={() => setRows([...rows, { ...CORING_ROW_DEFAULTS, coreId: `CR${rows.length + 1}` }])}>
+      <Button variant="outline" size="sm" className="mb-4" onClick={() => { markUserTouched(); setRows([...rows, { ...CORING_ROW_DEFAULTS, coreId: `CR${rows.length + 1}` }]); }}>
         <Plus className="h-3.5 w-3.5 mr-1" /> Add Core
       </Button>
 
