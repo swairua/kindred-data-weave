@@ -1357,7 +1357,7 @@ try {
 
         $body = $body ?: [];
         $filePath = $body['file_path'] ?? '';
-        if (!is_string($filePath) || !preg_match('#^/uploads/coring/[A-Za-z0-9_.\-]+$#', $filePath)) {
+        if (!is_string($filePath) || !preg_match('#^/uploads/(coring/|pile_before_|pile_after_)[A-Za-z0-9_.\-]+$#', $filePath)) {
             respond(['error' => 'Invalid file_path'], 400);
         }
 
@@ -1378,8 +1378,10 @@ try {
         }
 
         $realPath = realpath(__DIR__ . $row['file_path']);
-        $uploadsDir = realpath(__DIR__ . '/uploads/coring/');
-        if ($realPath && $uploadsDir && strpos($realPath, $uploadsDir) === 0 && file_exists($realPath)) {
+        $coringDir = realpath(__DIR__ . '/uploads/coring/');
+        $uploadsDir = realpath(__DIR__ . '/uploads/');
+        $validDir = $coringDir ?: $uploadsDir;
+        if ($realPath && $validDir && strpos($realPath, $validDir) === 0 && file_exists($realPath)) {
             @unlink($realPath);
         }
 
@@ -1405,7 +1407,7 @@ try {
         $projectId = (int) ($body['project_id'] ?? 0);
         $testResultId = (int) ($body['test_result_id'] ?? 0);
         $filePaths = is_array($body['file_paths'] ?? null) ? $body['file_paths'] : [];
-        $filePaths = array_values(array_filter($filePaths, static fn($p) => is_string($p) && preg_match('#^/uploads/coring/[A-Za-z0-9_.\-]+$#', $p)));
+        $filePaths = array_values(array_filter($filePaths, static fn($p) => is_string($p) && preg_match('#^/uploads/(coring/|pile_before_|pile_after_)[A-Za-z0-9_.\-]+$#', $p)));
 
         if ($projectId <= 0 || $testResultId <= 0) {
             respond(['error' => 'project_id and test_result_id are required'], 400);
