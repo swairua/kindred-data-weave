@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import CalculatedInput from "@/components/CalculatedInput";
 import { Plus, X, Upload, Trash2, ArrowLeft, FilePlus, Loader2, AlertCircle, CheckCircle, Save, Printer } from "lucide-react";
 import { useProject } from "@/context/ProjectContext";
@@ -181,6 +183,11 @@ const projectId = project.currentProjectId ?? null;
     { ...CORING_ROW_DEFAULTS, coreId: "CR2" },
     { ...CORING_ROW_DEFAULTS, coreId: "CR3" },
   ]);
+  const [activeCoreIndex, setActiveCoreIndex] = useState(0);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [reportAction, setReportAction] = useState<"pdf" | "print" | null>(null);
+  const [selectedReportCores, setSelectedReportCores] = useState<Set<number>>(new Set());
+  const [isBuildingReport, setIsBuildingReport] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 const [recordId, setRecordId] = useState<number | null>(null);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
@@ -555,6 +562,12 @@ const removeCoringImage = (index: number, field: "pileBeforeImage" | "pileAfterI
     markUserTouched();
     const paths = [rows[index]?.pileBeforeImage, rows[index]?.pileAfterImage].filter((p): p is string => Boolean(p));
     setRows(rows.filter((_, j) => j !== index));
+    setActiveCoreIndex((activeIndex) => {
+      if (rows.length <= 1) return 0;
+      if (index < activeIndex) return activeIndex - 1;
+      if (index === activeIndex) return Math.min(index, rows.length - 2);
+      return activeIndex;
+    });
     paths.forEach((path) => void discardCoringPhoto(path));
   };
 
@@ -812,28 +825,41 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
     }
   };
 
-  const buildReport = async (): Promise<jsPDF | null> => {
-    const errors = [...validateAllRows(), ...validateProjectDetails()];
+  const buildReport = async (reportRows: CoringRow[]): Promise<jsPDF | null> => {
+    const reportErrors: ValidationError[] = [];
+    const seenIds = new Set<string>();
+    reportRows.forEach((row) => {
+      const rowIndex = rows.indexOf(row);
+      if (seenIds.has(row.coreId.trim())) {
+        reportErrors.push({ rowIndex, field: "coreId", message: "Duplicate core ID" });
+      }
+      seenIds.add(row.coreId.trim());
+      reportErrors.push(...validateRow(row, rowIndex));
+    });
+    if (reportRows.length === rows.length && rows.length < 3) {
+      reportErrors.push({ rowIndex: -1, field: "rows", message: "At least 3 cores are required to report a mean strength" });
+    }
+    const errors = [...reportErrors, ...validateProjectDetails()];
     if (errors.length > 0) {
       setValidationErrors(errors);
-      toast.error("Please fix validation errors before exporting PDF");
+      toast.error("Please fix validation errors before generating the report");
       return null;
     }
 
     // Additional validation for PDF generation
     if (!projectDetails.projectName.trim()) {
-      toast.error("Project Name cannot be empty for PDF export");
+      toast.error("Project Name cannot be empty for the report");
       return null;
     }
     
     if (!projectDetails.sampleNo.trim()) {
-      toast.error("Sample Number cannot be empty for PDF export");
+      toast.error("Sample Number cannot be empty for the report");
       return null;
     }
 
     try {
       const dateOfTest = formatReportDate(projectDetails.dateOfTest);
-      const cores: CoringCoreReport[] = await Promise.all(rows.map(async (row) => {
+      const cores: CoringCoreReport[] = await Promise.all(reportRows.map(async (row) => {
         let beforeImage: string | undefined;
         let afterImage: string | undefined;
         try {
@@ -887,18 +913,54 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
         dateReported: formatReportDate(projectDetails.dateReported),
       }, cores);
     } catch (error) {
-      console.error("PDF export failed:", error);
-      toast.error(`PDF export failed: ${error instanceof Error ? error.message : String(error)}`);
+      console.error("Report generation failed:", error);
+      toast.error(`Report generation failed: ${error instanceof Error ? error.message : String(error)}`);
       return null;
     }
   };
 
-  const exportPDF = async () => {
-    const doc = await buildReport();
-    if (!doc) return false;
-    doc.save(pdfFileName(projectDetails.projectName, "Coring_Report"));
-    toast.success("PDF generated successfully");
-    return true;
+  const openReportSelection = (action: "pdf" | "print") => {
+    if (rows.length === 0) {
+      toast.info("No cores to include in the report");
+      return false;
+    }
+    setSelectedReportCores(new Set(rows.map((_, index) => index)));
+    setReportAction(action);
+    setReportDialogOpen(true);
+    return false;
+  };
+
+  const exportPDF = () => openReportSelection("pdf");
+
+  const handlePrint = () => {
+    openReportSelection("print");
+  };
+
+  const confirmReportSelection = async () => {
+    if (!reportAction || selectedReportCores.size === 0 || isBuildingReport) return;
+    const action = reportAction;
+    const reportRows = rows.filter((_, index) => selectedReportCores.has(index));
+    setIsBuildingReport(true);
+    try {
+      const doc = await buildReport(reportRows);
+      if (!doc) {
+        setReportDialogOpen(false);
+        return;
+      }
+      if (action === "pdf") {
+        doc.save(pdfFileName(projectDetails.projectName, "Coring_Report"));
+        toast.success("PDF generated successfully");
+        setReportDialogOpen(false);
+      } else {
+        setReportDialogOpen(false);
+        printPDFDocument(doc);
+      }
+    } catch (error) {
+      console.error("Report generation failed:", error);
+      toast.error(`Report generation failed: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setIsBuildingReport(false);
+    }
   };
 
   const strengths = rows.map(r => parseFloat(getCorrectedStrength(r))).filter(Boolean);
@@ -910,20 +972,17 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
   ], [avgStrength, strengths.length]);
   useTestReport("coring", strengths.length, results);
 
-  const handlePrint = async () => {
-    const doc = await buildReport();
-    if (doc) printPDFDocument(doc);
-  };
-
   const canExport = !!project.currentProjectId || isSaved;
   const hasValidationErrors = validationErrors.length > 0;
+  const selectedCoreIndex = Math.min(activeCoreIndex, Math.max(rows.length - 1, 0));
+  const activeCore = rows[selectedCoreIndex];
 
   return (
     <TestSection 
       title="Concrete Core Testing (BS EN 12504-1:2009)" 
       testKey={testKey} 
       onSave={handleSave} 
-      onClear={() => { markUserTouched(); setRows([{ ...CORING_ROW_DEFAULTS, coreId: "CR1" }, { ...CORING_ROW_DEFAULTS, coreId: "CR2" }, { ...CORING_ROW_DEFAULTS, coreId: "CR3" }]); }}
+      onClear={() => { markUserTouched(); setRows([{ ...CORING_ROW_DEFAULTS, coreId: "CR1" }, { ...CORING_ROW_DEFAULTS, coreId: "CR2" }, { ...CORING_ROW_DEFAULTS, coreId: "CR3" }]); setActiveCoreIndex(0); }}
       onExportPDF={exportPDF}
       onPrint={handlePrint}
       canExport={canExport}
@@ -1001,8 +1060,50 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
         </CardContent>
       </Card>
 
+      <div className="mb-4 flex items-center gap-2 print:hidden" data-testid="coring-core-strip">
+        <span className="shrink-0 text-xs text-muted-foreground">
+          {rows.length ? `Core ${selectedCoreIndex + 1} of ${rows.length}` : "No cores"}
+        </span>
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pb-1">
+          {rows.map((row, index) => {
+            const isActive = index === selectedCoreIndex;
+            const strength = getCorrectedStrength(row);
+            return (
+              <button
+                key={`${row.coreId}-${index}`}
+                type="button"
+                onClick={() => setActiveCoreIndex(index)}
+                aria-current={isActive}
+                title={row.coreId}
+                data-testid={`coring-core-${index + 1}`}
+                data-active={isActive ? "true" : "false"}
+                className={`shrink-0 whitespace-nowrap rounded-md border px-2.5 py-1 text-left text-[11px] leading-tight transition-colors ${isActive ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:bg-muted/40"}`}
+              >
+                <span className="font-medium">{index + 1}. {row.coreId || `CR${index + 1}`}</span>
+                {strength ? <span className="ml-1.5 text-[10px] opacity-80">{strength} MPa</span> : null}
+              </button>
+            );
+          })}
+          <Button
+            type="button"
+            onClick={() => {
+              markUserTouched();
+              const nextRows = [...rows, { ...CORING_ROW_DEFAULTS, coreId: `CR${rows.length + 1}` }];
+              setRows(nextRows);
+              setActiveCoreIndex(nextRows.length - 1);
+            }}
+            size="sm"
+            variant="outline"
+            className="shrink-0 gap-1.5"
+            data-testid="coring-add-core"
+          >
+            <Plus className="h-3.5 w-3.5" /> Add Core
+          </Button>
+        </div>
+      </div>
+
       {/* Core Data Entry */}
-      <div className="overflow-x-auto mb-4">
+      {rows.length > 0 && <div className="overflow-x-auto mb-4">
         <table className="w-full text-xs border-collapse">
           <thead>
             <tr className="border-b bg-muted/40">
@@ -1032,6 +1133,7 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
           </thead>
           <tbody>
             {rows.map((row, i) => {
+              if (i !== selectedCoreIndex) return null;
               const rowErrors = validationErrors.filter(e => e.rowIndex === i);
               const hasRowError = rowErrors.length > 0;
               return (
@@ -1119,21 +1221,17 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
             })}
           </tbody>
         </table>
-      </div>
-
-      <Button variant="outline" size="sm" className="mb-4" onClick={() => { markUserTouched(); setRows([...rows, { ...CORING_ROW_DEFAULTS, coreId: `CR${rows.length + 1}` }]); }}>
-        <Plus className="h-3.5 w-3.5 mr-1" /> Add Core
-      </Button>
+      </div>}
 
       {/* Comments */}
-      <div className="mb-4 grid grid-cols-2 gap-4">
-        {rows.map((row, i) => (
+      {activeCore && <div className="mb-4 grid grid-cols-2 gap-4">
+        {rows.map((row, i) => i === selectedCoreIndex && (
           <div key={i} className="space-y-1">
             <Label className="text-xs">Comments - Core {row.coreId}</Label>
             <Input value={row.comments} onChange={(e) => update(i, "comments", e.target.value)} className="h-8 text-xs" placeholder="Sparsely distributed aggregates..." />
           </div>
         ))}
-      </div>
+      </div>}
 
       {/* Reception / Project Creation Actions */}
       <Card className="mb-4 border-primary">
@@ -1186,6 +1284,50 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={reportDialogOpen} onOpenChange={(open) => { if (!isBuildingReport) setReportDialogOpen(open); }}>
+        <DialogContent className="max-w-md" data-testid="coring-report-selection">
+          <DialogHeader>
+            <DialogTitle>{reportAction === "print" ? "Print cores" : "Export cores as PDF"}</DialogTitle>
+            <DialogDescription>
+              Select which cores to include. A report will be generated for the selected cores.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center justify-between text-xs">
+            <button type="button" className="text-primary hover:underline" onClick={() => setSelectedReportCores(new Set(rows.map((_, index) => index)))}>
+              Select all
+            </button>
+            <button type="button" className="text-primary hover:underline" onClick={() => setSelectedReportCores(new Set())}>
+              Clear
+            </button>
+          </div>
+          <div className="max-h-72 space-y-2 overflow-y-auto">
+            {rows.map((row, index) => (
+              <label key={`${row.coreId}-${index}`} className="flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2 text-sm">
+                <Checkbox
+                  checked={selectedReportCores.has(index)}
+                  onCheckedChange={(checked) => {
+                    setSelectedReportCores((previous) => {
+                      const next = new Set(previous);
+                      if (checked === true) next.add(index);
+                      else next.delete(index);
+                      return next;
+                    });
+                  }}
+                />
+                <span className="font-medium">{index + 1}. {row.coreId}</span>
+                <span className="ml-auto text-xs text-muted-foreground">Depth {row.depth} m</span>
+              </label>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setReportDialogOpen(false)} disabled={isBuildingReport}>Cancel</Button>
+            <Button type="button" onClick={confirmReportSelection} disabled={selectedReportCores.size === 0 || isBuildingReport}>
+              {isBuildingReport ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generating…</> : reportAction === "print" ? `Print ${selectedReportCores.size} selected` : `Generate PDF (${selectedReportCores.size})`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </TestSection>
   );
 };
