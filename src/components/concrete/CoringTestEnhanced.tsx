@@ -130,9 +130,20 @@ const loadImageAsDataUrl = async (path: string | undefined): Promise<string | un
   const sessionToken = getSessionToken();
   
   try {
-    const response = await fetch(url, { 
+    const response = await fetch(url, {
       credentials: "include",
-      headers: sessionToken ? { "X-Session-Token": sessionToken } : {} 
+      headers: sessionToken ? { "X-Session-Token": sessionToken } : {}
+    });
+    if (!response.ok) throw new Error(`Image request failed with status ${response.status}`);
+    const blob = await response.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === "string") resolve(reader.result);
+        else reject(new Error("Image could not be converted to a data URL"));
+      };
+      reader.onerror = () => reject(reader.error ?? new Error("Image could not be read"));
+      reader.readAsDataURL(blob);
     });
   } catch (error) {
     const errorMsg = `[CoringTest] Failed to load test image ${path}: ${error instanceof Error ? error.message : String(error)}`;
