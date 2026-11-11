@@ -98,20 +98,15 @@ const CORING_ROW_DEFAULTS: CoringRow = {
 };
 
 const coringImageUrl = (path: string): string => {
-  // Use serve-image endpoint for proper CORS headers
-  const apiUrl = new URL(buildApiUrl({ action: "serve-image" }));
-  apiUrl.searchParams.set("file_path", path);
-  return apiUrl.toString();
+  // Direct file URL for coring image previews (matches upload location)
+  return `https://lab.wayrus.co.ke${path}`;
 };
 
 const loadImageAsDataUrl = async (path: string | undefined): Promise<string | undefined> => {
   if (!path) return undefined;
   
-  // Use the serve-image API endpoint with file_path parameter for proper CORS headers
-  // This goes through the PHP API which sets Access-Control-Allow-Origin headers
-  const apiUrl = new URL(buildApiUrl({ action: "serve-image" }));
-  apiUrl.searchParams.set("file_path", path);
-  const url = apiUrl.toString();
+  // Direct file URL for coring images (matches upload location at /uploads/coring/)
+  const url = `https://lab.wayrus.co.ke${path}`;
   
   try {
     const response = await fetch(url, { credentials: "include" });
