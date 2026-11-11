@@ -297,6 +297,18 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
     if (moisture.moistureContent === null) return initialMass;
     return initialMass - (initialMass * moisture.moistureContent) / 100;
   }, [record.samplePreparation.initialDryMass, moisture.moistureContent]);
+  const measuredRetainedMass = useMemo(
+    () => record.sieveRows.reduce((total, row) => {
+      if (row.sieveSize === PAN_REMAINDER_SIZE) return total;
+      return total + Math.max(parseNumber(row.weightRetained) ?? 0, 0);
+    }, 0),
+    [record.sieveRows],
+  );
+  const massBalanceExcess = moistureCorrectedMass === null ? 0 : measuredRetainedMass - moistureCorrectedMass;
+  const hasImpossibleMassBalance = massBalanceExcess > 0.01;
+  const massBalanceMessage = hasImpossibleMassBalance
+    ? `Mass balance error: measured sieve masses total ${measuredRetainedMass.toFixed(1)} g, exceeding the moisture-corrected initial mass (${moistureCorrectedMass?.toFixed(1)} g) by ${massBalanceExcess.toFixed(1)} g. Correct the entered masses before saving or exporting.`
+    : null;
   const sieveRows = useMemo(
     () => withPanRemainder(record.sieveRows, moistureCorrectedMass),
     [record.sieveRows, moistureCorrectedMass],
@@ -576,6 +588,10 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       setError(message);
       throw new Error(message);
     }
+    if (massBalanceMessage) {
+      setError(massBalanceMessage);
+      throw new Error(massBalanceMessage);
+    }
     setSaveStatus("saving");
     setError(null);
     const data = {
@@ -627,7 +643,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       setError(saveError instanceof Error ? saveError.message : "Unable to save this record");
       throw saveError;
     }
-  }, [projectId, status, record, gradation, payload, recordId, selectedResultId, isNewRecord, location, navigate, uscsResult, aashtoResult, groupIndex]);
+  }, [projectId, status, record, gradation, payload, recordId, selectedResultId, isNewRecord, location, navigate, uscsResult, aashtoResult, groupIndex, massBalanceMessage]);
 
   const clear = async () => {
     if (projectId) {
@@ -703,6 +719,10 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
   });
 
   const handlePrint = async () => {
+    if (massBalanceMessage) {
+      setError(massBalanceMessage);
+      return;
+    }
     try {
       // Hand the processed sheet itself to a browser tab and let that tab print
       // it — never the on-screen report page.
@@ -722,6 +742,10 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
   };
 
   const exportFiles = async (type: "pdf" | "xlsx") => {
+    if (massBalanceMessage) {
+      setError(massBalanceMessage);
+      return;
+    }
     const tables = [{
       headers: ["Sieve size (mm)", "Retained mass (g)", "% retained", "Cumulative passing (%)"],
       // Empty tables read as "auto", exactly as on screen — never 0.0%.
@@ -809,6 +833,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
             <CalculatedField label="Fine mass (g)" value={fineMass === null ? "auto" : fineMass.toFixed(1)} />
             <CalculatedField label="Fines %" value={formatValue(finesPercentage, 1)} />
           </div>
+          {massBalanceMessage && <p role="alert" className="mt-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">{massBalanceMessage}</p>}
         </RecordSection>
         <RecordSection title="Moisture content at preparation">
           <div className="grid gap-px overflow-hidden rounded-md border sm:grid-cols-2">
@@ -886,9 +911,9 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
 
       <section className="record-card flex flex-col gap-3 px-4 py-3 text-[10px] sm:flex-row sm:items-center sm:justify-between"><div><span className="text-muted-foreground">TESTED BY</span><div className="font-semibold uppercase">{record.testedBy || "—"}</div></div><div><span className="text-muted-foreground">DATE REPORTED</span><div className="font-semibold">{project.dateReported || "—"}</div></div></section>
       <div className="flex flex-wrap items-center justify-end gap-2 print:hidden">
-        <Button variant="outline" size="sm" onClick={() => void exportFiles("pdf")}><FileDown className="mr-1.5 h-3.5 w-3.5" />PDF</Button>
-        <Button variant="outline" size="sm" onClick={() => void handlePrint()}><Printer className="mr-1.5 h-3.5 w-3.5" />Print</Button>
-        <Button size="sm" onClick={handleSave} disabled={saveStatus === "saving" || isLoading}>{saveStatus === "saving" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : saveStatus === "saved" ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}{saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved" : "Save"}</Button>
+        <Button variant="outline" size="sm" onClick={() => void exportFiles("pdf")} disabled={hasImpossibleMassBalance || isLoading}><FileDown className="mr-1.5 h-3.5 w-3.5" />PDF</Button>
+        <Button variant="outline" size="sm" onClick={() => void handlePrint()} disabled={hasImpossibleMassBalance || isLoading}><Printer className="mr-1.5 h-3.5 w-3.5" />Print</Button>
+        <Button size="sm" onClick={handleSave} disabled={saveStatus === "saving" || isLoading || hasImpossibleMassBalance}>{saveStatus === "saving" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : saveStatus === "saved" ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}{saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved" : "Save"}</Button>
       </div>
     </div>
   );
