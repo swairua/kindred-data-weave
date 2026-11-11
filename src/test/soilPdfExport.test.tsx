@@ -146,7 +146,7 @@ describe("Proctor PDF export", () => {
     // The capture looks the chart up with getElementById, so the id must reach the element.
     expect(document.getElementById("proctor-chart")).not.toBeNull();
 
-    fillPoints(["50", "70", "90"], ["3000", "3100", "3200"], ["140", "142", "145"], ["130", "132", "135"]);
+    fillPoints(["50", "70", "90"], ["3100", "3200", "3000"], ["140", "142", "145"], ["130", "132", "135"]);
     expect(document.querySelectorAll("#proctor-chart circle")).toHaveLength(3);
 
     await choosePdfExport();
