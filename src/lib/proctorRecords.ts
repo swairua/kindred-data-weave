@@ -51,7 +51,7 @@ export interface ProctorPointCalculation {
 /** Where OMC/MDD came from: the fitted compaction curve, the best measured point, or nothing usable. */
 export type ProctorOptimumSource = "curve" | "peak-point" | "none";
 
-/** Least-squares parabola through the plotted points: dry density = a.w^2 + b.w + c. */
+/** Local peak parabola through the three readings around the measured maximum. */
 export interface ProctorCurveFit {
   a: number;
   b: number;
@@ -153,9 +153,6 @@ const CURVE_RECOMMENDED_POINTS = 5;
 /** A weaker fit than this is flagged so the technician re-checks the readings. */
 const CURVE_MIN_R_SQUARED = 0.9;
 
-/** How far, in percentage points, the fitted vertex may sit outside the measured range. */
-const CURVE_VERTEX_MARGIN = 2;
-
 /** The five measured masses a technician must record before a point can be calculated. */
 type ProctorMeasurementField =
   | "mouldWetMass"
@@ -190,39 +187,28 @@ const solve3 = (m: number[][], v: number[]): number[] | null => {
 };
 
 /**
- * Least-squares parabola through the measured points. BS 1377-4:1990, 3.3 requires the
- * dry density/moisture content curve to be drawn through the plotted points with the optimum read
- * off that curve, not taken from whichever single measurement happens to be densest.
- *
- * Returns null when the data cannot support a physical peak: fewer than three distinct moisture
- * contents, a singular normal-equations matrix, an upward-opening curve (no maximum), or a vertex
- * outside the measured range.
+ * Fits a parabola through the three readings bracketing the measured maximum, then reads the
+ * vertex as OMC/MDD. This follows the plotted-curve method without letting distant points flatten
+ * the peak. The fit is rejected unless the peak is bracketed and the vertex stays between its
+ * neighboring moisture contents.
  */
 export const fitCompactionCurve = (points: ProctorCurvePoint[]): ProctorCurveFit | null => {
-  const samples = points.filter((point) => Number.isFinite(point.moisture) && Number.isFinite(point.dryDensity));
+  const samples = points
+    .filter((point) => Number.isFinite(point.moisture) && Number.isFinite(point.dryDensity))
+    .sort((a, b) => a.moisture - b.moisture);
   if (samples.length < CURVE_MIN_POINTS) return null;
   if (new Set(samples.map((point) => point.moisture)).size < CURVE_MIN_POINTS) return null;
 
-  let n = 0;
-  let sx = 0;
-  let sx2 = 0;
-  let sx3 = 0;
-  let sx4 = 0;
-  let sy = 0;
-  let sxy = 0;
-  let sx2y = 0;
-  for (const { moisture, dryDensity } of samples) {
-    n += 1;
-    sx += moisture;
-    sx2 += moisture * moisture;
-    sx3 += moisture ** 3;
-    sx4 += moisture ** 4;
-    sy += dryDensity;
-    sxy += moisture * dryDensity;
-    sx2y += moisture * moisture * dryDensity;
-  }
+  const peakDensity = Math.max(...samples.map((point) => point.dryDensity));
+  const peakIndex = samples.findIndex((point) => point.dryDensity === peakDensity);
+  if (samples.filter((point) => point.dryDensity === peakDensity).length !== 1) return null;
+  if (peakIndex === 0 || peakIndex === samples.length - 1) return null;
 
-  const solved = solve3([[n, sx, sx2], [sx, sx2, sx3], [sx2, sx3, sx4]], [sy, sxy, sx2y]);
+  const neighbors = samples.slice(peakIndex - 1, peakIndex + 2);
+  const solved = solve3(
+    neighbors.map(({ moisture }) => [1, moisture, moisture ** 2]),
+    neighbors.map(({ dryDensity }) => dryDensity),
+  );
   if (!solved) return null;
   const [c, b, a] = solved;
   if (a >= 0) return null;
@@ -230,18 +216,14 @@ export const fitCompactionCurve = (points: ProctorCurvePoint[]): ProctorCurveFit
   const omc = -b / (2 * a);
   const mdd = a * omc * omc + b * omc + c;
   if (!Number.isFinite(omc) || !Number.isFinite(mdd) || mdd <= 0) return null;
+  if (omc < neighbors[0].moisture || omc > neighbors[2].moisture) return null;
 
-  const lowest = Math.min(...samples.map((point) => point.moisture));
-  const highest = Math.max(...samples.map((point) => point.moisture));
-  if (omc < lowest - CURVE_VERTEX_MARGIN || omc > highest + CURVE_VERTEX_MARGIN) return null;
-
-  const mean = sy / n;
-  let totalSpread = 0;
-  let residualSpread = 0;
-  for (const { moisture, dryDensity } of samples) {
-    totalSpread += (dryDensity - mean) ** 2;
-    residualSpread += (dryDensity - (a * moisture * moisture + b * moisture + c)) ** 2;
-  }
+  const mean = samples.reduce((sum, point) => sum + point.dryDensity, 0) / samples.length;
+  const totalSpread = samples.reduce((sum, point) => sum + (point.dryDensity - mean) ** 2, 0);
+  const residualSpread = samples.reduce((sum, point) => {
+    const predicted = a * point.moisture ** 2 + b * point.moisture + c;
+    return sum + (point.dryDensity - predicted) ** 2;
+  }, 0);
   const rSquared = totalSpread <= 0 ? (residualSpread <= 0 ? 1 : 0) : 1 - residualSpread / totalSpread;
   return { a, b, c, rSquared, omc, mdd };
 };
@@ -451,8 +433,8 @@ export const calculateProctorPoint = (row: ProctorRow, mouldVolume: string): Pro
  * Optimum moisture content and maximum dry density for one compaction method.
  *
  * BS 1377-4:1990, 3.3 determines these by drawing a smooth dry density/moisture content curve
- * through the plotted points and reading the peak off it, so a least-squares parabola is fitted
- * first. Only when the data cannot support a parabola does it fall back to the single densest
+ * through the plotted points and reading its peak. A local parabola through the three readings
+ * around the measured maximum estimates that peak; unsupported fits fall back to the densest
  * measurement, and the caller is told which basis was used plus any reason to distrust it.
  */
 export const calculateProctor = (rows: ProctorRow[], mouldVolume: string): ProctorSummary => {

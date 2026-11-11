@@ -174,6 +174,21 @@ describe("Proctor calculations", () => {
     expect(summary.mdd!).toBeGreaterThan(2200 / (1 + 15 / 105));
   });
 
+  it("uses the local curve around the measured maximum for the sheet's OMC and MDD", () => {
+    const fit = fitCompactionCurve([
+      { moisture: 9.1, dryDensity: 1412 },
+      { moisture: 11.3, dryDensity: 1453 },
+      { moisture: 13.4, dryDensity: 1488 },
+      { moisture: 15.6, dryDensity: 1493 },
+      { moisture: 17.6, dryDensity: 1456 },
+      { moisture: 19.8, dryDensity: 1410 },
+    ]);
+
+    expect(fit).not.toBeNull();
+    expect(fit!.omc).toBeCloseTo(14.73, 2);
+    expect(fit!.mdd).toBeCloseTo(1496.75, 1);
+  });
+
   it("flags the curve-validity problems BS 1377-4:1990, 3.3 would not accept", () => {
     const rising = [
       point({ containerWetMass: "150", containerDryMass: "135", mouldWetMass: "3200" }),
