@@ -249,9 +249,11 @@ const drawCorePage = (doc: jsPDF, project: CoringProjectInfo, core: CoringCoreRe
   const voidageTop = COMMENTS_TOP + 6 + Math.max(commentLines.length, 1) * 11;
   doc.setFontSize(7.5);
   doc.setFont("helvetica", "bold");
-  doc.text("Excess Voidage:", LEFT + 2, voidageTop);
+  const voidageLabel = "Excess Voidage:";
+  doc.text(voidageLabel, LEFT + 2, voidageTop);
+  const voidageLabelW = doc.getTextWidth(voidageLabel);
   doc.setFont("helvetica", "normal");
-  doc.text(core.excessVoidage ? `${core.excessVoidage}%` : "—", LEFT + 44, voidageTop);
+  doc.text(core.excessVoidage ? `${core.excessVoidage}%` : "—", LEFT + 2 + voidageLabelW + 6, voidageTop);
 
   const signatureTop = voidageTop + 8;
   const signatureCellW = WIDTH / 3;
