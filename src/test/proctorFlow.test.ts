@@ -2,9 +2,14 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createElement } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { clearProctorResults, loadProctorResult, saveProctorResult } from "@/lib/proctorPersistence";
-import { airVoidsCurve, airVoidsDensity, applyReportedOptimum, assessFieldCompaction, calculateProctor, correctForOversize, calculateProctorPoint, compactionEnergy, createProctorPayload, createProctorRows, emptyProctorRecord, fitCompactionCurve, getProctorRecord, isReportableOptimum, parseAirVoidsTargets, sampleCompactionCurve, zeroAirVoidsCurve, zeroAirVoidsDensity, type ProctorRow } from "@/lib/proctorRecords";
+import { airVoidsCurve, airVoidsDensity, applyReportedOptimum, assessFieldCompaction, calculateProctor, correctForOversize, calculateProctorPoint, compactionEnergy, createProctorPayload, createProctorRows, emptyProctorRecord, fitCompactionCurve, getProctorRecord, getProctorRecords, isReportableOptimum, parseAirVoidsTargets, sampleCompactionCurve, zeroAirVoidsCurve, zeroAirVoidsDensity, type ProctorRow } from "@/lib/proctorRecords";
 import { getExpectedTestType, hasRequiredSoilSampleMetadata, isInitialTestValid, isTestAllowed, toRecordMetadata } from "@/lib/recordTestWizard";
 import ProctorTest from "@/components/soil/ProctorTest";
+
+const pdfState = vi.hoisted(() => ({
+  options: [] as Array<{ record: { label: string }; samples: Array<{ record: { label: string } }> }>,
+  autoPrintCount: 0,
+}));
 
 const apiState = vi.hoisted(() => ({
   rows: [] as Array<Record<string, unknown>>,
@@ -26,6 +31,16 @@ const apiState = vi.hoisted(() => ({
     dateSubmitted: "2025-01-10",
     dateTested: "2025-01-12",
   },
+}));
+
+vi.mock("@/lib/mcPdfGenerator", () => ({
+  generateMoistureDensityPDF: vi.fn(async (options: { record: { label: string }; samples: Array<{ record: { label: string } }> }) => {
+    pdfState.options.push(options);
+    return {
+      autoPrint: () => { pdfState.autoPrintCount += 1; },
+      output: () => "blob:proctor-test",
+    };
+  }),
 }));
 
 vi.mock("@/lib/api", () => ({
@@ -104,6 +119,8 @@ beforeEach(() => {
   });
   apiState.rows = [];
   apiState.nextId = 1;
+  pdfState.options = [];
+  pdfState.autoPrintCount = 0;
 });
 
 describe("Proctor wizard flow", () => {
@@ -439,6 +456,16 @@ describe("Proctor calculations", () => {
     expect(payload.calculations.standard.omc).not.toBeNull();
     expect(payload.calculations.modified.omc).not.toBeNull();
   });
+
+  it("round-trips and normalizes multiple sample records", () => {
+    const first = emptyProctorRecord({ sampleId: "BH-04", sampleNumber: "1" });
+    const second = emptyProctorRecord({ sampleId: "BH-05", sampleNumber: "2" });
+    const summary = calculateProctor([], "1000");
+    const payload = createProctorPayload({ title: "P", clientName: "C", date: "2025-01-01" }, first, summary, summary, [first, second]);
+
+    expect(getProctorRecords(JSON.stringify(payload)).map((record) => [record.label, record.sampleNumber]))
+      .toEqual([["BH-04", "1"], ["BH-05", "2"]]);
+  });
 });
 
 describe("Proctor record persistence", () => {
@@ -490,21 +517,75 @@ describe("Proctor record page", () => {
     });
   };
 
-  it("shows six A–F columns and switches between independent Standard and Modified inputs", async () => {
+  it("shows saved Standard readings when the method flag is stale", async () => {
+    const payload = createPayload("BH-04");
+    payload.project.records[0].type = "modified";
+    payload.project.records[0].modifiedRows = createProctorRows();
+    apiState.rows.push({ id: 4, project_id: 10, test_key: "proctor", payload_json: payload });
     render(createElement(MemoryRouter, null, createElement(ProctorTest, { testKey: "proctor" })));
 
-    expect(await screen.findByText(/Record results/)).toBeInTheDocument();
+    expect(await screen.findByText(/Record results — BS 1377 Part 4, 3\.3/)).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "F" })).toBeInTheDocument();
     expect(screen.getByLabelText("Standard mould volume")).toBeInTheDocument();
+    expect(screen.getByLabelText("Moisture addition (cc), point A")).toHaveValue(50);
+    expect(screen.queryByRole("tab", { name: "Standard" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Modified" })).not.toBeInTheDocument();
+  });
+
+  it("downloads a selected Proctor sample and prints all selected samples", async () => {
+    const openSpy = vi.spyOn(window, "open").mockReturnValue({ onload: null } as unknown as Window);
+    render(createElement(MemoryRouter, null, createElement(ProctorTest, { testKey: "proctor" })));
+    expect(await screen.findByText(/Record results/)).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("proctor-add-sample"));
+
+    fireEvent.click(screen.getByRole("button", { name: "PDF" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("Download Proctor PDF");
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    fireEvent.click(screen.getAllByRole("checkbox")[1]);
+    fireEvent.click(screen.getByRole("button", { name: "Download 1 selected" }));
+    await waitFor(() => expect(pdfState.options).toHaveLength(1));
+    expect(pdfState.options[0].record.label).toBe("Sample 2");
+    expect(pdfState.options[0].samples).toHaveLength(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "Print" }));
+    fireEvent.click(screen.getByRole("button", { name: "Print all (2)" }));
+    await waitFor(() => expect(pdfState.options).toHaveLength(2));
+    expect(pdfState.options[1].record.label).toBe("BH-04");
+    expect(pdfState.options[1].samples.map(({ record: sample }) => sample.label)).toEqual(["Sample 2"]);
+    expect(pdfState.autoPrintCount).toBe(1);
+    expect(openSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("adds and switches between sample records without mixing their readings", async () => {
+    render(createElement(MemoryRouter, null, createElement(ProctorTest, { testKey: "proctor" })));
+    expect(await screen.findByTestId("proctor-sample-strip")).toHaveTextContent("Sample 1 of 1");
     fireEvent.change(screen.getByLabelText("Moisture addition (cc), point A"), { target: { value: "55" } });
 
-    fireEvent.mouseDown(screen.getByRole("tab", { name: "Modified" }), { button: 0 });
-    expect(await screen.findByLabelText("Modified mould volume")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("proctor-add-sample"));
+    expect(screen.getByTestId("proctor-sample-strip")).toHaveTextContent("Sample 2 of 2");
+    expect(screen.getByTestId("proctor-sample-2")).toHaveTextContent("Sample 2");
     expect(screen.getByLabelText("Moisture addition (cc), point A")).toHaveValue(null);
+    expect(screen.getByLabelText("Sample ID")).toHaveValue("Sample 2");
+    expect(screen.getByLabelText("Sample number")).toHaveValue("");
+    expect(screen.getByLabelText("Sample depth from")).toHaveValue(null);
+    fireEvent.change(screen.getByLabelText("Sample number"), { target: { value: "BH-05" } });
+    fireEvent.change(screen.getByLabelText("Sample depth from"), { target: { value: "3.5" } });
     fireEvent.change(screen.getByLabelText("Moisture addition (cc), point A"), { target: { value: "65" } });
 
-    fireEvent.mouseDown(screen.getByRole("tab", { name: "Standard" }), { button: 0 });
+    fireEvent.click(screen.getByTestId("proctor-sample-1"));
     expect(screen.getByLabelText("Moisture addition (cc), point A")).toHaveValue(55);
+    expect(screen.getByLabelText("Sample depth from")).toHaveValue(18.2);
+    fireEvent.click(screen.getByTestId("proctor-sample-2"));
+    expect(screen.getByLabelText("Moisture addition (cc), point A")).toHaveValue(65);
+    expect(screen.getByLabelText("Sample depth from")).toHaveValue(3.5);
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(apiState.rows).toHaveLength(1));
+    const savedRecords = (apiState.rows[0].payload_json as { project: { records: Array<{ label: string; sampleNumber: string; sampleDepthFrom: string }> } }).project.records;
+    expect(savedRecords.map((sample) => [sample.label, sample.sampleNumber, sample.sampleDepthFrom])).toEqual([
+      ["BH-04", "2", "18.2"],
+      ["Sample 2", "BH-05", "3.5"],
+    ]);
   });
 
   it("opens blank when started as a new record from an existing project and saves a new row", async () => {
@@ -545,14 +626,10 @@ describe("Proctor record page", () => {
     expect(apiState.rows[0].data_points).toBe(1);
   });
 
-  it("cites the rammer clause for each method", async () => {
+  it("uses the saved Standard rammer clause for the single Proctor form", async () => {
     render(createElement(MemoryRouter, null, createElement(ProctorTest, { testKey: "proctor" })));
     expect(await screen.findByText(/BS 1377 Part 4, 3\.3/)).toBeInTheDocument();
     expect(screen.getByText(/Standard \(2\.5 kg rammer\)/)).toBeInTheDocument();
-
-    fireEvent.mouseDown(screen.getByRole("tab", { name: "Modified" }), { button: 0 });
-    expect(await screen.findByText(/BS 1377 Part 4, 3\.5/)).toBeInTheDocument();
-    expect(screen.getByText(/Modified \(4\.5 kg rammer\)/)).toBeInTheDocument();
   });
 
   it("reports the fitted curve optimum for a bracketed set of moisture contents", async () => {
@@ -569,7 +646,7 @@ describe("Proctor record page", () => {
     expect(screen.getByText(/0\/6 standard points/)).toBeInTheDocument();
   });
 
-  it("reaches Complete for a filled method even when the other method is empty", async () => {
+  it("reaches Complete when the Standard sample is fully recorded", async () => {
     render(createElement(MemoryRouter, null, createElement(ProctorTest, { testKey: "proctor" })));
     expect(await screen.findByText(/Record results/)).toBeInTheDocument();
     expect(screen.getByText(/No data/)).toBeInTheDocument();
@@ -596,13 +673,9 @@ describe("Proctor record page", () => {
     fireEvent.change(screen.getByLabelText("Moisture addition (cc), point A"), { target: { value: "50" } });
     expect(await screen.findByText(/Complete/)).toBeInTheDocument();
     expect(screen.getByText(/6\/6 standard points/)).toBeInTheDocument();
-
-    fireEvent.mouseDown(screen.getByRole("tab", { name: "Modified" }), { button: 0 });
-    expect(await screen.findByText(/No data/)).toBeInTheDocument();
-    expect(screen.getByText(/0\/6 modified points/)).toBeInTheDocument();
   });
 
-  it("keeps the record In progress while the dry density has not turned over, and shows compaction energy", async () => {
+  it("keeps the Standard record In progress until the dry density turns over", async () => {
     render(createElement(MemoryRouter, null, createElement(ProctorTest, { testKey: "proctor" })));
     expect(await screen.findByText(/Record results/)).toBeInTheDocument();
     expect(screen.getByText(/596 kJ\/m³/)).toBeInTheDocument();

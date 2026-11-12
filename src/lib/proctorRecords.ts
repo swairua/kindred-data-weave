@@ -488,20 +488,28 @@ export const normalizeProctorRecord = (value: unknown, metadata: RecordMetadata 
   };
 };
 
-export const getProctorRecord = (payload: unknown, metadata: RecordMetadata = {}): ProctorRecord => {
+export const getProctorRecords = (payload: unknown, metadata: RecordMetadata = {}): ProctorRecord[] => {
   let parsedPayload = payload;
   if (typeof payload === "string") {
     try {
       parsedPayload = JSON.parse(payload) as unknown;
     } catch {
-      return emptyProctorRecord(metadata);
+      return [emptyProctorRecord(metadata)];
     }
   }
-  if (!isObject(parsedPayload)) return emptyProctorRecord(metadata);
+  if (!isObject(parsedPayload)) return [emptyProctorRecord(metadata)];
   const project = isObject(parsedPayload.project) ? parsedPayload.project : parsedPayload;
-  const records = Array.isArray(project.records) ? project.records : [];
-  return normalizeProctorRecord(records[0], metadata);
+  const records = Array.isArray(project.records) && project.records.length > 0 ? project.records : [project];
+  const normalized = records.flatMap((item) => {
+    if (!isObject(item)) return [];
+    const nestedSamples = Array.isArray(item.samples) ? item.samples : [];
+    return [normalizeProctorRecord(item, metadata), ...nestedSamples.map((sample) => normalizeProctorRecord(sample, metadata))];
+  });
+  return normalized.length > 0 ? normalized : [emptyProctorRecord(metadata)];
 };
+
+export const getProctorRecord = (payload: unknown, metadata: RecordMetadata = {}): ProctorRecord =>
+  getProctorRecords(payload, metadata)[0];
 
 export const calculateProctorPoint = (row: ProctorRow, mouldVolume: string): ProctorPointCalculation => {
   // Only the five measured masses drive the calculation. "Moisture addition" and "Container No."
@@ -616,8 +624,9 @@ export const createProctorPayload = (
   record: ProctorRecord,
   standard: ProctorSummary,
   modified: ProctorSummary,
+  records: ProctorRecord[] = [record],
 ): ProctorPayload => ({
   version: "2.0",
-  project: { ...project, records: [record] },
+  project: { ...project, records },
   calculations: { standard, modified },
 });

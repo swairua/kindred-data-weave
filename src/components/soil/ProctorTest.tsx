@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Check, ChevronDown, FileDown, Loader2, Printer, Save } from "lucide-react";
+import { Check, ChevronDown, FileDown, Loader2, Plus, Printer, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import MoistureDensityChart from "@/components/soil/MoistureDensityChart";
 import { useProject } from "@/context/ProjectContext";
 import { useGridArrowNavigation } from "@/hooks/useGridArrowNavigation";
@@ -18,7 +19,7 @@ import {
   correctForOversize,
   createProctorPayload,
   emptyProctorRecord,
-  getProctorRecord,
+  getProctorRecords,
   isReportableOptimum,
   parseAirVoidsTargets,
   sampleCompactionCurve,
@@ -44,6 +45,10 @@ interface ProctorTestProps {
 
 type ProctorInputField = Exclude<keyof ProctorRow, "legacy">;
 type ProctorRecordTextField =
+  | "label"
+  | "sampleNumber"
+  | "sampleDepthFrom"
+  | "sampleDepthTo"
   | "testedBy"
   | "specificGravity"
   | "airVoidsTarget"
@@ -56,7 +61,6 @@ type ProctorRecordTextField =
   | "reportedBulkDensity";
 
 const POINT_LABELS = ["A", "B", "C", "D", "E", "F"];
-/** BS 1377-4:1990, 3.3 is the 2.5 kg rammer method and 3.5 the 4.5 kg rammer method. */
 const methodClause = (method: ProctorMethod) => method === "standard" ? "3.3" : "3.5";
 const methodLabel = (method: ProctorMethod) => method === "standard" ? "Standard" : "Modified";
 const MAX_POINTS = 10;
@@ -73,6 +77,12 @@ const isRowStarted = (row: ProctorRow) => {
   const { legacy, ...inputs } = row;
   return Object.values(inputs).some(hasValue) || (legacy !== undefined && Object.values(legacy).some(hasValue));
 };
+const savedMethod = (record: ProctorRecord): ProctorMethod => {
+  const hasStandardReadings = record.standardRows.some(isRowStarted);
+  const hasModifiedReadings = record.modifiedRows.some(isRowStarted);
+  if (hasStandardReadings !== hasModifiedReadings) return hasStandardReadings ? "standard" : "modified";
+  return record.type;
+};
 const pointLabel = (index: number) => POINT_LABELS[index] || String(index + 1);
 
 const ProctorTest = ({ testKey }: ProctorTestProps) => {
@@ -83,21 +93,29 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
   const projectId = project.currentProjectId ?? null;
   const metadata = useMemo(() => testData.recordMetadata.proctor || {}, [testData.recordMetadata.proctor]);
   const metadataKey = JSON.stringify(metadata);
-  const [record, setRecord] = useState<ProctorRecord>(() => emptyProctorRecord(metadata));
+  const [records, setRecords] = useState<ProctorRecord[]>(() => [emptyProctorRecord(metadata)]);
+  const [activeSampleIndex, setActiveSampleIndex] = useState(0);
+  const record = records[activeSampleIndex] ?? records[0] ?? emptyProctorRecord(metadata);
+  const setRecord = (update: (current: ProctorRecord) => ProctorRecord) => {
+    setRecords((current) => current.map((item, index) => index === activeSampleIndex ? update(item) : item));
+  };
   const [recordId, setRecordId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(Boolean(projectId));
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportSelection, setExportSelection] = useState<Set<number>>(new Set([0]));
+  const [exportAction, setExportAction] = useState<"print" | "download">("print");
   // Arrow keys walk the weighing grid instead of leaving the technician to drag
   // the pointer across a table this wide.
   const gridNav = useGridArrowNavigation<HTMLDivElement>();
-  const type = record.type;
+  const type = savedMethod(record);
   const rows = type === "standard" ? record.standardRows : record.modifiedRows;
   const mouldVolume = type === "standard" ? record.standardMouldVolume : record.modifiedMouldVolume;
-  const setRowsKey = type === "standard" ? "standardRows" : "modifiedRows";
-  const setVolumeKey = type === "standard" ? "standardMouldVolume" : "modifiedMouldVolume";
+  const rowsKey = type === "standard" ? "standardRows" : "modifiedRows";
+  const volumeKey = type === "standard" ? "standardMouldVolume" : "modifiedMouldVolume";
   const effort = type === "standard" ? record.standardEffort : record.modifiedEffort;
-  const setEffortKey = type === "standard" ? "standardEffort" : "modifiedEffort";
+  const effortKey = type === "standard" ? "standardEffort" : "modifiedEffort";
   const displayedBulkDensity = optionalNumber(record.reportedBulkDensity);
   const energy = compactionEnergy(effort, mouldVolume);
 
@@ -106,7 +124,8 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
     // so the first save creates a fresh row instead of overwriting the stored record.
     const isNewRecordLaunch = new URLSearchParams(location.search).get("newRecord") === "1";
     if (!projectId || isNewRecordLaunch) {
-      setRecord(emptyProctorRecord(metadata));
+      setRecords([emptyProctorRecord(metadata)]);
+      setActiveSampleIndex(0);
       setRecordId(null);
       setError(null);
       setIsLoading(false);
@@ -114,7 +133,8 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
     }
 
     let active = true;
-    setRecord(emptyProctorRecord(metadata));
+    setRecords([{ ...emptyProctorRecord(metadata), type: "modified" }]);
+    setActiveSampleIndex(0);
     setRecordId(null);
     setIsLoading(true);
     setError(null);
@@ -122,7 +142,8 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
       .then((result) => {
         if (!active) return;
         setRecordId(result?.id ?? null);
-        setRecord(getProctorRecord(result?.payload_json, metadata));
+        setRecords(getProctorRecords(result?.payload_json, metadata));
+        setActiveSampleIndex(0);
       })
       .catch((loadError) => {
         if (!active) return;
@@ -163,14 +184,13 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
       }))
       .filter((line) => line.points.length > 1);
   }, [specificGravity, moistureRange, airVoidsTargets]);
-  // Reported OMC/MDD are typed on the active method's tab, so they override that method's calculated values.
   const summaries = useMemo(() => {
     const standard = calculateProctor(record.standardRows, record.standardMouldVolume, specificGravity);
     const modified = calculateProctor(record.modifiedRows, record.modifiedMouldVolume, specificGravity);
     return type === "standard"
       ? { standard: applyReportedOptimum(standard, record.reportedOmc, record.reportedMdd), modified }
       : { standard, modified: applyReportedOptimum(modified, record.reportedOmc, record.reportedMdd) };
-  }, [record.standardRows, record.standardMouldVolume, record.modifiedRows, record.modifiedMouldVolume, record.reportedOmc, record.reportedMdd, type, specificGravity]);
+  }, [record.standardRows, record.standardMouldVolume, record.modifiedRows, record.modifiedMouldVolume, record.reportedOmc, record.reportedMdd, specificGravity, type]);
   const displayedOptimum = type === "standard" ? summaries.standard : summaries.modified;
   const reportedSummary = { ...displayedOptimum, bulkDensity: displayedOptimum.bulkDensity };
   const oversizeRemoved = optionalNumber(record.oversizePercent);
@@ -190,13 +210,18 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
     { label: "Modified OMC", value: summaries.modified.omc === null ? "" : `${displayMoisture(summaries.modified.omc)}%` },
     { label: "Modified MDD", value: summaries.modified.mdd === null ? "" : `${displayDensity(summaries.modified.mdd)} kg/m³` },
   ], [summaries]);
-  const totalPoints = [
-    ...record.standardRows.map((row) => calculateProctorPoint(row, record.standardMouldVolume)),
-    ...record.modifiedRows.map((row) => calculateProctorPoint(row, record.modifiedMouldVolume)),
-  ].filter((point) => point.moistureContent !== null && point.dryDensity !== null).length;
-  const startedPoints = record.standardRows.concat(record.modifiedRows).filter(isRowStarted).length;
-  // Completion is judged on the method on screen, as in the other soil records, so a record that
-  // only carries the standard test can still be reported as complete.
+  const totalPoints = records.reduce((total, sample) => {
+    const sampleType = savedMethod(sample);
+    const sampleRows = sampleType === "standard" ? sample.standardRows : sample.modifiedRows;
+    const sampleVolume = sampleType === "standard" ? sample.standardMouldVolume : sample.modifiedMouldVolume;
+    return total + sampleRows.map((row) => calculateProctorPoint(row, sampleVolume))
+      .filter((point) => point.moistureContent !== null && point.dryDensity !== null).length;
+  }, 0);
+  const startedPoints = records.reduce((total, sample) => {
+    const sampleType = savedMethod(sample);
+    const sampleRows = sampleType === "standard" ? sample.standardRows : sample.modifiedRows;
+    return total + sampleRows.filter(isRowStarted).length;
+  }, 0);
   const startedRows = rows.filter(isRowStarted).length;
   const isPointComplete = (point: ProctorPointCalculation, row: ProctorRow) => point.moistureContent !== null
     && point.dryDensity !== null
@@ -211,23 +236,18 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
   const updateRow = (index: number, field: ProctorInputField, value: string) => {
     setRecord((current) => ({
       ...current,
-      [setRowsKey]: current[setRowsKey].map((row, rowIndex) => rowIndex === index ? { ...row, [field]: value } : row),
+      [rowsKey]: current[rowsKey].map((row, rowIndex) => rowIndex === index ? { ...row, [field]: value } : row),
     }));
     setSaveStatus("idle");
   };
 
   const updateMouldVolume = (value: string) => {
-    setRecord((current) => ({ ...current, [setVolumeKey]: value }));
+    setRecord((current) => ({ ...current, [volumeKey]: value }));
     setSaveStatus("idle");
   };
 
   const updateEffort = (field: keyof ProctorEffort, value: string) => {
-    setRecord((current) => ({ ...current, [setEffortKey]: { ...current[setEffortKey], [field]: value } }));
-    setSaveStatus("idle");
-  };
-
-  const updateMethod = (value: string) => {
-    setRecord((current) => ({ ...current, type: value === "modified" ? "modified" : "standard" }));
+    setRecord((current) => ({ ...current, [effortKey]: { ...current[effortKey], [field]: value } }));
     setSaveStatus("idle");
   };
 
@@ -236,12 +256,20 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
     setSaveStatus("idle");
   };
 
+  const addSample = () => {
+    const nextNumber = String(records.length + 1);
+    const nextRecord = { ...emptyProctorRecord(), label: `Sample ${nextNumber}`, type };
+    setRecords((current) => [...current, nextRecord]);
+    setActiveSampleIndex(records.length);
+    setSaveStatus("idle");
+  };
+
   const addRow = () => {
     setRecord((current) => ({
       ...current,
-      [setRowsKey]: current[setRowsKey].length >= MAX_POINTS
-        ? current[setRowsKey]
-        : [...current[setRowsKey], {
+      [rowsKey]: current[rowsKey].length >= MAX_POINTS
+        ? current[rowsKey]
+        : [...current[rowsKey], {
             moistureAdded: "",
             mouldWetMass: "",
             mouldTare: "",
@@ -260,13 +288,25 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
     if (error) throw new Error("This record could not be loaded. Reload before saving to prevent duplicates.");
     setSaveStatus("saving");
     setError(null);
-    // Completion follows the method on screen so a standard-only test is still reportable.
-    const recordStatus = startedPoints === 0 ? "not-started" : isComplete ? "completed" : "in-progress";
+    const sampleStatuses = records.map((sample) => {
+      const sampleType = savedMethod(sample);
+      const sampleRows = sampleType === "standard" ? sample.standardRows : sample.modifiedRows;
+      const sampleVolume = sampleType === "standard" ? sample.standardMouldVolume : sample.modifiedMouldVolume;
+      const samplePoints = sampleRows.map((row) => calculateProctorPoint(row, sampleVolume));
+      const sampleStartedRows = sampleRows.filter(isRowStarted).length;
+      const sampleComplete = sampleStartedRows > 0
+        && sampleRows.every((row, index) => !isRowStarted(row) || isPointComplete(samplePoints[index], row))
+        && isReportableOptimum(calculateProctor(sampleRows, sampleVolume, optionalNumber(sample.specificGravity)));
+      return { started: sampleStartedRows > 0, complete: sampleComplete };
+    });
+    const recordStatus = !sampleStatuses.some((sample) => sample.started)
+      ? "not-started"
+      : sampleStatuses.every((sample) => sample.complete) ? "completed" : "in-progress";
     const payload = createProctorPayload({
       title: project.projectName,
       clientName: project.clientName,
       date: project.projectDate || project.date,
-    }, record, summaries.standard, summaries.modified);
+    }, record, summaries.standard, summaries.modified, records.map((sample) => ({ ...sample, type: savedMethod(sample) })));
     const data = {
       test_key: "proctor",
       name: "Density/Moisture Content Relationship",
@@ -305,61 +345,98 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
     return captureChartAsBase64("proctor-chart");
   };
 
-  const exportPDF = async (action: "print" | "download") => {
-    let samples = undefined;
-    if (record.samples) {
-      samples = record.samples.map((s) => {
-        return {
-          label: s.label,
-          sampleNumber: s.sampleNumber,
-          sampleDepthFrom: s.sampleDepthFrom,
-          sampleDepthTo: s.sampleDepthTo,
-          sampledSubmittedBy: record.sampledSubmittedBy,
-          dateSubmitted: record.dateSubmitted,
-          dateTested: record.dateTested,
-          testedBy: record.testedBy,
-          mouldVolume: record.standardMouldVolume,
-          specificGravity: record.specificGravity,
-          rows: s.standardRows.length > 0 ? s.standardRows : s.modifiedRows,
-        };
-      });
-    }
+  const createPdfOptions = async (sample: ProctorRecord, includeChart: boolean) => {
+    const sampleType = savedMethod(sample);
+    const sampleRows = sampleType === "standard" ? sample.standardRows : sample.modifiedRows;
+    const sampleMouldVolume = sampleType === "standard" ? sample.standardMouldVolume : sample.modifiedMouldVolume;
+    const samplePoints = sampleRows
+      .map((row) => calculateProctorPoint(row, sampleMouldVolume))
+      .filter((point): point is ProctorPointCalculation & { moistureContent: number; dryDensity: number } =>
+        point.moistureContent !== null && point.dryDensity !== null)
+      .map((point) => ({ moisture: point.moistureContent, dryDensity: point.dryDensity }))
+      .sort((a, b) => a.moisture - b.moisture);
+    const sampleSpecificGravity = optionalNumber(sample.specificGravity);
+    const sampleSummary = applyReportedOptimum(
+      calculateProctor(sampleRows, sampleMouldVolume, sampleSpecificGravity),
+      sample.reportedOmc,
+      sample.reportedMdd,
+    );
+    const sampleRange: [number, number] | null = samplePoints.length > 0
+      ? [samplePoints[0].moisture, samplePoints[samplePoints.length - 1].moisture]
+      : null;
+    const sampleFitted = sampleSummary.curve && sampleRange ? sampleCompactionCurve(sampleSummary.curve, sampleRange) : [];
+    const sampleVoidLines = sampleSpecificGravity === null || !sampleRange
+      ? []
+      : [0, ...parseAirVoidsTargets(sample.airVoidsTarget)]
+        .map((percent) => ({
+          percent,
+          points: (percent === 0
+            ? zeroAirVoidsCurve(sampleSpecificGravity, sampleRange)
+            : airVoidsCurve(percent, sampleSpecificGravity, sampleRange)) as ProctorCurvePoint[],
+        }))
+        .filter((line) => line.points.length > 1);
 
-    const doc = await generateMoistureDensityPDF({
+    return {
       projectName: project.projectName,
       clientName: project.clientName,
       date: project.projectDate || project.date,
-      dateTested: record.dateTested,
+      dateTested: sample.dateTested,
       labOrganization: project.labOrganization,
       dateReported: project.dateReported,
       checkedBy: project.checkedBy,
-      testedBy: record.testedBy,
-      method: type,
+      testedBy: sample.testedBy,
+      method: sampleType,
       record: {
-        label: record.label,
-        sampleNumber: record.sampleNumber,
-        sampleDepthFrom: record.sampleDepthFrom,
-        sampleDepthTo: record.sampleDepthTo,
-        sampledSubmittedBy: record.sampledSubmittedBy,
-        dateSubmitted: record.dateSubmitted,
-        dateTested: record.dateTested,
-        mouldVolume,
-        specificGravity: record.specificGravity,
-        rows,
+        label: sample.label,
+        sampleNumber: sample.sampleNumber,
+        sampleDepthFrom: sample.sampleDepthFrom,
+        sampleDepthTo: sample.sampleDepthTo,
+        sampledSubmittedBy: sample.sampledSubmittedBy,
+        dateSubmitted: sample.dateSubmitted,
+        dateTested: sample.dateTested,
+        mouldVolume: sampleMouldVolume,
+        specificGravity: sample.specificGravity,
+        rows: sampleRows,
       },
-      summary: reportedSummary,
-      points: measuredPoints,
-      fitted: fittedPoints,
-      voidLines,
-      chartImage: await captureChart(),
+      summary: sampleSummary,
+      points: samplePoints,
+      fitted: sampleFitted,
+      voidLines: sampleVoidLines,
+      chartImage: includeChart ? await captureChart() : null,
+      skipDownload: true,
+    };
+  };
+
+  const exportPDF = async (action: "print" | "download", selectedRecords: ProctorRecord[] = [record]) => {
+    const [firstRecord, ...additionalRecords] = selectedRecords;
+    const [firstOptions, ...additionalOptions] = await Promise.all([
+      createPdfOptions(firstRecord, selectedRecords.length === 1 && firstRecord === record),
+      ...additionalRecords.map((sample) => createPdfOptions(sample, false)),
+    ]);
+    const doc = await generateMoistureDensityPDF({
+      ...firstOptions,
+      samples: additionalOptions,
       skipDownload: action === "print",
-      samples,
     });
     if (action === "print") {
       doc.autoPrint();
       const printWindow = window.open(doc.output("bloburl"), "_blank");
       if (printWindow) printWindow.onload = () => printWindow.print();
     }
+  };
+
+  const openExportDialog = (action: "print" | "download") => {
+    setExportAction(action);
+    setExportSelection(new Set(records.map((_, index) => index)));
+    setExportDialogOpen(true);
+  };
+
+  const confirmExportSelection = () => {
+    const selectedRecords = records.filter((_, index) => exportSelection.has(index));
+    setExportDialogOpen(false);
+    void exportPDF(exportAction, selectedRecords).catch(() =>
+      toast.error(exportAction === "print" ? "Proctor report print failed" : "Proctor report download failed"),
+    );
   };
 
   if (isLoading) {
@@ -381,22 +458,62 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
         </div>
         <div className="flex flex-wrap gap-x-2 gap-y-1 px-4 py-2 text-[10px] text-muted-foreground">
           <span>Material: <strong className="text-foreground">Soil</strong></span><span>·</span>
-          <span>Test type: <strong className="text-foreground">Density/Moisture Content Relationship</strong></span><span>·</span>
-          <span>Sample ID: <strong className="text-foreground">{record.label || "—"}</strong></span><span>·</span>
-          <span>Sample No.: <strong className="text-foreground">{record.sampleNumber || "—"}</strong></span><span>·</span>
-          <span>Sample Depth From (m): <strong className="text-foreground">{record.sampleDepthFrom || "—"}</strong></span><span>·</span>
-          <span>Sample Depth To (m): <strong className="text-foreground">{record.sampleDepthTo || "—"}</strong></span>
+          <span>Test type: <strong className="text-foreground">Density/Moisture Content Relationship</strong></span>
         </div>
       </section>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 px-1">
+      <div className="space-y-2 px-1">
         <div><h2 className="text-sm font-semibold">Record results — BS 1377 Part 4, {methodClause(type)}</h2><p className="text-[11px] text-muted-foreground">{methodLabel(type)} ({type === "standard" ? "2.5 kg" : "4.5 kg"} rammer). Enter readings for each moisture content point.</p></div>
-        <Tabs value={type} onValueChange={updateMethod}>
-          <TabsList className="h-8">
-            <TabsTrigger value="standard" className="h-6 px-3 text-xs">Standard</TabsTrigger>
-            <TabsTrigger value="modified" className="h-6 px-3 text-xs">Modified</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex items-center gap-2 print:hidden" data-testid="proctor-sample-strip">
+          <span className="shrink-0 text-xs text-muted-foreground">Sample {activeSampleIndex + 1} of {records.length}</span>
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pb-1">
+            {records.map((sample, index) => {
+              const isActive = index === activeSampleIndex;
+              const sampleType = savedMethod(sample);
+              const sampleMethodRows = sampleType === "standard" ? sample.standardRows : sample.modifiedRows;
+              const sampleMethodVolume = sampleType === "standard" ? sample.standardMouldVolume : sample.modifiedMouldVolume;
+              const sampleSummary = calculateProctor(sampleMethodRows, sampleMethodVolume);
+              const sampleName = sample.label || sample.sampleNumber || `Sample ${index + 1}`;
+              return (
+                <button
+                  key={`${sampleName}-${index}`}
+                  type="button"
+                  onClick={() => setActiveSampleIndex(index)}
+                  aria-current={isActive}
+                  title={sampleName}
+                  data-testid={`proctor-sample-${index + 1}`}
+                  data-active={isActive ? "true" : "false"}
+                  className={`shrink-0 whitespace-nowrap rounded-md border px-2.5 py-1 text-left text-[11px] leading-tight transition-colors ${isActive ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:bg-muted/40"}`}
+                >
+                  <span className="font-medium">{index + 1}. {sampleName}</span>
+                  {sampleSummary.mdd !== null && <span className="ml-1.5 text-[10px] opacity-80">{displayDensity(sampleSummary.mdd)} kg/m³</span>}
+                </button>
+              );
+            })}
+            <Button type="button" onClick={addSample} size="sm" variant="outline" className="h-7 shrink-0 gap-1.5 text-[11px]" data-testid="proctor-add-sample">
+              <Plus className="h-3.5 w-3.5" /> Add sample
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 px-1 sm:grid-cols-4">
+        <label className="space-y-1 text-[10px] text-muted-foreground">
+          <span>Sample ID</span>
+          <Input aria-label="Sample ID" value={record.label} onChange={(event) => updateRecordField("label", event.target.value)} className="record-input h-7" />
+        </label>
+        <label className="space-y-1 text-[10px] text-muted-foreground">
+          <span>Sample No.</span>
+          <Input aria-label="Sample number" value={record.sampleNumber} onChange={(event) => updateRecordField("sampleNumber", event.target.value)} className="record-input h-7" />
+        </label>
+        <label className="space-y-1 text-[10px] text-muted-foreground">
+          <span>Depth From (m)</span>
+          <Input aria-label="Sample depth from" type="number" min="0" step="any" value={record.sampleDepthFrom} onChange={(event) => updateRecordField("sampleDepthFrom", event.target.value)} className="record-input h-7" />
+        </label>
+        <label className="space-y-1 text-[10px] text-muted-foreground">
+          <span>Depth To (m)</span>
+          <Input aria-label="Sample depth to" type="number" min="0" step="any" value={record.sampleDepthTo} onChange={(event) => updateRecordField("sampleDepthTo", event.target.value)} className="record-input h-7" />
+        </label>
       </div>
 
       <section className="record-card overflow-hidden">
@@ -455,7 +572,7 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
       </section>
 
       <section className="record-card p-3">
-        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Proctor curve — {methodLabel(type)}</h3>
+        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Proctor curve — Modified</h3>
         {/* The chart is the sheet's own drawing: red curve, square measurement
             points, dashed air voids lines, so the export and the screen agree. */}
         <MoistureDensityChart
@@ -537,10 +654,47 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
         <div className="sm:text-right"><span className="text-muted-foreground">STATUS</span><div className="font-semibold">{status} · {filledRows}/{rows.length} {type} points</div></div>
       </section>
 
+      <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{exportAction === "print" ? "Print samples" : "Download Proctor PDF"}</DialogTitle>
+            <DialogDescription>Select which Proctor samples to include in the {exportAction === "print" ? "printout" : "PDF"}.</DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center justify-between text-xs">
+            <button type="button" className="text-primary hover:underline" onClick={() => setExportSelection(new Set(records.map((_, index) => index)))}>Select all</button>
+            <button type="button" className="text-primary hover:underline" onClick={() => setExportSelection(new Set())}>Clear</button>
+          </div>
+          <div className="max-h-72 space-y-2 overflow-y-auto">
+            {records.map((sample, index) => (
+              <label key={`${sample.label}-${index}`} className="flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2 text-sm">
+                <Checkbox
+                  checked={exportSelection.has(index)}
+                  onCheckedChange={(checked) => setExportSelection((current) => {
+                    const next = new Set(current);
+                    if (checked === true) next.add(index);
+                    else next.delete(index);
+                    return next;
+                  })}
+                />
+                <span className="font-medium">{index + 1}. {sample.label || sample.sampleNumber || `Sample ${index + 1}`}</span>
+              </label>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setExportDialogOpen(false)}>Cancel</Button>
+            <Button disabled={exportSelection.size === 0} onClick={confirmExportSelection}>
+              {exportAction === "print"
+                ? exportSelection.size === records.length ? `Print all (${exportSelection.size})` : `Print ${exportSelection.size} selected`
+                : exportSelection.size === records.length ? `Download all (${exportSelection.size})` : `Download ${exportSelection.size} selected`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="sticky bottom-0 z-20 -mx-3 flex items-center justify-end gap-2 border-t bg-background/95 px-3 py-2 backdrop-blur print:hidden">
         <div className="flex items-center justify-end gap-2">
-          <Button variant="outline" size="sm" onClick={() => void exportPDF("download").catch(() => toast.error("Proctor report download failed"))}><FileDown className="mr-1.5 h-3.5 w-3.5" />PDF</Button>
-          <Button variant="outline" size="sm" onClick={() => void exportPDF("print").catch(() => toast.error("Proctor report print failed"))}><Printer className="mr-1.5 h-3.5 w-3.5" />Print</Button>
+          <Button variant="outline" size="sm" onClick={() => openExportDialog("download")}><FileDown className="mr-1.5 h-3.5 w-3.5" />PDF</Button>
+          <Button variant="outline" size="sm" onClick={() => openExportDialog("print")}><Printer className="mr-1.5 h-3.5 w-3.5" />Print</Button>
           <Button size="sm" className="min-w-20" onClick={handleSave} disabled={saveStatus === "saving" || isLoading}>
             {saveStatus === "saving" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : saveStatus === "saved" ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}
             {saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved" : "Save"}
