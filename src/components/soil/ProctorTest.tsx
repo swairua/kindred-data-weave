@@ -456,24 +456,6 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
           <span>Material: <strong className="text-foreground">Soil</strong></span><span>·</span>
           <span>Test type: <strong className="text-foreground">Density/Moisture Content Relationship</strong></span>
         </div>
-        <div className="grid grid-cols-2 gap-2 border-t px-4 py-3 sm:grid-cols-4">
-          <label className="space-y-1 text-[10px] text-muted-foreground">
-            <span>Sample ID</span>
-            <Input aria-label="Sample ID" value={record.label} onChange={(event) => updateRecordField("label", event.target.value)} className="record-input h-7" />
-          </label>
-          <label className="space-y-1 text-[10px] text-muted-foreground">
-            <span>Sample No.</span>
-            <Input aria-label="Sample number" value={record.sampleNumber} onChange={(event) => updateRecordField("sampleNumber", event.target.value)} className="record-input h-7" />
-          </label>
-          <label className="space-y-1 text-[10px] text-muted-foreground">
-            <span>Depth From (m)</span>
-            <Input aria-label="Sample depth from" type="number" min="0" step="any" value={record.sampleDepthFrom} onChange={(event) => updateRecordField("sampleDepthFrom", event.target.value)} className="record-input h-7" />
-          </label>
-          <label className="space-y-1 text-[10px] text-muted-foreground">
-            <span>Depth To (m)</span>
-            <Input aria-label="Sample depth to" type="number" min="0" step="any" value={record.sampleDepthTo} onChange={(event) => updateRecordField("sampleDepthTo", event.target.value)} className="record-input h-7" />
-          </label>
-        </div>
       </section>
 
       <div className="space-y-2 px-1">
@@ -509,6 +491,25 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
             </Button>
           </div>
         </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 px-1 sm:grid-cols-4">
+        <label className="space-y-1 text-[10px] text-muted-foreground">
+          <span>Sample ID</span>
+          <Input aria-label="Sample ID" value={record.label} onChange={(event) => updateRecordField("label", event.target.value)} className="record-input h-7" />
+        </label>
+        <label className="space-y-1 text-[10px] text-muted-foreground">
+          <span>Sample No.</span>
+          <Input aria-label="Sample number" value={record.sampleNumber} onChange={(event) => updateRecordField("sampleNumber", event.target.value)} className="record-input h-7" />
+        </label>
+        <label className="space-y-1 text-[10px] text-muted-foreground">
+          <span>Depth From (m)</span>
+          <Input aria-label="Sample depth from" type="number" min="0" step="any" value={record.sampleDepthFrom} onChange={(event) => updateRecordField("sampleDepthFrom", event.target.value)} className="record-input h-7" />
+        </label>
+        <label className="space-y-1 text-[10px] text-muted-foreground">
+          <span>Depth To (m)</span>
+          <Input aria-label="Sample depth to" type="number" min="0" step="any" value={record.sampleDepthTo} onChange={(event) => updateRecordField("sampleDepthTo", event.target.value)} className="record-input h-7" />
+        </label>
       </div>
 
       <section className="record-card overflow-hidden">
