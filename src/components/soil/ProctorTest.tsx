@@ -392,9 +392,19 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
       <div className="flex flex-wrap items-center justify-between gap-3 px-1">
         <div><h2 className="text-sm font-semibold">Record results — BS 1377 Part 4, {methodClause(type)}</h2><p className="text-[11px] text-muted-foreground">{methodLabel(type)} ({type === "standard" ? "2.5 kg" : "4.5 kg"} rammer). Enter readings for each moisture content point.</p></div>
         <Tabs value={type} onValueChange={updateMethod}>
-          <TabsList className="h-8">
-            <TabsTrigger value="standard" className="h-6 px-3 text-xs">Standard</TabsTrigger>
-            <TabsTrigger value="modified" className="h-6 px-3 text-xs">Modified</TabsTrigger>
+          <TabsList className="h-auto gap-1.5 rounded-none bg-transparent p-0">
+            <TabsTrigger
+              value="standard"
+              className="h-7 rounded-md border border-border bg-background px-2.5 py-1 text-[11px] leading-tight text-muted-foreground shadow-none data-[state=active]:border-primary data-[state=active]:bg-primary/10 data-[state=active]:text-foreground data-[state=active]:shadow-none"
+            >
+              Standard
+            </TabsTrigger>
+            <TabsTrigger
+              value="modified"
+              className="h-7 rounded-md border border-border bg-background px-2.5 py-1 text-[11px] leading-tight text-muted-foreground shadow-none data-[state=active]:border-primary data-[state=active]:bg-primary/10 data-[state=active]:text-foreground data-[state=active]:shadow-none"
+            >
+              Modified
+            </TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
