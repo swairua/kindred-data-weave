@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createElement } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { clearProctorResults, loadProctorResult, saveProctorResult } from "@/lib/proctorPersistence";
-import { airVoidsCurve, airVoidsDensity, applyReportedOptimum, assessFieldCompaction, calculateProctor, correctForOversize, calculateProctorPoint, compactionEnergy, createProctorPayload, createProctorRows, emptyProctorRecord, fitCompactionCurve, getProctorRecord, getProctorRecords, isReportableOptimum, parseAirVoidsTargets, sampleCompactionCurve, zeroAirVoidsCurve, zeroAirVoidsDensity, type ProctorRow } from "@/lib/proctorRecords";
+import { airVoidsCurve, airVoidsDensity, applyReportedOptimum, assessFieldCompaction, calculateProctor, correctForOversize, calculateProctorPoint, compactionEnergy, createProctorPayload, createProctorRows, emptyProctorRecord, fitCompactionCurve, getProctorRecord, getProctorRecords, isReportableOptimum, parseAirVoidsTargets, proctorRowWarnings, sampleCompactionCurve, zeroAirVoidsCurve, zeroAirVoidsDensity, type ProctorRow } from "@/lib/proctorRecords";
 import { getExpectedTestType, hasRequiredSoilSampleMetadata, isInitialTestValid, isTestAllowed, toRecordMetadata } from "@/lib/recordTestWizard";
 import ProctorTest from "@/components/soil/ProctorTest";
 
@@ -167,6 +167,90 @@ describe("Proctor calculations", () => {
     expect(calculateProctorPoint(point({ containerWetMass: "120" }), "1000").moistureContent).toBeNull();
     expect(calculateProctorPoint(point(), "0").bulkDensity).toBeNull();
     expect(calculateProctorPoint(point({ mouldWetMass: "900" }), "1000").dryDensity).toBeNull();
+  });
+
+  it("flags a moisture content that could only come from a shifted or absent tin tare", () => {
+    // The recorded incident: tin tare weights (25.2 g) typed into the dry-mass
+    // column with the tare column at 0, turning ~10% moisture into 405%.
+    const shifted = point({
+      mouldWetMass: "4440",
+      mouldTare: "3049",
+      containerWetMass: "127.3",
+      containerDryMass: "25.2",
+      containerTare: "0",
+    });
+    const calculation = calculateProctorPoint(shifted, "903");
+
+    expect(calculation.moistureContent).toBeCloseTo(405.16, 1);
+    expect(calculation.dryDensity).toBeCloseTo(304.94, 1);
+    expect(proctorRowWarnings(shifted, calculation, "A")).toEqual([
+      "Point A moisture content 405.2% is outside the plausible range for a compacted soil (up to 60%); check that the tin tare sits in the Wt of container column and no mass has shifted a column.",
+      "Point A container tare reads 0 g; enter the measured tin weight - an absent tare inflates the moisture content.",
+    ]);
+  });
+
+  it("stays quiet on plausible readings and only reminds about a zero tare", () => {
+    const good = point();
+    const goodCalculation = calculateProctorPoint(good, "1000");
+
+    expect(goodCalculation.moistureContent).toBe(10);
+    expect(proctorRowWarnings(good, goodCalculation, "B")).toEqual([]);
+
+    const zeroTare = point({ containerTare: "0" });
+    const zeroTareCalculation = calculateProctorPoint(zeroTare, "1000");
+    expect(proctorRowWarnings(zeroTare, zeroTareCalculation, "B")).toEqual([
+      "Point B container tare reads 0 g; enter the measured tin weight - an absent tare inflates the moisture content.",
+    ]);
+  });
+
+  it("warns when the mould tare is zero or a point fails its physical checks", () => {
+    expect(proctorRowWarnings(point({ containerTare: "30", mouldTare: "0" }), calculateProctorPoint(point({ containerTare: "30", mouldTare: "0" }), "1000"), "C"))
+      .toEqual(["Point C mould tare reads 0 g; the wet material mass then includes the whole mould."]);
+
+    // Dry mass greater than the wet mass: no moisture, and the warning says why.
+    const reversed = point({ containerWetMass: "130", containerDryMass: "140", containerTare: "30" });
+    expect(proctorRowWarnings(reversed, calculateProctorPoint(reversed, "1000"), "D")).toEqual([
+      "Point D is not plotted: the container dry mass is greater than the container plus wet material mass.",
+    ]);
+
+    // Tare not below the dry mass: moisture undefined.
+    const tareHeavy = point({ containerDryMass: "130", containerTare: "140" });
+    expect(proctorRowWarnings(tareHeavy, calculateProctorPoint(tareHeavy, "1000"), "E")).toEqual([
+      "Point E is not plotted: the container tare is not less than the container plus dry material mass, so the moisture content is undefined.",
+    ]);
+
+    // Mould tare above the mould wet mass.
+    const mouldHeavy = point({ mouldWetMass: "900", containerTare: "30" });
+    expect(proctorRowWarnings(mouldHeavy, calculateProctorPoint(mouldHeavy, "1000"), "F")).toEqual([
+      "Point F is not plotted: the mould tare is not less than the mould plus wet material mass.",
+    ]);
+  });
+
+  it("stays quiet while a row is still being typed", () => {
+    const partial = point({ containerDryMass: "", containerTare: "" });
+
+    expect(proctorRowWarnings(partial, calculateProctorPoint(partial, "1000"), "A")).toEqual([]);
+  });
+
+  it("carries the entry warnings through the summary that the UI and PDF print", () => {
+    const shifted = point({
+      mouldWetMass: "4440",
+      mouldTare: "3049",
+      containerWetMass: "127.3",
+      containerDryMass: "25.2",
+      containerTare: "0",
+    });
+    const summary = calculateProctor([shifted, ...createProctorRows().slice(1)], "903");
+
+    expect(summary.warnings.some((warning) => warning.includes("Point A moisture content 405.2%"))).toBe(true);
+    expect(summary.warnings.some((warning) => warning.includes("not bracketed") || warning.includes("outermost"))).toBe(true);
+
+    // With nothing plottable at all, the checks still explain why the points dropped out.
+    const nonsense = calculateProctor([point({ containerWetMass: "130", containerDryMass: "140", containerTare: "30" })], "1000");
+    expect(nonsense.pointCount).toBe(0);
+    expect(nonsense.warnings).toEqual([
+      "Point A is not plotted: the container dry mass is greater than the container plus wet material mass.",
+    ]);
   });
 
   it("derives the optimum from the fitted compaction curve, not the densest single point", () => {

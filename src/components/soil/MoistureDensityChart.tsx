@@ -3,6 +3,7 @@ import {
   formatMoistureTick,
   mcCurvePath,
   mcScales,
+  mcTickLabelStride,
   mcVoidSamples,
   toMcPlotPoints,
   voidLineCaption,
@@ -42,13 +43,19 @@ interface MoistureDensityChartProps {
   fitted: ReadonlyArray<McPoint>;
   /** Dashed constant-air-voids lines drawn behind the curve. */
   voidLines: ReadonlyArray<McVoidLine>;
+  /** Optional manual axis windows, e.g. { y: { min: 1300, max: 1500 } } to zoom in on a narrow band. */
+  axisLimits?: Readonly<{ x?: { min: number; max: number }; y?: { min: number; max: number } }>;
   /** Applied to the wrapping element so html2canvas can capture it by id. */
   id?: string;
   className?: string;
 }
 
-export default function MoistureDensityChart({ points, fitted, voidLines, id, className }: MoistureDensityChartProps) {
-  const scales = mcScales(points, [fitted, ...voidLines.map((line) => line.points)]);
+export default function MoistureDensityChart({ points, fitted, voidLines, axisLimits, id, className }: MoistureDensityChartProps) {
+  const scales = mcScales(points, [fitted, ...voidLines.map((line) => line.points)], axisLimits);
+  // Gridlines stay on every tick; only the captions thin out so a stray wide
+  // axis can never stack dozens of overlapping labels.
+  const yLabelStride = mcTickLabelStride(scales.y.ticks, 12);
+  const xLabelStride = mcTickLabelStride(scales.x.ticks, 14);
   const measured = toMcPlotPoints(points, PLOT.w, PLOT.h, scales.x, scales.y);
   const curve = toMcPlotPoints(fitted, PLOT.w, PLOT.h, scales.x, scales.y);
   /** Converts a plotted position back into absolute millimetres on the sheet. */
@@ -109,7 +116,7 @@ export default function MoistureDensityChart({ points, fitted, voidLines, id, cl
           const position = place(point);
           return <circle key={`measured-${index}`} cx={position.x} cy={position.y} r={2.2} fill={CURVE_COLOR} />;
         })}
-{scales.y.ticks.map((value) => (
+{scales.y.ticks.map((value, index) => index % yLabelStride === 0 && (
           <text
             key={`y-label-${value}`}
             x={PLOT.x - 3}
@@ -137,7 +144,7 @@ export default function MoistureDensityChart({ points, fitted, voidLines, id, cl
           Dry Density (kg/m³)
         </text>
 
-        {scales.x.ticks.map((value) => (
+        {scales.x.ticks.map((value, index) => index % xLabelStride === 0 && (
           <text
             key={`x-label-${value}`}
             x={tickX(value)}

@@ -43,10 +43,13 @@ export interface McScales {
 
 /**
  * Nice tick steps. Moisture content is labelled to one decimal, so a 2 % step is
- * the print-sheet default; dry densities are labelled as whole numbers.
+ * the print-sheet default; dry densities are labelled as whole numbers. The larger
+ * steps keep a stray wide reading (say a moisture content of several hundred per
+ * cent from a mistyped tare) on a readable axis instead of stacking dozens of
+ * overlapping labels on top of each other.
  */
-export const MC_X_STEPS = [0.5, 1, 2, 2.5, 5, 10];
-export const MC_Y_STEPS = [5, 10, 20, 25, 50, 100, 200, 250, 500];
+export const MC_X_STEPS = [0.5, 1, 2, 2.5, 5, 10, 20, 25, 50, 100];
+export const MC_Y_STEPS = [5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000];
 
 /** Smallest step from `candidates` that covers the range in at most `targetTicks` intervals. */
 const niceStep = (range: number, targetTicks: number, candidates: ReadonlyArray<number>): number => {
@@ -64,12 +67,20 @@ export const mcScale = (
   candidates: ReadonlyArray<number>,
   fallbackRange: number,
   targetTicks: number,
+  /** Optional manual axis window; when both limits are given they override the data-derived domain. */
+  manual?: Readonly<{ min: number; max: number }>,
 ): McScale => {
-  const finite = values.filter((value) => Number.isFinite(value));
-  if (finite.length === 0) return mcScale([0, fallbackRange], candidates, fallbackRange, targetTicks);
-
-  const rawMin = Math.min(...finite);
-  const rawMax = Math.max(...finite);
+  let rawMin: number;
+  let rawMax: number;
+  if (manual && Number.isFinite(manual.min) && Number.isFinite(manual.max) && manual.max > manual.min) {
+    rawMin = manual.min;
+    rawMax = manual.max;
+  } else {
+    const finite = values.filter((value) => Number.isFinite(value));
+    if (finite.length === 0) return mcScale([0, fallbackRange], candidates, fallbackRange, targetTicks);
+    rawMin = Math.min(...finite);
+    rawMax = Math.max(...finite);
+  }
   const step = niceStep(rawMax - rawMin > 0 ? rawMax - rawMin : fallbackRange, targetTicks, candidates);
   const min = Math.floor(rawMin / step) * step;
   let max = Math.ceil(rawMax / step) * step;
@@ -93,11 +104,13 @@ export const mcScale = (
 export const mcScales = (
   measured: ReadonlyArray<McPoint>,
   curves: ReadonlyArray<ReadonlyArray<McPoint>>,
+  /** Optional manual axis windows; xManual sets x min/max, yManual sets y min/max. */
+  manual?: Readonly<{ x?: { min: number; max: number }; y?: { min: number; max: number } }>,
 ): McScales => {
   const plotted = [...measured, ...curves.flat()].filter(isMcPoint);
   return {
-    x: mcScale(plotted.map((point) => point.moisture), MC_X_STEPS, 10, 7),
-    y: mcScale(plotted.map((point) => point.dryDensity), MC_Y_STEPS, 100, 6),
+    x: mcScale(plotted.map((point) => point.moisture), MC_X_STEPS, 10, 7, manual?.x),
+    y: mcScale(plotted.map((point) => point.dryDensity), MC_Y_STEPS, 100, 6, manual?.y),
   };
 };
 
@@ -205,6 +218,14 @@ export const formatMoistureTick = (value: number): string => value.toFixed(1);
 /** Dry density tick label: whole numbers, as printed on the sheet. */
 export const formatDensityTick = (value: number): string =>
   Number.isInteger(value) ? String(value) : value.toFixed(1);
+
+/**
+ * Label stride for a tick list: label every `stride`-th tick so at most
+ * `maxLabels` captions print. Gridlines stay on every tick; only the captions
+ * thin out, which keeps even a pathological axis legible.
+ */
+export const mcTickLabelStride = (ticks: ReadonlyArray<number>, maxLabels: number): number =>
+  Math.max(1, Math.ceil(ticks.length / Math.max(maxLabels, 1)));
 
 /** Caption beside an air voids line, matching the wording of the printed sheet. */
 export const voidLineCaption = (percent: number): string =>

@@ -8,9 +8,12 @@ import {
   mcMeasuredPath,
   mcScale,
   mcScales,
+  mcTickLabelStride,
   mcVoidSamples,
   toMcPlotPoints,
   voidLineCaption,
+  MC_X_STEPS,
+  MC_Y_STEPS,
   type McPoint,
 } from "@/lib/mcChartGeometry";
 import { psdCurvePath, psdCurveSamples } from "@/lib/psdChartGeometry";
@@ -57,6 +60,67 @@ describe("moisture content axis", () => {
 
     expect(scale.min).toBe(0);
     expect(scale.max).toBe(10);
+  });
+
+  it("honours a manual Y window such as 1300 to 1500 for a narrow band", () => {
+    const scale = mcScale([1412, 1493], MC_Y_STEPS, 100, 6, { min: 1300, max: 1500 });
+
+    expect(scale.min).toBe(1300);
+    expect(scale.max).toBe(1500);
+    expect(scale.step).toBe(50);
+    expect(scale.ticks).toEqual([1300, 1350, 1400, 1450, 1500]);
+  });
+
+  it("keeps the manual window even when the data exceeds it", () => {
+    const scale = mcScale([1270, 1800], MC_Y_STEPS, 100, 6, { min: 1300, max: 1500 });
+
+    expect(scale.min).toBe(1300);
+    expect(scale.max).toBe(1500);
+    expect(scale.ticks).toHaveLength(5);
+  });
+
+  it("ignores a degenerate or inverted manual window", () => {
+    const inverted = mcScale([1412, 1493], MC_Y_STEPS, 100, 6, { min: 1500, max: 1300 });
+
+    expect(inverted.min).toBeLessThanOrEqual(1412);
+    expect(inverted.max).toBeGreaterThanOrEqual(1493);
+    // Invalid override falls back to data-derived limits.
+    expect(inverted.min).not.toBe(0);
+  });
+
+  it("applies a manual Y window through mcScales while keeping X auto", () => {
+    const scales = mcScales(MEASURED, [], { y: { min: 1300, max: 1500 } });
+
+    expect(scales.y.min).toBe(1300);
+    expect(scales.y.max).toBe(1500);
+    expect(scales.x.step).toBeGreaterThan(0);
+    expect(scales.x.max).toBeGreaterThanOrEqual(41.9);
+  });
+
+  it("keeps a stray wide moisture range on a readable axis instead of stacking labels", () => {
+    // The recorded incident: mistyped tares produced moisture contents of 405% to
+    // 1240%. With steps capped at 10 the axis stacked 85 overlapping captions;
+    // the wider candidates keep it near a dozen.
+    const scale = mcScale([405.2, 1240], MC_X_STEPS, 10, 7);
+
+    expect(scale.step).toBeGreaterThanOrEqual(100);
+    expect(scale.ticks.length).toBeLessThanOrEqual(11);
+    expect(scale.min).toBeLessThanOrEqual(405.2);
+    expect(scale.max).toBeGreaterThanOrEqual(1240);
+  });
+
+  it("thins tick captions when a pathological axis still yields many ticks", () => {
+    expect(mcTickLabelStride(MC_X_STEPS.map((_, index) => index), 14)).toBe(1);
+    expect(mcTickLabelStride(MC_X_STEPS.map((_, index) => index), 5)).toBe(2);
+    expect(mcTickLabelStride([], 14)).toBe(1);
+    // The wider step candidates now absorb the recorded incident (moisture
+    // contents of 405% to 1240%) on their own, so no thinning is needed there.
+    const incident = mcScale([405.2, 1240], MC_X_STEPS, 10, 7);
+    expect(incident.ticks.length).toBeLessThanOrEqual(14);
+    expect(mcTickLabelStride(incident.ticks, 14)).toBe(1);
+    // A synthetic pathological axis with 85 ticks still thins to at most 14 captions.
+    const many = Array.from({ length: 85 }, (_, index) => index * 10);
+    expect(mcTickLabelStride(many, 14)).toBeGreaterThanOrEqual(7);
   });
 
   it("includes the air voids lines, which sit above the measured points", () => {

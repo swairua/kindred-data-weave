@@ -221,6 +221,19 @@ const MEASUREMENT_FIELDS: ProctorMeasurementField[] = [
   "containerTare",
 ];
 
+/** Column headings printed above the six compaction points. */
+export const POINT_LABELS = ["A", "B", "C", "D", "E", "F"];
+
+/**
+ * Moisture contents a compacted soil cannot plausibly reach. The moisture formula
+ * divides by the container tare, so a tin weight typed one column over - or a tare
+ * left at zero - silently turns a 10% moisture content into several hundred per cent.
+ */
+export const PLAUSIBLE_MOISTURE_MAX = 60;
+
+/** No dry density can exceed the particle density of the soil solids (~2.8 g/cm3). */
+export const MAX_PLOTTED_DENSITY = 2800;
+
 const determinant3 = (m: number[][]): number =>
   m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1])
   - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0])
@@ -553,6 +566,59 @@ export const calculateProctorPoint = (row: ProctorRow, mouldVolume: string): Pro
   return { wetMaterialMass, bulkDensity, waterMass, drySoilMass, moistureContent, dryDensity };
 };
 
+/**
+ * Data-entry checks for one compaction point (BS 1377-4:1990, 3.3).
+ *
+ * The moisture content divides by the container tare, so a tin weight entered one
+ * column over - or a tare left at zero - silently turns a 10% moisture content
+ * into several hundred per cent and drags the dry densities down with it. These
+ * warnings flag the impossible readings instead of plotting them without comment.
+ * A row still being typed holds blanks and stays quiet until all five masses are in.
+ */
+export const proctorRowWarnings = (row: ProctorRow, calculation: ProctorPointCalculation, label: string): string[] => {
+  const warnings: string[] = [];
+  const values = MEASUREMENT_FIELDS.map((field) => parseValue(row[field]));
+  if (values.some((value) => value === null || !Number.isFinite(value))) return warnings;
+  const [mouldWetMass, mouldTare, containerWetMass, containerDryMass, containerTare] = values as number[];
+
+  if (calculation.moistureContent === null || calculation.dryDensity === null) {
+    // The five masses are complete but the point failed one of the physical checks
+    // inside calculateProctorPoint; say which one rather than dropping the column.
+    if (mouldWetMass - mouldTare <= 0) {
+      warnings.push(`Point ${label} is not plotted: the mould tare is not less than the mould plus wet material mass.`);
+    } else if (containerWetMass - containerDryMass < 0) {
+      warnings.push(`Point ${label} is not plotted: the container dry mass is greater than the container plus wet material mass.`);
+    } else if (containerDryMass - containerTare <= 0) {
+      warnings.push(`Point ${label} is not plotted: the container tare is not less than the container plus dry material mass, so the moisture content is undefined.`);
+    } else {
+      warnings.push(`Point ${label} is not plotted: the mould volume must be a positive number.`);
+    }
+    return warnings;
+  }
+
+  if (calculation.moistureContent > PLAUSIBLE_MOISTURE_MAX) {
+    warnings.push(
+      `Point ${label} moisture content ${calculation.moistureContent.toFixed(1)}% is outside the plausible range for a compacted soil (up to ${PLAUSIBLE_MOISTURE_MAX}%); check that the tin tare sits in the Wt of container column and no mass has shifted a column.`,
+    );
+  }
+  if (calculation.dryDensity > MAX_PLOTTED_DENSITY) {
+    warnings.push(
+      `Point ${label} dry density ${calculation.dryDensity.toFixed(0)} kg/m3 exceeds the particle density of the soil solids; check the mould volume and the masses.`,
+    );
+  }
+  if (containerTare === 0) {
+    warnings.push(
+      `Point ${label} container tare reads 0 g; enter the measured tin weight - an absent tare inflates the moisture content.`,
+    );
+  }
+  if (mouldTare === 0) {
+    warnings.push(
+      `Point ${label} mould tare reads 0 g; the wet material mass then includes the whole mould.`,
+    );
+  }
+  return warnings;
+};
+
 /** Only a bracketed fitted curve through enough points is reportable as complete (BS 1377-4:1990, 3.3). */
 export const isReportableOptimum = (summary: ProctorSummary): boolean =>
   summary.optimumSource === "curve" && summary.pointCount >= CURVE_RECOMMENDED_POINTS;
@@ -581,17 +647,20 @@ export const calculateProctor = (
   mouldVolume: string,
   specificGravity: number | null = null,
 ): ProctorSummary => {
-  const measured = rows
-    .map((row) => calculateProctorPoint(row, mouldVolume))
+  const calculations = rows.map((row) => calculateProctorPoint(row, mouldVolume));
+  const rowWarnings = rows.flatMap((row, index) =>
+    proctorRowWarnings(row, calculations[index], POINT_LABELS[index] || String(index + 1)));
+  const measured = calculations
     .filter((point): point is ProctorPointCalculation & { moistureContent: number; dryDensity: number } =>
       point.moistureContent !== null && point.dryDensity !== null);
-  if (measured.length === 0) return emptySummary();
+  // Even with nothing plottable the entry checks matter: they explain why the points dropped out.
+  if (measured.length === 0) return { ...emptySummary(), warnings: rowWarnings };
 
   const points: ProctorCurvePoint[] = measured
     .map((point) => ({ moisture: point.moistureContent, dryDensity: point.dryDensity }))
     .sort((a, b) => a.moisture - b.moisture);
   const fit = fitCompactionCurve(points);
-  const warnings = proctorWarnings(points, fit, specificGravity);
+  const warnings = [...rowWarnings, ...proctorWarnings(points, fit, specificGravity)];
 
   if (fit) {
     return {

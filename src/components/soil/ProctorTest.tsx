@@ -106,6 +106,10 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exportSelection, setExportSelection] = useState<Set<number>>(new Set([0]));
   const [exportAction, setExportAction] = useState<"print" | "download">("print");
+  // Optional manual window for the vertical axis, e.g. 1300-1500 for a narrow
+  // band; both limits required and ordered, or the axis auto-fits.
+  const [yAxisMin, setYAxisMin] = useState("");
+  const [yAxisMax, setYAxisMax] = useState("");
   // Arrow keys walk the weighing grid instead of leaving the technician to drag
   // the pointer across a table this wide.
   const gridNav = useGridArrowNavigation<HTMLDivElement>();
@@ -160,6 +164,13 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
     .map((point) => ({ moisture: point.moistureContent, dryDensity: point.dryDensity }))
     .sort((a, b) => a.moisture - b.moisture), [pointCalculations]);
   const specificGravity = optionalNumber(record.specificGravity);
+  const axisY = useMemo(() => {
+    const min = optionalNumber(yAxisMin);
+    const max = optionalNumber(yAxisMax);
+    return min !== null && Number.isFinite(min) && max !== null && Number.isFinite(max) && max > min
+      ? { min, max }
+      : undefined;
+  }, [yAxisMin, yAxisMax]);
   const airVoidsTargets = useMemo(() => parseAirVoidsTargets(record.airVoidsTarget), [record.airVoidsTarget]);
   const optimum = useMemo(() => calculateProctor(rows, mouldVolume, specificGravity), [rows, mouldVolume, specificGravity]);
   // The fitted curve and the saturation lines are sampled over the measured range,
@@ -402,6 +413,8 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
       points: samplePoints,
       fitted: sampleFitted,
       voidLines: sampleVoidLines,
+      // The manual Y window is an on-screen zoom of the active sample; other samples in the export keep auto-fit.
+      axisLimits: includeChart && axisY ? { y: axisY } : undefined,
       chartImage: includeChart ? await captureChart() : null,
       skipDownload: true,
     };
@@ -581,8 +594,16 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
           points={measuredPoints}
           fitted={fittedPoints}
           voidLines={voidLines}
+          axisLimits={axisY ? { y: axisY } : undefined}
         />
         {specificGravity === null && <p className="mt-2 text-[10px] text-muted-foreground">Enter specific gravity to draw the zero air voids line.</p>}
+        {/* Manual window for the vertical axis, e.g. 1300-1500 to focus on a narrow band; blank auto-fits to the measured readings. */}
+        <div className="mt-2 flex flex-wrap items-center gap-2 border-t pt-2 text-[10px] text-muted-foreground">
+          <span className="font-medium">Y axis (kg/m³):</span>
+          <Input type="number" inputMode="numeric" min={0} value={yAxisMin} onChange={(event) => setYAxisMin(event.target.value)} aria-label="Y axis minimum dry density" placeholder="min" className="record-input h-7 w-20" />
+          <Input type="number" inputMode="numeric" min={0} value={yAxisMax} onChange={(event) => setYAxisMax(event.target.value)} aria-label="Y axis maximum dry density" placeholder="max" className="record-input h-7 w-20" />
+          <span>leave blank to auto-fit</span>
+        </div>
         <table className="mt-3 w-full border-collapse overflow-hidden rounded-md border text-xs">
           <tbody>
             <tr className="border-b">

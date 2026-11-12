@@ -6,6 +6,7 @@ import {
   formatMoistureTick,
   mcCurveSamples,
   mcScales,
+  mcTickLabelStride,
   mcVoidSamples,
   toMcPlotPoints,
   voidLineCaption,
@@ -85,6 +86,8 @@ export interface MoistureDensityPdfOptions {
   fitted: McPoint[];
   /** Dashed constant-air-voids lines. */
   voidLines: McVoidLine[];
+  /** Optional manual Y window for the graph, e.g. { y: { min: 1300, max: 1500 } }; blank = auto-fit. */
+  axisLimits?: Readonly<{ x?: { min: number; max: number }; y?: { min: number; max: number } }>;
   /** html2canvas capture of the on-screen chart, when one was produced. */
   chartImage: string | null;
   skipDownload?: boolean;
@@ -329,7 +332,7 @@ const drawMcGraphVector = (d: jsPDF, x: number, y: number, w: number, o: Moistur
     d.text(value, px(atX), py(atY), { align, baseline: "middle", angle });
   };
 
-  const scales = mcScales(o.points, [o.fitted, ...o.voidLines.map((line) => line.points)]);
+  const scales = mcScales(o.points, [o.fitted, ...o.voidLines.map((line) => line.points)], o.axisLimits);
   const blockX = (value: number) => PLOT_UNITS.x + ((value - scales.x.min) / (scales.x.max - scales.x.min)) * PLOT_UNITS.w;
   const blockY = (value: number) => PLOT_UNITS.y + PLOT_UNITS.h - ((value - scales.y.min) / (scales.y.max - scales.y.min)) * PLOT_UNITS.h;
 
@@ -399,9 +402,18 @@ const curve = mcCurveSamples(toMcPlotPoints(o.fitted, plot.w, plot.h, scales.x, 
   // Reset the draw colour: jsPDF keeps the last one for whatever is drawn next,
   // which would otherwise leave the rules under the results block red.
   d.setDrawColor(...COLORS.dark);
-  scales.y.ticks.forEach((value) => label(formatDensityTick(value), PLOT_UNITS.x - 3, blockY(value), "right", 5.4));
+  // Only captions thin out; the gridlines above stay on every tick.
+  const yLabelStride = mcTickLabelStride(scales.y.ticks, 12);
+  const xLabelStride = mcTickLabelStride(scales.x.ticks, 14);
+  scales.y.ticks.forEach((value, index) => {
+    if (index % yLabelStride !== 0) return;
+    label(formatDensityTick(value), PLOT_UNITS.x - 3, blockY(value), "right", 5.4);
+  });
   label("Dry Density (kg/m³)", PLOT_UNITS.x - 30, PLOT_UNITS.y + PLOT_UNITS.h / 2, "center", 7, true, 90);
-  scales.x.ticks.forEach((value) => label(formatMoistureTick(value), blockX(value), 180, "center", 5.4));
+  scales.x.ticks.forEach((value, index) => {
+    if (index % xLabelStride !== 0) return;
+    label(formatMoistureTick(value), blockX(value), 180, "center", 5.4);
+  });
   label("Moisture Content (%)", PLOT_UNITS.x + PLOT_UNITS.w / 2, 190, "center", 7, true);
   label("DRY DENSITY / MOISTURE CONTENT RELATIONSHIP", REF_BLOCK_UNITS / 2, 7, "center", 7.5, true);
 
