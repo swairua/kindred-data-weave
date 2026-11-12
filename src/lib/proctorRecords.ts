@@ -61,6 +61,8 @@ export interface ProctorRecord {
   reportedMdd: string;
   /** Bulk density at the reported optimum, as reported on the source test sheet. Blank when not reported. */
   reportedBulkDensity: string;
+  /** Additional samples in the same project, each generating a separate page in the PDF report. */
+  samples?: ProctorRecord[];
 }
 
 export interface ProctorPointCalculation {

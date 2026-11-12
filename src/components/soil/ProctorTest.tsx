@@ -172,7 +172,7 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
       : { standard, modified: applyReportedOptimum(modified, record.reportedOmc, record.reportedMdd) };
   }, [record.standardRows, record.standardMouldVolume, record.modifiedRows, record.modifiedMouldVolume, record.reportedOmc, record.reportedMdd, type, specificGravity]);
   const displayedOptimum = type === "standard" ? summaries.standard : summaries.modified;
-  const reportedSummary = { ...displayedOptimum, bulkDensity: displayedBulkDensity ?? displayedOptimum.bulkDensity };
+  const reportedSummary = { ...displayedOptimum, bulkDensity: displayedOptimum.bulkDensity };
   const oversizeRemoved = optionalNumber(record.oversizePercent);
   const oversizeGs = optionalNumber(record.oversizeSpecificGravity);
   const oversizeInputs = oversizeRemoved !== null && oversizeRemoved > 0 && oversizeRemoved < 100 && oversizeGs !== null && oversizeGs > 0
@@ -306,16 +306,33 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
   };
 
   const exportPDF = async (action: "print" | "download") => {
+    let samples = undefined;
+    if (record.samples) {
+      samples = record.samples.map((s) => {
+        return {
+          label: s.label,
+          sampleNumber: s.sampleNumber,
+          sampleDepthFrom: s.sampleDepthFrom,
+          sampleDepthTo: s.sampleDepthTo,
+          sampledSubmittedBy: record.sampledSubmittedBy,
+          dateSubmitted: record.dateSubmitted,
+          dateTested: record.dateTested,
+          testedBy: record.testedBy,
+          mouldVolume: record.standardMouldVolume,
+          specificGravity: record.specificGravity,
+          rows: s.standardRows.length > 0 ? s.standardRows : s.modifiedRows,
+        };
+      });
+    }
+
     const doc = await generateMoistureDensityPDF({
       projectName: project.projectName,
       clientName: project.clientName,
       date: project.projectDate || project.date,
-      // The record's own test date, not the project date, so the Date Tested row is truthful.
       dateTested: record.dateTested,
       labOrganization: project.labOrganization,
       dateReported: project.dateReported,
       checkedBy: project.checkedBy,
-      // The record shows this as "TESTED BY"; without it the report printed a blank signature line.
       testedBy: record.testedBy,
       method: type,
       record: {
@@ -336,6 +353,7 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
       voidLines,
       chartImage: await captureChart(),
       skipDownload: action === "print",
+      samples,
     });
     if (action === "print") {
       doc.autoPrint();

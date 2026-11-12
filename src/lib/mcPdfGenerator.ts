@@ -88,6 +88,8 @@ export interface MoistureDensityPdfOptions {
   /** html2canvas capture of the on-screen chart, when one was produced. */
   chartImage: string | null;
   skipDownload?: boolean;
+  /** Additional samples in the same project, each generating a separate page. */
+  samples?: MoistureDensityPdfOptions[];
 }
 
 const text = (value: string | number | null | undefined, fallback = BLANK): string => {
