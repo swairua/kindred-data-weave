@@ -152,6 +152,7 @@ const RecordTestWizard = () => {
   const initialMaterial = searchParams.get("material") as Material | null;
   const initialTest = searchParams.get("test") as string | null;
   const projectIdParam = searchParams.get("projectId");
+  const resultIdParam = searchParams.get("resultId");
   const parsedProjectId = projectIdParam ? parseInt(projectIdParam, 10) : null;
   const projectIdFromParam = parsedProjectId !== null && Number.isInteger(parsedProjectId) && parsedProjectId > 0
     ? parsedProjectId
@@ -706,7 +707,10 @@ const RecordTestWizard = () => {
     const testParam = isCompressiveStrengthTest && selectedExistingTestId !== null
       ? `&testId=${selectedExistingTestId}`
       : "";
-    const suffix = fromExisting ? `?newRecord=1&fromProject=${finalProjectId}${sourceParam}${testParam}` : "";
+    const coringResultParam = isCoringTest && resultIdParam ? `&resultId=${resultIdParam}` : "";
+    const suffix = coringResultParam
+      ? `?projectId=${finalProjectId}${coringResultParam}`
+      : fromExisting ? `?newRecord=1&fromProject=${finalProjectId}${sourceParam}${testParam}` : "";
     navigate(`/tests${suffix}#${state.testKey}`);
   };
 
