@@ -155,8 +155,8 @@ export function buildCombinedSoilReport(gRaw: unknown, pRaw: unknown, meta: Comb
   let mod = proctor?.calculations?.modified ?? null;
   if (pRec) {
     try {
-      if (!std || std.pointCount === 0) { const r = calculateProctor(pRec.standardRows ?? [], pRec.standardMouldVolume ?? ""); if (r.pointCount > 0) std = r; }
-      if (!mod || mod.pointCount === 0) { const r = calculateProctor(pRec.modifiedRows ?? [], pRec.modifiedMouldVolume ?? ""); if (r.pointCount > 0) mod = r; }
+      if (pRecs.length > 1 || !std || std.pointCount === 0) { const r = calculateProctor(pRec.standardRows ?? [], pRec.standardMouldVolume ?? ""); if (r.pointCount > 0 || pRecs.length > 1) std = r; }
+      if (pRecs.length > 1 || !mod || mod.pointCount === 0) { const r = calculateProctor(pRec.modifiedRows ?? [], pRec.modifiedMouldVolume ?? ""); if (r.pointCount > 0 || pRecs.length > 1) mod = r; }
     } catch { /* keep saved */ }
     const reported = [pRec.reportedOmc ?? "", pRec.reportedMdd ?? ""] as const;
     if (pRec.type === "modified" && mod) mod = applyReportedOptimum(mod, ...reported);

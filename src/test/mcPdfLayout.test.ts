@@ -51,7 +51,7 @@ const makeRecord = (rows: ProctorRow[]): McRecordView => ({
   rows,
 });
 
-const build = (rows: ProctorRow[], overrides: Partial<MoistureDensityPdfOptions> = {}) => {
+const buildOptions = (rows: ProctorRow[], overrides: Partial<MoistureDensityPdfOptions> = {}): MoistureDensityPdfOptions => {
   const record = makeRecord(rows);
   const summary = calculateProctor(rows, record.mouldVolume);
   const measured = rows
@@ -64,7 +64,7 @@ const build = (rows: ProctorRow[], overrides: Partial<MoistureDensityPdfOptions>
     ? [measured[0].moisture, measured[measured.length - 1].moisture]
     : [0, 1];
 
-  return generateMoistureDensityPDF({
+  return {
     projectName: "KIRIAINI AHP",
     clientName: "SDHUD",
     date: "2026-06-13",
@@ -86,8 +86,11 @@ const build = (rows: ProctorRow[], overrides: Partial<MoistureDensityPdfOptions>
     chartImage: null,
     skipDownload: true,
     ...overrides,
-  });
+  };
 };
+
+const build = (rows: ProctorRow[], overrides: Partial<MoistureDensityPdfOptions> = {}) =>
+  generateMoistureDensityPDF(buildOptions(rows, overrides));
 
 describe("Density/Moisture Content PDF page layout", () => {
   it("keeps the graph on the sheet with a full six point record", async () => {
@@ -104,6 +107,17 @@ describe("Density/Moisture Content PDF page layout", () => {
     });
 
     expect(doc.getNumberOfPages()).toBe(2);
+  });
+
+  it("places each selected sample on its own PDF page", async () => {
+    const first = buildOptions(makeRows(6));
+    const second = buildOptions(makeRows(6), {
+      record: { ...makeRecord(makeRows(6)), label: "BH 2" },
+    });
+    const doc = await generateMoistureDensityPDF({ ...first, samples: [second] });
+
+    expect(doc.getNumberOfPages()).toBe(2);
+    expect(doc.output()).toContain("BH 2");
   });
 
   it("produces a document even with no readings entered", async () => {

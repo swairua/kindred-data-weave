@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createElement } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { clearProctorResults, loadProctorResult, saveProctorResult } from "@/lib/proctorPersistence";
-import { airVoidsCurve, airVoidsDensity, applyReportedOptimum, assessFieldCompaction, calculateProctor, correctForOversize, calculateProctorPoint, compactionEnergy, createProctorPayload, createProctorRows, emptyProctorRecord, fitCompactionCurve, getProctorRecord, isReportableOptimum, parseAirVoidsTargets, sampleCompactionCurve, zeroAirVoidsCurve, zeroAirVoidsDensity, type ProctorRow } from "@/lib/proctorRecords";
+import { airVoidsCurve, airVoidsDensity, applyReportedOptimum, assessFieldCompaction, calculateProctor, correctForOversize, calculateProctorPoint, compactionEnergy, createProctorPayload, createProctorRows, emptyProctorRecord, fitCompactionCurve, getProctorRecord, getProctorRecords, isReportableOptimum, parseAirVoidsTargets, sampleCompactionCurve, zeroAirVoidsCurve, zeroAirVoidsDensity, type ProctorRow } from "@/lib/proctorRecords";
 import { getExpectedTestType, hasRequiredSoilSampleMetadata, isInitialTestValid, isTestAllowed, toRecordMetadata } from "@/lib/recordTestWizard";
 import ProctorTest from "@/components/soil/ProctorTest";
 
@@ -439,6 +439,16 @@ describe("Proctor calculations", () => {
     expect(payload.calculations.standard.omc).not.toBeNull();
     expect(payload.calculations.modified.omc).not.toBeNull();
   });
+
+  it("round-trips and normalizes multiple sample records", () => {
+    const first = emptyProctorRecord({ sampleId: "BH-04", sampleNumber: "1" });
+    const second = emptyProctorRecord({ sampleId: "BH-05", sampleNumber: "2" });
+    const summary = calculateProctor([], "1000");
+    const payload = createProctorPayload({ title: "P", clientName: "C", date: "2025-01-01" }, first, summary, summary, [first, second]);
+
+    expect(getProctorRecords(JSON.stringify(payload)).map((record) => [record.label, record.sampleNumber]))
+      .toEqual([["BH-04", "1"], ["BH-05", "2"]]);
+  });
 });
 
 describe("Proctor record persistence", () => {
@@ -505,6 +515,28 @@ describe("Proctor record page", () => {
 
     fireEvent.mouseDown(screen.getByRole("tab", { name: "Standard" }), { button: 0 });
     expect(screen.getByLabelText("Moisture addition (cc), point A")).toHaveValue(55);
+  });
+
+  it("adds and switches between sample records without mixing their readings", async () => {
+    render(createElement(MemoryRouter, null, createElement(ProctorTest, { testKey: "proctor" })));
+    expect(await screen.findByTestId("proctor-sample-strip")).toHaveTextContent("Sample 1 of 1");
+    fireEvent.change(screen.getByLabelText("Moisture addition (cc), point A"), { target: { value: "55" } });
+
+    fireEvent.click(screen.getByTestId("proctor-add-sample"));
+    expect(screen.getByTestId("proctor-sample-strip")).toHaveTextContent("Sample 2 of 2");
+    expect(screen.getByTestId("proctor-sample-2")).toHaveTextContent("Sample 2");
+    expect(screen.getByLabelText("Moisture addition (cc), point A")).toHaveValue(null);
+    fireEvent.change(screen.getByLabelText("Moisture addition (cc), point A"), { target: { value: "65" } });
+
+    fireEvent.click(screen.getByTestId("proctor-sample-1"));
+    expect(screen.getByLabelText("Moisture addition (cc), point A")).toHaveValue(55);
+    fireEvent.click(screen.getByTestId("proctor-sample-2"));
+    expect(screen.getByLabelText("Moisture addition (cc), point A")).toHaveValue(65);
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(apiState.rows).toHaveLength(1));
+    const savedRecords = (apiState.rows[0].payload_json as { project: { records: Array<{ label: string }> } }).project.records;
+    expect(savedRecords.map((sample) => sample.label)).toEqual(["BH-04", "Sample 2"]);
   });
 
   it("opens blank when started as a new record from an existing project and saves a new row", async () => {

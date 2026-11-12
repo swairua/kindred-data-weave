@@ -508,71 +508,68 @@ export const generateMoistureDensityPDF = async (options: MoistureDensityPdfOpti
   }
 
   const doc = new jsPDF({ unit: "mm", format: "a4" });
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const x = MARGIN;
-  const topY = 10;
-  // Reserve the footer band first so content can never run into it.
-  const footerY = pageHeight - 20;
-  const contentBottom = footerY - 6;
+  const sheets = [options, ...(options.samples ?? [])];
 
-  const graphNaturalH = Math.min((CONTENT_W * REF_BLOCK_H_UNITS) / REF_BLOCK_UNITS, MAX_GRAPH_H);
-  // Fixed overhead above the data tables (title block ~33 + 3 header rows + gaps)
-  // plus the two 7-row tables and the results block, all measured at ROW_H.
-  const resultRows = 3 + options.summary.warnings.length;
-  const fixedH = 33 + 3 * ROW_H + 1.5;
-  const tableH = 7 * ROW_H + 2 + 7 * ROW_H;
-  const resultsH = resultRows * ROW_H;
-  let rowH = ROW_H;
-  let graphH = graphNaturalH;
-  // Single-pass fit: rows compress first (4.2 -> 3.4mm), then the graph shrinks
-  // (never below MIN_GRAPH_H — the chart is mandatory). Anything that still
-  // cannot fit moves the graph to its own second page rather than squeezing
-  // the results block or the graph past the footer.
-  const need = fixedH + tableH + resultsH + 2 + graphH + 2;
-  const have = contentBottom - topY;
-  // Solve directly: total = fixedH + 14*rowH + 2 + resultRows*rowH + 2 + graphH.
-  const fittedRowH = (have - fixedH - 2 - 2 - graphNaturalH) / (14 + resultRows);
-  let paginateGraph = false;
-  if (need > have) {
-    if (fittedRowH >= MIN_ROW_H) {
-      rowH = fittedRowH;
-    } else {
-      paginateGraph = true;
-      rowH = MIN_ROW_H;
-      graphH = graphNaturalH;
+  sheets.forEach((sheet, sheetIndex) => {
+    if (sheetIndex > 0) doc.addPage();
+    const pageOptions = { ...sheet, samples: undefined };
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const x = MARGIN;
+    const topY = 10;
+    const footerY = pageHeight - 20;
+    const contentBottom = footerY - 6;
+    const sampleName = pageOptions.record.label || pageOptions.record.sampleNumber || `Sample ${sheetIndex + 1}`;
+
+    const graphNaturalH = Math.min((CONTENT_W * REF_BLOCK_H_UNITS) / REF_BLOCK_UNITS, MAX_GRAPH_H);
+    const resultRows = 3 + pageOptions.summary.warnings.length;
+    const fixedH = 33 + 3 * ROW_H + 1.5;
+    const tableH = 7 * ROW_H + 2 + 7 * ROW_H;
+    let rowH = ROW_H;
+    let graphH = graphNaturalH;
+    const need = fixedH + tableH + resultRows * ROW_H + 2 + graphH + 2;
+    const have = contentBottom - topY;
+    const fittedRowH = (have - fixedH - 2 - 2 - graphNaturalH) / (14 + resultRows);
+    let paginateGraph = false;
+    if (need > have) {
+      if (fittedRowH >= MIN_ROW_H) {
+        rowH = fittedRowH;
+      } else {
+        paginateGraph = true;
+        rowH = MIN_ROW_H;
+        graphH = graphNaturalH;
+      }
     }
-  }
 
-  const finishPage = (label: string): void => {
-    // Footer last, on the reserved band — content above can never overlap it.
-    drawFooter(doc, options, images, footerY);
-    doc.setFontSize(7);
-    doc.setTextColor(120, 120, 120);
-    doc.setFont("helvetica", "normal");
-    doc.text(label, pageWidth / 2, pageHeight - 6, { align: "center" });
-    doc.text(`Generated: ${new Date().toLocaleDateString()}`, MARGIN, pageHeight - 6);
-  };
+    const finishPage = (pageNumber: number, pageCount: number): void => {
+      drawFooter(doc, pageOptions, images, footerY);
+      doc.setFontSize(7);
+      doc.setTextColor(120, 120, 120);
+      doc.setFont("helvetica", "normal");
+      doc.text(`${sampleName} · Page ${pageNumber} of ${pageCount}`, pageWidth / 2, pageHeight - 6, { align: "center" });
+      doc.text(`Generated: ${new Date().toLocaleDateString()}`, MARGIN, pageHeight - 6);
+    };
 
-  const headerH = Math.max(4.5, Math.min(6, rowH * 1.45));
-  let y = drawTitleBlock(doc, x, topY, CONTENT_W, options, images);
-  y = drawHeader(doc, x, y, options, rowH) + 1.5;
-  y = drawBulkTable(doc, x, y, options, rowH, headerH) + 2;
-  y = drawMoistureTable(doc, x, y, options, rowH, headerH) + 2;
+    const headerH = Math.max(4.5, Math.min(6, rowH * 1.45));
+    let y = drawTitleBlock(doc, x, topY, CONTENT_W, pageOptions, images);
+    y = drawHeader(doc, x, y, pageOptions, rowH) + 1.5;
+    y = drawBulkTable(doc, x, y, pageOptions, rowH, headerH) + 2;
+    y = drawMoistureTable(doc, x, y, pageOptions, rowH, headerH) + 2;
 
-  if (!paginateGraph) {
-    const graphBudget = Math.max(contentBottom - y - resultsBlockHeight(options, rowH) - 2, MIN_GRAPH_H);
-    const fittedGraphH = Math.min(graphH, graphBudget);
-    y = drawMcGraph(doc, x, y, CONTENT_W, options, fittedGraphH) + 2;
-    drawResults(doc, x, y, options, rowH);
-    finishPage("Page 1 of 1");
-  } else {
-    drawResults(doc, x, y, options, rowH);
-    finishPage("Page 1 of 2");
-    doc.addPage();
-    drawMcGraph(doc, x, topY, CONTENT_W, options, graphH);
-    finishPage("Page 2 of 2");
-  }
+    if (!paginateGraph) {
+      const graphBudget = Math.max(contentBottom - y - resultsBlockHeight(pageOptions, rowH) - 2, MIN_GRAPH_H);
+      const fittedGraphH = Math.min(graphH, graphBudget);
+      y = drawMcGraph(doc, x, y, CONTENT_W, pageOptions, fittedGraphH) + 2;
+      drawResults(doc, x, y, pageOptions, rowH);
+      finishPage(1, 1);
+    } else {
+      drawResults(doc, x, y, pageOptions, rowH);
+      finishPage(1, 2);
+      doc.addPage();
+      drawMcGraph(doc, x, topY, CONTENT_W, pageOptions, graphH);
+      finishPage(2, 2);
+    }
+  });
 
   if (!options.skipDownload) {
     doc.save(pdfFileName(options.projectName, "Density_Moisture_Content"));
