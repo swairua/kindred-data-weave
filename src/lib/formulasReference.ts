@@ -56,7 +56,7 @@ export interface FormulaSection {
   entries: FormulaEntry[];
 }
 
-export const FORMULAS_REFERENCE_VERSION = "1.7.0";
+export const FORMULAS_REFERENCE_VERSION = "1.7.1";
 
 export const FORMULAS_REFERENCE_TITLE = "Calculations and Formulas Reference";
 
@@ -440,8 +440,8 @@ export const FORMULA_SECTIONS: FormulaSection[] = [
         ],
         notes: [
           "A point with any missing measurement yields no densities rather than a partial result.",
-          "The moisture content divides by the container tare: a tin weight entered one column over, or a tare left at zero, silently turns a 10% moisture content into several hundred per cent.",
-          "Entry checks flag a moisture content above 60% (implausible for a compacted soil), a dry density above the particle density, a container or mould tare of zero, and any point whose masses fail the physical checks - see proctorRowWarnings.",
+          "The moisture content divides by the container tare: a tin weight entered one column over silently turns a 10% moisture content into several hundred per cent. A container tare of 0 g is legitimate (the recorded masses are then net of tin) and is not flagged.",
+          "Entry checks flag a moisture content above 60% (implausible for a compacted soil), a dry density above the particle density, a mould tare of zero, and any point whose masses fail the physical checks - see proctorRowWarnings.",
         ],
         sourceModule: "proctorRecords",
         sourceFunctions: ["calculateProctorPoint", "proctorRowWarnings"],

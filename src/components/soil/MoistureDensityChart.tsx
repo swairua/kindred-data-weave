@@ -2,8 +2,9 @@ import {
   formatDensityTick,
   formatMoistureTick,
   mcCurvePath,
+  mcPointInRect,
   mcScales,
-  mcTickLabelStride,
+  mcTickLabelIndices,
   mcVoidSamples,
   toMcPlotPoints,
   voidLineCaption,
@@ -53,9 +54,12 @@ interface MoistureDensityChartProps {
 export default function MoistureDensityChart({ points, fitted, voidLines, axisLimits, id, className }: MoistureDensityChartProps) {
   const scales = mcScales(points, [fitted, ...voidLines.map((line) => line.points)], axisLimits);
   // Gridlines stay on every tick; only the captions thin out so a stray wide
-  // axis can never stack dozens of overlapping labels.
-  const yLabelStride = mcTickLabelStride(scales.y.ticks, 12);
-  const xLabelStride = mcTickLabelStride(scales.x.ticks, 14);
+  // axis can never stack dozens of overlapping labels. Both end ticks always keep their caption.
+  const xLabelIndices = new Set(mcTickLabelIndices(scales.x.ticks.length, 14));
+  const yLabelIndices = new Set(mcTickLabelIndices(scales.y.ticks.length, 12));
+  const plotRect = { x: PLOT.x, y: PLOT.y, width: PLOT.w, height: PLOT.h };
+  // A clip path keeps the curve, the points and the void lines inside the plot, however the axis is windowed.
+  const clipId = id ? `${id}-clip` : "mc-plot-clip";
   const measured = toMcPlotPoints(points, PLOT.w, PLOT.h, scales.x, scales.y);
   const curve = toMcPlotPoints(fitted, PLOT.w, PLOT.h, scales.x, scales.y);
   /** Converts a plotted position back into absolute millimetres on the sheet. */
@@ -72,6 +76,12 @@ export default function MoistureDensityChart({ points, fitted, voidLines, axisLi
         role="img"
         aria-label="Dry density moisture content relationship graph, dry density against moisture content"
       >
+        <defs>
+          <clipPath id={clipId}>
+            <rect x={PLOT.x} y={PLOT.y} width={PLOT.w} height={PLOT.h} />
+          </clipPath>
+        </defs>
+
         <rect x={FRAME.x} y={FRAME.y} width={FRAME.w} height={FRAME.h} fill="#ffffff" stroke={CURVE_COLOR} strokeWidth={FRAME_WIDTH} />
 
         {/* Plot area: one uniform pink field, as printed. */}
@@ -88,35 +98,41 @@ export default function MoistureDensityChart({ points, fitted, voidLines, axisLi
         <line x1={PLOT.x} y1={PLOT.y} x2={PLOT.x} y2={PLOT.y + PLOT.h} stroke={VOID_COLOR} strokeWidth={AXIS_WIDTH} />
         <line x1={PLOT.x} y1={PLOT.y + PLOT.h} x2={PLOT.x + PLOT.w} y2={PLOT.y + PLOT.h} stroke={VOID_COLOR} strokeWidth={AXIS_WIDTH} />
 
-        {/* Air voids lines sit behind the compaction curve, dashed, each captioned near its top. */}
-        {voidLines.map((line) => {
-          const samples = mcVoidSamples(line.points, PLOT.w, PLOT.h, scales.x, scales.y);
-          if (samples.length < 2) return null;
-          const captionAt = place(samples[Math.round((samples.length - 1) * 0.12)]);
-          return (
-            <g key={`void-${line.percent}`}>
-              <polyline
-                points={samples.map((point) => `${(PLOT.x + point.x).toFixed(2)},${(PLOT.y + point.y).toFixed(2)}`).join(" ")}
-                fill="none"
-                stroke={VOID_COLOR}
-                strokeWidth={0.6}
-                strokeDasharray="2.4 1.6"
-              />
-              <text x={captionAt.x} y={captionAt.y + 7} fontFamily={FONT} fontSize={5.4} fontWeight="bold" fill={VOID_COLOR} textAnchor="middle">
-                {voidLineCaption(line.percent)}
-              </text>
-            </g>
-          );
-        })}
+        {/* Plotted data is clipped to the pink plot rectangle, so a manual axis window never spills onto the frame, the captions or the titles. */}
+        <g clipPath={`url(#${clipId})`}>
+          {voidLines.map((line) => {
+            const samples = mcVoidSamples(line.points, PLOT.w, PLOT.h, scales.x, scales.y);
+            if (samples.length < 2) return null;
+            const captionAt = place(samples[Math.round((samples.length - 1) * 0.12)]);
+            // Skip the caption rather than print it half-cut over the frame when the line sits outside the window.
+            const captionVisible = mcPointInRect(captionAt, plotRect);
+            return (
+              <g key={`void-${line.percent}`}>
+                <polyline
+                  points={samples.map((point) => `${(PLOT.x + point.x).toFixed(2)},${(PLOT.y + point.y).toFixed(2)}`).join(" ")}
+                  fill="none"
+                  stroke={VOID_COLOR}
+                  strokeWidth={0.6}
+                  strokeDasharray="2.4 1.6"
+                />
+                {captionVisible && (
+                  <text x={captionAt.x} y={captionAt.y + 7} fontFamily={FONT} fontSize={5.4} fontWeight="bold" fill={VOID_COLOR} textAnchor="middle">
+                    {voidLineCaption(line.percent)}
+                  </text>
+                )}
+              </g>
+            );
+          })}
 
-        {/* The fitted compaction curve is the chart's only curve, matching the
-            single-curve laboratory sheets. */}
-        {curve.length > 1 && <path d={mcCurvePath(curve.map(place))} fill="none" stroke={CURVE_COLOR} strokeWidth={0.74} />}
-        {measured.map((point, index) => {
-          const position = place(point);
-          return <circle key={`measured-${index}`} cx={position.x} cy={position.y} r={2.2} fill={CURVE_COLOR} />;
-        })}
-{scales.y.ticks.map((value, index) => index % yLabelStride === 0 && (
+          {/* The fitted compaction curve is the chart's only curve, matching the
+              single-curve laboratory sheets. */}
+          {curve.length > 1 && <path d={mcCurvePath(curve.map(place))} fill="none" stroke={CURVE_COLOR} strokeWidth={0.74} />}
+          {measured.map((point, index) => {
+            const position = place(point);
+            return <circle key={`measured-${index}`} cx={position.x} cy={position.y} r={2.2} fill={CURVE_COLOR} />;
+          })}
+        </g>
+{scales.y.ticks.map((value, index) => yLabelIndices.has(index) && (
           <text
             key={`y-label-${value}`}
             x={PLOT.x - 3}
@@ -144,7 +160,7 @@ export default function MoistureDensityChart({ points, fitted, voidLines, axisLi
           Dry Density (kg/m³)
         </text>
 
-        {scales.x.ticks.map((value, index) => index % xLabelStride === 0 && (
+        {scales.x.ticks.map((value, index) => xLabelIndices.has(index) && (
           <text
             key={`x-label-${value}`}
             x={tickX(value)}

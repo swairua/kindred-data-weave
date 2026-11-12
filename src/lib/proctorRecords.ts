@@ -226,8 +226,8 @@ export const POINT_LABELS = ["A", "B", "C", "D", "E", "F"];
 
 /**
  * Moisture contents a compacted soil cannot plausibly reach. The moisture formula
- * divides by the container tare, so a tin weight typed one column over - or a tare
- * left at zero - silently turns a 10% moisture content into several hundred per cent.
+ * divides by the container tare, so a tin weight typed one column over can silently
+ * turn a 10% moisture content into several hundred per cent.
  */
 export const PLAUSIBLE_MOISTURE_MAX = 60;
 
@@ -570,8 +570,9 @@ export const calculateProctorPoint = (row: ProctorRow, mouldVolume: string): Pro
  * Data-entry checks for one compaction point (BS 1377-4:1990, 3.3).
  *
  * The moisture content divides by the container tare, so a tin weight entered one
- * column over - or a tare left at zero - silently turns a 10% moisture content
- * into several hundred per cent and drags the dry densities down with it. These
+ * column over can silently turn a 10% moisture content into several hundred per cent
+ * and drag the dry densities down with it. A container tare of 0 g is a legitimate
+ * lab convention (net masses) and does not raise a warning. These
  * warnings flag the impossible readings instead of plotting them without comment.
  * A row still being typed holds blanks and stays quiet until all five masses are in.
  */
@@ -604,11 +605,6 @@ export const proctorRowWarnings = (row: ProctorRow, calculation: ProctorPointCal
   if (calculation.dryDensity > MAX_PLOTTED_DENSITY) {
     warnings.push(
       `Point ${label} dry density ${calculation.dryDensity.toFixed(0)} kg/m3 exceeds the particle density of the soil solids; check the mould volume and the masses.`,
-    );
-  }
-  if (containerTare === 0) {
-    warnings.push(
-      `Point ${label} container tare reads 0 g; enter the measured tin weight - an absent tare inflates the moisture content.`,
     );
   }
   if (mouldTare === 0) {

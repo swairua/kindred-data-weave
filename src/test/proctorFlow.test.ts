@@ -185,22 +185,20 @@ describe("Proctor calculations", () => {
     expect(calculation.dryDensity).toBeCloseTo(304.94, 1);
     expect(proctorRowWarnings(shifted, calculation, "A")).toEqual([
       "Point A moisture content 405.2% is outside the plausible range for a compacted soil (up to 60%); check that the tin tare sits in the Wt of container column and no mass has shifted a column.",
-      "Point A container tare reads 0 g; enter the measured tin weight - an absent tare inflates the moisture content.",
     ]);
   });
 
-  it("stays quiet on plausible readings and only reminds about a zero tare", () => {
+  it("stays quiet on plausible readings and accepts a zero container tare", () => {
     const good = point();
     const goodCalculation = calculateProctorPoint(good, "1000");
 
     expect(goodCalculation.moistureContent).toBe(10);
     expect(proctorRowWarnings(good, goodCalculation, "B")).toEqual([]);
 
+    // A zero container tare is a legitimate lab convention (net masses) and must not raise a warning.
     const zeroTare = point({ containerTare: "0" });
     const zeroTareCalculation = calculateProctorPoint(zeroTare, "1000");
-    expect(proctorRowWarnings(zeroTare, zeroTareCalculation, "B")).toEqual([
-      "Point B container tare reads 0 g; enter the measured tin weight - an absent tare inflates the moisture content.",
-    ]);
+    expect(proctorRowWarnings(zeroTare, zeroTareCalculation, "B")).toEqual([]);
   });
 
   it("warns when the mould tare is zero or a point fails its physical checks", () => {

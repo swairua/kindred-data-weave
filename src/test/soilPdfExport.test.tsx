@@ -84,8 +84,15 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
-/** Clicks the direct PDF button. */
+/** Clicks the Proctor PDF button and confirms the sample-selection dialog that follows. */
 const choosePdfExport = async () => {
+  fireEvent.click(await screen.findByRole("button", { name: "PDF" }));
+  // The Proctor PDF button opens a sample-selection dialog; the generator is only called once a selection is confirmed.
+  fireEvent.click(await screen.findByRole("button", { name: /Download (all \(1\)|1 selected)/ }));
+};
+
+/** Clicks the grading PDF button; it exports straight away with no selection dialog. */
+const choosePsdPdfExport = async () => {
   fireEvent.click(await screen.findByRole("button", { name: "PDF" }));
 };
 
@@ -236,7 +243,7 @@ describe("Particle Size Distribution PDF export", () => {
     expect(await screen.findByText(/Record results/)).toBeInTheDocument();
     expect(document.getElementById("grading-chart")).not.toBeNull();
 
-    await choosePdfExport();
+    await choosePsdPdfExport();
 
     await waitFor(() => expect(exportState.psdPdfPayloads).toHaveLength(1));
     const payload = exportState.psdPdfPayloads[0];
@@ -294,7 +301,7 @@ describe("Particle Size Distribution PDF export", () => {
 
     render(createElement(MemoryRouter, null, createElement(GradingTest, { testKey: "grading" })));
     expect(await screen.findByText(/Record results/)).toBeInTheDocument();
-    await choosePdfExport();
+    await choosePsdPdfExport();
 
     await waitFor(() => expect(exportState.psdPdfPayloads).toHaveLength(1));
     const payload = exportState.psdPdfPayloads[0];

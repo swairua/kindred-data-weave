@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Check, ChevronDown, FileDown, Loader2, Plus, Printer, Save } from "lucide-react";
+import { Check, ChevronDown, FileDown, Loader2, Plus, Printer, Save, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -106,8 +106,9 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exportSelection, setExportSelection] = useState<Set<number>>(new Set([0]));
   const [exportAction, setExportAction] = useState<"print" | "download">("print");
-  // Optional manual window for the vertical axis, e.g. 1300-1500 for a narrow
-  // band; both limits required and ordered, or the axis auto-fits.
+  // Y axis auto-fits by default (blank fields), which always includes the air-voids
+  // lines so they can never vanish off the sheet; the laboratory's working range
+  // (e.g. 1200-1600) can still be typed in, at the cost of clipping them out.
   const [yAxisMin, setYAxisMin] = useState("");
   const [yAxisMax, setYAxisMax] = useState("");
   // Arrow keys walk the weighing grid instead of leaving the technician to drag
@@ -195,6 +196,16 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
       }))
       .filter((line) => line.points.length > 1);
   }, [specificGravity, moistureRange, airVoidsTargets]);
+  // A manual window can hide every air-voids line (they sit far above the curve at high Gs).
+  // Warn when the window leaves no trace of them, rather than silently printing a sheet without them.
+  const voidLinesHidden = useMemo(() => {
+    if (!axisY || voidLines.length === 0) return false;
+    const densities = voidLines.flatMap((line) => line.points.map((point) => point.dryDensity));
+    if (densities.length === 0) return false;
+    const lo = Math.min(...densities);
+    const hi = Math.max(...densities);
+    return hi < axisY.min || lo > axisY.max;
+  }, [axisY, voidLines]);
   const summaries = useMemo(() => {
     const standard = calculateProctor(record.standardRows, record.standardMouldVolume, specificGravity);
     const modified = calculateProctor(record.modifiedRows, record.modifiedMouldVolume, specificGravity);
@@ -602,8 +613,14 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
           <span className="font-medium">Y axis (kg/m³):</span>
           <Input type="number" inputMode="numeric" min={0} value={yAxisMin} onChange={(event) => setYAxisMin(event.target.value)} aria-label="Y axis minimum dry density" placeholder="min" className="record-input h-7 w-20" />
           <Input type="number" inputMode="numeric" min={0} value={yAxisMax} onChange={(event) => setYAxisMax(event.target.value)} aria-label="Y axis maximum dry density" placeholder="max" className="record-input h-7 w-20" />
-          <span>leave blank to auto-fit</span>
+          <span>blank = auto-fit</span>
         </div>
+        {voidLinesHidden && (
+          <p role="alert" className="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-amber-700">
+            <TriangleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            This window hides all air-voids lines — clear both fields to auto-fit, or widen the range.
+          </p>
+        )}
         <table className="mt-3 w-full border-collapse overflow-hidden rounded-md border text-xs">
           <tbody>
             <tr className="border-b">

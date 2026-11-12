@@ -3,11 +3,14 @@ import { describe, expect, it } from "vitest";
 import {
   formatDensityTick,
   formatMoistureTick,
+  mcClipSegment,
   mcCurvePath,
   mcCurveSamples,
   mcMeasuredPath,
+  mcPointInRect,
   mcScale,
   mcScales,
+  mcTickLabelIndices,
   mcTickLabelStride,
   mcVoidSamples,
   toMcPlotPoints,
@@ -16,6 +19,7 @@ import {
   MC_Y_STEPS,
   type McPoint,
 } from "@/lib/mcChartGeometry";
+import { zeroAirVoidsCurve } from "@/lib/proctorRecords";
 import { psdCurvePath, psdCurveSamples } from "@/lib/psdChartGeometry";
 
 /** The six points of the printed sheet: 31.6 % to 41.9 % at 1270-1323 kg/m3. */
@@ -134,6 +138,17 @@ describe("moisture content axis", () => {
     const scales = mcScales(MEASURED, []);
     const projected = toMcPlotPoints(MEASURED, 300, 150, scales.x, scales.y);
 
+    // Ordered by moisture content regardless of the order given.
+    expect(projected.map((point) => point.x)).toEqual([...projected.map((point) => point.x)].sort((a, b) => a - b));
+    // The lowest reading sits inside the padded axis, not on its left edge, because the
+    // limits snap outwards to whole ticks.
+    expect(projected[0].x).toBeGreaterThan(0);
+    expect(projected.at(-1)!.x).toBeLessThan(300);
+    // The peak density is nearer the top of the plot than the lowest reading.
+    expect(projected[3].y).toBeLessThan(projected[5].y);
+  });
+});
+
 describe("compaction curve geometry", () => {
   it("returns no path for fewer than two points", () => {
     expect(mcCurvePath([{ x: 0, y: 0 }])).toBe("");
@@ -180,7 +195,7 @@ describe("compaction curve geometry", () => {
     expect(mcMeasuredPath([{ x: 0, y: 10 }, { x: 50, y: 20 }])).toBe("M 0.00 10.00 L 50.00 20.00");
   });
 
-  it("draws an air voids line straight across the measured moisture range", () => {
+  it("traces an air voids line across the measured moisture range", () => {
     const scales = mcScales(MEASURED, []);
     const samples = mcVoidSamples(
       [{ moisture: 30, dryDensity: 2000 }, { moisture: 40, dryDensity: 1800 }],
@@ -205,7 +220,7 @@ describe("compaction curve geometry", () => {
       { size: 20, passing: 12 },
     ];
 
-    expect(psdCurvePath(grading, 300, 150).startsWith("M 300.00 0.00")).toBe(true);
+    expect(psdCurvePath(grading, 300, 150).startsWith("M 107.96 0.00")).toBe(true);
     expect(psdCurveSamples(grading, 300, 150).length).toBeGreaterThan(3);
   });
 });
@@ -264,13 +279,85 @@ describe("printed tick captions", () => {
     expect(voidLineCaption(10)).toBe("10 % voids");
   });
 });
-    // Ordered by moisture content regardless of the order given.
-    expect(projected.map((point) => point.x)).toEqual([...projected.map((point) => point.x)].sort((a, b) => a - b));
-    // The lowest reading sits inside the padded axis, not on its left edge, because the
-    // limits snap outwards to whole ticks.
-    expect(projected[0].x).toBeGreaterThan(0);
-    expect(projected.at(-1)!.x).toBeLessThan(300);
-    // The peak density is nearer the top of the plot than the lowest reading.
-    expect(projected[3].y).toBeLessThan(projected[5].y);
+
+describe("air voids lines follow the hyperbola, not a chord", () => {
+  it("renders the 0% voids line at the true ZAV ordinate, not the chord midpoint", () => {
+    const curve = zeroAirVoidsCurve(2.7, [9.08, 19.75]);
+    const scales = mcScales(MEASURED, [curve]);
+    const samples = mcVoidSamples(curve, 300, 150, scales.x, scales.y, 25);
+
+    // Moisture 14.4% is the mid-span of the curve; the chord would sit well above the hyperbola there.
+    const midIndex = Math.round((samples.length - 1) / 2);
+    const midY = samples[midIndex].y;
+    const zav = (2700 / (1 + 0.14419 * 2.7));
+    const trueY = 150 - ((zav - scales.y.min) / (scales.y.max - scales.y.min)) * 150;
+    expect(midY).toBeCloseTo(trueY, 0);
+    // And it must sit on the convex side of the endpoints (below the chord).
+    expect(midY).toBeGreaterThan((samples[0].y + samples.at(-1)!.y) / 2 - 0.5);
+  });
+
+  it("follows a scaled (air-voids) curve as well as the ZAV line", () => {
+    const curve = zeroAirVoidsCurve(2.7, [9.08, 19.75]).map((p) => ({ moisture: p.moisture, dryDensity: p.dryDensity! * 0.95 }));
+    const scales = mcScales(MEASURED, [curve]);
+    const samples = mcVoidSamples(curve, 300, 150, scales.x, scales.y, 25);
+
+    expect(samples).toHaveLength(25);
+    expect(samples[0].x).toBeLessThan(samples.at(-1)!.x);
+    expect(samples[0].y).toBeLessThan(samples.at(-1)!.y);
+  });
+});
+
+describe("tick caption endpoints are always labelled", () => {
+  it.each([[4, 12], [6, 12], [13, 12], [14, 12], [16, 12], [24, 12], [6, 14], [7, 14], [16, 14], [30, 14]])(
+    "labels both end ticks for %i ticks with %i captions",
+    (count, cap) => {
+      const indices = mcTickLabelIndices(count, cap);
+      expect(indices[0]).toBe(0);
+      expect(indices.at(-1)).toBe(count - 1);
+      expect(indices).toEqual([...new Set(indices)].sort((a, b) => a - b));
+      expect(indices.length).toBeLessThanOrEqual(cap);
+    },
+  );
+
+  it("keeps a dense axis thinned without losing an endpoint", () => {
+    // A 405%-to-1240% moisture axis produces hundreds of candidate ticks; caps must hold.
+    const indices = mcTickLabelIndices(85, 14);
+    expect(indices[0]).toBe(0);
+    expect(indices.at(-1)).toBe(84);
+    expect(indices.length).toBeLessThanOrEqual(15);
+  });
+});
+
+describe("segments are clipped to the plot rectangle", () => {
+  const rect = { x: 10, y: 10, width: 100, height: 80 };
+
+  it("returns the original segment when it lies fully inside", () => {
+    const a = { x: 20, y: 30 };
+    const b = { x: 90, y: 70 };
+    expect(mcClipSegment(a, b, rect)).toEqual([a, b]);
+  });
+
+  it("rejects a segment that misses the rectangle entirely", () => {
+    expect(mcClipSegment({ x: 0, y: 0 }, { x: 5, y: 5 }, rect)).toBeNull();
+    expect(mcClipSegment({ x: 0, y: 120 }, { x: 200, y: 140 }, rect)).toBeNull();
+  });
+
+  it("clips a diagonally crossing segment to the boundary", () => {
+    const clipped = mcClipSegment({ x: 0, y: 0 }, { x: 60, y: 60 }, rect);
+    expect(clipped).not.toBeNull();
+    expect(clipped![0].x).toBeCloseTo(10, 6);
+    expect(clipped![0].y).toBeCloseTo(10, 6);
+    expect(clipped![1].x).toBeCloseTo(60, 6);
+    expect(clipped![1].y).toBeCloseTo(60, 6);
+  });
+
+  it("clips horizontal and vertical sweeps, and reports points inside and outside", () => {
+    const horizontal = mcClipSegment({ x: -10, y: 50 }, { x: 200, y: 50 }, rect);
+    expect(horizontal).toEqual([{ x: 10, y: 50 }, { x: 110, y: 50 }]);
+    const vertical = mcClipSegment({ x: 60, y: -10 }, { x: 60, y: 200 }, rect);
+    expect(vertical).toEqual([{ x: 60, y: 10 }, { x: 60, y: 90 }]);
+    expect(mcPointInRect({ x: 50, y: 50 }, rect)).toBe(true);
+    expect(mcPointInRect({ x: 50, y: 200 }, rect)).toBe(false);
+    expect(mcPointInRect({ x: -1, y: 50 }, rect)).toBe(false);
   });
 });

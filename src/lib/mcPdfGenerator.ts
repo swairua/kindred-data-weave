@@ -4,12 +4,15 @@ import { pdfFileName } from "./pdfGenerator";
 import {
   formatDensityTick,
   formatMoistureTick,
+  mcClipSegment,
   mcCurveSamples,
+  mcPointInRect,
   mcScales,
-  mcTickLabelStride,
+  mcTickLabelIndices,
   mcVoidSamples,
   toMcPlotPoints,
   voidLineCaption,
+  type McClipRect,
   type McPoint,
   type McVoidLine,
 } from "./mcChartGeometry";
@@ -335,6 +338,8 @@ const drawMcGraphVector = (d: jsPDF, x: number, y: number, w: number, o: Moistur
   const scales = mcScales(o.points, [o.fitted, ...o.voidLines.map((line) => line.points)], o.axisLimits);
   const blockX = (value: number) => PLOT_UNITS.x + ((value - scales.x.min) / (scales.x.max - scales.x.min)) * PLOT_UNITS.w;
   const blockY = (value: number) => PLOT_UNITS.y + PLOT_UNITS.h - ((value - scales.y.min) / (scales.y.max - scales.y.min)) * PLOT_UNITS.h;
+  // jsPDF has no clip-path primitive, so every drawn segment is clipped to the plot rectangle here.
+  const clipRect: McClipRect = { x: 0, y: 0, width: plot.w, height: plot.h };
 
   d.setFillColor(255, 255, 255);
   d.setDrawColor(...COLORS.curve);
@@ -368,14 +373,17 @@ const drawMcGraphVector = (d: jsPDF, x: number, y: number, w: number, o: Moistur
     d.setDrawColor(...COLORS.dark);
     d.setLineWidth(0.6 * type);
     for (let index = 1; index < samples.length; index += 1) {
+      const visible = mcClipSegment(samples[index - 1], samples[index], clipRect);
+      if (!visible) continue;
       dashedLine(
         d,
-        plot.x + samples[index - 1].x, plot.y + samples[index - 1].y,
-        plot.x + samples[index].x, plot.y + samples[index].y,
+        plot.x + visible[0].x, plot.y + visible[0].y,
+        plot.x + visible[1].x, plot.y + visible[1].y,
         2.4 * scale, 1.6 * scale,
       );
     }
     const captionAt = samples[Math.round((samples.length - 1) * 0.12)];
+    if (!mcPointInRect(captionAt, clipRect)) return;
     label(voidLineCaption(line.percent), PLOT_UNITS.x + captionAt.x / scale, PLOT_UNITS.y + captionAt.y / (scale * vScale) + 7, "center", 5.4, true);
   });
 const curve = mcCurveSamples(toMcPlotPoints(o.fitted, plot.w, plot.h, scales.x, scales.y));
@@ -387,31 +395,34 @@ const curve = mcCurveSamples(toMcPlotPoints(o.fitted, plot.w, plot.h, scales.x, 
     d.setDrawColor(...COLORS.curve);
     d.setLineWidth(0.74 * type);
     for (let index = 1; index < curve.length; index += 1) {
+      const visible = mcClipSegment(curve[index - 1], curve[index], clipRect);
+      if (!visible) continue;
       d.line(
-        plot.x + curve[index - 1].x, plot.y + curve[index - 1].y,
-        plot.x + curve[index].x, plot.y + curve[index].y,
+        plot.x + visible[0].x, plot.y + visible[0].y,
+        plot.x + visible[1].x, plot.y + visible[1].y,
       );
     }
   }
 
   d.setFillColor(...COLORS.curve);
   toMcPlotPoints(o.points, plot.w, plot.h, scales.x, scales.y).forEach((point) => {
+    if (!mcPointInRect(point, clipRect)) return;
     d.circle(plot.x + point.x, plot.y + point.y, 2.2 * scale, "F");
   });
 
   // Reset the draw colour: jsPDF keeps the last one for whatever is drawn next,
   // which would otherwise leave the rules under the results block red.
   d.setDrawColor(...COLORS.dark);
-  // Only captions thin out; the gridlines above stay on every tick.
-  const yLabelStride = mcTickLabelStride(scales.y.ticks, 12);
-  const xLabelStride = mcTickLabelStride(scales.x.ticks, 14);
+  // Only captions thin out; the gridlines above stay on every tick. Both end ticks always keep their caption.
+  const yLabelIndices = new Set(mcTickLabelIndices(scales.y.ticks.length, 12));
+  const xLabelIndices = new Set(mcTickLabelIndices(scales.x.ticks.length, 14));
   scales.y.ticks.forEach((value, index) => {
-    if (index % yLabelStride !== 0) return;
+    if (!yLabelIndices.has(index)) return;
     label(formatDensityTick(value), PLOT_UNITS.x - 3, blockY(value), "right", 5.4);
   });
   label("Dry Density (kg/m³)", PLOT_UNITS.x - 30, PLOT_UNITS.y + PLOT_UNITS.h / 2, "center", 7, true, 90);
   scales.x.ticks.forEach((value, index) => {
-    if (index % xLabelStride !== 0) return;
+    if (!xLabelIndices.has(index)) return;
     label(formatMoistureTick(value), blockX(value), 180, "center", 5.4);
   });
   label("Moisture Content (%)", PLOT_UNITS.x + PLOT_UNITS.w / 2, 190, "center", 7, true);

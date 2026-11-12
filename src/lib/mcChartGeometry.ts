@@ -186,9 +186,13 @@ export const mcMeasuredPath = (projected: ReadonlyArray<PlotPoint>): string =>
     .join(" ");
 
 /**
- * Air voids lines run over the measured moisture range only. They are sampled
- * evenly rather than fitted, because they are straight in the plotted rectangle
- * and the printable form draws them as straight dashed rules.
+ * Air voids lines run over the measured moisture range only. The lines are
+ * hyperbolic (rd = K / (1 + w.Gs/100)), not straight rules, so they are traced
+ * through the sampled points rather than chorded between the end points -
+ * a straight chord between the ends can sit tens of kg/m3 above the true line,
+ * and the error grows with Gs. The caller supplies the sampled curve (see
+ * zeroAirVoidsCurve/airVoidsCurve), which is interpolated piecewise-linearly;
+ * with 40 samples along the curve that is visually indistinguishable from it.
  */
 export const mcVoidSamples = (
   line: ReadonlyArray<McPoint>,
@@ -202,12 +206,21 @@ export const mcVoidSamples = (
   if (ordered.length < 2) return toMcPlotPoints(ordered, plotWidth, plotHeight, xScale, yScale);
   const first = ordered[0];
   const last = ordered[ordered.length - 1];
+  const dryDensityAt = (moisture: number): number => {
+    let index = 0;
+    // Largest left-hand bracket whose next point is at or beyond `moisture`.
+    while (index < ordered.length - 2 && ordered[index + 1].moisture < moisture) index += 1;
+    const from = ordered[index];
+    const to = ordered[index + 1];
+    const span = to.moisture - from.moisture;
+    if (span === 0) return from.dryDensity;
+    const t = (moisture - from.moisture) / span;
+    return from.dryDensity + (to.dryDensity - from.dryDensity) * t;
+  };
   const grid: McPoint[] = Array.from({ length: samples }, (_, index) => {
     const t = index / (samples - 1);
-    return {
-      moisture: first.moisture + (last.moisture - first.moisture) * t,
-      dryDensity: first.dryDensity + (last.dryDensity - first.dryDensity) * t,
-    };
+    const moisture = first.moisture + (last.moisture - first.moisture) * t;
+    return { moisture, dryDensity: dryDensityAt(moisture) };
   });
   return toMcPlotPoints(grid, plotWidth, plotHeight, xScale, yScale);
 };
@@ -218,6 +231,24 @@ export const formatMoistureTick = (value: number): string => value.toFixed(1);
 /** Dry density tick label: whole numbers, as printed on the sheet. */
 export const formatDensityTick = (value: number): string =>
   Number.isInteger(value) ? String(value) : value.toFixed(1);
+
+/**
+ * Label indices for a tick list: every `stride`-th tick, always including both
+ * end ticks, so an axis never loses its first or last value. Gridlines stay on
+ * every tick; only captions thin out, which keeps even a pathological axis
+ * legible. The final entry may sit closer to its neighbour than the others,
+ * but both axis ends are always captioned.
+ */
+export const mcTickLabelIndices = (count: number, maxLabels: number): number[] => {
+  if (count <= 0) return [];
+  const cap = Math.max(1, maxLabels);
+  if (count <= cap) return Array.from({ length: count }, (_, index) => index);
+  const stride = Math.max(1, Math.ceil((count - 1) / (cap - 1)));
+  const indices: number[] = [];
+  for (let index = 0; index < count; index += stride) indices.push(index);
+  if (indices[indices.length - 1] !== count - 1) indices.push(count - 1);
+  return indices;
+};
 
 /**
  * Label stride for a tick list: label every `stride`-th tick so at most
@@ -238,6 +269,59 @@ export const mcX = (moisture: number, plotWidth: number, scale: McScale): number
 /** Vertical position of a dry density within a plot of `plotHeight` units, lowest at the bottom. */
 export const mcY = (dryDensity: number, plotHeight: number, scale: McScale): number =>
   scale.max === scale.min ? plotHeight : plotHeight - ((dryDensity - scale.min) / (scale.max - scale.min)) * plotHeight;
+
+/** Axis-aligned clipping rectangle, in plot-local units. */
+export interface McClipRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Clip the straight segment a-b to an axis-aligned rectangle (Liang-Barsky).
+ * Returns the visible sub-segment, or null when the segment misses the rect.
+ * Used by the native jsPDF graph, which has no clip-path primitive.
+ */
+export const mcClipSegment = (
+  a: PlotPoint,
+  b: PlotPoint,
+  rect: McClipRect,
+): [PlotPoint, PlotPoint] | null => {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const left = rect.x;
+  const right = rect.x + rect.width;
+  const top = rect.y;
+  const bottom = rect.y + rect.height;
+  let t0 = 0;
+  let t1 = 1;
+  const clip = (p: number, q: number): boolean => {
+    if (p === 0) return q >= 0; // Parallel to this boundary; keep if it lies inside.
+    const r = q / p;
+    if (p < 0) {
+      if (r > t1) return false;
+      if (r > t0) t0 = r;
+    } else {
+      if (r < t0) return false;
+      if (r < t1) t1 = r;
+    }
+    return true;
+  };
+  if (!clip(-dx, a.x - left)) return null;
+  if (!clip(dx, right - a.x)) return null;
+  if (!clip(-dy, a.y - top)) return null;
+  if (!clip(dy, bottom - a.y)) return null;
+  if (t0 > t1) return null;
+  return [
+    { x: a.x + t0 * dx, y: a.y + t0 * dy },
+    { x: a.x + t1 * dx, y: a.y + t1 * dy },
+  ];
+};
+
+/** True when a plot-local point falls inside the plot rect (captions and markers). */
+export const mcPointInRect = (point: PlotPoint, rect: McClipRect): boolean =>
+  point.x >= rect.x && point.x <= rect.x + rect.width && point.y >= rect.y && point.y <= rect.y + rect.height;
 
 /** A point is drawable only when both readings are finite. */
 export const isMcPoint = (point: McPoint | null | undefined): point is McPoint =>
