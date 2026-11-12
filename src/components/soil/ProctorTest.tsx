@@ -62,7 +62,8 @@ const displayValue = (value: number | null) => value === null ? "—" : value.to
 const displayMoisture = (value: number | null) => value === null ? "—" : value.toFixed(1);
 const displayDensity = (value: number | null) => value === null ? "—" : value.toFixed(0);
 const hasValue = (value: string) => value.trim() !== "";
-const optionalNumber = (value: string) => {
+const optionalNumber = (value: string | null | undefined) => {
+  if (value == null) return null;
   const parsed = value.trim() === "" ? null : Number(value);
   return parsed === null || !Number.isFinite(parsed) ? null : parsed;
 };
@@ -95,6 +96,9 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
   const setVolumeKey = type === "standard" ? "standardMouldVolume" : "modifiedMouldVolume";
   const effort = type === "standard" ? record.standardEffort : record.modifiedEffort;
   const setEffortKey = type === "standard" ? "standardEffort" : "modifiedEffort";
+  const displayedBulkDensity = optionalNumber(record.reportedBulkDensity);
+  const displayedMdd = record.reportedMdd ?? optimum.mdd;
+  const displayedOmc = record.reportedOmc ?? optimum.omc;
   const energy = compactionEnergy(effort, mouldVolume);
 
   useEffect(() => {
@@ -453,7 +457,6 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
           <ResultField label="Maximum Dry Density (kg/m³)" value={displayDensity(optimum.mdd)} />
           <ResultField label="Bulk Density at OMC (kg/m³)" value={displayDensity(optimum.bulkDensity)} />
           <ResultField label="Optimum Moisture Content (%)" value={displayMoisture(optimum.omc)} />
-          <ResultField label="Determined From" value={optimum.optimumSource === "curve" ? `Fitted curve (R2 ${optimum.rSquared === null ? "—" : optimum.rSquared.toFixed(3)})` : optimum.optimumSource === "peak-point" ? "Densest measured point" : "—"} />
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground">
           <label className="flex items-center gap-2" title="Maximum dry density printed on the source test sheet.">

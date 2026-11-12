@@ -59,6 +59,8 @@ export interface ProctorRecord {
   reportedOmc: string;
   /** Maximum dry density as reported on the source test sheet. Blank when not reported. */
   reportedMdd: string;
+  /** Bulk density at the reported optimum, as reported on the source test sheet. Blank when not reported. */
+  reportedBulkDensity: string;
 }
 
 export interface ProctorPointCalculation {
@@ -502,6 +504,7 @@ export const normalizeProctorRecord = (value: unknown, metadata: RecordMetadata 
     requiredRelativeCompaction: readString(source.requiredRelativeCompaction),
     reportedOmc: readString(source.reportedOmc),
     reportedMdd: readString(source.reportedMdd),
+    reportedBulkDensity: readString(source.reportedBulkDensity),
   };
 };
 
