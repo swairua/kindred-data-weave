@@ -80,7 +80,6 @@ export interface ProctorCurveFit {
   a: number;
   b: number;
   c: number;
-  rSquared: number;
   omc: number;
   mdd: number;
 }
@@ -98,7 +97,6 @@ export interface ProctorSummary {
   bulkDensity: number | null;
   optimumSource: ProctorOptimumSource;
   curve: ProctorCurveFit | null;
-  rSquared: number | null;
   /** Number of valid moisture contents plotted. */
   pointCount: number;
   /** Reasons the reported optimum may be unreliable (BS 1377-4:1990, 3.3). */
@@ -201,9 +199,6 @@ const CURVE_MIN_POINTS = 3;
 /** BS 1377-4 practice is to plot at least five moisture contents bracketing the peak. */
 const CURVE_RECOMMENDED_POINTS = 5;
 
-/** A weaker fit than this is flagged so the technician re-checks the readings. */
-const CURVE_MIN_R_SQUARED = 0.9;
-
 /** Particle density range of mineral soils; values outside it usually mean a placeholder or a transcription error. */
 const MINERAL_SOIL_GS_RANGE = { min: 2.4, max: 2.9 };
 
@@ -241,9 +236,9 @@ const solve3 = (m: number[][], v: number[]): number[] | null => {
 };
 
 /**
- * Least-squares parabola through all plotted points, read at its vertex as OMC/MDD. The fit is
- * rejected unless the curve opens downward and the vertex lies between the neighbours of the
- * measured maximum, so the peak is bracketed.
+ * Parabola through the measured peak and its two neighbours, read at its vertex as OMC/MDD.
+ * With the peak strictly interior, a parabola through the three points is downward opening and
+ * its vertex lies between the outer two, so the peak is always bracketed by measurements.
  */
 export const fitCompactionCurve = (points: ProctorCurvePoint[]): ProctorCurveFit | null => {
   const samples = points
@@ -253,37 +248,23 @@ export const fitCompactionCurve = (points: ProctorCurvePoint[]): ProctorCurveFit
   if (new Set(samples.map((point) => point.moisture)).size < CURVE_MIN_POINTS) return null;
 
   const peakDensity = Math.max(...samples.map((point) => point.dryDensity));
-  const peakIndex = samples.findIndex((point) => point.dryDensity === peakDensity);
   if (samples.filter((point) => point.dryDensity === peakDensity).length !== 1) return null;
+  const peakIndex = samples.findIndex((point) => point.dryDensity === peakDensity);
   if (peakIndex === 0 || peakIndex === samples.length - 1) return null;
 
-  const power = (k: number) => samples.reduce((sum, point) => sum + point.moisture ** k, 0);
-  const moment = (k: number) => samples.reduce((sum, point) => sum + point.moisture ** k * point.dryDensity, 0);
+  const bracket = samples.slice(peakIndex - 1, peakIndex + 2);
   const solved = solve3(
-    [
-      [power(0), power(1), power(2)],
-      [power(1), power(2), power(3)],
-      [power(2), power(3), power(4)],
-    ],
-    [moment(0), moment(1), moment(2)],
+    bracket.map((point) => [point.moisture ** 2, point.moisture, 1]),
+    bracket.map((point) => point.dryDensity),
   );
   if (!solved) return null;
-  const [c, b, a] = solved;
+  const [a, b, c] = solved;
   if (a >= 0) return null;
 
   const omc = -b / (2 * a);
   const mdd = a * omc * omc + b * omc + c;
   if (!Number.isFinite(omc) || !Number.isFinite(mdd) || mdd <= 0) return null;
-  if (omc < samples[peakIndex - 1].moisture || omc > samples[peakIndex + 1].moisture) return null;
-
-  const mean = samples.reduce((sum, point) => sum + point.dryDensity, 0) / samples.length;
-  const totalSpread = samples.reduce((sum, point) => sum + (point.dryDensity - mean) ** 2, 0);
-  const residualSpread = samples.reduce((sum, point) => {
-    const predicted = a * point.moisture ** 2 + b * point.moisture + c;
-    return sum + (point.dryDensity - predicted) ** 2;
-  }, 0);
-  const rSquared = totalSpread <= 0 ? (residualSpread <= 0 ? 1 : 0) : 1 - residualSpread / totalSpread;
-  return { a, b, c, rSquared, omc, mdd };
+  return { a, b, c, omc, mdd };
 };
 
 
@@ -396,7 +377,6 @@ const emptySummary = (): ProctorSummary => ({
   bulkDensity: null,
   optimumSource: "none",
   curve: null,
-  rSquared: null,
   pointCount: 0,
   warnings: [],
 });
@@ -416,9 +396,6 @@ const proctorWarnings = (points: ProctorCurvePoint[], fit: ProctorCurveFit | nul
   }
   if (points.length >= CURVE_MIN_POINTS && !fit) {
     warnings.push("A stable compaction curve could not be fitted; OMC and MDD are taken from the highest measured point.");
-  }
-  if (fit && fit.rSquared < CURVE_MIN_R_SQUARED) {
-    warnings.push(`Curve fit is poor (R2 = ${fit.rSquared.toFixed(2)}); check the readings and that the points bracket the peak.`);
   }
   if (specificGravity !== null) {
     if (specificGravity < MINERAL_SOIL_GS_RANGE.min || specificGravity > MINERAL_SOIL_GS_RANGE.max) {
@@ -567,10 +544,18 @@ export const calculateProctorPoint = (row: ProctorRow, mouldVolume: string): Pro
 
 /** Only a bracketed fitted curve through enough points is reportable as complete (BS 1377-4:1990, 3.3). */
 export const isReportableOptimum = (summary: ProctorSummary): boolean =>
-  summary.optimumSource === "curve"
-  && summary.pointCount >= CURVE_RECOMMENDED_POINTS
-  && summary.rSquared !== null
-  && summary.rSquared >= CURVE_MIN_R_SQUARED;
+  summary.optimumSource === "curve" && summary.pointCount >= CURVE_RECOMMENDED_POINTS;
+
+/** Replaces the calculated OMC/MDD with the values printed on the source sheet wherever they are entered. */
+export const applyReportedOptimum = (summary: ProctorSummary, reportedOmc: string, reportedMdd: string): ProctorSummary => {
+  const omc = parseValue(reportedOmc);
+  const mdd = parseValue(reportedMdd);
+  return {
+    ...summary,
+    omc: omc !== null && Number.isFinite(omc) ? omc : summary.omc,
+    mdd: mdd !== null && Number.isFinite(mdd) ? mdd : summary.mdd,
+  };
+};
 
 /**
  * Optimum moisture content and maximum dry density for one compaction method.
@@ -605,7 +590,6 @@ export const calculateProctor = (
       bulkDensity: fit.mdd * (1 + fit.omc / 100),
       optimumSource: "curve",
       curve: fit,
-      rSquared: fit.rSquared,
       pointCount: points.length,
       warnings,
     };
@@ -619,7 +603,6 @@ export const calculateProctor = (
     bulkDensity: peakMeasurement.bulkDensity,
     optimumSource: "peak-point",
     curve: null,
-    rSquared: null,
     pointCount: points.length,
     warnings,
   };

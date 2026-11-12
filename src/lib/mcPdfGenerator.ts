@@ -292,14 +292,12 @@ const resultRows = (o: MoistureDensityPdfOptions): Cell[][] => {
       },
     ],
   ];
-  if (summary.rSquared !== null) {
-    rows.push([
-      { w: 44, text: "Curve R²:", label: true, bold: true, size: 5.8 },
-      { w: 26, text: summary.rSquared.toFixed(4), align: "center" },
-      { w: 60, text: "Particle density (Gs):", label: true, bold: true, size: 5.8, align: "right" },
-      { w: 60, text: num(Number.parseFloat(o.record.specificGravity), 2), align: "center" },
-    ]);
-  }
+  rows.push([
+    { w: 44, text: "Particle density (Gs):", label: true, bold: true, size: 5.8 },
+    { w: 26, text: num(Number.parseFloat(o.record.specificGravity), 2), align: "center" },
+    { w: 60, text: BLANK, label: true, bold: true, size: 5.8, align: "right" },
+    { w: 60, text: BLANK, align: "center" },
+  ]);
   if (o.record.reportedMdd || o.record.reportedOmc) {
     rows.push([
       { w: 44, text: "Reported MDD (kg/m³):", label: true, bold: true, size: 5.8 },
@@ -606,7 +604,7 @@ export const generateMoistureDensityPDF = async (options: MoistureDensityPdfOpti
   const graphNaturalH = Math.min((CONTENT_W * REF_BLOCK_H_UNITS) / REF_BLOCK_UNITS, MAX_GRAPH_H);
   // Fixed overhead above the data tables (title block ~33 + 3 header rows + gaps)
   // plus the two 7-row tables and the results block, all measured at ROW_H.
-  const resultRows = 2 + (options.summary.rSquared !== null ? 1 : 0) + options.summary.warnings.length;
+  const resultRows = 3 + options.summary.warnings.length;
   const fixedH = 33 + 3 * ROW_H + 1.5;
   const tableH = 7 * ROW_H + 2 + 7 * ROW_H;
   const resultsH = resultRows * ROW_H;
