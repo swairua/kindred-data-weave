@@ -50,6 +50,11 @@ export interface RecordMetadata {
   dateSubmitted?: string;
   dateTested?: string;
   testedBy?: string;
+  towerLocation?: string;
+  concreteClass?: string;
+  ageOfConcrete?: string;
+  dateReported?: string;
+  checkedBy?: string;
 }
 
 // Concrete-specific test metadata

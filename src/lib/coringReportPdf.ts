@@ -127,6 +127,17 @@ const fitFontSize = (doc: jsPDF, text: string, maxW: number, size: number, min: 
   return textWidth <= maxW ? size : Math.max(min, (size * maxW) / textWidth);
 };
 
+const fitWrappedLabel = (doc: jsPDF, label: string, maxW: number, h: number): { size: number; lines: string[] } => {
+  doc.setFont("helvetica", "normal");
+  for (let size = 7.5; size >= 5; size -= 0.25) {
+    doc.setFontSize(size);
+    const lines = doc.splitTextToSize(label, maxW) as string[];
+    if (lines.length <= 2 && lines.length * size * 1.2 <= h - 2) return { size, lines };
+  }
+  doc.setFontSize(5);
+  return { size: 5, lines: doc.splitTextToSize(label, maxW) as string[] };
+};
+
 const drawCell = (doc: jsPDF, x: number, y: number, w: number, h: number, label: string, value: string, dividerAt?: number) => {
   doc.setDrawColor(0);
   doc.setLineWidth(0.4);
@@ -135,19 +146,19 @@ const drawCell = (doc: jsPDF, x: number, y: number, w: number, h: number, label:
   const text = value || "—";
   const mid = y + h / 2;
 
-  doc.setFont("helvetica", "bold");
+  doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   const valueReserve = Math.min(doc.getTextWidth(text), w * 0.35);
 
-  doc.setFont("helvetica", "normal");
   const labelMaxW = dividerAt !== undefined ? dividerAt - 6 : w - valueReserve - 14;
-  const labelSize = fitFontSize(doc, label, labelMaxW, 6.5, 4.5);
-  doc.setFontSize(labelSize);
-  const labelW = doc.getTextWidth(label);
-  doc.setTextColor(60);
-  doc.text(label, x + 2, mid + labelSize * 0.35);
+  const { size: labelSize, lines } = fitWrappedLabel(doc, label, labelMaxW, h);
+  const lineH = labelSize * 1.2;
+  const firstBaseline = mid - ((lines.length - 1) * lineH) / 2 + labelSize * 0.35;
+  doc.setTextColor(0);
+  lines.forEach((line, i) => doc.text(line, x + 2, firstBaseline + i * lineH));
+  const labelW = Math.max(...lines.map((line) => doc.getTextWidth(line)));
 
-  doc.setFont("helvetica", "bold");
+  doc.setFont("helvetica", "normal");
   doc.setTextColor(0);
   const valueMaxW = dividerAt !== undefined ? w - dividerAt - 4 : w - labelW - 14;
   const valueSize = fitFontSize(doc, text, valueMaxW, 8, 6);
@@ -160,12 +171,12 @@ const drawInlineCell = (doc: jsPDF, x: number, y: number, w: number, label: stri
   doc.setLineWidth(0.4);
   doc.rect(x, y, w, ROW_H);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  doc.setTextColor(60);
+  doc.setTextColor(0);
   let valueX = x + w / 2;
   let valueAlign: "left" | "center" = "center";
   let maxW = w - 4;
   if (label) {
+    doc.setFontSize(fitFontSize(doc, label, w * 0.6, 7.5, 5.5));
     doc.text(label, x + 2, y + 6);
     const labelW = doc.getTextWidth(label);
     valueX = x + labelW + 5;
@@ -173,7 +184,6 @@ const drawInlineCell = (doc: jsPDF, x: number, y: number, w: number, label: stri
     maxW = w - labelW - 7;
   }
   if (!value) return;
-  doc.setFont("helvetica", "bold");
   doc.setTextColor(0);
   doc.setFontSize(fitFontSize(doc, value, maxW, 8, 6));
   doc.text(value, valueX, y + 6, { align: valueAlign });
@@ -269,14 +279,14 @@ const drawCorePage = (doc: jsPDF, project: CoringProjectInfo, core: CoringCoreRe
       doc.setTextColor(120);
       doc.text("No photograph", x + PHOTO_W / 2, PHOTO_TOP + PHOTO_H / 2, { align: "center" });
     }
-    doc.setFont("helvetica", "bold");
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
     doc.setTextColor(0);
     doc.text(label, x + PHOTO_W / 2, PHOTO_TOP + PHOTO_H + 10, { align: "center" });
   }
 
   const commentLines = doc.splitTextToSize(core.comments || "—", WIDTH - 46).slice(0, 4);
-  doc.setFont("helvetica", "bold");
+  doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
   doc.setTextColor(0);
   doc.text("Comments:", LEFT + 2, COMMENTS_TOP + 6);
@@ -284,7 +294,7 @@ const drawCorePage = (doc: jsPDF, project: CoringProjectInfo, core: CoringCoreRe
   doc.text(commentLines, LEFT + 44, COMMENTS_TOP + 6);
   const voidageTop = COMMENTS_TOP + 6 + Math.max(commentLines.length, 1) * 11;
   doc.setFontSize(7.5);
-  doc.setFont("helvetica", "bold");
+  doc.setFont("helvetica", "normal");
   const voidageLabel = "Excess Voidage:";
   doc.text(voidageLabel, LEFT + 2, voidageTop);
   const voidageLabelW = doc.getTextWidth(voidageLabel);

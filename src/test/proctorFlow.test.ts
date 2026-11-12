@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createElement } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { clearProctorResults, loadProctorResult, saveProctorResult } from "@/lib/proctorPersistence";
-import { airVoidsCurve, airVoidsDensity, assessFieldCompaction, calculateProctor, correctForOversize, calculateProctorPoint, compactionEnergy, createProctorPayload, createProctorRows, emptyProctorRecord, fitCompactionCurve, getProctorRecord, isReportableOptimum, parseAirVoidsTargets, sampleCompactionCurve, zeroAirVoidsCurve, zeroAirVoidsDensity, type ProctorRow } from "@/lib/proctorRecords";
+import { airVoidsCurve, airVoidsDensity, applyReportedOptimum, assessFieldCompaction, calculateProctor, correctForOversize, calculateProctorPoint, compactionEnergy, createProctorPayload, createProctorRows, emptyProctorRecord, fitCompactionCurve, getProctorRecord, isReportableOptimum, parseAirVoidsTargets, sampleCompactionCurve, zeroAirVoidsCurve, zeroAirVoidsDensity, type ProctorRow } from "@/lib/proctorRecords";
 import { getExpectedTestType, hasRequiredSoilSampleMetadata, isInitialTestValid, isTestAllowed, toRecordMetadata } from "@/lib/recordTestWizard";
 import ProctorTest from "@/components/soil/ProctorTest";
 
@@ -168,37 +168,39 @@ describe("Proctor calculations", () => {
     expect(summary.omc).toBeCloseTo(13.18027, 4);
     expect(summary.mdd).toBeCloseTo(1939.6796, 3);
     expect(summary.bulkDensity).toBeCloseTo(summary.mdd! * (1 + summary.omc! / 100), 6);
-    expect(summary.rSquared).toBeCloseTo(1, 6);
     expect(summary.curve?.a).toBeCloseTo(-12.01269, 4);
     expect(summary.omc!).toBeLessThan((15 / 105) * 100);
     expect(summary.mdd!).toBeGreaterThan(2200 / (1 + 15 / 105));
   });
 
-  it("fits one least-squares parabola through all plotted points for the OMC and MDD", () => {
-    const fit = fitCompactionCurve([
+  it("fits the OMC and MDD through the measured peak and its two neighbours only", () => {
+    const sheet = [
       { moisture: 9.1, dryDensity: 1412 },
       { moisture: 11.3, dryDensity: 1453 },
       { moisture: 13.4, dryDensity: 1488 },
       { moisture: 15.6, dryDensity: 1493 },
       { moisture: 17.6, dryDensity: 1456 },
       { moisture: 19.8, dryDensity: 1410 },
-    ]);
+    ];
+    const fit = fitCompactionCurve(sheet);
 
     expect(fit).not.toBeNull();
-    expect(fit!.omc).toBeCloseTo(14.462, 3);
-    expect(fit!.mdd).toBeCloseTo(1489.22, 1);
-    expect(fit!.rSquared).toBeCloseTo(0.9734, 3);
+    expect(fit!.omc).toBeCloseTo(14.73, 2);
+    expect(fit!.mdd).toBeCloseTo(1496.75, 0);
+    expect(fitCompactionCurve(sheet.slice(2, 5))!.omc).toBeCloseTo(fit!.omc, 9);
   });
 
-  it("rejects a parabola whose vertex falls outside the neighbours of the measured maximum", () => {
-    // The measured peak is at 14, but the parabola's vertex lands near 11.6, below its neighbour at 12.
-    expect(fitCompactionCurve([
+  it("places the vertex between the neighbours of the measured peak", () => {
+    const fit = fitCompactionCurve([
       { moisture: 10, dryDensity: 1880 },
       { moisture: 12, dryDensity: 1890 },
       { moisture: 14, dryDensity: 1900 },
       { moisture: 16, dryDensity: 1700 },
       { moisture: 18, dryDensity: 1600 },
-    ])).toBeNull();
+    ]);
+    expect(fit).not.toBeNull();
+    expect(fit!.omc).toBeGreaterThan(12);
+    expect(fit!.omc).toBeLessThan(16);
   });
 
   it("reports only a bracketed curve through at least five points as reportable", () => {
@@ -251,12 +253,27 @@ describe("Proctor calculations", () => {
     expect(calculateProctor(rows, "1000").warnings.join(" ")).not.toMatch(/outside the 2.4 to 2.9 range/);
   });
 
-  it("does not report an optimum from a curve that fits the points poorly", () => {
+  it("replaces calculated OMC and MDD only where a reported value is entered", () => {
+    const calculated = calculateProctor([
+      point({ containerWetMass: "140", containerDryMass: "130" }),
+      point({ moistureAdded: "70", containerWetMass: "150", containerDryMass: "132" }),
+      point({ moistureAdded: "90", mouldWetMass: "3200", containerWetMass: "150", containerDryMass: "135" }),
+    ], "1000");
+
+    expect(applyReportedOptimum(calculated, "15.0", "1495")).toMatchObject({ omc: 15, mdd: 1495, optimumSource: "curve" });
+    expect(applyReportedOptimum(calculated, "", "1495")).toMatchObject({ omc: calculated.omc, mdd: 1495 });
+    expect(applyReportedOptimum(calculated, "", "")).toEqual(calculated);
+  });
+
+  it("requires five moisture contents for a reportable optimum and not a goodness-of-fit score", () => {
     expect(isReportableOptimum({
-      omc: 14, mdd: 1500, bulkDensity: 1700, optimumSource: "curve", curve: null, rSquared: 0.97, pointCount: 5, warnings: [],
+      omc: 14, mdd: 1500, bulkDensity: 1700, optimumSource: "curve", curve: null, pointCount: 5, warnings: [],
     })).toBe(true);
     expect(isReportableOptimum({
-      omc: 14, mdd: 1500, bulkDensity: 1700, optimumSource: "curve", curve: null, rSquared: 0.85, pointCount: 5, warnings: [],
+      omc: 14, mdd: 1500, bulkDensity: 1700, optimumSource: "curve", curve: null, pointCount: 4, warnings: [],
+    })).toBe(false);
+    expect(isReportableOptimum({
+      omc: 14, mdd: 1500, bulkDensity: 1700, optimumSource: "peak-point", curve: null, pointCount: 6, warnings: [],
     })).toBe(false);
   });
 
@@ -409,7 +426,6 @@ describe("Proctor calculations", () => {
     const summary = calculateProctor(loaded.standardRows, "");
     expect(summary).toMatchObject({ omc: 12, mdd: 1900, bulkDensity: null, optimumSource: "peak-point" });
     expect(summary.curve).toBeNull();
-    expect(summary.rSquared).toBeNull();
     expect(calculateProctor(loaded.modifiedRows, "").mdd).toBe(2010);
   });
 
@@ -548,7 +564,6 @@ describe("Proctor record page", () => {
     expect(await screen.findByText("13.2")).toBeInTheDocument();
     expect(screen.getByText("1940")).toBeInTheDocument();
     expect(screen.getByText("2195")).toBeInTheDocument();
-    expect(screen.getByText("Fitted curve (R2 1.000)")).toBeInTheDocument();
     // Only three of the five recommended moisture contents were entered.
     expect(screen.getByText(/Only 3 moisture contents completed/)).toBeInTheDocument();
     expect(screen.getByText(/0\/6 standard points/)).toBeInTheDocument();

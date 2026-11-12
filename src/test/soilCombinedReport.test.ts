@@ -49,8 +49,8 @@ const proctorPayloadFor = (sampleNumber: string) => {
     specificGravity: "2.65", airVoidsTarget: "5",
     standardRows: rows, modifiedRows: createProctorRows(),
   };
-  const std = { omc: 12.5, mdd: 1900, bulkDensity: 2137, optimumSource: "curve" as const, curve: null, rSquared: 0.98, pointCount: 3, warnings: [] };
-  const mod = { omc: null, mdd: null, bulkDensity: null, optimumSource: "none" as const, curve: null, rSquared: null, pointCount: 0, warnings: [] };
+  const std = { omc: 12.5, mdd: 1900, bulkDensity: 2137, optimumSource: "curve" as const, curve: null, pointCount: 3, warnings: [] };
+  const mod = { omc: null, mdd: null, bulkDensity: null, optimumSource: "none" as const, curve: null, pointCount: 0, warnings: [] };
   return createProctorPayload({ title: "P", clientName: "C", date: "2025-01-01" }, record, std, mod);
 };
 

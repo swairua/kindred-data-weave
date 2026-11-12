@@ -1,6 +1,6 @@
 import { calculateAashtoGroupIndex } from "./soilClassification";
 import { calculateGrading } from "./gradingCalculations";
-import { calculateProctor, type ProctorPayload, type ProctorSummary } from "./proctorRecords";
+import { applyReportedOptimum, calculateProctor, type ProctorPayload, type ProctorSummary } from "./proctorRecords";
 import { listRecords } from "./api";
 
 export const COMBINED_SOIL_TITLE = "Particle Size Distribution + Compaction (OMC/MDD)";
@@ -109,7 +109,7 @@ const fractionsFromSieve = (
 };
 const proctorText = (s: ProctorSummary | null | undefined) => ({
   omc: s?.omc ?? null, mdd: s?.mdd ?? null, bulk: s?.bulkDensity ?? null,
-  r2: s?.rSquared ?? null, source: s?.optimumSource ?? "none",
+  source: s?.optimumSource ?? "none",
   points: s?.pointCount ?? 0, warnings: s?.warnings ?? [] as string[],
 });
 export function buildCombinedSoilReport(gRaw: unknown, pRaw: unknown, meta: CombinedProjectMeta = {}): CombinedSoilReport {
@@ -158,6 +158,9 @@ export function buildCombinedSoilReport(gRaw: unknown, pRaw: unknown, meta: Comb
       if (!std || std.pointCount === 0) { const r = calculateProctor(pRec.standardRows ?? [], pRec.standardMouldVolume ?? ""); if (r.pointCount > 0) std = r; }
       if (!mod || mod.pointCount === 0) { const r = calculateProctor(pRec.modifiedRows ?? [], pRec.modifiedMouldVolume ?? ""); if (r.pointCount > 0) mod = r; }
     } catch { /* keep saved */ }
+    const reported = [pRec.reportedOmc ?? "", pRec.reportedMdd ?? ""] as const;
+    if (pRec.type === "modified" && mod) mod = applyReportedOptimum(mod, ...reported);
+    else if (std) std = applyReportedOptimum(std, ...reported);
   }
   const sS = proctorText(std); const mS = proctorText(mod);
   const aStd = sS.omc !== null && sS.mdd !== null;
@@ -186,8 +189,8 @@ export function buildCombinedSoilReport(gRaw: unknown, pRaw: unknown, meta: Comb
   push("Standard MDD (kg/m3)", hasP ? fmt(sS.mdd, 0) : DASH);
   push("Modified OMC (%)", hasP ? fmt(mS.omc, 1) : DASH);
   push("Modified MDD (kg/m3)", hasP ? fmt(mS.mdd, 0) : DASH);
-  push("OMC/MDD basis (Standard)", hasP ? (sS.source === "curve" ? `Fitted curve (R2 ${fmt(sS.r2, 4)})` : sS.source === "peak-point" ? "Densest measured point" : DASH) : DASH);
-  push("OMC/MDD basis (Modified)", hasP ? (mS.source === "curve" ? `Fitted curve (R2 ${fmt(mS.r2, 4)})` : mS.source === "peak-point" ? "Densest measured point" : DASH) : DASH);
+  push("OMC/MDD basis (Standard)", hasP ? (sS.source === "curve" ? "Fitted curve" : sS.source === "peak-point" ? "Densest measured point" : DASH) : DASH);
+  push("OMC/MDD basis (Modified)", hasP ? (mS.source === "curve" ? "Fitted curve" : mS.source === "peak-point" ? "Densest measured point" : DASH) : DASH);
   if (gs !== null) push("Particle density Gs (ZAV line)", String(gsRaw));
   const rel: { label: string; value: string }[] = [];
   if (hasG && (aStd || aMod)) {
@@ -204,7 +207,6 @@ export function buildCombinedSoilReport(gRaw: unknown, pRaw: unknown, meta: Comb
     if (fines !== null && prim.mdd !== null && fines >= 50 && prim.mdd < 1700) warns.push(`High fines (${fines.toFixed(1)}%) with low MDD (${prim.mdd.toFixed(0)} kg/m3).`);
     if (prepW !== null && prim.omc !== null && Math.abs(prepW - prim.omc) > 4) warns.push(`Prep w (${prepW.toFixed(1)}%) >4% from ${primName} OMC (${prim.omc.toFixed(1)}%).`);
     if (prim.source === "peak-point") warns.push("Optimum from densest point (no curve) - add points to confirm.");
-    if (prim.r2 !== null && prim.r2 < 0.9) warns.push(`Weak curve fit (R2 ${prim.r2.toFixed(4)}).`);
     for (const w of [...sS.warnings, ...(aStd ? [] : mS.warnings)]) if (!warns.includes(w)) warns.push(w);
     for (const w of warns) rel.push({ label: "Relationship check", value: w });
   } else {
@@ -253,7 +255,6 @@ export function buildCombinedSoilReport(gRaw: unknown, pRaw: unknown, meta: Comb
         ["MDD (kg/m3)", fmt(sS.mdd, 0), fmt(mS.mdd, 0)],
         ["Bulk at OMC (kg/m3)", fmt(sS.bulk, 0), fmt(mS.bulk, 0)],
         ["Basis", sS.source, mS.source],
-        ["R2", fmt(sS.r2, 4), fmt(mS.r2, 4)],
         ["Points", String(sS.points), String(mS.points)],
       ],
     });
@@ -289,5 +290,3 @@ export async function loadCombinedSoilReport(projectId: number, meta: CombinedPr
   const pRow = rows.find((row) => row.test_key === "proctor") ?? null;
   return buildCombinedSoilReport(gRow?.payload_json, pRow?.payload_json, meta);
 }
-
-

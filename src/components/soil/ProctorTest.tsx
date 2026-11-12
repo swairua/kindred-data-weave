@@ -12,6 +12,7 @@ import {
   airVoidsCurve,
   assessFieldCompaction,
   calculateProctor,
+  applyReportedOptimum,
   calculateProctorPoint,
   compactionEnergy,
   correctForOversize,
@@ -51,7 +52,8 @@ type ProctorRecordTextField =
   | "fieldDryDensity"
   | "requiredRelativeCompaction"
   | "reportedOmc"
-  | "reportedMdd";
+  | "reportedMdd"
+  | "reportedBulkDensity";
 
 const POINT_LABELS = ["A", "B", "C", "D", "E", "F"];
 /** BS 1377-4:1990, 3.3 is the 2.5 kg rammer method and 3.5 the 4.5 kg rammer method. */
@@ -97,8 +99,6 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
   const effort = type === "standard" ? record.standardEffort : record.modifiedEffort;
   const setEffortKey = type === "standard" ? "standardEffort" : "modifiedEffort";
   const displayedBulkDensity = optionalNumber(record.reportedBulkDensity);
-  const displayedMdd = record.reportedMdd ?? optimum.mdd;
-  const displayedOmc = record.reportedOmc ?? optimum.omc;
   const energy = compactionEnergy(effort, mouldVolume);
 
   useEffect(() => {
@@ -163,21 +163,27 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
       }))
       .filter((line) => line.points.length > 1);
   }, [specificGravity, moistureRange, airVoidsTargets]);
-  const summaries = useMemo(() => ({
-    standard: calculateProctor(record.standardRows, record.standardMouldVolume, specificGravity),
-    modified: calculateProctor(record.modifiedRows, record.modifiedMouldVolume, specificGravity),
-  }), [record.standardRows, record.standardMouldVolume, record.modifiedRows, record.modifiedMouldVolume, specificGravity]);
+  // Reported OMC/MDD are typed on the active method's tab, so they override that method's calculated values.
+  const summaries = useMemo(() => {
+    const standard = calculateProctor(record.standardRows, record.standardMouldVolume, specificGravity);
+    const modified = calculateProctor(record.modifiedRows, record.modifiedMouldVolume, specificGravity);
+    return type === "standard"
+      ? { standard: applyReportedOptimum(standard, record.reportedOmc, record.reportedMdd), modified }
+      : { standard, modified: applyReportedOptimum(modified, record.reportedOmc, record.reportedMdd) };
+  }, [record.standardRows, record.standardMouldVolume, record.modifiedRows, record.modifiedMouldVolume, record.reportedOmc, record.reportedMdd, type, specificGravity]);
+  const displayedOptimum = type === "standard" ? summaries.standard : summaries.modified;
+  const reportedSummary = { ...displayedOptimum, bulkDensity: displayedBulkDensity ?? displayedOptimum.bulkDensity };
   const oversizeRemoved = optionalNumber(record.oversizePercent);
   const oversizeGs = optionalNumber(record.oversizeSpecificGravity);
   const oversizeInputs = oversizeRemoved !== null && oversizeRemoved > 0 && oversizeRemoved < 100 && oversizeGs !== null && oversizeGs > 0
     ? { percent: oversizeRemoved, specificGravity: oversizeGs }
     : null;
-  const oversizeCorrected = oversizeInputs && optimum.mdd !== null && optimum.omc !== null
-    ? correctForOversize(optimum.mdd, optimum.omc, oversizeInputs.percent, oversizeInputs.specificGravity)
+  const oversizeCorrected = oversizeInputs && displayedOptimum.mdd !== null && displayedOptimum.omc !== null
+    ? correctForOversize(displayedOptimum.mdd, displayedOptimum.omc, oversizeInputs.percent, oversizeInputs.specificGravity)
     : null;
   const fieldDryDensity = optionalNumber(record.fieldDryDensity);
   const requiredCompaction = optionalNumber(record.requiredRelativeCompaction);
-  const fieldAssessment = assessFieldCompaction(fieldDryDensity, oversizeCorrected?.mdd ?? optimum.mdd, requiredCompaction);
+  const fieldAssessment = assessFieldCompaction(fieldDryDensity, oversizeCorrected?.mdd ?? displayedOptimum.mdd, requiredCompaction);
   const resultFields = useMemo(() => [
     { label: "Standard OMC", value: summaries.standard.omc === null ? "" : `${displayMoisture(summaries.standard.omc)}%` },
     { label: "Standard MDD", value: summaries.standard.mdd === null ? "" : `${displayDensity(summaries.standard.mdd)} kg/m³` },
@@ -324,22 +330,11 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
         specificGravity: record.specificGravity,
         rows,
       },
-      summary: optimum,
+      summary: reportedSummary,
       points: measuredPoints,
       fitted: fittedPoints,
       voidLines,
       chartImage: await captureChart(),
-      extras: {
-        effort,
-        energy,
-        oversize: oversizeInputs && oversizeCorrected ? { ...oversizeInputs, ...oversizeCorrected } : null,
-        field: fieldDryDensity === null ? null : {
-          dryDensity: fieldDryDensity,
-          relativeCompaction: fieldAssessment.relativeCompaction,
-          requiredPercent: requiredCompaction,
-          acceptance: fieldAssessment.acceptance,
-        },
-      },
       skipDownload: action === "print",
     });
     if (action === "print") {
@@ -453,11 +448,21 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
           voidLines={voidLines}
         />
         {specificGravity === null && <p className="mt-2 text-[10px] text-muted-foreground">Enter specific gravity to draw the zero air voids line.</p>}
-        <div className="mt-3 grid gap-px overflow-hidden rounded-md border sm:grid-cols-2 lg:grid-cols-4">
-          <ResultField label="Maximum Dry Density (kg/m³)" value={displayDensity(optimum.mdd)} />
-          <ResultField label="Bulk Density at OMC (kg/m³)" value={displayDensity(optimum.bulkDensity)} />
-          <ResultField label="Optimum Moisture Content (%)" value={displayMoisture(optimum.omc)} />
-        </div>
+        <table className="mt-3 w-full border-collapse overflow-hidden rounded-md border text-xs">
+          <tbody>
+            <tr className="border-b">
+              <th scope="row" className="w-[28%] bg-muted/60 px-2.5 py-2 text-left font-semibold text-muted-foreground">Maximum Dry Density (kg/m³)</th>
+              <td className="w-[22%] px-2.5 py-2 text-right font-mono font-semibold">{displayDensity(displayedOptimum.mdd)}</td>
+              <th scope="row" className="w-[28%] border-l bg-muted/60 px-2.5 py-2 text-left font-semibold text-muted-foreground">Optimum Moisture Content (%)</th>
+              <td className="w-[22%] px-2.5 py-2 text-right font-mono font-semibold">{displayMoisture(displayedOptimum.omc)}</td>
+            </tr>
+            <tr>
+              <th scope="row" className="bg-muted/60 px-2.5 py-2 text-left font-semibold text-muted-foreground">Bulk Density (kg/m³)</th>
+              <td className="px-2.5 py-2 text-right font-mono font-semibold">{displayDensity(reportedSummary.bulkDensity)}</td>
+              <td colSpan={2}></td>
+            </tr>
+          </tbody>
+        </table>
         <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground">
           <label className="flex items-center gap-2" title="Maximum dry density printed on the source test sheet.">
             <span>Reported MDD (kg/m³)</span>
@@ -466,6 +471,10 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
           <label className="flex items-center gap-2" title="Optimum moisture content printed on the source test sheet.">
             <span>Reported OMC (%)</span>
             <Input aria-label="Reported optimum moisture content" type="number" min="0" step="any" value={record.reportedOmc} onChange={(event) => updateRecordField("reportedOmc", event.target.value)} className="record-input h-7 w-20" />
+          </label>
+          <label className="flex items-center gap-2" title="Bulk density at the optimum printed on the source test sheet.">
+            <span>Reported bulk density (kg/m³)</span>
+            <Input aria-label="Reported bulk density" type="number" min="0" step="any" value={record.reportedBulkDensity} onChange={(event) => updateRecordField("reportedBulkDensity", event.target.value)} className="record-input h-7 w-24" />
           </label>
         </div>
         {optimum.warnings.length > 0 && (
