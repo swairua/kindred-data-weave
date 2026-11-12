@@ -298,14 +298,6 @@ const resultRows = (o: MoistureDensityPdfOptions): Cell[][] => {
     { w: 60, text: BLANK, label: true, bold: true, size: 5.8, align: "right" },
     { w: 60, text: BLANK, align: "center" },
   ]);
-  if (o.record.reportedMdd || o.record.reportedOmc) {
-    rows.push([
-      { w: 44, text: "Reported MDD (kg/m³):", label: true, bold: true, size: 5.8 },
-      { w: 26, text: o.record.reportedMdd || BLANK, align: "center" },
-      { w: 60, text: "Reported OMC (%):", label: true, bold: true, size: 5.8, align: "right" },
-      { w: 60, text: o.record.reportedOmc || BLANK, align: "center" },
-    ]);
-  }
   if (extras) {
     rows.push([
       { w: 44, text: "Compaction energy (kJ/m³):", label: true, bold: true, size: 5.8 },

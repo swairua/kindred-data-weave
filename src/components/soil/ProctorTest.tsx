@@ -171,6 +171,7 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
       : { standard, modified: applyReportedOptimum(modified, record.reportedOmc, record.reportedMdd) };
   }, [record.standardRows, record.standardMouldVolume, record.modifiedRows, record.modifiedMouldVolume, record.reportedOmc, record.reportedMdd, type, specificGravity]);
   const displayedOptimum = type === "standard" ? summaries.standard : summaries.modified;
+  const reportedSummary = { ...displayedOptimum, bulkDensity: displayedBulkDensity ?? displayedOptimum.bulkDensity };
   const oversizeRemoved = optionalNumber(record.oversizePercent);
   const oversizeGs = optionalNumber(record.oversizeSpecificGravity);
   const oversizeInputs = oversizeRemoved !== null && oversizeRemoved > 0 && oversizeRemoved < 100 && oversizeGs !== null && oversizeGs > 0
@@ -328,7 +329,7 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
         specificGravity: record.specificGravity,
         rows,
       },
-      summary: optimum,
+      summary: reportedSummary,
       points: measuredPoints,
       fitted: fittedPoints,
       voidLines,
@@ -467,7 +468,7 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
             </tr>
             <tr>
               <th scope="row" className="bg-muted/60 px-2.5 py-2 text-left font-semibold text-muted-foreground">Bulk Density (kg/m³)</th>
-              <td className="px-2.5 py-2 text-right font-mono font-semibold">{displayDensity(optimum.bulkDensity)}</td>
+              <td className="px-2.5 py-2 text-right font-mono font-semibold">{displayDensity(reportedSummary.bulkDensity)}</td>
               <td colSpan={2}></td>
             </tr>
           </tbody>
