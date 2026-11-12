@@ -20,6 +20,7 @@ export type FormulaSourceModule =
   | "consolidationCalculations"
   | "compressiveCalculations"
   | "compressivePdfGenerator"
+  | "cptCalculations"
   | "coringCalculations"
   | "gradingCalculations"
   | "pointLoadCalculations"
@@ -48,13 +49,13 @@ export interface FormulaEntry {
 }
 
 export interface FormulaSection {
-  testKey: "grading" | "atterberg" | "proctor" | "compressive" | "classification" | "cbr" | "shear" | "consolidation" | "ucs" | "pointload" | "porosity" | "upvt" | "schmidt" | "coring";
+  testKey: "grading" | "atterberg" | "proctor" | "compressive" | "classification" | "cbr" | "shear" | "consolidation" | "ucs" | "pointload" | "porosity" | "upvt" | "schmidt" | "coring" | "cpt";
   title: string;
   standard: string;
   entries: FormulaEntry[];
 }
 
-export const FORMULAS_REFERENCE_VERSION = "1.4.0";
+export const FORMULAS_REFERENCE_VERSION = "1.5.0";
 
 export const FORMULAS_REFERENCE_TITLE = "Calculations and Formulas Reference";
 
@@ -838,6 +839,58 @@ export const FORMULA_SECTIONS: FormulaSection[] = [
         ],
         sourceModule: "coringCalculations",
         sourceFunctions: ["calculateLDRatio", "calculateCoreStrength", "lDCorrectionFactor", "calculateCorrectedStrength", "calculateCoringRows", "averageCorrectedStrength"],
+      },
+    ],
+  },
+  {
+    testKey: "cpt",
+    title: "Cone Penetration Test",
+    standard: "ISO 22476-1 / Robertson (1986) simplified SBT chart",
+    entries: [
+      {
+        heading: "Friction ratio Rf",
+        formulas: [
+          "Rf = fs / qc * 100   (%)",
+          "qc is entered in MPa and fs in kPa, so Rf = fs / (qc * 10)",
+        ],
+        variables: [
+          { symbol: "fs", meaning: "sleeve friction (kPa)" },
+          { symbol: "qc", meaning: "cone resistance (MPa)" },
+          { symbol: "Rf", meaning: "friction ratio (%)" },
+        ],
+        notes: [
+          "Rf is derived, never typed: it is recomputed from qc and fs on edit and on load.",
+          "A zero sleeve friction is legitimate (clean sand) and gives Rf = 0.",
+          "Typical Rf range: about 0.5 to 8 percent; high Rf means cohesive soil.",
+        ],
+        sourceModule: "cptCalculations",
+        sourceFunctions: ["calculateFrictionRatio", "rederiveCptRow"],
+      },
+      {
+        heading: "Soil classification (Robertson simplified chart)",
+        formulas: [
+          "Rf >= 8                       -> Clay",
+          "Rf >= 5                       -> Silty Clay to Clay",
+          "qc > 10,  Rf < 1              -> Sand",
+          "qc > 10,  Rf >= 1             -> Very Stiff Sand to Clayey Sand",
+          "qc 5-10,  Rf < 1.5            -> Sand to Silty Sand",
+          "qc 5-10,  Rf 1.5-5            -> Silty Sand to Sandy Silt",
+          "qc 2-5,   Rf < 2              -> Silty Sand to Sandy Silt",
+          "qc 2-5,   Rf 2-5              -> Clayey Silt to Silty Clay",
+          "qc 1-2,   Rf < 3              -> Sandy Silt to Clayey Silt",
+          "qc 1-2,   Rf 3-5              -> Clayey Silt to Silty Clay",
+          "qc <= 1,  Rf < 5              -> Clayey Silt to Silty Clay",
+        ],
+        variables: [
+          { symbol: "qc", meaning: "cone resistance (MPa)" },
+          { symbol: "Rf", meaning: "friction ratio (%)" },
+        ],
+        notes: [
+          "The ladder is banded axis-aligned and fully closed: any valid (qc > 0, Rf >= 0) pair classifies.",
+          "Earlier banding had gaps (e.g. qc > 10 with Rf >= 1) that returned Unclassified.",
+        ],
+        sourceModule: "cptCalculations",
+        sourceFunctions: ["classifySoilRobertson"],
       },
     ],
   },
