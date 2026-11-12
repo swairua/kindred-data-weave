@@ -103,8 +103,9 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
   const [isLoading, setIsLoading] = useState(Boolean(projectId));
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
-  const [printDialogOpen, setPrintDialogOpen] = useState(false);
-  const [printSelection, setPrintSelection] = useState<Set<number>>(new Set([0]));
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportSelection, setExportSelection] = useState<Set<number>>(new Set([0]));
+  const [exportAction, setExportAction] = useState<"print" | "download">("print");
   // Arrow keys walk the weighing grid instead of leaving the technician to drag
   // the pointer across a table this wide.
   const gridNav = useGridArrowNavigation<HTMLDivElement>();
@@ -424,15 +425,18 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
     }
   };
 
-  const openPrintDialog = () => {
-    setPrintSelection(new Set(records.map((_, index) => index)));
-    setPrintDialogOpen(true);
+  const openExportDialog = (action: "print" | "download") => {
+    setExportAction(action);
+    setExportSelection(new Set(records.map((_, index) => index)));
+    setExportDialogOpen(true);
   };
 
-  const confirmPrintSelection = () => {
-    const selectedRecords = records.filter((_, index) => printSelection.has(index));
-    setPrintDialogOpen(false);
-    void exportPDF("print", selectedRecords).catch(() => toast.error("Proctor report print failed"));
+  const confirmExportSelection = () => {
+    const selectedRecords = records.filter((_, index) => exportSelection.has(index));
+    setExportDialogOpen(false);
+    void exportPDF(exportAction, selectedRecords).catch(() =>
+      toast.error(exportAction === "print" ? "Proctor report print failed" : "Proctor report download failed"),
+    );
   };
 
   if (isLoading) {
@@ -650,22 +654,22 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
         <div className="sm:text-right"><span className="text-muted-foreground">STATUS</span><div className="font-semibold">{status} · {filledRows}/{rows.length} {type} points</div></div>
       </section>
 
-      <Dialog open={printDialogOpen} onOpenChange={setPrintDialogOpen}>
+      <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Print samples</DialogTitle>
-            <DialogDescription>Select which Proctor samples to include in the PDF.</DialogDescription>
+            <DialogTitle>{exportAction === "print" ? "Print samples" : "Download Proctor PDF"}</DialogTitle>
+            <DialogDescription>Select which Proctor samples to include in the {exportAction === "print" ? "printout" : "PDF"}.</DialogDescription>
           </DialogHeader>
           <div className="flex items-center justify-between text-xs">
-            <button type="button" className="text-primary hover:underline" onClick={() => setPrintSelection(new Set(records.map((_, index) => index)))}>Select all</button>
-            <button type="button" className="text-primary hover:underline" onClick={() => setPrintSelection(new Set())}>Clear</button>
+            <button type="button" className="text-primary hover:underline" onClick={() => setExportSelection(new Set(records.map((_, index) => index)))}>Select all</button>
+            <button type="button" className="text-primary hover:underline" onClick={() => setExportSelection(new Set())}>Clear</button>
           </div>
           <div className="max-h-72 space-y-2 overflow-y-auto">
             {records.map((sample, index) => (
               <label key={`${sample.label}-${index}`} className="flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2 text-sm">
                 <Checkbox
-                  checked={printSelection.has(index)}
-                  onCheckedChange={(checked) => setPrintSelection((current) => {
+                  checked={exportSelection.has(index)}
+                  onCheckedChange={(checked) => setExportSelection((current) => {
                     const next = new Set(current);
                     if (checked === true) next.add(index);
                     else next.delete(index);
@@ -677,9 +681,11 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
             ))}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPrintDialogOpen(false)}>Cancel</Button>
-            <Button disabled={printSelection.size === 0} onClick={confirmPrintSelection}>
-              {printSelection.size === records.length ? `Print all (${printSelection.size})` : `Print ${printSelection.size} selected`}
+            <Button variant="outline" onClick={() => setExportDialogOpen(false)}>Cancel</Button>
+            <Button disabled={exportSelection.size === 0} onClick={confirmExportSelection}>
+              {exportAction === "print"
+                ? exportSelection.size === records.length ? `Print all (${exportSelection.size})` : `Print ${exportSelection.size} selected`
+                : exportSelection.size === records.length ? `Download all (${exportSelection.size})` : `Download ${exportSelection.size} selected`}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -687,8 +693,8 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
 
       <div className="sticky bottom-0 z-20 -mx-3 flex items-center justify-end gap-2 border-t bg-background/95 px-3 py-2 backdrop-blur print:hidden">
         <div className="flex items-center justify-end gap-2">
-          <Button variant="outline" size="sm" onClick={() => void exportPDF("download").catch(() => toast.error("Proctor report download failed"))}><FileDown className="mr-1.5 h-3.5 w-3.5" />PDF</Button>
-          <Button variant="outline" size="sm" onClick={openPrintDialog}><Printer className="mr-1.5 h-3.5 w-3.5" />Print</Button>
+          <Button variant="outline" size="sm" onClick={() => openExportDialog("download")}><FileDown className="mr-1.5 h-3.5 w-3.5" />PDF</Button>
+          <Button variant="outline" size="sm" onClick={() => openExportDialog("print")}><Printer className="mr-1.5 h-3.5 w-3.5" />Print</Button>
           <Button size="sm" className="min-w-20" onClick={handleSave} disabled={saveStatus === "saving" || isLoading}>
             {saveStatus === "saving" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : saveStatus === "saved" ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}
             {saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved" : "Save"}

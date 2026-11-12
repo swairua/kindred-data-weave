@@ -6,6 +6,11 @@ import { airVoidsCurve, airVoidsDensity, applyReportedOptimum, assessFieldCompac
 import { getExpectedTestType, hasRequiredSoilSampleMetadata, isInitialTestValid, isTestAllowed, toRecordMetadata } from "@/lib/recordTestWizard";
 import ProctorTest from "@/components/soil/ProctorTest";
 
+const pdfState = vi.hoisted(() => ({
+  options: [] as Array<{ record: { label: string }; samples: Array<{ record: { label: string } }> }>,
+  autoPrintCount: 0,
+}));
+
 const apiState = vi.hoisted(() => ({
   rows: [] as Array<Record<string, unknown>>,
   nextId: 1,
@@ -26,6 +31,16 @@ const apiState = vi.hoisted(() => ({
     dateSubmitted: "2025-01-10",
     dateTested: "2025-01-12",
   },
+}));
+
+vi.mock("@/lib/mcPdfGenerator", () => ({
+  generateMoistureDensityPDF: vi.fn(async (options: { record: { label: string }; samples: Array<{ record: { label: string } }> }) => {
+    pdfState.options.push(options);
+    return {
+      autoPrint: () => { pdfState.autoPrintCount += 1; },
+      output: () => "blob:proctor-test",
+    };
+  }),
 }));
 
 vi.mock("@/lib/api", () => ({
@@ -104,6 +119,8 @@ beforeEach(() => {
   });
   apiState.rows = [];
   apiState.nextId = 1;
+  pdfState.options = [];
+  pdfState.autoPrintCount = 0;
 });
 
 describe("Proctor wizard flow", () => {
@@ -513,6 +530,30 @@ describe("Proctor record page", () => {
     expect(screen.getByLabelText("Moisture addition (cc), point A")).toHaveValue(50);
     expect(screen.queryByRole("tab", { name: "Standard" })).not.toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: "Modified" })).not.toBeInTheDocument();
+  });
+
+  it("downloads a selected Proctor sample and prints all selected samples", async () => {
+    const openSpy = vi.spyOn(window, "open").mockReturnValue({ onload: null } as unknown as Window);
+    render(createElement(MemoryRouter, null, createElement(ProctorTest, { testKey: "proctor" })));
+    expect(await screen.findByText(/Record results/)).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("proctor-add-sample"));
+
+    fireEvent.click(screen.getByRole("button", { name: "PDF" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("Download Proctor PDF");
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    fireEvent.click(screen.getAllByRole("checkbox")[1]);
+    fireEvent.click(screen.getByRole("button", { name: "Download 1 selected" }));
+    await waitFor(() => expect(pdfState.options).toHaveLength(1));
+    expect(pdfState.options[0].record.label).toBe("Sample 2");
+    expect(pdfState.options[0].samples).toHaveLength(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "Print" }));
+    fireEvent.click(screen.getByRole("button", { name: "Print all (2)" }));
+    await waitFor(() => expect(pdfState.options).toHaveLength(2));
+    expect(pdfState.options[1].record.label).toBe("BH-04");
+    expect(pdfState.options[1].samples.map(({ record: sample }) => sample.label)).toEqual(["Sample 2"]);
+    expect(pdfState.autoPrintCount).toBe(1);
+    expect(openSpy).toHaveBeenCalledTimes(1);
   });
 
   it("adds and switches between sample records without mixing their readings", async () => {
