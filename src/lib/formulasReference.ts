@@ -29,6 +29,7 @@ export type FormulaSourceModule =
   | "psd-sieve-formulas"
   | "schmidtCalculations"
   | "shearCalculations"
+  | "slumpCalculations"
   | "soilClassification"
   | "ucsCalculations"
   | "upvtCalculations";
@@ -49,13 +50,13 @@ export interface FormulaEntry {
 }
 
 export interface FormulaSection {
-  testKey: "grading" | "atterberg" | "proctor" | "compressive" | "classification" | "cbr" | "shear" | "consolidation" | "ucs" | "pointload" | "porosity" | "upvt" | "schmidt" | "coring" | "cpt";
+  testKey: "grading" | "atterberg" | "proctor" | "compressive" | "classification" | "cbr" | "shear" | "consolidation" | "ucs" | "pointload" | "porosity" | "upvt" | "schmidt" | "coring" | "cpt" | "slump";
   title: string;
   standard: string;
   entries: FormulaEntry[];
 }
 
-export const FORMULAS_REFERENCE_VERSION = "1.5.0";
+export const FORMULAS_REFERENCE_VERSION = "1.6.0";
 
 export const FORMULAS_REFERENCE_TITLE = "Calculations and Formulas Reference";
 
@@ -891,6 +892,70 @@ export const FORMULA_SECTIONS: FormulaSection[] = [
         ],
         sourceModule: "cptCalculations",
         sourceFunctions: ["classifySoilRobertson"],
+      },
+    ],
+  },
+  {
+    testKey: "slump",
+    title: "Slump Test",
+    standard: "BS EN 12350-2:2019 / EN 206 consistence classes / ASTM C143",
+    entries: [
+      {
+        heading: "Slump value",
+        formulas: [
+          "Slump = cone height - height of the subsided concrete   (mm)",
+          "Standard Abrams cone: 200 mm base, 100 mm top, 300 mm height",
+        ],
+        variables: [
+          { symbol: "cone height", meaning: "mould height, 300 mm standard (mm)" },
+          { symbol: "height after subsidence", meaning: "highest point of the slumped concrete (mm)" },
+          { symbol: "Slump", meaning: "subsidence of the fresh concrete (mm)" },
+        ],
+        notes: [
+          "Recorded to the nearest 10 mm under EN 12350-2 and to the nearest 5 mm under ASTM C143.",
+          "Only a true slump counts; a shear or collapse slump is discarded and the test repeated.",
+          "The slump is derived, never typed: it is recomputed from the heights on edit and on load.",
+        ],
+        sourceModule: "slumpCalculations",
+        sourceFunctions: ["calculateSlump", "rederiveSlumpEntry"],
+      },
+      {
+        heading: "EN 206 consistence classes",
+        formulas: [
+          "S1  10-40 mm",
+          "S2  50-90 mm",
+          "S3  100-150 mm",
+          "S4  160-210 mm",
+          "S5  above 210 mm",
+        ],
+        variables: [
+          { symbol: "Slump", meaning: "subsidence of the fresh concrete (mm)" },
+        ],
+        notes: [
+          "Ranges per BS 8500-1. Intermediate readings round to the nearest class at the midpoints (45, 95, 155, 215) so every slump in the sensitive range classifies.",
+          "Below 10 mm is beneath the EN 12350-2 sensitive range and reports Below S1 rather than a class.",
+        ],
+        sourceModule: "slumpCalculations",
+        sourceFunctions: ["classifySlumpClass", "describeWorkability"],
+      },
+      {
+        heading: "Target tolerance and validity",
+        formulas: [
+          "Target slump <= 40 mm:  tolerance +/-30 mm",
+          "Target slump 50-90 mm:  tolerance +/-40 mm",
+          "Target slump >= 100 mm: tolerance +/-50 mm",
+          "EN 12350-2 sensitive range: 10-210 mm",
+        ],
+        variables: [
+          { symbol: "Target", meaning: "specified slump (mm)" },
+          { symbol: "Slump", meaning: "measured slump (mm)" },
+        ],
+        notes: [
+          "Tolerances on a spot sample per BS 8500-1 basis (Concrete Society); targets are optional and their absence is not an error.",
+          "Above 210 mm the cone test is unsuitable (collapse likely) - use a slump flow (SCC) test instead.",
+        ],
+        sourceModule: "slumpCalculations",
+        sourceFunctions: ["toleranceBand", "assessCompliance", "assessValidity"],
       },
     ],
   },

@@ -25,6 +25,7 @@ const MODULE_LOADERS: Record<FormulaSourceModule, () => Promise<Record<string, u
   "psd-sieve-formulas": () => import("@/lib/psd-sieve-formulas"),
   schmidtCalculations: () => import("@/lib/schmidtCalculations"),
   shearCalculations: () => import("@/lib/shearCalculations"),
+  slumpCalculations: () => import("@/lib/slumpCalculations"),
   soilClassification: () => import("@/lib/soilClassification"),
   ucsCalculations: () => import("@/lib/ucsCalculations"),
   upvtCalculations: () => import("@/lib/upvtCalculations"),
@@ -54,6 +55,7 @@ describe("formulas reference content", () => {
       "proctor",
       "schmidt",
       "shear",
+      "slump",
       "ucs",
       "upvt",
     ]);

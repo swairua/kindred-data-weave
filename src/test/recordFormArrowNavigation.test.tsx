@@ -113,11 +113,20 @@ describe("arrow keys in the record forms", () => {
     const { container } = renderForm(<SlumpTest testKey="slump" />, "slump");
     fireEvent.click(await screen.findByText("Slump Test"));
 
-    const inputs = Array.from(container.querySelectorAll<HTMLInputElement>("input"));
-    const [slump, remarks, testedBy, dateTested] = inputs;
+    // Derived read-only fields carry tabIndex -1 and date pickers are
+    // excluded from the grid, so the caret only visits editable inputs.
+    const inputs = Array.from(container.querySelectorAll<HTMLInputElement>("input"))
+      .filter((input) => input.tabIndex !== -1 && !input.readOnly && input.type !== "date");
+    const [cone, subsidence, target, remarks, testedBy] = inputs;
 
-    slump.focus();
-    press(slump, "ArrowDown");
+    cone.focus();
+    press(cone, "ArrowDown");
+    expect(document.activeElement).toBe(subsidence);
+
+    press(subsidence, "ArrowDown");
+    expect(document.activeElement).toBe(target);
+
+    press(target, "ArrowDown");
     expect(document.activeElement).toBe(remarks);
 
     press(remarks, "ArrowDown");
@@ -127,6 +136,7 @@ describe("arrow keys in the record forms", () => {
     expect(document.activeElement).toBe(remarks);
 
     // Date inputs are excluded from the grid so the picker keeps its own arrows.
+    const dateTested = container.querySelector<HTMLInputElement>('input[type="date"]')!;
     dateTested.focus();
     press(dateTested, "ArrowDown");
     expect(document.activeElement).toBe(dateTested);
