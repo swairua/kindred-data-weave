@@ -457,11 +457,21 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
           voidLines={voidLines}
         />
         {specificGravity === null && <p className="mt-2 text-[10px] text-muted-foreground">Enter specific gravity to draw the zero air voids line.</p>}
-        <div className="mt-3 grid gap-px overflow-hidden rounded-md border sm:grid-cols-2 lg:grid-cols-4">
-          <ResultField label="Maximum Dry Density (kg/m³)" value={displayDensity(displayedOptimum.mdd)} />
-          <ResultField label="Bulk Density at OMC (kg/m³)" value={displayDensity(optimum.bulkDensity)} />
-          <ResultField label="Optimum Moisture Content (%)" value={displayMoisture(displayedOptimum.omc)} />
-        </div>
+        <table className="mt-3 w-full border-collapse overflow-hidden rounded-md border text-xs">
+          <tbody>
+            <tr className="border-b">
+              <th scope="row" className="w-[28%] bg-muted/60 px-2.5 py-2 text-left font-semibold text-muted-foreground">Maximum Dry Density (kg/m³)</th>
+              <td className="w-[22%] px-2.5 py-2 text-right font-mono font-semibold">{displayDensity(displayedOptimum.mdd)}</td>
+              <th scope="row" className="w-[28%] border-l bg-muted/60 px-2.5 py-2 text-left font-semibold text-muted-foreground">Optimum Moisture Content (%)</th>
+              <td className="w-[22%] px-2.5 py-2 text-right font-mono font-semibold">{displayMoisture(displayedOptimum.omc)}</td>
+            </tr>
+            <tr>
+              <th scope="row" className="bg-muted/60 px-2.5 py-2 text-left font-semibold text-muted-foreground">Bulk Density (kg/m³)</th>
+              <td className="px-2.5 py-2 text-right font-mono font-semibold">{displayDensity(optimum.bulkDensity)}</td>
+              <td colSpan={2}></td>
+            </tr>
+          </tbody>
+        </table>
         <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground">
           <label className="flex items-center gap-2" title="Maximum dry density printed on the source test sheet.">
             <span>Reported MDD (kg/m³)</span>
