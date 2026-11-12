@@ -95,6 +95,10 @@ interface WizardState {
   slump: string;
   clientRef: string;
   dateTested: string;
+  towerLocation: string;
+  ageOfConcrete: string;
+  dateReported: string;
+  checkedBy: string;
 }
 
 const STORAGE_KEY = "cransfield_record_wizard";
@@ -130,6 +134,10 @@ const emptyState: WizardState = {
   slump: "",
   clientRef: "",
   dateTested: new Date().toISOString().split("T")[0],
+  towerLocation: "",
+  ageOfConcrete: "",
+  dateReported: "",
+  checkedBy: "",
 };
 
 
@@ -362,6 +370,7 @@ const RecordTestWizard = () => {
   const isGradingTest = state.testKey === "grading";
   const isProctorTest = state.testKey === "proctor";
   const isAtterbergTest = state.testKey === "atterberg";
+  const isCoringTest = state.testKey === "coring";
   const steps = useMemo(() => getSteps(state.testKey), [state.testKey]);
   const projectLoadKey = `${state.material ?? ""}:${state.testKey ?? ""}:${projectsReloadKey}`;
 
@@ -404,6 +413,11 @@ const RecordTestWizard = () => {
             && state.section.trim().length > 0
             && state.slump.trim().length > 0;
         }
+        if (isCoringTest) {
+          return state.towerLocation.trim().length > 0
+            && state.sampleNo.trim().length > 0
+            && state.sampleDateTested.trim().length > 0;
+        }
         if (isGradingTest || isProctorTest) {
           return hasRequiredSoilSampleMetadata(state);
         }
@@ -411,7 +425,7 @@ const RecordTestWizard = () => {
       case "entry": return true;
       default: return false;
     }
-  }, [step, steps, state, tests, isCompressiveStrengthTest, isGradingTest, isProctorTest, isAtterbergTest, selectedExistingTestId]);
+  }, [step, steps, state, tests, isCompressiveStrengthTest, isGradingTest, isProctorTest, isAtterbergTest, isCoringTest, selectedExistingTestId]);
 
   // Load projects when reaching the project step.
   useEffect(() => {
@@ -644,6 +658,19 @@ const RecordTestWizard = () => {
       const recordMetadata = toRecordMetadata(state);
       if (isProctorTest) recordMetadata.testedBy = state.testedBy;
       testData.updateRecordMetadata(state.testKey!, recordMetadata);
+    }
+
+    if (isCoringTest) {
+      testData.updateRecordMetadata("coring", {
+        towerLocation: state.towerLocation,
+        sampleNumber: state.sampleNo,
+        concreteClass: state.concreteClass,
+        ageOfConcrete: state.ageOfConcrete,
+        dateTested: state.sampleDateTested,
+        dateReported: state.dateReported,
+        testedBy: state.testedBy,
+        checkedBy: state.checkedBy,
+      });
     }
 
     // If concrete material, also push concrete test details to context.
@@ -1247,6 +1274,48 @@ const RecordTestWizard = () => {
                     <div className="space-y-1.5">
                       <Label htmlFor="concrete-slump">Slump *</Label>
                       <Input id="concrete-slump" required value={state.slump} onChange={(e) => update("slump", e.target.value)} placeholder="e.g. N/A" />
+                    </div>
+                  </div>
+                </FormCard>
+              </>
+            ) : isCoringTest ? (
+              <>
+                <div className="text-center">
+                  <h2 className="text-lg font-semibold tracking-tight">Coring — sample details</h2>
+                </div>
+                <FormCard>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="coring-tower">Tower / Location *</Label>
+                      <Input id="coring-tower" value={state.towerLocation} onChange={(e) => update("towerLocation", e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="coring-sample-no">Sample No. *</Label>
+                      <Input id="coring-sample-no" value={state.sampleNo} onChange={(e) => update("sampleNo", e.target.value)} placeholder="e.g. 1" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="coring-concrete-class">Concrete class</Label>
+                      <Input id="coring-concrete-class" value={state.concreteClass} onChange={(e) => update("concreteClass", e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="coring-age">Age of concrete</Label>
+                      <Input id="coring-age" value={state.ageOfConcrete} onChange={(e) => update("ageOfConcrete", e.target.value)} placeholder="e.g. over 28 days" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="coring-date-tested">Date of test *</Label>
+                      <Input id="coring-date-tested" type="date" value={state.sampleDateTested} onChange={(e) => update("sampleDateTested", e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="coring-date-reported">Date reported</Label>
+                      <Input id="coring-date-reported" type="date" value={state.dateReported} onChange={(e) => update("dateReported", e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="coring-tested-by">Tested by</Label>
+                      <Input id="coring-tested-by" value={state.testedBy} onChange={(e) => update("testedBy", e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="coring-checked-by">Checked by</Label>
+                      <Input id="coring-checked-by" value={state.checkedBy} onChange={(e) => update("checkedBy", e.target.value)} />
                     </div>
                   </div>
                 </FormCard>

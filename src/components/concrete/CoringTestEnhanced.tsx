@@ -1,12 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Check, ChevronDown, FileDown, Loader2, Printer, Save, Trash2 } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import MoistureDensityChart from "@/components/soil/MoistureDensityChart";
 import { useProject } from "@/context/ProjectContext";
 import { useGridArrowNavigation } from "@/hooks/useGridArrowNavigation";
@@ -87,7 +83,6 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
   const [record, setRecord] = useState<ProctorRecord>(() => emptyProctorRecord(metadata));
   const [recordId, setRecordId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(Boolean(projectId));
-  const [isEditingProject, setIsEditingProject] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   // Arrow keys walk the weighing grid instead of leaving the technician to drag
@@ -177,105 +172,30 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
   };
 
   return (
-    <div className="proctor-record">
-      {/* Project & Sample Details card - appears before core data entry */}
-      <Card className="mb-4">
-        <CardHeader>
-          <CardTitle className="text-sm">Project & Sample Details</CardTitle>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => setIsEditingProject(!isEditingProject)}
-            className="absolute right-2 text-[10px] text-muted-foreground hover:text-foreground"
-          >
-            {isEditingProject ? "View Project" : "Edit Tests"}
-          </Button>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="flex items-center gap-3">
-            <Label htmlFor="projectName" className="text-xs font-medium text-muted-foreground">
-              Project Name *
-            </Label>
-            <Input id="projectName" className="detail-input" />
-          </div>
-          <div className="flex items-center gap-3">
-            <Label htmlFor="tower" className="text-xs font-medium text-muted-foreground">
-              Tower / Location *
-            </Label>
-            <Input id="tower" className="detail-input" />
-          </div>
-          <div className="flex items-center gap-3">
-            <Label htmlFor="concreteClass" className="text-xs font-medium text-muted-foreground">
-              Concrete Class
-            </Label>
-            <Select value="" onValueChange={() => {}}>
-              <SelectTrigger className="detail-input"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {["Standard", "Modified"].map((c) => (
-                  <SelectItem key={c} value={c} className="text-xs">
-                    {c}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-center gap-3">
-            <Label htmlFor="ageOfConcrete" className="text-xs font-medium text-muted-foreground">
-              Age of Concrete
-            </Label>
-            <Input id="ageOfConcrete" placeholder="over 28 days" className="detail-input" />
-          </div>
-          <div className="flex items-center gap-3">
-            <Label htmlFor="dateOfTest" className="text-xs font-medium text-muted-foreground">
-              Date of Test *
-            </Label>
-            <Input id="dateOfTest" type="date" className="detail-input" />
-          </div>
-          <div className="flex items-center gap-3">
-            <Label htmlFor="dateReported" className="text-xs font-medium text-muted-foreground">
-              Date Reported
-            </Label>
-            <Input id="dateReported" type="date" className="detail-input" />
-          </div>
-          <div className="flex items-center gap-3">
-            <Label htmlFor="testedBy" className="text-xs font-medium text-muted-foreground">
-              Tested By
-            </Label>
-            <Input id="testedBy" className="detail-input" />
-          </div>
-          <div className="flex items-center gap-3">
-            <Label htmlFor="checkedBy" className="text-xs font-medium text-muted-foreground">
-              Checked By
-            </Label>
-            <Input id="checkedBy" className="detail-input" />
-          </div>
-          <div className="flex items-center gap-3">
-            <Label htmlFor="sampleNo" className="text-xs font-medium text-muted-foreground">
-              Sample No.
-            </Label>
-            <Input id="sampleNo" className="detail-input" />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Core data entry - hidden when editing project details, shown when viewing */}
-      {isEditingProject ? null : (
-        <div>
-          <h1 className="text-sm font-semibold">Test Project</h1>
-          <p className="text-[11px] text-muted-foreground">Test Laboratory</p>
-          <p className="text-[11px] text-muted-foreground">Test Laboratory</p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleClear}
-            className="gap-2"
-          >
-            <Trash2 className="h-3.5 w-3.5" /> Clear
-          </Button>
+    <div className="proctor-record space-y-3">
+      <div className="record-card flex items-center justify-between gap-3 p-3">
+        <div className="min-w-0">
+          <h1 className="text-sm font-semibold">{project.projectName || "Record test"}</h1>
+          <p className="text-[11px] text-muted-foreground">{project.labOrganization || project.clientName || "Geotechnical Laboratory"}</p>
         </div>
-      )}
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 shrink-0 text-[11px]"
+          onClick={() => navigate(`/record?material=concrete&test=coring&projectId=${projectId}`)}
+        >
+          Change <ChevronDown className="ml-1 h-3 w-3" />
+        </Button>
+      </div>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={handleClear}
+        className="gap-2"
+      >
+        <Trash2 className="h-3.5 w-3.5" /> Clear
+      </Button>
     </div>
   );
 };
