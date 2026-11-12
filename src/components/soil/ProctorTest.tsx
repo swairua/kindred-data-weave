@@ -52,7 +52,8 @@ type ProctorRecordTextField =
   | "fieldDryDensity"
   | "requiredRelativeCompaction"
   | "reportedOmc"
-  | "reportedMdd";
+  | "reportedMdd"
+  | "reportedBulkDensity";
 
 const POINT_LABELS = ["A", "B", "C", "D", "E", "F"];
 /** BS 1377-4:1990, 3.3 is the 2.5 kg rammer method and 3.5 the 4.5 kg rammer method. */
@@ -334,17 +335,6 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
       fitted: fittedPoints,
       voidLines,
       chartImage: await captureChart(),
-      extras: {
-        effort,
-        energy,
-        oversize: oversizeInputs && oversizeCorrected ? { ...oversizeInputs, ...oversizeCorrected } : null,
-        field: fieldDryDensity === null ? null : {
-          dryDensity: fieldDryDensity,
-          relativeCompaction: fieldAssessment.relativeCompaction,
-          requiredPercent: requiredCompaction,
-          acceptance: fieldAssessment.acceptance,
-        },
-      },
       skipDownload: action === "print",
     });
     if (action === "print") {
@@ -481,6 +471,10 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
           <label className="flex items-center gap-2" title="Optimum moisture content printed on the source test sheet.">
             <span>Reported OMC (%)</span>
             <Input aria-label="Reported optimum moisture content" type="number" min="0" step="any" value={record.reportedOmc} onChange={(event) => updateRecordField("reportedOmc", event.target.value)} className="record-input h-7 w-20" />
+          </label>
+          <label className="flex items-center gap-2" title="Bulk density at the optimum printed on the source test sheet.">
+            <span>Reported bulk density (kg/m³)</span>
+            <Input aria-label="Reported bulk density" type="number" min="0" step="any" value={record.reportedBulkDensity} onChange={(event) => updateRecordField("reportedBulkDensity", event.target.value)} className="record-input h-7 w-24" />
           </label>
         </div>
         {optimum.warnings.length > 0 && (

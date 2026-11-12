@@ -66,19 +66,6 @@ export interface McRecordView {
   rows: ProctorRow[];
 }
 
-export interface MoistureDensityPdfExtras {
-  effort: ProctorEffort;
-  energy: number | null;
-  /** Oversize-corrected MDD and OMC for the total sample, when an oversize fraction was recorded. */
-  oversize: { percent: number; specificGravity: number; mdd: number; omc: number } | null;
-  field: {
-    dryDensity: number;
-    relativeCompaction: number | null;
-    requiredPercent: number | null;
-    acceptance: FieldAcceptance;
-  } | null;
-}
-
 export interface MoistureDensityPdfOptions {
   projectName?: string;
   clientName?: string;
@@ -100,7 +87,6 @@ export interface MoistureDensityPdfOptions {
   voidLines: McVoidLine[];
   /** html2canvas capture of the on-screen chart, when one was produced. */
   chartImage: string | null;
-  extras?: MoistureDensityPdfExtras;
   skipDownload?: boolean;
 }
 
@@ -257,21 +243,9 @@ const drawMoistureTable = (d: jsPDF, x: number, y: number, o: MoistureDensityPdf
   return dataRow(d, x, cy, rowH, columns, "Dry density (kg/m³)", calculated.map((point) => num(point.dryDensity, 0)));
 };
 
-/**
- * Height the results block will occupy, so the page-break decision can account for
- * it as well as the graph.
- */
-const acceptanceText = (field: NonNullable<MoistureDensityPdfExtras["field"]>): string => {
-  const required = field.requiredPercent === null ? "" : ` (min. ${num(field.requiredPercent, 0)}%)`;
-  if (field.acceptance === "pass") return `Pass${required}`;
-  if (field.acceptance === "fail") return `Fail${required}`;
-  if (field.acceptance === "no-limit") return "No limit set";
-  return BLANK;
-};
-
 /** One ruled row of results per entry, so long lines wrap onto their own row rather than overflowing. */
 const resultRows = (o: MoistureDensityPdfOptions): Cell[][] => {
-  const { summary, extras } = o;
+  const { summary } = o;
   const rows: Cell[][] = [
     [
       { w: 44, text: "Maximum Dry Density (kg/m³):", label: true, bold: true, size: 5.8 },
@@ -282,63 +256,10 @@ const resultRows = (o: MoistureDensityPdfOptions): Cell[][] => {
     [
       { w: 44, text: "Bulk Density (kg/m³):", label: true, bold: true, size: 5.8 },
       { w: 26, text: num(summary.bulkDensity, 0), align: "center", bold: true },
-      { w: 60, text: "Determined from:", label: true, bold: true, size: 5.8, align: "right" },
-      {
-        w: 60,
-        text: summary.optimumSource === "curve"
-          ? "Fitted compaction curve"
-          : summary.optimumSource === "peak-point" ? "Highest measured point" : BLANK,
-        align: "center",
-      },
+      { w: 60, text: BLANK, label: true, bold: true, size: 5.8, align: "right" },
+      { w: 60, text: BLANK, align: "center" },
     ],
   ];
-  rows.push([
-    { w: 44, text: "Particle density (Gs):", label: true, bold: true, size: 5.8 },
-    { w: 26, text: num(Number.parseFloat(o.record.specificGravity), 2), align: "center" },
-    { w: 60, text: BLANK, label: true, bold: true, size: 5.8, align: "right" },
-    { w: 60, text: BLANK, align: "center" },
-  ]);
-  if (extras) {
-    rows.push([
-      { w: 44, text: "Compaction energy (kJ/m³):", label: true, bold: true, size: 5.8 },
-      { w: 26, text: num(extras.energy, 0), align: "center" },
-      { w: 60, text: "Compaction effort:", label: true, bold: true, size: 5.8, align: "right" },
-      {
-        w: 60,
-        text: `${text(extras.effort.layers)} layers × ${text(extras.effort.blowsPerLayer)} blows, ${text(extras.effort.rammerMass)} kg rammer, ${text(extras.effort.dropHeight)} mm drop`,
-        align: "center",
-        size: 5.6,
-      },
-    ]);
-    if (extras.oversize) {
-      rows.push([
-        { w: 44, text: "Total-sample MDD (kg/m³):", label: true, bold: true, size: 5.8 },
-        { w: 26, text: num(extras.oversize.mdd, 0), align: "center", bold: true },
-        { w: 60, text: "Total-sample OMC (%):", label: true, bold: true, size: 5.8, align: "right" },
-        { w: 60, text: num(extras.oversize.omc, 1), align: "center", bold: true },
-      ]);
-      rows.push([
-        { w: 44, text: "Oversize removed (%):", label: true, bold: true, size: 5.8 },
-        { w: 26, text: num(extras.oversize.percent, 1), align: "center" },
-        { w: 60, text: "Oversize relative density:", label: true, bold: true, size: 5.8, align: "right" },
-        { w: 60, text: num(extras.oversize.specificGravity, 2), align: "center" },
-      ]);
-    }
-    if (extras.field) {
-      rows.push([
-        { w: 44, text: "Field dry density (kg/m³):", label: true, bold: true, size: 5.8 },
-        { w: 26, text: num(extras.field.dryDensity, 0), align: "center" },
-        { w: 60, text: "Relative compaction (%):", label: true, bold: true, size: 5.8, align: "right" },
-        {
-          w: 60,
-          text: extras.field.relativeCompaction === null
-            ? BLANK
-            : `${num(extras.field.relativeCompaction, 1)}  ${acceptanceText(extras.field)}`.trim(),
-          align: "center",
-        },
-      ]);
-    }
-  }
   summary.warnings.forEach((warning) => {
     rows.push([
       { w: 46, text: "Warning:", label: true, bold: true, size: 5.8 },

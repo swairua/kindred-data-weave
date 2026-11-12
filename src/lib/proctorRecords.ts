@@ -157,6 +157,7 @@ export const emptyProctorRecord = (metadata: RecordMetadata = {}): ProctorRecord
   requiredRelativeCompaction: "",
   reportedOmc: "",
   reportedMdd: "",
+  reportedBulkDensity: "",
 });
 
 const isObject = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
