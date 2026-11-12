@@ -77,6 +77,12 @@ const isRowStarted = (row: ProctorRow) => {
   const { legacy, ...inputs } = row;
   return Object.values(inputs).some(hasValue) || (legacy !== undefined && Object.values(legacy).some(hasValue));
 };
+const savedMethod = (record: ProctorRecord): ProctorMethod => {
+  const hasStandardReadings = record.standardRows.some(isRowStarted);
+  const hasModifiedReadings = record.modifiedRows.some(isRowStarted);
+  if (hasStandardReadings !== hasModifiedReadings) return hasStandardReadings ? "standard" : "modified";
+  return record.type;
+};
 const pointLabel = (index: number) => POINT_LABELS[index] || String(index + 1);
 
 const ProctorTest = ({ testKey }: ProctorTestProps) => {
@@ -102,7 +108,7 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
   // Arrow keys walk the weighing grid instead of leaving the technician to drag
   // the pointer across a table this wide.
   const gridNav = useGridArrowNavigation<HTMLDivElement>();
-  const type = record.type;
+  const type = savedMethod(record);
   const rows = type === "standard" ? record.standardRows : record.modifiedRows;
   const mouldVolume = type === "standard" ? record.standardMouldVolume : record.modifiedMouldVolume;
   const rowsKey = type === "standard" ? "standardRows" : "modifiedRows";
@@ -204,13 +210,15 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
     { label: "Modified MDD", value: summaries.modified.mdd === null ? "" : `${displayDensity(summaries.modified.mdd)} kg/m³` },
   ], [summaries]);
   const totalPoints = records.reduce((total, sample) => {
-    const sampleRows = sample.type === "standard" ? sample.standardRows : sample.modifiedRows;
-    const sampleVolume = sample.type === "standard" ? sample.standardMouldVolume : sample.modifiedMouldVolume;
+    const sampleType = savedMethod(sample);
+    const sampleRows = sampleType === "standard" ? sample.standardRows : sample.modifiedRows;
+    const sampleVolume = sampleType === "standard" ? sample.standardMouldVolume : sample.modifiedMouldVolume;
     return total + sampleRows.map((row) => calculateProctorPoint(row, sampleVolume))
       .filter((point) => point.moistureContent !== null && point.dryDensity !== null).length;
   }, 0);
   const startedPoints = records.reduce((total, sample) => {
-    const sampleRows = sample.type === "standard" ? sample.standardRows : sample.modifiedRows;
+    const sampleType = savedMethod(sample);
+    const sampleRows = sampleType === "standard" ? sample.standardRows : sample.modifiedRows;
     return total + sampleRows.filter(isRowStarted).length;
   }, 0);
   const startedRows = rows.filter(isRowStarted).length;
@@ -280,7 +288,7 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
     setSaveStatus("saving");
     setError(null);
     const sampleStatuses = records.map((sample) => {
-      const sampleType = sample.type;
+      const sampleType = savedMethod(sample);
       const sampleRows = sampleType === "standard" ? sample.standardRows : sample.modifiedRows;
       const sampleVolume = sampleType === "standard" ? sample.standardMouldVolume : sample.modifiedMouldVolume;
       const samplePoints = sampleRows.map((row) => calculateProctorPoint(row, sampleVolume));
@@ -297,7 +305,7 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
       title: project.projectName,
       clientName: project.clientName,
       date: project.projectDate || project.date,
-    }, record, summaries.standard, summaries.modified, records);
+    }, record, summaries.standard, summaries.modified, records.map((sample) => ({ ...sample, type: savedMethod(sample) })));
     const data = {
       test_key: "proctor",
       name: "Density/Moisture Content Relationship",
@@ -337,7 +345,7 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
   };
 
   const createPdfOptions = async (sample: ProctorRecord, includeChart: boolean) => {
-    const sampleType = sample.type;
+    const sampleType = savedMethod(sample);
     const sampleRows = sampleType === "standard" ? sample.standardRows : sample.modifiedRows;
     const sampleMouldVolume = sampleType === "standard" ? sample.standardMouldVolume : sample.modifiedMouldVolume;
     const samplePoints = sampleRows
@@ -475,8 +483,9 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
           <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pb-1">
             {records.map((sample, index) => {
               const isActive = index === activeSampleIndex;
-              const sampleMethodRows = sample.type === "standard" ? sample.standardRows : sample.modifiedRows;
-              const sampleMethodVolume = sample.type === "standard" ? sample.standardMouldVolume : sample.modifiedMouldVolume;
+              const sampleType = savedMethod(sample);
+              const sampleMethodRows = sampleType === "standard" ? sample.standardRows : sample.modifiedRows;
+              const sampleMethodVolume = sampleType === "standard" ? sample.standardMouldVolume : sample.modifiedMouldVolume;
               const sampleSummary = calculateProctor(sampleMethodRows, sampleMethodVolume);
               const sampleName = sample.label || sample.sampleNumber || `Sample ${index + 1}`;
               return (

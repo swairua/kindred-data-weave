@@ -500,8 +500,11 @@ describe("Proctor record page", () => {
     });
   };
 
-  it("shows saved Standard readings without a method toggle", async () => {
-    apiState.rows.push({ id: 4, project_id: 10, test_key: "proctor", payload_json: createPayload("BH-04") });
+  it("shows saved Standard readings when the method flag is stale", async () => {
+    const payload = createPayload("BH-04");
+    payload.project.records[0].type = "modified";
+    payload.project.records[0].modifiedRows = createProctorRows();
+    apiState.rows.push({ id: 4, project_id: 10, test_key: "proctor", payload_json: payload });
     render(createElement(MemoryRouter, null, createElement(ProctorTest, { testKey: "proctor" })));
 
     expect(await screen.findByText(/Record results — BS 1377 Part 4, 3\.3/)).toBeInTheDocument();
