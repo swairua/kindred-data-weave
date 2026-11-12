@@ -500,12 +500,14 @@ describe("Proctor record page", () => {
     });
   };
 
-  it("shows only the Modified form with six A–F columns", async () => {
+  it("shows saved Standard readings without a method toggle", async () => {
+    apiState.rows.push({ id: 4, project_id: 10, test_key: "proctor", payload_json: createPayload("BH-04") });
     render(createElement(MemoryRouter, null, createElement(ProctorTest, { testKey: "proctor" })));
 
-    expect(await screen.findByText(/Record results — BS 1377 Part 4, 3\.5/)).toBeInTheDocument();
+    expect(await screen.findByText(/Record results — BS 1377 Part 4, 3\.3/)).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "F" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Modified mould volume")).toBeInTheDocument();
+    expect(screen.getByLabelText("Standard mould volume")).toBeInTheDocument();
+    expect(screen.getByLabelText("Moisture addition (cc), point A")).toHaveValue(50);
     expect(screen.queryByRole("tab", { name: "Standard" })).not.toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: "Modified" })).not.toBeInTheDocument();
   });
@@ -565,7 +567,7 @@ describe("Proctor record page", () => {
   it("saves and reloads the expanded payload", async () => {
     render(createElement(MemoryRouter, null, createElement(ProctorTest, { testKey: "proctor" })));
     expect(await screen.findByText(/Record results/)).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Modified mould volume"), { target: { value: "1000" } });
+    fireEvent.change(screen.getByLabelText("Standard mould volume"), { target: { value: "1000" } });
     fireEvent.change(screen.getByLabelText("Moisture addition (cc), point A"), { target: { value: "50" } });
     fireEvent.change(screen.getByLabelText("Wt of mould + wet material (g), point A"), { target: { value: "3000" } });
     fireEvent.change(screen.getByLabelText("Wt of mould (g), point A"), { target: { value: "1000" } });
@@ -580,10 +582,10 @@ describe("Proctor record page", () => {
     expect(apiState.rows[0].data_points).toBe(1);
   });
 
-  it("uses the Modified rammer clause for the single Proctor form", async () => {
+  it("uses the saved Standard rammer clause for the single Proctor form", async () => {
     render(createElement(MemoryRouter, null, createElement(ProctorTest, { testKey: "proctor" })));
-    expect(await screen.findByText(/BS 1377 Part 4, 3\.5/)).toBeInTheDocument();
-    expect(screen.getByText(/Modified \(4\.5 kg rammer\)/)).toBeInTheDocument();
+    expect(await screen.findByText(/BS 1377 Part 4, 3\.3/)).toBeInTheDocument();
+    expect(screen.getByText(/Standard \(2\.5 kg rammer\)/)).toBeInTheDocument();
   });
 
   it("reports the fitted curve optimum for a bracketed set of moisture contents", async () => {
@@ -597,10 +599,10 @@ describe("Proctor record page", () => {
     expect(screen.getByText("2195")).toBeInTheDocument();
     // Only three of the five recommended moisture contents were entered.
     expect(screen.getByText(/Only 3 moisture contents completed/)).toBeInTheDocument();
-    expect(screen.getByText(/0\/6 modified points/)).toBeInTheDocument();
+    expect(screen.getByText(/0\/6 standard points/)).toBeInTheDocument();
   });
 
-  it("reaches Complete when the Modified sample is fully recorded", async () => {
+  it("reaches Complete when the Standard sample is fully recorded", async () => {
     render(createElement(MemoryRouter, null, createElement(ProctorTest, { testKey: "proctor" })));
     expect(await screen.findByText(/Record results/)).toBeInTheDocument();
     expect(screen.getByText(/No data/)).toBeInTheDocument();
@@ -615,24 +617,24 @@ describe("Proctor record page", () => {
 
     // Calculated masses alone do not complete a point without its recorded container number.
     expect(await screen.findByText(/In progress/)).toBeInTheDocument();
-    expect(screen.getByText(/0\/6 modified points/)).toBeInTheDocument();
+    expect(screen.getByText(/0\/6 standard points/)).toBeInTheDocument();
 
     for (let index = 0; index < 6; index += 1) {
       fireEvent.change(screen.getByLabelText(`Container No., point ${"ABCDEF"[index]}`), { target: { value: `C${index + 1}` } });
     }
     fireEvent.change(screen.getByLabelText("Moisture addition (cc), point A"), { target: { value: "" } });
     expect(screen.getByText(/In progress/)).toBeInTheDocument();
-    expect(screen.getByText(/5\/6 modified points/)).toBeInTheDocument();
+    expect(screen.getByText(/5\/6 standard points/)).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Moisture addition (cc), point A"), { target: { value: "50" } });
     expect(await screen.findByText(/Complete/)).toBeInTheDocument();
-    expect(screen.getByText(/6\/6 modified points/)).toBeInTheDocument();
+    expect(screen.getByText(/6\/6 standard points/)).toBeInTheDocument();
   });
 
-  it("keeps the Modified record In progress until the dry density turns over", async () => {
+  it("keeps the Standard record In progress until the dry density turns over", async () => {
     render(createElement(MemoryRouter, null, createElement(ProctorTest, { testKey: "proctor" })));
     expect(await screen.findByText(/Record results/)).toBeInTheDocument();
-    expect(screen.getByText(/2682 kJ\/m³/)).toBeInTheDocument();
+    expect(screen.getByText(/596 kJ\/m³/)).toBeInTheDocument();
 
     fillPoints(
       ["50", "60", "70"],
