@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Check, ChevronDown, FileDown, Loader2, Plus, Printer, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import MoistureDensityChart from "@/components/soil/MoistureDensityChart";
@@ -28,7 +27,6 @@ import {
   type FieldAcceptance,
   type ProctorCurvePoint,
   type ProctorEffort,
-  type ProctorMethod,
   type ProctorPointCalculation,
   type ProctorRecord,
   type ProctorRow,
@@ -46,6 +44,10 @@ interface ProctorTestProps {
 
 type ProctorInputField = Exclude<keyof ProctorRow, "legacy">;
 type ProctorRecordTextField =
+  | "label"
+  | "sampleNumber"
+  | "sampleDepthFrom"
+  | "sampleDepthTo"
   | "testedBy"
   | "specificGravity"
   | "airVoidsTarget"
@@ -58,9 +60,6 @@ type ProctorRecordTextField =
   | "reportedBulkDensity";
 
 const POINT_LABELS = ["A", "B", "C", "D", "E", "F"];
-/** BS 1377-4:1990, 3.3 is the 2.5 kg rammer method and 3.5 the 4.5 kg rammer method. */
-const methodClause = (method: ProctorMethod) => method === "standard" ? "3.3" : "3.5";
-const methodLabel = (method: ProctorMethod) => method === "standard" ? "Standard" : "Modified";
 const MAX_POINTS = 10;
 const displayValue = (value: number | null) => value === null ? "—" : value.toFixed(2);
 const displayMoisture = (value: number | null) => value === null ? "—" : value.toFixed(1);
@@ -85,7 +84,7 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
   const projectId = project.currentProjectId ?? null;
   const metadata = useMemo(() => testData.recordMetadata.proctor || {}, [testData.recordMetadata.proctor]);
   const metadataKey = JSON.stringify(metadata);
-  const [records, setRecords] = useState<ProctorRecord[]>(() => [emptyProctorRecord(metadata)]);
+  const [records, setRecords] = useState<ProctorRecord[]>(() => [{ ...emptyProctorRecord(metadata), type: "modified" }]);
   const [activeSampleIndex, setActiveSampleIndex] = useState(0);
   const record = records[activeSampleIndex] ?? records[0] ?? emptyProctorRecord(metadata);
   const setRecord = (update: (current: ProctorRecord) => ProctorRecord) => {
@@ -100,13 +99,9 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
   // Arrow keys walk the weighing grid instead of leaving the technician to drag
   // the pointer across a table this wide.
   const gridNav = useGridArrowNavigation<HTMLDivElement>();
-  const type = record.type;
-  const rows = type === "standard" ? record.standardRows : record.modifiedRows;
-  const mouldVolume = type === "standard" ? record.standardMouldVolume : record.modifiedMouldVolume;
-  const setRowsKey = type === "standard" ? "standardRows" : "modifiedRows";
-  const setVolumeKey = type === "standard" ? "standardMouldVolume" : "modifiedMouldVolume";
-  const effort = type === "standard" ? record.standardEffort : record.modifiedEffort;
-  const setEffortKey = type === "standard" ? "standardEffort" : "modifiedEffort";
+  const rows = record.modifiedRows;
+  const mouldVolume = record.modifiedMouldVolume;
+  const effort = record.modifiedEffort;
   const displayedBulkDensity = optionalNumber(record.reportedBulkDensity);
   const energy = compactionEnergy(effort, mouldVolume);
 
@@ -115,7 +110,7 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
     // so the first save creates a fresh row instead of overwriting the stored record.
     const isNewRecordLaunch = new URLSearchParams(location.search).get("newRecord") === "1";
     if (!projectId || isNewRecordLaunch) {
-      setRecords([emptyProctorRecord(metadata)]);
+      setRecords([{ ...emptyProctorRecord(metadata), type: "modified" }]);
       setActiveSampleIndex(0);
       setRecordId(null);
       setError(null);
@@ -124,7 +119,7 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
     }
 
     let active = true;
-    setRecords([emptyProctorRecord(metadata)]);
+    setRecords([{ ...emptyProctorRecord(metadata), type: "modified" }]);
     setActiveSampleIndex(0);
     setRecordId(null);
     setIsLoading(true);
@@ -133,7 +128,7 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
       .then((result) => {
         if (!active) return;
         setRecordId(result?.id ?? null);
-        setRecords(getProctorRecords(result?.payload_json, metadata));
+        setRecords(getProctorRecords(result?.payload_json, metadata).map((sample) => ({ ...sample, type: "modified" })));
         setActiveSampleIndex(0);
       })
       .catch((loadError) => {
@@ -175,15 +170,12 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
       }))
       .filter((line) => line.points.length > 1);
   }, [specificGravity, moistureRange, airVoidsTargets]);
-  // Reported OMC/MDD are typed on the active method's tab, so they override that method's calculated values.
   const summaries = useMemo(() => {
     const standard = calculateProctor(record.standardRows, record.standardMouldVolume, specificGravity);
     const modified = calculateProctor(record.modifiedRows, record.modifiedMouldVolume, specificGravity);
-    return type === "standard"
-      ? { standard: applyReportedOptimum(standard, record.reportedOmc, record.reportedMdd), modified }
-      : { standard, modified: applyReportedOptimum(modified, record.reportedOmc, record.reportedMdd) };
-  }, [record.standardRows, record.standardMouldVolume, record.modifiedRows, record.modifiedMouldVolume, record.reportedOmc, record.reportedMdd, type, specificGravity]);
-  const displayedOptimum = type === "standard" ? summaries.standard : summaries.modified;
+    return { standard, modified: applyReportedOptimum(modified, record.reportedOmc, record.reportedMdd) };
+  }, [record.standardRows, record.standardMouldVolume, record.modifiedRows, record.modifiedMouldVolume, record.reportedOmc, record.reportedMdd, specificGravity]);
+  const displayedOptimum = summaries.modified;
   const reportedSummary = { ...displayedOptimum, bulkDensity: displayedOptimum.bulkDensity };
   const oversizeRemoved = optionalNumber(record.oversizePercent);
   const oversizeGs = optionalNumber(record.oversizeSpecificGravity);
@@ -202,13 +194,10 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
     { label: "Modified OMC", value: summaries.modified.omc === null ? "" : `${displayMoisture(summaries.modified.omc)}%` },
     { label: "Modified MDD", value: summaries.modified.mdd === null ? "" : `${displayDensity(summaries.modified.mdd)} kg/m³` },
   ], [summaries]);
-  const totalPoints = records.reduce((total, sample) => total + [
-    ...sample.standardRows.map((row) => calculateProctorPoint(row, sample.standardMouldVolume)),
-    ...sample.modifiedRows.map((row) => calculateProctorPoint(row, sample.modifiedMouldVolume)),
-  ].filter((point) => point.moistureContent !== null && point.dryDensity !== null).length, 0);
-  const startedPoints = records.reduce((total, sample) => total + sample.standardRows.concat(sample.modifiedRows).filter(isRowStarted).length, 0);
-  // Completion is judged on the method on screen, as in the other soil records, so a record that
-  // only carries the standard test can still be reported as complete.
+  const totalPoints = records.reduce((total, sample) => total + sample.modifiedRows
+    .map((row) => calculateProctorPoint(row, sample.modifiedMouldVolume))
+    .filter((point) => point.moistureContent !== null && point.dryDensity !== null).length, 0);
+  const startedPoints = records.reduce((total, sample) => total + sample.modifiedRows.filter(isRowStarted).length, 0);
   const startedRows = rows.filter(isRowStarted).length;
   const isPointComplete = (point: ProctorPointCalculation, row: ProctorRow) => point.moistureContent !== null
     && point.dryDensity !== null
@@ -223,23 +212,18 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
   const updateRow = (index: number, field: ProctorInputField, value: string) => {
     setRecord((current) => ({
       ...current,
-      [setRowsKey]: current[setRowsKey].map((row, rowIndex) => rowIndex === index ? { ...row, [field]: value } : row),
+      modifiedRows: current.modifiedRows.map((row, rowIndex) => rowIndex === index ? { ...row, [field]: value } : row),
     }));
     setSaveStatus("idle");
   };
 
   const updateMouldVolume = (value: string) => {
-    setRecord((current) => ({ ...current, [setVolumeKey]: value }));
+    setRecord((current) => ({ ...current, modifiedMouldVolume: value }));
     setSaveStatus("idle");
   };
 
   const updateEffort = (field: keyof ProctorEffort, value: string) => {
-    setRecord((current) => ({ ...current, [setEffortKey]: { ...current[setEffortKey], [field]: value } }));
-    setSaveStatus("idle");
-  };
-
-  const updateMethod = (value: string) => {
-    setRecord((current) => ({ ...current, type: value === "modified" ? "modified" : "standard" }));
+    setRecord((current) => ({ ...current, modifiedEffort: { ...current.modifiedEffort, [field]: value } }));
     setSaveStatus("idle");
   };
 
@@ -250,7 +234,7 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
 
   const addSample = () => {
     const nextNumber = String(records.length + 1);
-    const nextRecord = emptyProctorRecord({ ...metadata, sampleId: `Sample ${nextNumber}`, sampleNumber: nextNumber });
+    const nextRecord = { ...emptyProctorRecord(), label: `Sample ${nextNumber}`, type: "modified" as const };
     setRecords((current) => [...current, nextRecord]);
     setActiveSampleIndex(records.length);
     setSaveStatus("idle");
@@ -259,9 +243,9 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
   const addRow = () => {
     setRecord((current) => ({
       ...current,
-      [setRowsKey]: current[setRowsKey].length >= MAX_POINTS
-        ? current[setRowsKey]
-        : [...current[setRowsKey], {
+      modifiedRows: current.modifiedRows.length >= MAX_POINTS
+        ? current.modifiedRows
+        : [...current.modifiedRows, {
             moistureAdded: "",
             mouldWetMass: "",
             mouldTare: "",
@@ -280,10 +264,9 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
     if (error) throw new Error("This record could not be loaded. Reload before saving to prevent duplicates.");
     setSaveStatus("saving");
     setError(null);
-    // Completion follows the method on screen so a standard-only test is still reportable.
     const sampleStatuses = records.map((sample) => {
-      const sampleRows = sample.type === "standard" ? sample.standardRows : sample.modifiedRows;
-      const sampleVolume = sample.type === "standard" ? sample.standardMouldVolume : sample.modifiedMouldVolume;
+      const sampleRows = sample.modifiedRows;
+      const sampleVolume = sample.modifiedMouldVolume;
       const samplePoints = sampleRows.map((row) => calculateProctorPoint(row, sampleVolume));
       const sampleStartedRows = sampleRows.filter(isRowStarted).length;
       const sampleComplete = sampleStartedRows > 0
@@ -338,9 +321,9 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
   };
 
   const createPdfOptions = async (sample: ProctorRecord, includeChart: boolean) => {
-    const sampleType = sample.type;
-    const sampleRows = sampleType === "standard" ? sample.standardRows : sample.modifiedRows;
-    const sampleMouldVolume = sampleType === "standard" ? sample.standardMouldVolume : sample.modifiedMouldVolume;
+    const sampleType = "modified" as const;
+    const sampleRows = sample.modifiedRows;
+    const sampleMouldVolume = sample.modifiedMouldVolume;
     const samplePoints = sampleRows
       .map((row) => calculateProctorPoint(row, sampleMouldVolume))
       .filter((point): point is ProctorPointCalculation & { moistureContent: number; dryDensity: number } =>
@@ -447,23 +430,37 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
         </div>
         <div className="flex flex-wrap gap-x-2 gap-y-1 px-4 py-2 text-[10px] text-muted-foreground">
           <span>Material: <strong className="text-foreground">Soil</strong></span><span>·</span>
-          <span>Test type: <strong className="text-foreground">Density/Moisture Content Relationship</strong></span><span>·</span>
-          <span>Sample ID: <strong className="text-foreground">{record.label || "—"}</strong></span><span>·</span>
-          <span>Sample No.: <strong className="text-foreground">{record.sampleNumber || "—"}</strong></span><span>·</span>
-          <span>Sample Depth From (m): <strong className="text-foreground">{record.sampleDepthFrom || "—"}</strong></span><span>·</span>
-          <span>Sample Depth To (m): <strong className="text-foreground">{record.sampleDepthTo || "—"}</strong></span>
+          <span>Test type: <strong className="text-foreground">Density/Moisture Content Relationship</strong></span>
+        </div>
+        <div className="grid grid-cols-2 gap-2 border-t px-4 py-3 sm:grid-cols-4">
+          <label className="space-y-1 text-[10px] text-muted-foreground">
+            <span>Sample ID</span>
+            <Input aria-label="Sample ID" value={record.label} onChange={(event) => updateRecordField("label", event.target.value)} className="record-input h-7" />
+          </label>
+          <label className="space-y-1 text-[10px] text-muted-foreground">
+            <span>Sample No.</span>
+            <Input aria-label="Sample number" value={record.sampleNumber} onChange={(event) => updateRecordField("sampleNumber", event.target.value)} className="record-input h-7" />
+          </label>
+          <label className="space-y-1 text-[10px] text-muted-foreground">
+            <span>Depth From (m)</span>
+            <Input aria-label="Sample depth from" type="number" min="0" step="any" value={record.sampleDepthFrom} onChange={(event) => updateRecordField("sampleDepthFrom", event.target.value)} className="record-input h-7" />
+          </label>
+          <label className="space-y-1 text-[10px] text-muted-foreground">
+            <span>Depth To (m)</span>
+            <Input aria-label="Sample depth to" type="number" min="0" step="any" value={record.sampleDepthTo} onChange={(event) => updateRecordField("sampleDepthTo", event.target.value)} className="record-input h-7" />
+          </label>
         </div>
       </section>
 
       <div className="space-y-2 px-1">
-        <div><h2 className="text-sm font-semibold">Record results — BS 1377 Part 4, {methodClause(type)}</h2><p className="text-[11px] text-muted-foreground">{methodLabel(type)} ({type === "standard" ? "2.5 kg" : "4.5 kg"} rammer). Enter readings for each moisture content point.</p></div>
+        <div><h2 className="text-sm font-semibold">Record results — BS 1377 Part 4, 3.5</h2><p className="text-[11px] text-muted-foreground">Modified (4.5 kg rammer). Enter readings for each moisture content point.</p></div>
         <div className="flex items-center gap-2 print:hidden" data-testid="proctor-sample-strip">
           <span className="shrink-0 text-xs text-muted-foreground">Sample {activeSampleIndex + 1} of {records.length}</span>
           <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pb-1">
             {records.map((sample, index) => {
               const isActive = index === activeSampleIndex;
-              const sampleMethodRows = type === "standard" ? sample.standardRows : sample.modifiedRows;
-              const sampleMethodVolume = type === "standard" ? sample.standardMouldVolume : sample.modifiedMouldVolume;
+              const sampleMethodRows = sample.modifiedRows;
+              const sampleMethodVolume = sample.modifiedMouldVolume;
               const sampleSummary = calculateProctor(sampleMethodRows, sampleMethodVolume);
               const sampleName = sample.label || sample.sampleNumber || `Sample ${index + 1}`;
               return (
@@ -491,19 +488,11 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
 
       <section className="record-card overflow-hidden">
         <div className="flex flex-col gap-2 border-b px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2">
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{methodLabel(type)} Proctor readings</div>
-            <Tabs value={type} onValueChange={updateMethod}>
-              <TabsList className="h-7">
-                <TabsTrigger value="standard" className="h-5 px-2 text-[10px]">Standard</TabsTrigger>
-                <TabsTrigger value="modified" className="h-5 px-2 text-[10px]">Modified</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Modified Proctor readings</div>
           <div className="flex flex-wrap items-center gap-3">
             <label className="flex items-center gap-2 text-[10px] text-muted-foreground">
               <span>Mould volume (cm³)</span>
-              <Input aria-label={`${methodLabel(type)} mould volume`} type="number" min="0" step="any" value={mouldVolume} onChange={(event) => updateMouldVolume(event.target.value)} className="record-input h-7 w-24" placeholder="1000" />
+              <Input aria-label="Modified mould volume" type="number" min="0" step="any" value={mouldVolume} onChange={(event) => updateMouldVolume(event.target.value)} className="record-input h-7 w-24" placeholder="1000" />
             </label>
             <label className="flex items-center gap-2 text-[10px] text-muted-foreground" title="Particle density. Draws the zero air voids line on the curve.">
               <span>Specific gravity, Gs</span>
@@ -517,10 +506,10 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3 border-b px-3 py-2 text-[10px] text-muted-foreground">
-          <label className="flex items-center gap-2"><span>Layers</span><Input aria-label={`${methodLabel(type)} layers`} type="number" min="1" step="1" value={effort.layers} onChange={(event) => updateEffort("layers", event.target.value)} className="record-input h-7 w-16" /></label>
-          <label className="flex items-center gap-2"><span>Blows per layer</span><Input aria-label={`${methodLabel(type)} blows per layer`} type="number" min="1" step="1" value={effort.blowsPerLayer} onChange={(event) => updateEffort("blowsPerLayer", event.target.value)} className="record-input h-7 w-16" /></label>
-          <label className="flex items-center gap-2"><span>Rammer mass (kg)</span><Input aria-label={`${methodLabel(type)} rammer mass`} type="number" min="0" step="any" value={effort.rammerMass} onChange={(event) => updateEffort("rammerMass", event.target.value)} className="record-input h-7 w-20" /></label>
-          <label className="flex items-center gap-2"><span>Drop height (mm)</span><Input aria-label={`${methodLabel(type)} drop height`} type="number" min="0" step="any" value={effort.dropHeight} onChange={(event) => updateEffort("dropHeight", event.target.value)} className="record-input h-7 w-20" /></label>
+          <label className="flex items-center gap-2"><span>Layers</span><Input aria-label="Modified layers" type="number" min="1" step="1" value={effort.layers} onChange={(event) => updateEffort("layers", event.target.value)} className="record-input h-7 w-16" /></label>
+          <label className="flex items-center gap-2"><span>Blows per layer</span><Input aria-label="Modified blows per layer" type="number" min="1" step="1" value={effort.blowsPerLayer} onChange={(event) => updateEffort("blowsPerLayer", event.target.value)} className="record-input h-7 w-16" /></label>
+          <label className="flex items-center gap-2"><span>Rammer mass (kg)</span><Input aria-label="Modified rammer mass" type="number" min="0" step="any" value={effort.rammerMass} onChange={(event) => updateEffort("rammerMass", event.target.value)} className="record-input h-7 w-20" /></label>
+          <label className="flex items-center gap-2"><span>Drop height (mm)</span><Input aria-label="Modified drop height" type="number" min="0" step="any" value={effort.dropHeight} onChange={(event) => updateEffort("dropHeight", event.target.value)} className="record-input h-7 w-20" /></label>
           <span className="ml-auto">Compaction energy <strong className="font-mono text-foreground">{energy === null ? "—" : energy.toFixed(0)} kJ/m³</strong></span>
         </div>
         <div
@@ -553,7 +542,7 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
       </section>
 
       <section className="record-card p-3">
-        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Proctor curve — {methodLabel(type)}</h3>
+        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Proctor curve — Modified</h3>
         {/* The chart is the sheet's own drawing: red curve, square measurement
             points, dashed air voids lines, so the export and the screen agree. */}
         <MoistureDensityChart
@@ -632,7 +621,7 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
 
       <section className="record-card flex flex-col gap-2 px-3 py-2 text-[10px] sm:flex-row sm:items-center sm:justify-between">
         <label className="flex items-center gap-2"><span className="text-muted-foreground">TESTED BY</span><Input aria-label="Tested by" value={record.testedBy} onChange={(event) => updateRecordField("testedBy", event.target.value)} className="record-input h-7 w-40" /></label>
-        <div className="sm:text-right"><span className="text-muted-foreground">STATUS</span><div className="font-semibold">{status} · {filledRows}/{rows.length} {type} points</div></div>
+        <div className="sm:text-right"><span className="text-muted-foreground">STATUS</span><div className="font-semibold">{status} · {filledRows}/{rows.length} modified points</div></div>
       </section>
 
       <Dialog open={printDialogOpen} onOpenChange={setPrintDialogOpen}>
