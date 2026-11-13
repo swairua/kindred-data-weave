@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { ChevronRight, FileDown, Plus, Printer, Trash2, AlertTriangle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { emitAuthLost } from "@/lib/authEvents";
+import { AnimatedDots } from "@/components/ProcessingDots";
 import { loadDraft, saveDraft, removeDraft } from "@/lib/draftStore";
 import { type ApiProjectRow } from "@/types/api";
 
@@ -81,8 +82,6 @@ import {
   downloadJSON,
 } from "@/lib/jsonExporter";
 import { collectSamples } from "@/lib/testResultSamples";
-import { generateAtterbergXLSX } from "@/lib/xlsxExporter";
-import { ExportPreviewModal, type ExportPreviewData } from "@/components/ExportPreviewModal";
 import html2canvas from "html2canvas";
 
 // Draft is now stored in the namespaced draft store ("lab_draft:AtterbergProject").
@@ -160,14 +159,6 @@ type ComputedRecord = AtterbergRecord & {
   dataPoints: number;
   startedDataPoints: number;
   completedTests: number;
-};
-
-type SmokeCheckStatus = {
-  state: "idle" | "running" | "success" | "error";
-  pdf: "idle" | "running" | "success" | "error";
-  xlsx: "idle" | "running" | "success" | "error";
-  message: string;
-  detail?: string;
 };
 
 const makeId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -746,7 +737,6 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const [printDialogOpen, setPrintDialogOpen] = useState(false);
   const [printSelection, setPrintSelection] = useState<Set<string>>(new Set());
-  const [smokeCheckStatus, setSmokeCheckStatus] = useState<SmokeCheckStatus | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [lastSaveError, setLastSaveError] = useState<string | null>(null);
@@ -754,17 +744,14 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
   // Atterberg records yet"; cleared automatically when a retry or full reload succeeds.
   const [recordsLoadError, setRecordsLoadError] = useState<string | null>(null);
   const [recordsRetryKey, setRecordsRetryKey] = useState(0);
-  const [previewModalOpen, setPreviewModalOpen] = useState(false);
-  const [previewData, setPreviewData] = useState<ExportPreviewData | null>(null);
-  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
-  const [isExporting, setIsExporting] = useState<"json" | "pdf" | "xlsx" | null>(null);
+  const [isExporting, setIsExporting] = useState<"json" | "pdf" | null>(null);
   const [printProcessing, setPrintProcessing] = useState<"idle" | "saving" | "processing" | "ready">("idle");
   const [adminImages, setAdminImages] = useState<{ logo?: string; contacts?: string; stamp?: string }>({});
 
   // Only one sample is on screen at a time, chosen from the strip above it. A project can hold
   // many samples, and stacking every form made the page grow downwards on each "Add Record".
   const [activeRecordId, setActiveRecordId] = useState<string | null>(null);
-  // PDF/Excel/print read the chart and print sheet out of the DOM of every record, so those
+  // PDF and print read the chart and print sheet out of the DOM of every record, so those
   // flows mount them all again before capturing.
   const [renderAllRecords, setRenderAllRecords] = useState(false);
   // Sample the list asked us to open, applied once the records exist.
@@ -1980,7 +1967,7 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
       // Wait for all charts to be fully rendered before capturing
       await waitForChartsToBeFullyRendered(recordIds);
 
-      // Capture all chart images to match Excel export
+      // Capture chart images for the printed sheet
       // Pass ensureRecordsExpanded as callback to ensure proper async state update and rendering wait
       const chartImages = await captureAllChartImages(recordIds, ensureRecordsExpanded);
       console.log(`[Export PDF] Captured ${Object.keys(chartImages).length} charts out of ${recordIds.length}`);
@@ -2032,44 +2019,6 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
     [computedRecords, project.clientName, project.date, project.projectName, projectState, captureAllChartImages, ensureRecordsExpanded, waitForChartsToBeFullyRendered],
   );
 
-  const handleRecordExportXLSX = useCallback(
-    async (recordId: string) => {
-      const record = computedRecords.find((r) => r.id === recordId);
-      if (!record) {
-        toast.error("Record not found");
-        return false;
-      }
-
-      console.log(`[Export] Starting Excel export for record ${recordId}`);
-
-      // Wait for charts to be fully rendered before capturing
-      await waitForChartsToBeFullyRendered([recordId]);
-
-      // Capture chart image for this record
-      // Pass ensureRecordsExpanded as callback to ensure proper async state update and rendering wait
-      const chartImages = await captureAllChartImages([recordId], ensureRecordsExpanded);
-
-      console.log(`[Export] Chart images captured for record:`, Object.keys(chartImages));
-
-      // Ensure we have chart images before generating Excel
-      if (Object.keys(chartImages).length === 0) {
-        console.warn(`[Export] No chart images captured for record ${recordId}, but continuing with export`);
-      }
-
-      await generateAtterbergXLSX({
-        projectName: project.projectName,
-        clientName: project.clientName || projectState.clientName,
-        date: project.date,
-        projectState,
-        records: [record],
-        chartImages: Object.keys(chartImages).length > 0 ? chartImages : undefined,
-      });
-
-      return true;
-    },
-    [computedRecords, project.clientName, project.date, project.projectName, projectState, captureAllChartImages, ensureRecordsExpanded, waitForChartsToBeFullyRendered],
-  );
-
   const handleRecordExportJSON = useCallback(
     (recordId: string) => {
       const record = persistedState.records.find((r) => r.id === recordId);
@@ -2101,143 +2050,6 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
     },
     [persistedState.records, project.clientName, project.date, project.projectName, projectState.clientName, projectState.projectName, projectState.labOrganization, projectState.dateReported, projectState.checkedBy],
   );
-
-  const handleExportXLSX = useCallback(async () => {
-    if (computedRecords.length === 0) {
-      toast.error("No records to export");
-      return false;
-    }
-
-    // Collect data warnings from records (export proceeds with warnings)
-    const recordsWithWarnings = computedRecords.filter(record => {
-      const { warningMessages } = canRecordBeExported(record);
-      if (warningMessages.length > 0) {
-        console.warn(`Export record "${record.title}" with warnings: ${warningMessages.join("; ")}`);
-      }
-      return warningMessages.length > 0;
-    });
-
-    // Show warning toast if records have data issues, but allow export to proceed
-    if (recordsWithWarnings.length > 0) {
-      toast.warning(`Exporting ${recordsWithWarnings.length} record(s) with data issues (PL > LL) — review and correct the data after export.`);
-    }
-
-    setIsExporting("xlsx");
-    setIsPreviewLoading(true);
-    // Every record's chart is read out of the DOM, so they are all mounted for the export.
-    setRenderAllRecords(true);
-    try {
-      console.log(`[Export] Starting Excel export for ${computedRecords.length} records`);
-      console.log(`[Export] Registered chart refs:`, Array.from(chartRefsMap.current.keys()));
-
-      // Ensure all records are expanded
-      const recordIds = computedRecords.map((r) => r.id);
-
-      // Wait for all charts to be fully rendered before capturing
-      await waitForChartsToBeFullyRendered(recordIds);
-
-      // Capture all chart images
-      // Pass ensureRecordsExpanded as callback to ensure proper async state update and rendering wait
-      const chartImages = await captureAllChartImages(recordIds, ensureRecordsExpanded);
-
-      console.log(`[Export] Captured ${Object.keys(chartImages).length} charts out of ${recordIds.length}`);
-
-      const blob = await generateAtterbergXLSX({
-        projectName: project.projectName,
-        clientName: project.clientName || projectState.clientName,
-        date: project.date,
-        projectState,
-        records: computedRecords,
-        skipDownload: true,
-        chartImages: Object.keys(chartImages).length > 0 ? chartImages : undefined,
-      });
-
-      if (blob) {
-        setPreviewData({
-          type: "excel",
-          fileName: `Atterberg_Limits_${(project.projectName || "export").replace(/\s+/g, "_")}.xlsx`,
-          blob,
-          summary: {
-            title: "Atterberg Limits Testing",
-            projectName: project.projectName,
-            clientName: project.clientName || projectState.clientName,
-            date: project.date,
-            rowCount: computedRecords.length,
-          },
-        });
-        setPreviewModalOpen(true);
-      }
-    } finally {
-      setIsPreviewLoading(false);
-      setIsExporting(null);
-      setRenderAllRecords(false);
-    }
-
-    return true;
-  }, [computedRecords, project.clientName, project.date, project.projectName, projectState, captureAllChartImages, ensureRecordsExpanded, waitForChartsToBeFullyRendered]);
-
-  const handleExportSmokeCheck = useCallback(async () => {
-    if (computedRecords.length === 0) {
-      setSmokeCheckStatus({
-        state: "error",
-        pdf: "idle",
-        xlsx: "idle",
-        message: "Smoke check unavailable",
-        detail: "Add at least one record before running the export check.",
-      });
-      return false;
-    }
-
-    setSmokeCheckStatus({
-      state: "running",
-      pdf: "running",
-      xlsx: "idle",
-      message: "Running export smoke check",
-      detail: "Generating the PDF and Excel downloads with the same image flow.",
-    });
-
-    const pdfExported = await handleExportPDF();
-    if (pdfExported === false) {
-      setSmokeCheckStatus({
-        state: "error",
-        pdf: "error",
-        xlsx: "idle",
-        message: "Smoke check failed",
-        detail: "PDF export did not complete.",
-      });
-      return false;
-    }
-
-    setSmokeCheckStatus({
-      state: "running",
-      pdf: "success",
-      xlsx: "running",
-      message: "PDF export complete",
-      detail: "Generating the Excel download next.",
-    });
-
-    const xlsxExported = await handleExportXLSX();
-    if (xlsxExported === false) {
-      setSmokeCheckStatus({
-        state: "error",
-        pdf: "success",
-        xlsx: "error",
-        message: "Smoke check failed",
-        detail: "Excel export did not complete.",
-      });
-      return false;
-    }
-
-    setSmokeCheckStatus({
-      state: "success",
-      pdf: "success",
-      xlsx: "success",
-      message: "Smoke check complete",
-      detail: "PDF and Excel downloads were generated. Verify the header images in both files.",
-    });
-
-    return true;
-  }, [computedRecords.length, handleExportPDF, handleExportXLSX]);
 
   if (!hydrated) {
     // Bare loading state only — no card chrome, no Clear button, no misleading empty grid.
@@ -2360,10 +2172,12 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
         {computedRecords.length > 0 && (
           <div className="sticky bottom-0 z-20 mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-t bg-background/95 px-3 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 print:hidden">
             <div className="text-xs text-muted-foreground">
-              {saveStatus === "saving" && "Saving…"}
-              {saveStatus === "saved" && lastSavedAt && `Saved at ${lastSavedAt}`}
-              {saveStatus === "error" && (lastSaveError || "Save failed")}
-              {saveStatus === "idle" && `${computedRecords.length} record${computedRecords.length === 1 ? "" : "s"} ready`}
+              {printProcessing === "processing" && "Preparing report…"}
+              {isExporting === "pdf" && "Preparing PDF…"}
+              {saveStatus === "saving" && printProcessing !== "processing" && isExporting === null && "Saving…"}
+              {saveStatus === "saved" && printProcessing !== "processing" && isExporting === null && lastSavedAt && `Saved at ${lastSavedAt}`}
+              {saveStatus === "error" && printProcessing !== "processing" && isExporting === null && (lastSaveError || "Save failed")}
+              {saveStatus === "idle" && printProcessing !== "processing" && isExporting === null && `${computedRecords.length} record${computedRecords.length === 1 ? "" : "s"} ready`}
             </div>
             <div className="flex items-center justify-end gap-2">
               <Button
@@ -2372,8 +2186,9 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
                 size="sm"
                 onClick={handleExportPDF}
                 disabled={isExporting !== null || printProcessing !== "idle"}
+                aria-busy={isExporting === "pdf"}
               >
-                <FileDown className="mr-1.5 h-3.5 w-3.5" />PDF
+                {isExporting === "pdf" ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Processing<AnimatedDots /></> : <><FileDown className="mr-1.5 h-3.5 w-3.5" />PDF</>}
               </Button>
               <Button
                 type="button"
@@ -2381,8 +2196,9 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
                 size="sm"
                 onClick={openPrintDialog}
                 disabled={isExporting !== null || printProcessing !== "idle"}
+                aria-busy={printProcessing === "processing"}
               >
-                <Printer className="mr-1.5 h-3.5 w-3.5" />Print
+                {printProcessing === "processing" ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Processing<AnimatedDots /></> : <><Printer className="mr-1.5 h-3.5 w-3.5" />Print</>}
               </Button>
               {saveStatus === "saved" ? (
                 <Button
@@ -2460,22 +2276,18 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
             ))}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPrintDialogOpen(false)}>Cancel</Button>
-            <Button disabled={printSelection.size === 0} onClick={confirmPrintSelection}>
-              {printSelection.size === computedRecords.length
-                ? `Print all (${printSelection.size})`
-                : `Print ${printSelection.size} selected`}
+            <Button variant="outline" onClick={() => setPrintDialogOpen(false)} disabled={printProcessing === "processing"}>Cancel</Button>
+            <Button disabled={printSelection.size === 0 || printProcessing === "processing"} onClick={confirmPrintSelection} aria-busy={printProcessing === "processing"}>
+              {printProcessing === "processing"
+                ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Processing<AnimatedDots /></>
+                : printSelection.size === computedRecords.length
+                  ? `Print all (${printSelection.size})`
+                  : `Print ${printSelection.size} selected`}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <ExportPreviewModal
-        open={previewModalOpen}
-        onOpenChange={setPreviewModalOpen}
-        data={previewData}
-        isLoading={isPreviewLoading}
-      />
     </>
   );
 };
