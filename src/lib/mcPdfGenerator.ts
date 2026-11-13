@@ -427,7 +427,7 @@ const curve = mcCurveSamples(toMcPlotPoints(o.fitted, plot.w, plot.h, scales.x, 
   // manually with its bounding box centered on the Y axis and the anchor pushed
   // right relative to the box's left-hand extent.
   const captionWidth = d.getTextWidth(caption);
-  d.text(caption, px(PLOT_UNITS.x - 16.5), captionMidY + captionWidth / 2, { angle: 90, baseline: "middle" });
+  d.text(caption, px(PLOT_UNITS.x - 25), captionMidY + captionWidth / 2, { angle: 90, baseline: "middle" });
   scales.x.ticks.forEach((value, index) => {
     if (!xLabelIndices.has(index)) return;
     label(formatMoistureTick(value), blockX(value), 180, "center", 5.4);
