@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, CalendarDays, Edit2, FileDown, FileText, FlaskConical, Loader2, Plus, Save, Sheet, X } from "lucide-react";
+import { AnimatedDots } from "@/components/ProcessingDots";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -427,9 +428,8 @@ const ProjectOverview = () => {
                           </div>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="outline" size="sm" disabled={isExporting}>
-                                {isExporting ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <FileDown className="mr-1.5 h-3.5 w-3.5" />}
-                                Combined PSD + Compaction
+                              <Button variant="outline" size="sm" disabled={isExporting} aria-busy={isExporting}>
+                                {isExporting ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Processing<AnimatedDots /></> : <><FileDown className="mr-1.5 h-3.5 w-3.5" /> Combined PSD + Compaction</>}
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">

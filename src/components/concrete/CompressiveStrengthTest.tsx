@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import CalculatedInput from "@/components/CalculatedInput";
 import { Plus, X, Save as SaveIcon, Printer, Loader2, CheckCircle2, GripVertical, FileDown, AlertTriangle } from "lucide-react";
+import { AnimatedDots } from "@/components/ProcessingDots";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useProject } from "@/context/ProjectContext";
 import { useTestData } from "@/context/TestDataContext";
@@ -170,6 +171,7 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
   const [resolvedTestId, setResolvedTestId] = useState<number | null>(null);
   const activeTestId = existingTestId ?? resolvedTestId;
   const [isSaving, setIsSaving] = useState(false);
+  const [pendingExport, setPendingExport] = useState<"pdf" | "print" | null>(null);
   const [editingRemarksIndex, setEditingRemarksIndex] = useState<number | null>(null);
   const [highlightedRowIndex, setHighlightedRowIndex] = useState<number | null>(null);
   const [passFailThreshold, setPassFailThreshold] = useState(25);
@@ -610,32 +612,41 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
    */
   /** Exports the cube sheet. Resolves false when there was nothing to print. */
   const exportPDF = async (): Promise<boolean> => {
+    if (pendingExport) return false;
     const cubes = exportableCubes();
     if (cubes.length === 0) {
       toast.error("Add at least one cube with a load and dimensions before exporting");
       return false;
     }
-
-    await generateCompressiveStrengthPDF({
-      projectName: project.projectName,
-      clientName: project.clientName,
-      dateReported: project.dateReported,
-      // `project` carries no testedBy, so the technician comes from the record.
-      testedBy: testDetails.madeBy,
-      checkedBy: project.checkedBy,
-      labOrganization: project.labOrganization,
-      record: buildRecordView(),
-      rows: cubes,
-    });
-    return true;
+    setPendingExport("pdf");
+    try {
+      await generateCompressiveStrengthPDF({
+        projectName: project.projectName,
+        clientName: project.clientName,
+        dateReported: project.dateReported,
+        testedBy: testDetails.madeBy,
+        checkedBy: project.checkedBy,
+        labOrganization: project.labOrganization,
+        record: buildRecordView(),
+        rows: cubes,
+      });
+      return true;
+    } catch {
+      toast.error("Compressive Strength (Cube Test) PDF download failed");
+      return false;
+    } finally {
+      setPendingExport(null);
+    }
   };
 
   const printPDF = async () => {
+    if (pendingExport) return;
     const cubes = exportableCubes();
     if (cubes.length === 0) {
       toast.error("Add at least one cube with a load and dimensions before printing");
       return;
     }
+    setPendingExport("print");
     try {
       const doc = await generateCompressiveStrengthPDF({
         projectName: project.projectName,
@@ -656,6 +667,8 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
       }
     } catch {
       toast.error("Compressive Strength (Cube Test) print failed");
+    } finally {
+      setPendingExport(null);
     }
   };
 
@@ -1052,7 +1065,8 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
           <Button
             size="sm"
             variant="outline"
-            disabled={isLoadingCubes || isLoadingDetails || isSaving}
+            disabled={isLoadingCubes || isLoadingDetails || isSaving || pendingExport === "pdf"}
+            aria-busy={pendingExport === "pdf"}
             onClick={async () => {
               try {
                 const exported = await exportPDF();
@@ -1062,10 +1076,10 @@ const CompressiveStrengthTest = ({ testKey }: CompressiveStrengthTestProps) => {
               }
             }}
           >
-            <FileDown className="h-3.5 w-3.5 mr-1" /> PDF
+            {pendingExport === "pdf" ? <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Processing<AnimatedDots /></> : <><FileDown className="h-3.5 w-3.5 mr-1" /> PDF</>}
           </Button>
-          <Button size="sm" variant="outline" onClick={() => void printPDF()}>
-            <Printer className="h-3.5 w-3.5 mr-1" /> Print
+          <Button size="sm" variant="outline" onClick={() => void printPDF()} disabled={isLoadingCubes || isLoadingDetails || isSaving || pendingExport === "print"} aria-busy={pendingExport === "print"}>
+            {pendingExport === "print" ? <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Processing<AnimatedDots /></> : <><Printer className="h-3.5 w-3.5 mr-1" /> Print</>}
           </Button>
           {isSaving ? (
             <Button size="sm" variant="default" disabled><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Saving...</Button>

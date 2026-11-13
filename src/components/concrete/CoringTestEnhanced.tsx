@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import CalculatedInput from "@/components/CalculatedInput";
 import { Plus, X, Upload, Trash2, ArrowLeft, FilePlus, Loader2, AlertCircle, CheckCircle, Save, Printer, ChevronDown } from "lucide-react";
+import { AnimatedDots } from "@/components/ProcessingDots";
 import { useProject } from "@/context/ProjectContext";
 import { useTestData } from "@/context/TestDataContext";
 import { loadTestResult, saveTestResult } from "@/lib/testResultPersistence";
@@ -1278,7 +1279,7 @@ const handleImageUpload = async (index: number, field: "pileBeforeImage" | "pile
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setReportDialogOpen(false)} disabled={isBuildingReport}>Cancel</Button>
             <Button type="button" onClick={confirmReportSelection} disabled={selectedReportCores.size === 0 || isBuildingReport}>
-              {isBuildingReport ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generating…</> : reportAction === "print" ? `Print ${selectedReportCores.size} selected` : `Generate PDF (${selectedReportCores.size})`}
+              {isBuildingReport ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processing<AnimatedDots /></> : reportAction === "print" ? `Print ${selectedReportCores.size} selected` : `Generate PDF (${selectedReportCores.size})`}
             </Button>
           </DialogFooter>
         </DialogContent>

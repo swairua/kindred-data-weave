@@ -5,6 +5,7 @@ import { AlertCircle, CheckCircle2, ChevronDown, ChevronRight, FileDown, FlaskCo
 import { toast } from "sonner";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useTestAccordion } from "@/context/TestAccordionContext";
+import { AnimatedDots } from "@/components/ProcessingDots";
 
 type SmokeCheckItemStatus = "idle" | "running" | "success" | "error";
 
@@ -42,7 +43,26 @@ interface TestSectionProps {
 
 const TestSection = ({ title, testKey, tooltip, children, onSave, onFinalSave, onClear, onExportPDF, onPrint, onExportXLSX, onExportSmokeCheck, exportSmokeCheckDisabled, smokeCheckStatus, saveStatus = "idle", lastSavedAt, lastSaveError, recordButtonLabel, onRecordClick, actionsPlacement = "footer", canExport = true, exportIndicator = "Document available after saving" }: TestSectionProps) => {
   const [localOpen, setLocalOpen] = useState(false);
+  const [pendingExport, setPendingExport] = useState<"pdf" | "print" | null>(null);
   const accordion = useTestAccordion();
+
+  const runExport = async (action: "pdf" | "print") => {
+    if (pendingExport) return;
+    setPendingExport(action);
+    try {
+      if (action === "pdf" && onExportPDF) {
+        const exported = await onExportPDF();
+        if (exported !== false) toast.success(`${title} PDF downloaded`);
+      } else if (action === "print" && onPrint) {
+        await onPrint();
+      }
+    } catch (error) {
+      console.error(`[TestSection] ${action} export failed:`, error);
+      toast.error(action === "pdf" ? `${title} PDF download failed` : `${title} print failed`);
+    } finally {
+      setPendingExport(null);
+    }
+  };
 
   // Use accordion context if testKey is provided, otherwise use local state
   const isOpen = testKey ? accordion.openTestKey === testKey : localOpen;
@@ -123,18 +143,11 @@ const TestSection = ({ title, testKey, tooltip, children, onSave, onFinalSave, o
             <Button
               size="sm"
               variant="outline"
-              disabled={!canExport}
-              onClick={async () => {
-                if (!canExport) return;
-                try {
-                  const exported = await onExportPDF();
-                  if (exported !== false) toast.success(`${title} PDF downloaded`);
-                } catch {
-                  toast.error(`${title} PDF download failed`);
-                }
-              }}
+              disabled={!canExport || pendingExport === "pdf"}
+              onClick={() => void runExport("pdf")}
+              aria-busy={pendingExport === "pdf"}
             >
-              <FileDown className="h-3.5 w-3.5 mr-1" /> PDF
+              {pendingExport === "pdf" ? <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Processing<AnimatedDots /></> : <><FileDown className="h-3.5 w-3.5 mr-1" /> PDF</>}
             </Button>
           </TooltipTrigger>
           <TooltipContent side="top">
@@ -148,17 +161,11 @@ const TestSection = ({ title, testKey, tooltip, children, onSave, onFinalSave, o
             <Button
               size="sm"
               variant="outline"
-              disabled={!canExport}
-              onClick={async () => {
-                if (!canExport) return;
-                try {
-                  await onPrint();
-                } catch {
-                  toast.error(`${title} print failed`);
-                }
-              }}
+              disabled={!canExport || pendingExport === "print"}
+              onClick={() => void runExport("print")}
+              aria-busy={pendingExport === "print"}
             >
-              <Printer className="h-3.5 w-3.5 mr-1" /> Print
+              {pendingExport === "print" ? <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Processing<AnimatedDots /></> : <><Printer className="h-3.5 w-3.5 mr-1" /> Print</>}
             </Button>
           </TooltipTrigger>
           <TooltipContent side="top">

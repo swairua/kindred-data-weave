@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Check, ChevronDown, FileDown, Loader2, Plus, Printer, Save, TriangleAlert } from "lucide-react";
+import { AnimatedDots } from "@/components/ProcessingDots";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -106,6 +107,7 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exportSelection, setExportSelection] = useState<Set<number>>(new Set([0]));
   const [exportAction, setExportAction] = useState<"print" | "download">("print");
+  const [pendingExport, setPendingExport] = useState<"print" | "download" | null>(null);
   // Y axis auto-fits whenever both fields are blank; a laboratory working range is
   // typed in. New proctor records default to the lab's 1400-1550 window; the window is
   // stored inside the Proctor payload for this project, so every browser and the PDF
@@ -472,9 +474,10 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
   const confirmExportSelection = () => {
     const selectedRecords = records.filter((_, index) => exportSelection.has(index));
     setExportDialogOpen(false);
-    void exportPDF(exportAction, selectedRecords).catch(() =>
-      toast.error(exportAction === "print" ? "Proctor report print failed" : "Proctor report download failed"),
-    );
+    setPendingExport(exportAction);
+    void exportPDF(exportAction, selectedRecords)
+      .catch(() => toast.error(exportAction === "print" ? "Proctor report print failed" : "Proctor report download failed"))
+      .finally(() => setPendingExport(null));
   };
 
   if (isLoading) {
@@ -745,8 +748,12 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
 
       <div className="sticky bottom-0 z-20 -mx-3 flex items-center justify-end gap-2 border-t bg-background/95 px-3 py-2 backdrop-blur print:hidden">
         <div className="flex items-center justify-end gap-2">
-          <Button variant="outline" size="sm" onClick={() => openExportDialog("download")}><FileDown className="mr-1.5 h-3.5 w-3.5" />PDF</Button>
-          <Button variant="outline" size="sm" onClick={() => openExportDialog("print")}><Printer className="mr-1.5 h-3.5 w-3.5" />Print</Button>
+          <Button variant="outline" size="sm" onClick={() => openExportDialog("download")} disabled={pendingExport === "download"} aria-busy={pendingExport === "download"}>
+            {pendingExport === "download" ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Processing<AnimatedDots /></> : <><FileDown className="mr-1.5 h-3.5 w-3.5" />PDF</>}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => openExportDialog("print")} disabled={pendingExport === "print"} aria-busy={pendingExport === "print"}>
+            {pendingExport === "print" ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Processing<AnimatedDots /></> : <><Printer className="mr-1.5 h-3.5 w-3.5" />Print</>}
+          </Button>
           <Button size="sm" className="min-w-20" onClick={handleSave} disabled={saveStatus === "saving" || isLoading}>
             {saveStatus === "saving" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : saveStatus === "saved" ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}
             {saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved" : "Save"}

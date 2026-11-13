@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   FileDown, FileText, LayoutDashboard,
-  ClipboardList, BarChart3,
+  ClipboardList, BarChart3, Loader2,
 } from "lucide-react";
 import {
   generateProjectSummaryReport,
@@ -18,6 +18,7 @@ import { listCompressiveCubes, listCompressiveTests } from "@/lib/api";
 import { emptyCubeRow, mostCommonCastDate } from "@/lib/compressiveCalculations";
 import { toast } from "sonner";
 import { useState } from "react";
+import { AnimatedDots } from "@/components/ProcessingDots";
 
 const Reports = () => {
   const { tests, concreteTestMetadata } = useTestData();
@@ -28,6 +29,8 @@ const Reports = () => {
   const enabledTests = Object.fromEntries(testList.map((t) => [t.id, t]));
   const testsWithData = testList.filter(t => t.dataPoints > 0);
   const [isCompressiveExporting, setIsCompressiveExporting] = useState(false);
+  const [reportAction, setReportAction] = useState<"summary" | "dashboard" | null>(null);
+  const [individualExporting, setIndividualExporting] = useState<Record<string, boolean>>({});
 
   // The generic report path only prints the two key-results lines, which loses
   // the whole cube table. Compressive exports go through the dedicated
@@ -127,14 +130,31 @@ const Reports = () => {
   };
 
   const handleSummaryPDF = () => {
-    generateProjectSummaryReport(project, enabledTests);
-    toast.success("Project summary report downloaded");
+    if (reportAction) return;
+    setReportAction("summary");
+    try {
+      generateProjectSummaryReport(project, enabledTests);
+      toast.success("Project summary report downloaded");
+    } catch (error) {
+      console.error("[Reports] Summary report failed:", error);
+      toast.error("Project summary report download failed");
+    } finally {
+      setReportAction(null);
+    }
   };
 
-
   const handleDashboardPDF = () => {
-    generateDashboardReport(project, enabledTests);
-    toast.success("Dashboard export downloaded");
+    if (reportAction) return;
+    setReportAction("dashboard");
+    try {
+      generateDashboardReport(project, enabledTests);
+      toast.success("Dashboard export downloaded");
+    } catch (error) {
+      console.error("[Reports] Dashboard report failed:", error);
+      toast.error("Dashboard report download failed");
+    } finally {
+      setReportAction(null);
+    }
   };
 
   return (
@@ -153,8 +173,8 @@ const Reports = () => {
               Comprehensive report with all test categories, statuses, and key results.
             </p>
             <div className="flex gap-2">
-              <Button size="sm" onClick={handleSummaryPDF} className="gap-1.5">
-                <FileDown className="h-3.5 w-3.5" /> PDF
+              <Button size="sm" onClick={handleSummaryPDF} disabled={reportAction !== null} aria-busy={reportAction === "summary"} className="gap-1.5">
+                {reportAction === "summary" ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Processing<AnimatedDots /></> : <><FileDown className="h-3.5 w-3.5" /> PDF</>}
               </Button>
             </div>
           </CardContent>
@@ -172,8 +192,8 @@ const Reports = () => {
               Export the full dashboard view with all tests, statuses, and data points.
             </p>
             <div className="flex gap-2">
-              <Button size="sm" onClick={handleDashboardPDF} className="gap-1.5">
-                <FileDown className="h-3.5 w-3.5" /> PDF
+              <Button size="sm" onClick={handleDashboardPDF} disabled={reportAction !== null} aria-busy={reportAction === "dashboard"} className="gap-1.5">
+                {reportAction === "dashboard" ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Processing<AnimatedDots /></> : <><FileDown className="h-3.5 w-3.5" /> PDF</>}
               </Button>
             </div>
           </CardContent>
@@ -235,25 +255,37 @@ const Reports = () => {
                         variant="outline"
                         className="h-9 text-xs gap-1"
                         disabled={isCompressiveExporting}
+                        aria-busy={isCompressiveExporting}
                         onClick={() => void handleCompressivePDF()}
                       >
-                        <FileDown className="h-3 w-3" /> {isCompressiveExporting ? "Preparing…" : "Cube report PDF"}
+                        {isCompressiveExporting ? <><Loader2 className="h-3 w-3 animate-spin" /> Processing<AnimatedDots /></> : <><FileDown className="h-3 w-3" /> Cube report PDF</>}
                       </Button>
                     ) : (
                       <Button
                         size="sm"
                         variant="outline"
                         className="h-9 text-xs gap-1"
-                        onClick={() => {
-                          generateTestPDF({
-                            title: test.name,
-                            ...project,
-                            fields: test.keyResults.map(r => ({ label: r.label, value: r.value })),
-                          });
-                          toast.success(`${test.name} PDF downloaded`);
+                        disabled={individualExporting[test.id] === true}
+                        aria-busy={individualExporting[test.id] === true}
+                        onClick={async () => {
+                          if (individualExporting[test.id]) return;
+                          setIndividualExporting((s) => ({ ...s, [test.id]: true }));
+                          try {
+                            await generateTestPDF({
+                              title: test.name,
+                              ...project,
+                              fields: test.keyResults.map(r => ({ label: r.label, value: r.value })),
+                            });
+                            toast.success(`${test.name} PDF downloaded`);
+                          } catch (error) {
+                            console.error("[Reports] Individual test PDF failed:", error);
+                            toast.error(`${test.name} PDF download failed`);
+                          } finally {
+                            setIndividualExporting((s) => ({ ...s, [test.id]: false }));
+                          }
                         }}
                       >
-                        <FileDown className="h-3 w-3" /> PDF
+                        {individualExporting[test.id] ? <><Loader2 className="h-3 w-3 animate-spin" /> Processing<AnimatedDots /></> : <><FileDown className="h-3 w-3" /> PDF</>}
                       </Button>
                     )}
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Check, FileDown, HelpCircle, Loader2, Printer, Save } from "lucide-react";
+import { AnimatedDots } from "@/components/ProcessingDots";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -290,6 +291,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
   const readingsNav = useGridArrowNavigation<HTMLDivElement>();
   const [isLoading, setIsLoading] = useState(Boolean(projectId) && !isNewRecord);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [pendingExport, setPendingExport] = useState<"pdf" | "print" | "xlsx" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const moisture = useMemo(() => calculateMoisture(record.moisture.wetMass, record.moisture.dryMass), [record.moisture]);
@@ -725,6 +727,7 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       setError(massBalanceMessage);
       return;
     }
+    setPendingExport("print");
     try {
       // Hand the processed sheet itself to a browser tab and let that tab print
       // it — never the on-screen report page.
@@ -740,6 +743,8 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
     } catch (printError) {
       console.error("[PSD print]", printError);
       toast.error("Unable to print the Particle Size Distribution report");
+    } finally {
+      setPendingExport(null);
     }
   };
 
@@ -748,6 +753,8 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       setError(massBalanceMessage);
       return;
     }
+    setPendingExport(type);
+    try {
     const tables = [{
       headers: ["Sieve size (mm)", "Retained mass (g)", "% retained", "Cumulative passing (%)"],
       // Empty tables read as "auto", exactly as on screen — never 0.0%.
@@ -798,6 +805,9 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
       await generateParticleSizeDistributionPDF(buildPdfOptions());
     } else {
       generateTestExcel({ data: { title: "Particle Size Distribution", fields: resultFields, tables, chartImages }, ...exportMetadata });
+    }
+    } finally {
+      setPendingExport(null);
     }
   };
   if (isLoading) {
@@ -913,8 +923,8 @@ const GradingTest = ({ testKey }: GradingTestProps) => {
 
       <section className="record-card flex flex-col gap-3 px-4 py-3 text-[10px] sm:flex-row sm:items-center sm:justify-between"><div><span className="text-muted-foreground">TESTED BY</span><div className="font-semibold uppercase">{record.testedBy || "—"}</div></div><div><span className="text-muted-foreground">DATE REPORTED</span><div className="font-semibold">{project.dateReported || "—"}</div></div></section>
       <div className="flex flex-wrap items-center justify-end gap-2 print:hidden">
-        <Button variant="outline" size="sm" onClick={() => void exportFiles("pdf")} disabled={hasImpossibleMassBalance || isLoading}><FileDown className="mr-1.5 h-3.5 w-3.5" />PDF</Button>
-        <Button variant="outline" size="sm" onClick={() => void handlePrint()} disabled={hasImpossibleMassBalance || isLoading}><Printer className="mr-1.5 h-3.5 w-3.5" />Print</Button>
+        <Button variant="outline" size="sm" onClick={() => void exportFiles("pdf")} disabled={hasImpossibleMassBalance || isLoading || pendingExport === "pdf"} aria-busy={pendingExport === "pdf"}>{pendingExport === "pdf" ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Processing<AnimatedDots /></> : <><FileDown className="mr-1.5 h-3.5 w-3.5" />PDF</>}</Button>
+        <Button variant="outline" size="sm" onClick={() => void handlePrint()} disabled={hasImpossibleMassBalance || isLoading || pendingExport === "print"} aria-busy={pendingExport === "print"}>{pendingExport === "print" ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Processing<AnimatedDots /></> : <><Printer className="mr-1.5 h-3.5 w-3.5" />Print</>}</Button>
         <Button size="sm" onClick={handleSave} disabled={saveStatus === "saving" || isLoading || hasImpossibleMassBalance}>{saveStatus === "saving" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : saveStatus === "saved" ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}{saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved" : "Save"}</Button>
       </div>
     </div>
