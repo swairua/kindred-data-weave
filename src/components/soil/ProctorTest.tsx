@@ -22,7 +22,6 @@ import {
   getProctorRecords,
   isReportableOptimum,
   parseAirVoidsTargets,
-  sampleCompactionCurve,
   zeroAirVoidsCurve,
   type FieldAcceptance,
   type ProctorCurvePoint,
@@ -32,7 +31,7 @@ import {
   type ProctorRecord,
   type ProctorRow,
 } from "@/lib/proctorRecords";
-import type { McVoidLine } from "@/lib/mcChartGeometry";
+import type { McPoint, McVoidLine } from "@/lib/mcChartGeometry";
 import { loadProctorResult, saveProctorResult } from "@/lib/proctorPersistence";
 import { toast } from "sonner";
 import { useTestReport } from "@/hooks/useTestReport";
@@ -180,9 +179,13 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
     if (measuredPoints.length === 0) return null;
     return [measuredPoints[0].moisture, measuredPoints[measuredPoints.length - 1].moisture];
   }, [measuredPoints]);
+  // The drawn curve passes through every measured point (Catmull-Rom spline in
+  // the chart), matching how the laboratory's print sheets draw the compaction
+  // curve. The 3-point parabola remains in use for the suggested OMC/MDD only.
   const fittedPoints = useMemo<ProctorCurvePoint[]>(
-    () => (optimum.curve && moistureRange ? sampleCompactionCurve(optimum.curve, moistureRange) : []),
-    [optimum.curve, moistureRange],
+    // Passing the measured pairs through the curve paints the same hump the field sheet draws by hand.
+    () => measuredPoints.map((point) => ({ moisture: point.moisture, dryDensity: point.dryDensity })),
+    [measuredPoints],
   );
   // The zero air voids line is always drawn; each entered air voids percentage adds a line below it.
   const voidLines = useMemo<McVoidLine[]>(() => {
@@ -386,7 +389,7 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
     const sampleRange: [number, number] | null = samplePoints.length > 0
       ? [samplePoints[0].moisture, samplePoints[samplePoints.length - 1].moisture]
       : null;
-    const sampleFitted = sampleSummary.curve && sampleRange ? sampleCompactionCurve(sampleSummary.curve, sampleRange) : [];
+    const sampleFitted: McPoint[] = samplePoints;
     const sampleVoidLines = sampleSpecificGravity === null || !sampleRange
       ? []
       : [0, ...parseAirVoidsTargets(sample.airVoidsTarget)]

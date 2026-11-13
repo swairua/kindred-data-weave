@@ -108,8 +108,10 @@ export const mcScales = (
   manual?: Readonly<{ x?: { min: number; max: number }; y?: { min: number; max: number } }>,
 ): McScales => {
   const plotted = [...measured, ...curves.flat()].filter(isMcPoint);
+  // 16 target intervals give ~1% moisture gridlines over typical compaction ranges
+  // (good horizontal resolution); wider ranges still widen to 2% or 5%.
   return {
-    x: mcScale(plotted.map((point) => point.moisture), MC_X_STEPS, 10, 7, manual?.x),
+    x: mcScale(plotted.map((point) => point.moisture), MC_X_STEPS, 10, 16, manual?.x),
     y: mcScale(plotted.map((point) => point.dryDensity), MC_Y_STEPS, 100, 6, manual?.y),
   };
 };

@@ -124,8 +124,8 @@ export default function MoistureDensityChart({ points, fitted, voidLines, axisLi
             );
           })}
 
-          {/* The fitted compaction curve is the chart's only curve, matching the
-              single-curve laboratory sheets. */}
+          {/* The compaction curve runs through the measured points, as drawn on
+              the laboratory sheets. */}
           {curve.length > 1 && <path d={mcCurvePath(curve.map(place))} fill="none" stroke={CURVE_COLOR} strokeWidth={0.74} />}
           {measured.map((point, index) => {
             const position = place(point);

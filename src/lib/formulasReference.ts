@@ -56,7 +56,7 @@ export interface FormulaSection {
   entries: FormulaEntry[];
 }
 
-export const FORMULAS_REFERENCE_VERSION = "1.7.1";
+export const FORMULAS_REFERENCE_VERSION = "1.7.2";
 
 export const FORMULAS_REFERENCE_TITLE = "Calculations and Formulas Reference";
 
@@ -458,6 +458,8 @@ export const FORMULA_SECTIONS: FormulaSection[] = [
           { symbol: "MDD", meaning: "maximum dry density (kg/m3)" },
         ],
         notes: [
+          "The fitted compaction curve on screen and in the PDF/xport is a Catmull-Rom spline through every measured point, matching the curves drawn on the laboratory's report sheets.",
+          "The three-point parabola through the measured peak and its two neighbours is used only to derive OMC/MDD; the drawn spline is the same curve the technicians draw by hand through all readings.",
           "The measured maximum must be bracketed; the local fit must open downward and its vertex must lie between the neighboring moisture contents.",
           "When no local parabola can be supported, OMC/MDD fall back to the single densest measured point (reported as peak-point basis).",
         ],
