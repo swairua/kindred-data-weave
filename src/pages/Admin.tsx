@@ -248,9 +248,12 @@ const Admin = () => {
 
   const handleClearCache = () => {
     try {
-      // Clear all localStorage keys related to cached data
-      localStorage.removeItem("atterbergProjectState");
-      localStorage.removeItem("enhancedAtterbergTests");
+      // Clear all localStorage keys related to cached data.
+      [
+        "atterbergProjectState",
+        "enhancedAtterbergTests",
+        "lab_draft:AtterbergProject",
+      ].forEach((key) => localStorage.removeItem(key));
       localStorage.removeItem("lab_session_token");
 
       toast.success("Cache cleared successfully. Please refresh the page to reload data.");
@@ -636,8 +639,8 @@ const Admin = () => {
             </div>
             <div className="flex items-center justify-between p-3 rounded border">
               <span className="text-sm">Cached Project Data in Browser</span>
-              <span className={`text-xs px-2 py-1 rounded ${debugInfo?.localStorage["atterbergProjectState"] ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200" : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"}`}>
-                {debugInfo?.localStorage["atterbergProjectState"] ? "⚠ Cached" : "✓ Not cached"}
+              <span className={`text-xs px-2 py-1 rounded ${debugInfo?.localStorage["lab_draft:AtterbergProject"] ?? debugInfo?.localStorage["atterbergProjectState"] ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200" : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"}`}>
+                {debugInfo?.localStorage["lab_draft:AtterbergProject"] ?? debugInfo?.localStorage["atterbergProjectState"] ? "⚠ Cached" : "✓ Not cached"}
               </span>
             </div>
           </CardContent>

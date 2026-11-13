@@ -86,6 +86,18 @@ describe("SessionGuard", () => {
     expect(authMocks.fetchCurrentUser).toHaveBeenCalledTimes(2);
   });
 
+  it("redirects mid-session token loss (auth-lost bus) to /login preserving the destination", async () => {
+    authMocks.fetchCurrentUser.mockResolvedValue(user);
+    // Import the real emitAuthLost to trigger it during the test
+    const { emitAuthLost } = await import("@/lib/authEvents");
+    renderRoutes("/record?material=soil&resultId=425");
+
+    expect(await screen.findByText(/^\/record · Test User/)).toBeInTheDocument();
+    emitAuthLost();
+
+    expect(await screen.findByText("Login destination: /record?material=soil&resultId=425")).toBeInTheDocument();
+  });
+
   it("calls the logout API and navigates to login", async () => {
     authMocks.fetchCurrentUser.mockResolvedValue(user);
     renderRoutes();

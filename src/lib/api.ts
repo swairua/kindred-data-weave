@@ -7,15 +7,10 @@ const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
 
 // In development (localhost), use the proxied path to bypass CORS
 // In production, use the full URL to the actual API server
-// If VITE_API_BASE_URL is set, always use that
-export const API_BASE_URL = configuredApiBaseUrl || "https://lab.wayrus.co.ke/api.php";
-
-// Log API configuration on module load
-console.log("[API] === CONFIGURATION ===");
-console.log("[API] VITE_API_BASE_URL env:", configuredApiBaseUrl ? `"${configuredApiBaseUrl}"` : "(not set)");
-console.log("[API] Development mode:", import.meta.env.DEV);
-console.log("[API] Final API_BASE_URL:", API_BASE_URL);
-console.log("[API] window.location.origin:", window.location.origin);
+// If VITE_API_BASE_URL is set, always use that; otherwise the app is proxy-aware
+// (Vite rewrites /api.php to the upstream host in dev; in prod this is the
+// same-origin path the static server re-emits or rewrites to the API).
+export const API_BASE_URL = configuredApiBaseUrl || "/api.php";
 
 const SESSION_STORAGE_KEY = "lab_session_token";
 const SESSION_STORAGE_SESSION_KEY = "lab_session_token_session"; // Fallback for sandboxed environments
@@ -177,26 +172,8 @@ export const getStoredSessionId = (): string | null => {
 
 // Debug function - can be called from browser console
 export const debugAuthState = () => {
-  const token = getSessionToken();
   console.log("[API] === AUTH STATE DEBUG ===");
   console.log("[API] Session token available:", token ? `✓ Yes` : "✗ No");
-  if (token) {
-    console.log("[API] Token value (first 50 chars):", token.substring(0, 50));
-    console.log("[API] Token length:", token.length);
-  }
-  console.log("[API] API Base URL:", API_BASE_URL);
-
-  let localStorageToken: string | null = null;
-  try {
-    localStorageToken = localStorage.getItem(SESSION_STORAGE_KEY);
-  } catch (e) {
-    console.warn("[API] Could not access localStorage:", e instanceof Error ? e.message : e);
-  }
-
-  console.log("[API] Storage status:");
-  console.log("[API]   - localStorage token:", localStorageToken ? `✓ Present (${localStorageToken.substring(0, 20)}...)` : "✗ Empty");
-  console.log("[API]   - memory token:", (window as unknown as { __sessionTokenMemory?: unknown }).__sessionTokenMemory ? `✓ Present` : "✗ Empty");
-  console.log("[API] For next request, X-Session-Token will be:", token ? `✓ Sent (${token.substring(0, 20)}...)` : "✗ Not sent");
   console.log("[API] If you see '✗ Not sent', the token was lost. Try logging in again.");
 };
 

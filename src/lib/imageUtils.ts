@@ -1,4 +1,5 @@
 import { buildApiUrl, listRecords } from "./api";
+import { toast } from "sonner";
 
 export interface AdminImages {
   logo?: string; // base64 data URL
@@ -291,6 +292,23 @@ export async function fetchAdminImagesAsBase64(
     const stamp = results[2].status === "fulfilled" ? results[2].value : undefined;
     const pile_before = results[3].status === "fulfilled" ? results[3].value : undefined;
     const pile_after = results[4].status === "fulfilled" ? results[4].value : undefined;
+
+    // Surface which image types the export will lose. The export still proceeds;
+    // the lab should know the sheet will be unbranded before they print it.
+    const lost: string[] = [];
+    if (latest.logo && !logo) lost.push("logo");
+    if (latest.contacts && !contacts) lost.push("contacts");
+    if (latest.stamp && !stamp) lost.push("stamp");
+    if (lost.length > 0 && typeof window !== "undefined") {
+      try {
+        toast.warning(`Couldn't load admin image(s): ${lost.join(", ")}`, {
+          duration: 8000,
+          description: "The export will proceed, but the saved PDF won't include these images. Check network / admin settings.",
+        });
+      } catch {
+        // Toast is a best-effort signal; never block the export path.
+      }
+    }
 
     images.logo = logo;
     images.contacts = contacts;

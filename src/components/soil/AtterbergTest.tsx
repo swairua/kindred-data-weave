@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { ChevronRight, FileDown, Plus, Printer, Trash2, AlertTriangle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { emitAuthLost } from "@/lib/authEvents";
+import { loadDraft, saveDraft, removeDraft } from "@/lib/draftStore";
 import { type ApiProjectRow } from "@/types/api";
 
 import TestSection from "@/components/TestSection";
@@ -84,7 +85,33 @@ import { generateAtterbergXLSX } from "@/lib/xlsxExporter";
 import { ExportPreviewModal, type ExportPreviewData } from "@/components/ExportPreviewModal";
 import html2canvas from "html2canvas";
 
-const STORAGE_KEY = "atterbergProjectState";
+// Draft is now stored in the namespaced draft store ("lab_draft:AtterbergProject").
+// Older builds wrote directly to localStorage under "atterbergProjectState" (or the
+// legacy "enhancedAtterbergTests"); this helper reads the current location, migrating
+// legacy values across on the first read so saved drafts are never lost.
+const DRAFT_NAME = "AtterbergProject";
+
+const readAtterbergDraft = (): string | null => {
+  const stored = window.localStorage.getItem("lab_draft:AtterbergProject");
+  if (stored !== null) return stored;
+  const legacy = window.localStorage.getItem("atterbergProjectState") ?? window.localStorage.getItem("enhancedAtterbergTests");
+  if (legacy !== null) {
+    try {
+      window.localStorage.setItem("lab_draft:AtterbergProject", legacy);
+      window.localStorage.removeItem("atterbergProjectState");
+      window.localStorage.removeItem("enhancedAtterbergTests");
+    } catch {
+      // best effort; legacy value remains the return for this session
+    }
+  }
+  return legacy;
+};
+
+const clearAtterbergDraft = (): void => {
+  removeDraft(DRAFT_NAME);
+  try { window.localStorage.removeItem("atterbergProjectState"); } catch { /* ignore */ }
+  try { window.localStorage.removeItem("enhancedAtterbergTests"); } catch { /* ignore */ }
+};
 
 const MAX_RETRY_ATTEMPTS = 3;
 const INITIAL_RETRY_DELAY = 1000; // 1 second
@@ -936,7 +963,7 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
           // Defensive check: verify localStorage data matches current project context
           // If localStorage was cleared by the project identity change detection effect,
           // it will be empty and we skip loading. Otherwise, we only load if it exists.
-          const saved = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem("enhancedAtterbergTests");
+          const saved = readAtterbergDraft();
           let localDraftLoaded = false;
           if (saved) {
             try {
@@ -994,8 +1021,7 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
       skipNextPersistRef.current = true;
       // Defensive: clear any persisted state so the next persist effect doesn't resurrect stale data
       try {
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem("enhancedAtterbergTests");
+        clearAtterbergDraft();
       } catch {
         // ignore storage errors
       }
@@ -1032,8 +1058,7 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
       );
       // Clear stale localStorage data when project changes
       try {
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem("enhancedAtterbergTests");
+        clearAtterbergDraft();
       } catch {
         // ignore storage errors
       }
@@ -1084,7 +1109,7 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
     try {
       const persistedState = buildPersistedState(computedRecords);
       console.log(`[AtterbergTest] Persisting ${computedRecords.length} records to localStorage`);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(persistedState));
+      saveDraft(DRAFT_NAME, persistedState);
       console.log("[AtterbergTest] Successfully saved to localStorage");
     } catch (error) {
       console.error("[AtterbergTest] Failed to save to localStorage:", error);
@@ -1625,8 +1650,7 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
       skipNextPersistRef.current = true;
       await clearAtterbergProjectFromApi(effectiveProjectLookup, project.currentProjectId);
       setProjectState({ records: [] });
-      localStorage.removeItem(STORAGE_KEY);
-      localStorage.removeItem("enhancedAtterbergTests");
+      clearAtterbergDraft();
       setIsClearDialogOpen(false);
       toast.success("Atterberg project cleared");
     } catch (error) {

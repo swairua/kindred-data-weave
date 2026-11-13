@@ -670,8 +670,11 @@ const Index = ({ initialTab }: IndexProps) => {
 
     // Clear project-related localStorage (BUT NOT session token)
     log("[Index] Removing project state from localStorage...");
-    localStorage.removeItem("atterbergProjectState");
-    localStorage.removeItem("enhancedAtterbergTests");
+    [
+      "atterbergProjectState",
+      "enhancedAtterbergTests",
+      "lab_draft:AtterbergProject",
+    ].forEach((key) => localStorage.removeItem(key));
     // ✓ FIXED: Do NOT clear session token when starting a new project
     // The user should remain logged in with a fresh project state
 
