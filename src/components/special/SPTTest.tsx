@@ -222,6 +222,9 @@ const SPTTest = ({ testKey }: { testKey?: string }) => {
     
     const n1_60Values = rows.map(r => parseFloat(r.n1_60)).filter(Boolean);
     const avgN1_60 = n1_60Values.length ? (n1_60Values.reduce((a, b) => a + b, 0) / n1_60Values.length).toFixed(1) : "";
+
+    const depths = rows.map(r => parseFloat(r.depth)).filter((v) => Number.isFinite(v) && v > 0);
+    const depthRange = depths.length ? `${Math.min(...depths)} - ${Math.max(...depths)} m` : "—";
     
     const fields = [
       { label: "Avg N-value", value: avg || "—" },
@@ -232,6 +235,7 @@ const SPTTest = ({ testKey }: { testKey?: string }) => {
       { label: "Rod Length", value: `${rodLength} m` },
       { label: "Sampling Method", value: samplingMethod === "liners" ? "With Liners" : "Standard" },
       { label: "Unit weight (kN/m3)", value: `${unitWeight} kN/m3` },
+      { label: "Depth range", value: depthRange },
     ];
     
     return generateTestPDF({

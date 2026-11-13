@@ -103,10 +103,17 @@ const CPTTest = ({ testKey }: { testKey?: string }) => {
   };
 
   const buildPDF = (skipDownload: boolean) => {
+    const depths = rows.map(r => parseFloat(r.depth)).filter((v) => Number.isFinite(v) && v > 0);
+    const maxDepth = depths.length ? Math.max(...depths).toFixed(1) : "";
+    const depthRange = depths.length ? `${Math.min(...depths).toFixed(1)} - ${Math.max(...depths).toFixed(1)} m` : "";
+
     const fields = [
       { label: "Max Cone Resistance", value: cptResults[0].value || "—" },
       { label: "Avg Friction Ratio", value: cptResults[1].value || "—" },
       { label: "Dominant Soil Class", value: cptResults[2].value || "—" },
+      { label: "Points", value: `${filledCPT}` },
+      { label: "Max depth", value: maxDepth ? `${maxDepth} m` : "—" },
+      { label: "Depth range", value: depthRange || "—" },
     ];
     return generateTestPDF({
       title: "CPT (Cone Penetration Test)",
