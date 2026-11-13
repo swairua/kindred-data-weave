@@ -202,6 +202,14 @@ const CURVE_MIN_POINTS = 3;
 /** BS 1377-4 practice is to plot at least five moisture contents bracketing the peak. */
 const CURVE_RECOMMENDED_POINTS = 5;
 
+/**
+ * Lab decision (until further notice): the specific-gravity plausibility warnings are
+ * suppressed so a sheet recorded with particle density outside the usual mineral-soil
+ * range (e.g. an assumed Gs = 2.0) still processes on screen and in the PDF.
+ * Set SHOW_SPECIFIC_GRAVITY_WARNINGS back to true to restore them.
+ */
+const SHOW_SPECIFIC_GRAVITY_WARNINGS = false;
+
 /** Particle density range of mineral soils; values outside it usually mean a placeholder or a transcription error. */
 const MINERAL_SOIL_GS_RANGE = { min: 2.4, max: 2.9 };
 
@@ -413,7 +421,7 @@ const proctorWarnings = (points: ProctorCurvePoint[], fit: ProctorCurveFit | nul
   if (points.length >= CURVE_MIN_POINTS && !fit) {
     warnings.push("A stable compaction curve could not be fitted; OMC and MDD are taken from the highest measured point.");
   }
-  if (specificGravity !== null) {
+  if (SHOW_SPECIFIC_GRAVITY_WARNINGS && specificGravity !== null) {
     if (specificGravity < MINERAL_SOIL_GS_RANGE.min || specificGravity > MINERAL_SOIL_GS_RANGE.max) {
       warnings.push(
         `Specific gravity ${specificGravity} is outside the ${MINERAL_SOIL_GS_RANGE.min} to ${MINERAL_SOIL_GS_RANGE.max} range of mineral soils; measure particle density before relying on the zero air voids lines.`,

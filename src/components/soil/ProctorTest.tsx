@@ -61,6 +61,49 @@ type ProctorRecordTextField =
 
 const POINT_LABELS = ["A", "B", "C", "D", "E", "F"];
 const methodClause = (method: ProctorMethod) => method === "standard" ? "3.3" : "3.5";
+
+/**
+ * Persisted per-project Y-axis window, e.g. "1400/1550" for the works it was tuned on.
+ * Stored under `proctor-y-axis:<projectId>` in localStorage and re-read whenever a project
+ * loads, so the graph and the PDF render with the laboratory's chosen scale instead of
+ * re-fitting every visit. Blank fields = auto-fit and no persisted entry.
+ */
+const PROCTOR_Y_AXIS_PREFIX = "proctor-y-axis:";
+
+const yAxisKey = (projectId: string | number | null | undefined) => `${PROCTOR_Y_AXIS_PREFIX}${projectId ?? "default"}`;
+
+const readSavedAxis = (projectId: string | number | null | undefined, key: "min" | "max"): string => {
+  if (projectId === null || projectId === undefined) return "";
+  try {
+    const raw = globalThis.localStorage?.getItem(yAxisKey(projectId));
+    if (!raw) return "";
+    const parsed = JSON.parse(raw) as { min?: unknown; max?: unknown } | null;
+    const value = parsed ? parsed[key] : undefined;
+    return typeof value === "string" ? value : "";
+  } catch {
+    return "";
+  }
+};
+
+const loadAxisPair = (projectId: string | number | null | undefined) => ({
+  min: readSavedAxis(projectId, "min"),
+  max: readSavedAxis(projectId, "max"),
+});
+
+const writeSavedAxis = (projectId: string | number | null | undefined, min: string, max: string) => {
+  if (projectId === null || projectId === undefined) return;
+  try {
+    const trimmedMin = min.trim();
+    const trimmedMax = max.trim();
+    if (!trimmedMin && !trimmedMax) {
+      globalThis.localStorage?.removeItem(yAxisKey(projectId));
+      return;
+    }
+    globalThis.localStorage?.setItem(yAxisKey(projectId), JSON.stringify({ min: trimmedMin, max: trimmedMax }));
+  } catch {
+    // Storage unavailable (private mode / quota): the window still works for this session.
+  }
+};
 const methodLabel = (method: ProctorMethod) => method === "standard" ? "Standard" : "Modified";
 const MAX_POINTS = 10;
 const displayValue = (value: number | null) => value === null ? "—" : value.toFixed(2);
@@ -105,14 +148,28 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exportSelection, setExportSelection] = useState<Set<number>>(new Set([0]));
   const [exportAction, setExportAction] = useState<"print" | "download">("print");
-  // Y axis auto-fits by default (blank fields), which always includes the air-voids
-  // lines so they can never vanish off the sheet; the laboratory's working range
-  // (e.g. 1200-1600) can still be typed in, at the cost of clipping them out.
-  const [yAxisMin, setYAxisMin] = useState("");
-  const [yAxisMax, setYAxisMax] = useState("");
+  // Y axis auto-fits by default (blank, unsaved fields), which always includes the air-voids
+  // lines so they can never vanish off the sheet; a laboratory working range (e.g. 1400-1550)
+  // can be typed in, is saved per project (localStorage) and applies to every page of the PDF.
+  // The owning project is kept in state so switching projects never inherits the old scale.
+  const [yAxisState, setYAxisState] = useState(() => ({ project: projectId, ...loadAxisPair(projectId) }));
+  const yAxisMin = yAxisState.min;
+  const yAxisMax = yAxisState.max;
+  const setYAxisMin = (value: string) => setYAxisState((current) => ({ ...current, project: projectId, min: value }));
+  const setYAxisMax = (value: string) => setYAxisState((current) => ({ ...current, project: projectId, max: value }));
   // Arrow keys walk the weighing grid instead of leaving the technician to drag
   // the pointer across a table this wide.
   const gridNav = useGridArrowNavigation<HTMLDivElement>();
+  // Re-read the saved window whenever the project changes, then persist each change.
+  // The owning project comes along in state, so the persist pass waits for hydration
+  // instead of writing the previous project's scale onto this project's entry.
+  useEffect(() => {
+    setYAxisState({ project: projectId, ...loadAxisPair(projectId) });
+  }, [projectId]);
+  useEffect(() => {
+    if (yAxisState.project !== projectId) return;
+    writeSavedAxis(projectId, yAxisState.min, yAxisState.max);
+  }, [projectId, yAxisState]);
   const type = savedMethod(record);
   const rows = type === "standard" ? record.standardRows : record.modifiedRows;
   const mouldVolume = type === "standard" ? record.standardMouldVolume : record.modifiedMouldVolume;
@@ -427,8 +484,9 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
       points: samplePoints,
       fitted: sampleFitted,
       voidLines: sampleVoidLines,
-      // The manual Y window is an on-screen zoom of the active sample; other samples in the export keep auto-fit.
-      axisLimits: includeChart && axisY ? { y: axisY } : undefined,
+      // The saved Y window rides on every sample of the export, not just the sample on
+      // screen, so the printout renders with the laboratory's thresholds for the project.
+      axisLimits: axisY ? { y: axisY } : undefined,
       chartImage: includeChart ? await captureChart() : null,
       skipDownload: true,
     };
@@ -611,7 +669,7 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
           axisLimits={axisY ? { y: axisY } : undefined}
         />
         {specificGravity === null && <p className="mt-2 text-[10px] text-muted-foreground">Enter specific gravity to draw the zero air voids line.</p>}
-        {/* Manual window for the vertical axis, e.g. 1300-1500 to focus on a narrow band; blank auto-fits to the measured readings. */}
+        {/* Y-axis window, e.g. 1400-1550 to focus on a narrow band; blank auto-fits to the measured readings and is saved for this project. */}
         <div className="mt-2 flex flex-wrap items-center gap-2 border-t pt-2 text-[10px] text-muted-foreground">
           <span className="font-medium">Y axis (kg/m³):</span>
           <Input type="number" inputMode="numeric" min={0} value={yAxisMin} onChange={(event) => setYAxisMin(event.target.value)} aria-label="Y axis minimum dry density" placeholder="min" className="record-input h-7 w-20" />

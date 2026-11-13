@@ -338,16 +338,15 @@ describe("Proctor calculations", () => {
     expect(assessFieldCompaction(null, 1800, 95)).toEqual({ relativeCompaction: null, acceptance: "not-assessed" });
   });
 
-  it("warns when a measured point plots above the zero air voids line", () => {
-    // A 3000 kg/m3 bulk density at 10 % moisture gives 2727 kg/m3, which Gs 2.7 cannot reach (2126 kg/m3).
+  it("hides the zero air voids and specific gravity warnings until further notice (lab decision)", () => {
+    // The Gs plausibility warnings are intentionally suppressed so a sign-off sheet with an
+    // assumed specific gravity (e.g. Gs = 2.0) still processes on screen and in the PDF.
+    // A 3000 kg/m3 bulk density at 10 % moisture gives 2727 kg/m3 dry, which Gs 2.7 cannot reach (2126 kg/m3).
     const rows = [point({ mouldWetMass: "4000" })];
-    expect(calculateProctor(rows, "1000", 2.7).warnings.join(" ")).toMatch(/1 point plots above the zero air voids line/);
-    expect(calculateProctor(rows, "1000").warnings.join(" ")).not.toMatch(/zero air voids/);
-  });
+    expect(calculateProctor(rows, "1000", 2.7).warnings.join(" ")).not.toMatch(/zero air voids/);
+    expect(calculateProctor(rows, "1000", 2).warnings.join(" ")).not.toMatch(/zero air voids/);
 
-  it("warns when the specific gravity is outside the range of mineral soils", () => {
-    const rows = [point()];
-    expect(calculateProctor(rows, "1000", 2).warnings.join(" ")).toMatch(/Specific gravity 2 is outside the 2.4 to 2.9 range/);
+    expect(calculateProctor(rows, "1000", 2).warnings.join(" ")).not.toMatch(/Specific gravity 2 is outside the 2.4 to 2.9 range/);
     expect(calculateProctor(rows, "1000", 2.7).warnings.join(" ")).not.toMatch(/outside the 2.4 to 2.9 range/);
     expect(calculateProctor(rows, "1000").warnings.join(" ")).not.toMatch(/outside the 2.4 to 2.9 range/);
   });
