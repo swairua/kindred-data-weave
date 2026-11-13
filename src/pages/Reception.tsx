@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import TopNavbar from "@/components/TopNavbar";
 import { listReceptionConsignments, processReceptionToProject } from "@/lib/api";
+import { subscribeReceptionLoad } from "@/lib/receptionEvents";
 import { toast } from "sonner";
 import {
   RECEPTION_STATUS_LABELS,
@@ -57,6 +58,7 @@ const Reception = () => {
   const navigate = useNavigate();
 
   const [consignments, setConsignments] = useState<ReceptionConsignmentRow[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<ConsignmentFilter>("open");
   const [processing, setProcessing] = useState<string | null>(null);
@@ -82,8 +84,13 @@ const Reception = () => {
     try {
       const res = await processReceptionToProject(selectedForProcess, selectedTestType);
       toast.success(`Created project #${res.projectId} from ${selectedForProcess.rcNo}`);
-      const rows = await listReceptionConsignments();
-      setConsignments(rows);
+      try {
+        const rows = await listReceptionConsignments();
+        setConsignments(rows);
+        setLoadError(null);
+      } catch (refreshError) {
+        setLoadError(refreshError instanceof Error ? refreshError.message : 'Could not reload consignments');
+      }
       setProcessDialogOpen(false);
       if (selectedTestType === "coring") {
         navigate(`/record?${new URLSearchParams({ material: "concrete", test: "coring", projectId: String(res.projectId) }).toString()}`);
@@ -99,19 +106,36 @@ const Reception = () => {
     openProcessDialog(e, consignment);
   };
 
+  const reloadConsignments = async () => {
+    setLoadError(null);
+    setConsignments([]);
+    try {
+      const rows = await listReceptionConsignments();
+      setConsignments(rows);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Could not load consignments");
+    }
+  };
+
   useEffect(() => {
     let active = true;
     listReceptionConsignments()
       .then((rows) => {
         if (active) setConsignments(rows);
       })
-      .catch(() => {
-        if (active) setConsignments([]);
+      .catch((error) => {
+        if (active) setLoadError(error instanceof Error ? error.message : "Could not load consignments");
       });
     return () => {
       active = false;
     };
   }, []);
+
+  useEffect(() => subscribeReceptionLoad((event) => {
+    if (event.kind === "connectivity" || event.kind === "consignments" || event.kind === "photos") {
+      setLoadError(event.message);
+    }
+  }), []);
 
   /** Applies the free-text search across the fields shown in the table. */
   const searched = useMemo(() => {
@@ -216,6 +240,16 @@ const Reception = () => {
 
   return (<>
     <TopNavbar currentView="reception" onViewChange={() => {}} />
+    {loadError && (
+      <div role="alert" className="mx-4 mt-2 flex items-start gap-3 rounded-md border border-amber-300/60 bg-amber-50/70 px-3 py-2 text-xs text-amber-800 backdrop-blur">
+        <span className="mt-0.5" aria-hidden="true">⚠</span>
+        <div className="flex-1">
+          <span className="font-medium">Something went wrong.</span>
+          <span className="ml-1">{loadError}</span>
+        </div>
+        <Button variant="outline" size="sm" className="h-6 text-[11px]" onClick={() => void reloadConsignments()}>Retry</Button>
+      </div>
+    )}
     <div className="min-h-screen bg-muted/30 pt-16">
           <header className="flex flex-wrap items-center gap-3 px-6 pt-5">
             <SidebarTrigger />

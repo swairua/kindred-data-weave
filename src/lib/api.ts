@@ -1,5 +1,6 @@
 import type { ReceptionConsignmentInput, ReceptionFieldArea, ReceptionFieldDefinition, ReceptionPhoto } from "@/lib/reception";
-import { consignmentIsOnHold, getPrimaryTestTypeFromConsignment, type ReceptionSampleInput } from "@/lib/reception";
+import { consignmentIsOnHold, getPrimaryTestTypeFromConsignment, getTestTypesFromConsignment, receptionTestCodeToTestType, type ReceptionSampleInput } from "@/lib/reception";
+import { emitReceptionLoad } from "@/lib/receptionEvents";
 import { type ApiCompressiveTestRow, type ApiTestDefinitionRow } from "@/types/api";
 import { emitAuthLost } from "@/lib/authEvents";
 
@@ -707,16 +708,36 @@ export const listReceptionConsignments = async (): Promise<ReceptionConsignmentI
       }
       if (consignments.length > 0) return consignments;
     }
-  } catch {
-    // Backend table not provisioned yet — fall through to localStorage.
-  }
-  try {
-    const raw = localStorage.getItem(RECEPTION_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? (parsed as ReceptionConsignmentInput[]) : [];
-  } catch {
+    /* Empty set from the server is legitimate (nothing on file); the caller shows "No consignments yet". */
     return [];
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : "Couldn't reach the reception service. Check your connection and try again.";
+    console.error('[Reception] listReceptionConsignments failed:', reason);
+    // Fallback: localStorage so the technician can keep working offline; the banner tells them nothing will sync until connectivity returns.
+    let fromLocal = 0;
+    try {
+      const raw = localStorage.getItem(RECEPTION_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as unknown;
+        if (Array.isArray(parsed)) fromLocal = parsed.length;
+      }
+    } catch {
+      fromLocal = 0;
+    }
+    emitReceptionLoad({
+      kind: 'connectivity',
+      message: fromLocal > 0
+        ? `Can't reach the reception service on the server — showing the ${fromLocal} consignment(s) saved locally on this device only.`
+        : 'Can\'t reach the reception service. Check your connection and try again.',
+    });
+    try {
+      const raw = localStorage.getItem(RECEPTION_STORAGE_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as unknown;
+      return Array.isArray(parsed) ? (parsed as ReceptionConsignmentInput[]) : [];
+    } catch {
+      return [];
+    }
   }
 };
 
@@ -797,7 +818,8 @@ const mapReceptionFieldDefinition = (value: unknown): ReceptionFieldDefinition =
 
 const mapReceptionPhoto = (value: unknown): ReceptionPhoto => {
   const row = value as Record<string, unknown>;
-  const base = new URL(API_BASE_URL, window.location.origin);
+  // Photos are served from the same origin as the front-end; SAME-ORIGIN, not the API host.
+  const base = new URL("/", typeof window !== "undefined" ? window.location.origin : "http://localhost");
   const rawPath = String(row.file_path ?? row.filePath ?? "");
   const relativePath = rawPath.startsWith("/") ? rawPath.slice(1) : rawPath;
   return {
@@ -897,7 +919,10 @@ export const listReceptionPhotos = async (rcNo: string): Promise<ReceptionPhoto[
       limit: "500",
     });
     return (response.data || []).map(mapReceptionPhoto);
-  } catch {
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : 'Couldn\'t load photos. Check your connection and try again.';
+    console.error('[Reception] listReceptionPhotos failed:', reason);
+    emitReceptionLoad({ kind: 'photos', message: reason });
     return [];
   }
 };
@@ -1191,8 +1216,28 @@ export const processReceptionToProject = async (
   const projectId = projectResp.data?.id;
   if (!projectId) throw new Error("Failed to create project from reception");
 
+  // Fan out per (sample × test-type) instead of picking a single "primary". Before this
+  // change, mixed consignments (cube + grading + atterberg) silently dropped every type
+  // except the heuristic primary, leaving the project with far fewer test_results than the
+  // samples actually expected.
   const testResultIds: Record<string, number> = {};
-  if (testType === "coring") {
+
+  // Map a sample's test code list into its resolved test types. A sample can declare
+  // several tests; each resolved type produces its own test_results row.
+  const resolvedTypes = new Set<string>();
+  for (const sample of consignment.samples || []) {
+    for (const code of sample.tests || []) {
+      const candidate = receptionTestCodeToTestType(code);
+      if (candidate) resolvedTypes.add(candidate);
+    }
+  }
+  // If no sample contributes a resolvable test code, fall back to the heuristic on the whole consignment.
+  if (resolvedTypes.size === 0) resolvedTypes.add(testType);
+
+  const categoryOfType = (type: string): "concrete" | "soil" => (type === "compressive" ? "concrete" : "soil");
+
+  // Coring: keep the existing branch + rollback behaviour because the coring flow depends on it.
+  if (resolvedTypes.has("coring") || testType === "coring") {
     if (coringRecord) {
       try {
         const tr = await createRecord<{ id: number }>("test_results", {
@@ -1212,29 +1257,33 @@ export const processReceptionToProject = async (
         throw error;
       }
     }
-  } else {
-    for (const sample of consignment.samples || []) {
-      if (!sample.tests || sample.tests.length === 0) continue;
+  }
+
+  for (const sample of consignment.samples || []) {
+    if (!sample.tests || sample.tests.length === 0) continue;
+    for (const code of sample.tests) {
+      const t = receptionTestCodeToTestType(code);
+      if (!t) continue; // unknown code — surfaced to the caller via getPrimaryTestTypeFromConsignment fallback rather than silently drop the project
       try {
         const tr = await createRecord<{ id: number }>("test_results", {
           project_id: projectId,
-          test_key: testType,
+          test_key: t,
           sample_key: sample.labId,
           sample_label: sample.clientMark,
           sample_depth: sample.depthLabel,
-          name: `${testType} - ${sample.labId}`,
-          category: testType === "compressive" ? "concrete" : "soil",
+          name: `${t} - ${sample.labId}`,
+          category: categoryOfType(t),
           status: "in-progress",
           data_points: 0,
         });
         if (tr.data?.id) testResultIds[sample.labId] = tr.data.id;
       } catch (e) {
-        console.warn("[API] Failed to create test_result for sample", sample.labId, e);
+        console.warn("[API] Failed to create test_result for sample/type", sample.labId, t, e);
       }
     }
   }
 
-  if (testType === "compressive") {
+  if (resolvedTypes.has("compressive")) {
     try {
       const ct = await createRecord<{ id: number }>("compressive_tests", {
         project_id: projectId,

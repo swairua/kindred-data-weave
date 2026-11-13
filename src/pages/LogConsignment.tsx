@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { listReceptionConsignments, listReceptionFieldDefinitions, listReceptionPhotos, saveReceptionConsignment } from "@/lib/api";
+import { subscribeReceptionLoad } from "@/lib/receptionEvents";
 import {
   RECEPTION_TEST_CODES,
   SAMPLE_TYPE_CONTAINERS,
@@ -92,6 +93,8 @@ const LogConsignment = () => {
   const [draft, setDraft] = useState<ReceptionConsignmentInput>(() => emptyReceptionConsignment("RC-26-0001"));
   const [loaded, setLoaded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [retryTick, setRetryTick] = useState(0);
   const [isPrinting, setIsPrinting] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [fieldDefs, setFieldDefs] = useState<ReceptionFieldDefinition[]>([]);
@@ -99,6 +102,10 @@ const LogConsignment = () => {
 
   // Load the consignment being edited, or seed a brand new draft with the next
   // consignment number and the first Lab ID of the job.
+  useEffect(() => subscribeReceptionLoad((event) => {
+    setLoadError(event.message);
+  }), []);
+
   useEffect(() => {
     let active = true;
     Promise.all([listReceptionConsignments(), listReceptionFieldDefinitions()])
@@ -121,8 +128,9 @@ const LogConsignment = () => {
         }
         setLoaded(true);
       })
-      .catch(() => {
+      .catch((error) => {
         if (active) {
+          setLoadError(error instanceof Error ? error.message : 'Couldn\'t reach the reception service. Check your connection and try again.');
           setLoaded(true);
           setDefsLoaded(true);
         }
@@ -130,7 +138,7 @@ const LogConsignment = () => {
     return () => {
       active = false;
     };
-  }, [rcNo]);
+  }, [rcNo, retryTick]);
 
   const summary = useMemo(() => receptionSummary(draft.samples), [draft.samples]);
 
@@ -288,6 +296,20 @@ const LogConsignment = () => {
               </li>
             ))}
           </ol>
+
+          {loadError && (
+            <div role="alert" className="flex items-start gap-3 border-b bg-amber-50/80 px-4 py-2 text-xs text-amber-800 backdrop-blur">
+              <span className="mt-0.5" aria-hidden="true">⚠</span>
+              <div className="flex-1">
+                <span className="font-medium">Something went wrong.</span>
+                <span className="ml-1">{loadError}</span>
+              </div>
+              <button type="button" className="rounded-md border border-amber-300/60 bg-white/60 px-2 py-1 text-[11px] font-medium hover:bg-white" onClick={() => {
+                setLoadError(null);
+                setRetryTick((n) => n + 1);
+              }}>Retry</button>
+            </div>
+          )}
 
           <main className="grid gap-4 px-4 py-4 sm:px-6 sm:py-5 xl:grid-cols-[minmax(0,1fr)_320px]">
             <div className="space-y-5">
