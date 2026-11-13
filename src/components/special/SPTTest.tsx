@@ -231,7 +231,7 @@ const SPTTest = ({ testKey }: { testKey?: string }) => {
       { label: "Borehole Diameter", value: `${boreholeDiameter} mm` },
       { label: "Rod Length", value: `${rodLength} m` },
       { label: "Sampling Method", value: samplingMethod === "liners" ? "With Liners" : "Standard" },
-      { label: "Unit Weight (σ'v = γ·z)", value: `${unitWeight} kN/m³` },
+      { label: "Unit weight (kN/m3)", value: `${unitWeight} kN/m3` },
     ];
     
     return generateTestPDF({
@@ -240,6 +240,7 @@ const SPTTest = ({ testKey }: { testKey?: string }) => {
       ...project,
       dateTested: dateTested || project.projectDate,
       testedBy,
+      compactSummary: true,
       fields,
       skipDownload,
       tables: [{ 

@@ -111,6 +111,7 @@ const SlumpTest = ({ testKey }: SlumpTestProps) => {
     ...project,
     dateTested: dateTested || project.projectDate,
     testedBy,
+    compactSummary: true,
     fields: [
       { label: "Cone Height", value: `${derived.entry.mouldHeight} mm` },
       { label: "Height After Subsidence", value: derived.entry.measuredHeight ? `${derived.entry.measuredHeight} mm` : "—" },

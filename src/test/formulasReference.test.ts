@@ -54,6 +54,7 @@ describe("formulas reference content", () => {
       "porosity",
       "proctor",
       "schmidt",
+      "schmidt_rock",
       "shear",
       "slump",
       "ucs",

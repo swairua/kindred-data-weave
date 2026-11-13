@@ -24,6 +24,12 @@ interface PDFData {
   chartImages?: { [key: string]: string }; // Base64 encoded chart images
   pileImages?: { [key: string]: string }; // Base64 encoded pile before/after test images
   skipDownload?: boolean;
+  /**
+   * When true, the fields render as a compact 3-column, 2-to-3-row summary
+   * table placed below the results table instead of the boxed layout above it.
+   * Only the tests that pass this get the new layout.
+   */
+  compactSummary?: boolean;
 }
 
 const COLORS = {
@@ -59,6 +65,7 @@ export const imageParts = (dataUrl: string): { base64: string; format: "PNG" | "
  * reserve exactly the right amount of space on continuation pages.
  */
 function addProfessionalHeader(doc: jsPDF, data: PDFData, images: AdminImages): number {
+  const compact = !!data.compactSummary;
   const pageWidth = doc.internal.pageSize.getWidth();
   const contentW = pageWidth - PAGE_MARGIN * 2;
 
@@ -154,7 +161,7 @@ function addProfessionalHeader(doc: jsPDF, data: PDFData, images: AdminImages): 
   doc.setLineWidth(0.4);
   doc.line(PAGE_MARGIN, y, PAGE_MARGIN + contentW, y);
 
-  return y + 5;
+  return y + (compact ? 2 : 5);
 }
 
 /** Signature line, stamp and page numbering, drawn on every page. */
@@ -231,8 +238,63 @@ export const generateTestPDF = async (data: PDFData) => {
     return addProfessionalHeader(doc, data, images);
   };
 
-  // Results summary section
-  if (data.fields && data.fields.length > 0) {
+  /** Draw the compact two-to-three row, 3-column summary table below the results table. */
+  const drawCompactSummary = (atY: number): number => {
+    if (!data.fields || data.fields.length === 0) return atY;
+
+    // 3 columns for 4+ fields, fewer cells when there are only a couple of fields.
+    const columnCount = data.fields.length <= 2 ? data.fields.length : 3;
+    const cellWidth = (pageWidth - PAGE_MARGIN * 2) / columnCount;
+    const cellHeight = 12;
+
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...COLORS.primary);
+    doc.text("Test Results Summary", PAGE_MARGIN, atY);
+
+    let y2 = atY + 5;
+    const rows: PDFData["fields"][] = [];
+    const fields = data.fields;
+    for (let i = 0; i < fields.length; i += columnCount) {
+      rows.push(fields.slice(i, i + columnCount));
+    }
+
+    // Pad the last row with empty cells so the grid always renders full width.
+    for (const row of rows) {
+      while (row.length < columnCount) row.push({ label: "", value: "" });
+      if (y2 + cellHeight > contentBottom()) y2 = newPage() + 4;
+      row.forEach((field, columnIndex) => {
+        const xPos = PAGE_MARGIN + columnIndex * cellWidth;
+        if (field.label) {
+          doc.setFillColor(...COLORS.lightBg);
+          doc.rect(xPos, y2, cellWidth, cellHeight, "F");
+          doc.setDrawColor(...COLORS.border);
+          doc.setLineWidth(0.4);
+          doc.rect(xPos, y2, cellWidth, cellHeight);
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(7);
+          doc.setTextColor(...COLORS.primary);
+          doc.text(field.label, xPos + 2.5, y2 + 5);
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(8.5);
+          doc.setTextColor(...COLORS.dark);
+          doc.text(field.value || "-", xPos + 2.5, y2 + 9.5);
+        } else {
+          // Unused slot in a partially filled row - still draw the frame so the grid reads as one table.
+          doc.setFillColor(255, 255, 255);
+          doc.rect(xPos, y2, cellWidth, cellHeight, "F");
+          doc.setDrawColor(...COLORS.border);
+          doc.setLineWidth(0.4);
+          doc.rect(xPos, y2, cellWidth, cellHeight);
+        }
+      });
+      y2 += cellHeight;
+    }
+    return y2 + 6;
+  };
+
+  // Boxed above-table summary, kept for callers that have not opted into the compact layout.
+  if (!data.compactSummary && data.fields && data.fields.length > 0) {
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...COLORS.primary);
@@ -274,20 +336,21 @@ export const generateTestPDF = async (data: PDFData) => {
 
   // Data tables section
   if (data.tables && data.tables.length > 0) {
+    const compact = !!data.compactSummary;
     doc.setDrawColor(...COLORS.border);
     doc.setLineWidth(0.4);
     doc.line(PAGE_MARGIN, y, pageWidth - PAGE_MARGIN, y);
-    y += 8;
+    y += compact ? 4 : 8;
 
     for (const table of data.tables) {
-      if (y + 30 > contentBottom()) y = newPage() + 4;
+      if (y + (compact ? 24 : 30) > contentBottom()) y = newPage() + 4;
 
       if (table.title) {
         doc.setFontSize(11);
         doc.setFont("helvetica", "bold");
         doc.setTextColor(...COLORS.primary);
         doc.text(table.title, PAGE_MARGIN, y);
-        y += 7;
+        y += compact ? 6 : 7;
       }
 
       autoTable(doc, {
@@ -299,10 +362,10 @@ export const generateTestPDF = async (data: PDFData) => {
           fillColor: COLORS.primary,
           textColor: 255,
           fontStyle: "bold",
-          fontSize: 8,
-          cellPadding: 3,
+          fontSize: compact ? 7 : 8,
+          cellPadding: compact ? 2.2 : 3,
         },
-        bodyStyles: { fontSize: 8, cellPadding: 2.5 },
+        bodyStyles: { fontSize: compact ? 7.2 : 8, cellPadding: compact ? 1.8 : 2.5 },
         alternateRowStyles: { fillColor: COLORS.lightBg },
         // The header is redrawn in willDrawPage, which autoTable calls *after*
         // starting a new page but *before* laying out that page's rows. The old
@@ -317,34 +380,44 @@ export const generateTestPDF = async (data: PDFData) => {
         styles: { overflow: "linebreak" as const },
       });
 
-      y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
+      y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + (compact ? 6 : 10);
     }
+  }
+
+  // Compact summary table below the results table - only tests that opted into it.
+  if (data.compactSummary && data.fields && data.fields.length > 0) {
+    y = drawCompactSummary(y);
   }
 
   // Chart images section
   if (data.chartImages && Object.keys(data.chartImages).length > 0) {
-    if (y + 30 > contentBottom()) y = newPage() + 4;
+    const compact = !!data.compactSummary;
+    if (y + (compact ? 24 : 30) > contentBottom()) y = newPage() + 4;
 
     doc.setDrawColor(...COLORS.border);
     doc.setLineWidth(0.4);
     doc.line(PAGE_MARGIN, y, pageWidth - PAGE_MARGIN, y);
-    y += 8;
+    y += compact ? 4 : 8;
 
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...COLORS.primary);
     doc.text("Charts & Graphs", PAGE_MARGIN, y);
-    y += 10;
+    y += compact ? 6 : 10;
 
     for (const [chartName, chartBase64] of Object.entries(data.chartImages)) {
       if (!chartBase64) continue;
       try {
-        if (y + 60 > contentBottom()) y = newPage() + 4;
+        if (!compact && y + 60 > contentBottom()) y = newPage() + 4;
 
         const { base64, format } = imageParts(chartBase64);
         const imgWidth = pageWidth - PAGE_MARGIN * 2;
         const naturalHeight = (imgWidth * 3) / 4;
-        const imgHeight = Math.min(naturalHeight, contentBottom() - y);
+        // Compact pages shrink the chart to whatever space remains on page 1; only
+        // very small remnants spill to page 2.
+        const imgHeight = compact
+          ? Math.max(40, Math.min(naturalHeight, contentBottom() - y - 2))
+          : Math.min(naturalHeight, contentBottom() - y);
 
         doc.addImage(base64, format, PAGE_MARGIN, y, imgWidth, imgHeight);
         y += imgHeight + 8;

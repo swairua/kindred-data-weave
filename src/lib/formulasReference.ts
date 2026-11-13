@@ -50,13 +50,13 @@ export interface FormulaEntry {
 }
 
 export interface FormulaSection {
-  testKey: "grading" | "atterberg" | "proctor" | "compressive" | "classification" | "cbr" | "shear" | "consolidation" | "ucs" | "pointload" | "porosity" | "upvt" | "schmidt" | "coring" | "cpt" | "slump";
+  testKey: "grading" | "atterberg" | "proctor" | "compressive" | "classification" | "cbr" | "shear" | "consolidation" | "ucs" | "pointload" | "porosity" | "upvt" | "schmidt" | "schmidt_rock" | "coring" | "cpt" | "slump";
   title: string;
   standard: string;
   entries: FormulaEntry[];
 }
 
-export const FORMULAS_REFERENCE_VERSION = "1.8.0";
+export const FORMULAS_REFERENCE_VERSION = "2.1.0";
 
 export const FORMULAS_REFERENCE_TITLE = "Calculations and Formulas Reference";
 
@@ -690,50 +690,60 @@ export const FORMULA_SECTIONS: FormulaSection[] = [
   {
     testKey: "ucs",
     title: "Unconfined Compressive Strength (UCS)",
-    standard: "BS 1377-7:1990 / ASTM D2166",
+    standard: "ISRM SM (2007) / ASTM D7012-14",
     entries: [
       {
-        heading: "Unconfined compressive strength",
+        heading: "Uniaxial compressive strength",
         formulas: [
-          "qu = (P * 1000) / A   (MPa = N/mm^2)",
+          "qu = 4F / (pi d^2)   (MPa = N/mm^2)",
+          "A = (pi / 4) * d^2   (mm^2)",
+          "mean, sample standard deviation, coefficient of variation (n >= 3)",
         ],
         variables: [
-          { symbol: "qu", meaning: "unconfined compressive strength (MPa)" },
-          { symbol: "P", meaning: "maximum load at failure (kN)" },
+          { symbol: "qu", meaning: "uniaxial compressive strength (MPa)" },
+          { symbol: "F", meaning: "maximum load at failure (kN)" },
+          { symbol: "d", meaning: "specimen diameter (mm)" },
+          { symbol: "L/D", meaning: "length-to-diameter ratio; must lie between 2 and 3 (ISRM SM 2007)" },
           { symbol: "A", meaning: "cross-sectional area of specimen (mm^2)" },
-          { symbol: "1000", meaning: "converts kN to N" },
         ],
         notes: [
-          "Specimen is cylindrical with no confining pressure.",
-          "Strength is computed per specimen; average is reported across specimens.",
+          "ISRM SM 2007 requires at least 3 valid specimens; cylindrical specimens with L/D between 2 and 3; flat, parallel, polished ends; loading rate 0.5 to 1.0 MPa/s.",
+          "Failures through the specimen ends are rejected and the specimen must be re-tested.",
+          "Report mean, standard deviation and coefficient of variation. Strength alone is not reported without the number of specimens.",
+          "The test is repeated for at least 3 valid specimens; a result is not reportable unless the set conforms ISRM SM 2007 / ASTM D7012-14.",
         ],
         sourceModule: "ucsCalculations",
-        sourceFunctions: ["calculateUCSStrength", "calculateUCSRows", "averageUCS"],
+        sourceFunctions: ["calculateSpecimen", "sampleStandardDeviation", "assessConformity", "mean", "MIN_SPECIMENS", "STRESS_RATE_MIN", "STRESS_RATE_MAX", "L_D_MIN", "L_D_MAX"],
       },
     ],
   },
   {
     testKey: "pointload",
     title: "Point Load Test",
-    standard: "ISRM / ASTM D5731",
+    standard: "ISRM SM (2007) / ASTM D5731-14",
     entries: [
       {
         heading: "Point load strength index",
         formulas: [
-          "Is = (P * 1000) / (De^2)   (MPa)",
+          "Is = P / De^2   (MPa), with P in N and De in mm",
+          "Is(50) = Is * (De / 50)^0.75   (normalised to a 50 mm reference diameter)",
+          "mean, sample standard deviation, coefficient of variation (n >= 10)",
         ],
         variables: [
-          { symbol: "Is", meaning: "point load strength index (MPa)" },
-          { symbol: "P", meaning: "failure load (kN)" },
-          { symbol: "De", meaning: "equivalent core diameter (mm)" },
-          { symbol: "1000", meaning: "converts kN to N" },
+          { symbol: "Is(50)", meaning: "normalised point load strength index for a 50 mm reference diameter (MPa)" },
+          { symbol: "Is", meaning: "unnormalised point load index (MPa)" },
+          { symbol: "P", meaning: "load at failure (kN)" },
+          { symbol: "De", meaning: "equivalent specimen diameter (mm); De = D for diametral tests, sqrt(4A/pi) for lumps/blocks; test close to 50 mm preferred" },
+          { symbol: "COV", meaning: "coefficient of variation of the sample; > 40% is rejected by ISRM SM" },
         ],
         notes: [
-          "De = D for diametral tests; De = sqrt(4*A/pi) for axial/lump tests.",
-          "The index is reported as Is(50) when normalized to 50 mm diameter.",
+          "ISRM SM 2007 recommends at least 10 valid tests per set; De close to 50 mm is preferred; De outside 25-75 mm is flagged.",
+          "Failure should preferably be a single fracture through the mid-section; through-end failures are rejected and the specimen re-tested.",
+          "Ends fail when load is applied by two conical platens; a loading rate giving failure within approximately one minute is recommended.",
+          "Results may be compared to unconfined compressive strength only through material-class-dependent correlations.",
         ],
         sourceModule: "pointLoadCalculations",
-        sourceFunctions: ["calculatePointLoadIndex", "calculatePointLoadRows", "averagePointLoadIndex"],
+        sourceFunctions: ["calculatePointLoadIndex", "calculateSpecimen", "sampleStandardDeviation", "assessConformity", "calculatePointLoadRows", "averagePointLoadIndex", "MIN_SPECIMENS", "DE_MIN_MM", "DE_MAX_MM", "COV_MAX", "IS50_CORRECTION_EXPONENT"],
       },
     ],
   },
@@ -812,6 +822,31 @@ export const FORMULA_SECTIONS: FormulaSection[] = [
         ],
         sourceModule: "schmidtCalculations",
         sourceFunctions: ["getValidReadings", "evaluateSchmidtRow", "calculateAverageRebound", "estimateStrengthFromRebound", "calculateSchmidtRows", "averageRebound", "rowsConform", "REQUIRED_READINGS"],
+      },
+    ],
+  },
+  {
+    testKey: "schmidt_rock",
+    title: "Schmidt Hammer (Rock)",
+    standard: "ISRM SM (1978) Rebound (Schmidt) hammer testing of rocks",
+    entries: [
+      {
+        heading: "Rebound hardness of rock",
+        formulas: [
+          "R_avg = SUM(retained readings) / retained count",
+          "reading differs by more than 12% from mean -> discarded; more than 2 rejected -> area invalid",
+        ],
+        variables: [
+          { symbol: "R_avg", meaning: "average rebound number of the retained readings" },
+        ],
+        notes: [
+          "ISRM SM (1978) requires at least 10 rebound readings per test area, equally spaced and away from fractures, edges and weathered surfaces.",
+          "Any reading varying from the mean by more than 12% is discarded; if more than two are discarded, the area is unsuitable and must be re-taken.",
+          "The rebound number is a surface-hardness index. It is NOT a stand-in for compressive strength; UCS must be determined by laboratory tests on representative specimens. No MPa correlation is printed for rock.",
+          "Anvil calibration and impact orientation must be documented for a conforming (completed) test; the print states conformity or lists what is missing.",
+        ],
+        sourceModule: "schmidtCalculations",
+        sourceFunctions: ["getValidReadings", "evaluateSchmidtRow", "calculateAverageRebound", "calculateSchmidtRows", "averageRebound", "rowsConform", "REQUIRED_READINGS"],
       },
     ],
   },

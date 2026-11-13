@@ -61,7 +61,10 @@ const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
   const project = useProject();
   const isRock = testKey === "schmidt_rock";
   const testName = isRock ? "Schmidt Hammer" : "NDT (Rebound Hammer)";
-  const standard = isRock ? "ASTM D5873" : "BS EN 12504-2 / ASTM C805";
+  // ISRM SM: Suggested Methods for the determination of rebound (Schmidt) hardness of rocks,1978 rev.
+  const standard = isRock
+    ? "ISRM SM (1978) Rebound (Schmidt) hammer testing of rocks"
+    : "BS EN 12504-2 / ASTM C805";
   const chartId = isRock ? "schmidt-rock-chart" : "schmidt-chart";
   const [rows, setRows] = useState<SchmidtRow[]>([emptyRow("L1")]);
   const [testedBy, setTestedBy] = useState("");
@@ -77,13 +80,14 @@ const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
   const [isSaved, setIsSaved] = useState(false);
 
   const calibration: SchmidtCalibration | null = useMemo(() => {
+    if (isRock) return null; // ISRM SM does not define a rebound-to-MPa correlation.
     const slope = Number(calibrationSlope);
     const intercept = Number(calibrationIntercept);
     if (calibrationSlope.trim() !== "" && calibrationIntercept.trim() !== "" && Number.isFinite(slope) && Number.isFinite(intercept)) {
       return { slope, intercept };
     }
     return null;
-  }, [calibrationSlope, calibrationIntercept]);
+  }, [calibrationSlope, calibrationIntercept, isRock]);
 
   // Evaluate each row against the outlier rule WITHOUT disturbing empty rows.
   const rowStates = useMemo(() => rows.map((row) => evaluateSchmidtRow(row)), [rows]);
@@ -106,14 +110,22 @@ const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
     rows
       .map((row, index) => ({ name: row.location || "—", calc: rowStates[index], index }))
       .filter((item) => item.calc !== null)
-      .map((item) => ({
-        name: item.name,
-        rebound: Number(item.calc!.avgRebound.toFixed(1)),
-        strength: item.calc!.estimatedStrength !== null ? Number(item.calc!.estimatedStrength.toFixed(1)) : 0,
-      })),
-    [rows, rowStates]
+      .map((item) => {
+        const base = {
+          name: item.name,
+          rebound: Number(item.calc!.avgRebound.toFixed(1)),
+        };
+        if (isRock) return base;
+        return {
+          ...base,
+          strength: item.calc!.estimatedStrength !== null ? Number(item.calc!.estimatedStrength.toFixed(1)) : 0,
+        };
+      }),
+    [rows, rowStates, isRock]
   );
-  const chartConfig = { rebound: { label: "Avg Rebound", color: "hsl(var(--primary))" }, strength: { label: "Est. Strength (MPa)", color: "hsl(var(--accent-foreground))" } };
+  const chartConfig = isRock
+    ? { rebound: { label: "Avg Rebound", color: "hsl(var(--primary))" } }
+    : { rebound: { label: "Avg Rebound", color: "hsl(var(--primary))" }, strength: { label: "Est. Strength (MPa)", color: "hsl(var(--accent-foreground))" } };
 
   const results = useMemo(() => ([
     { label: "Avg Rebound", value: avgRebound || "" },
@@ -185,28 +197,32 @@ const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
     if (chartData.length >= 1) {
       const chartBase64 = await captureChartAsBase64(chartId);
       if (chartBase64) {
-        chartImages = { "Rebound & Estimated Strength": chartBase64 };
+        chartImages = { [isRock ? "Avg Rebound" : "Rebound & Estimated Strength"]: chartBase64 };
       }
     }
 
     const conformStatement = status === "completed"
-      ? `Procedure performed and readings conform to ${standard}. Rebound number indicates surface hardness only; verify compressive strength by core/cube test.`
-      : `NOT REPORTABLE - test is not complete or conforms to neither ${standard} nor house procedure (missing: ${missingForCompletion.join("; ")}). Results are indicative only and must be verified by core/cube test.`;
+      ? (isRock
+        ? `Procedure performed and readings conform to ${standard}. Rebound-hardness values indicate surface hardness of the rock; compare between similar rock types, and verify strength by laboratory UCS tests before comparing.`
+        : `Procedure performed and readings conform to ${standard}. Rebound number indicates surface hardness only; verify compressive strength by core/cube test.`)
+      : `NOT REPORTABLE - test is not complete or conforms to neither ${standard} nor house procedure (missing: ${missingForCompletion.join("; ")}). Results are indicative only and must be verified${isRock ? " by laboratory UCS tests" : " by core/cube test"}.`;
 
     const fields = [
       { label: "Avg Rebound", value: avgRebound || "—" },
-      { label: "Est. Strength", value: calibration && avgEstimated ? `${avgEstimated} MPa` : "Not estimated" },
+      ...(!isRock ? [
+        { label: "Est. Strength", value: calibration && avgEstimated ? `${avgEstimated} MPa` : "Not estimated" },
+        { label: "Strength correlation", value: calibration ? `fc = ${calibration.slope}·R ${calibration.intercept >= 0 ? "+" : "−"} ${Math.abs(calibration.intercept)} MPa` : "Not used" },
+      ] : []),
       { label: "Orientation", value: orientation || "Not recorded" },
       { label: "Surface condition", value: surfaceCondition || "Not recorded" },
       { label: "Anvil calibration", value: anvilCalibration || "Not recorded" },
-      { label: "Carbonation depth", value: carbonationDepth ? `${carbonationDepth} mm` : "Not determined" },
-      { label: "Strength correlation", value: calibration ? `fc = ${calibration.slope}·R ${calibration.intercept >= 0 ? "+" : "−"} ${Math.abs(calibration.intercept)} MPa` : "Not used" },
+      ...(!isRock ? [{ label: "Carbonation depth", value: carbonationDepth ? `${carbonationDepth} mm` : "Not determined" }] : []),
       { label: "Conformance", value: status === "completed" ? `Conforms (${standard})` : "Non-conforming" },
     ];
 
     const tableData = {
       title: "Readings per location",
-      headers: ["Location", ...Array.from({ length: REQUIRED_READINGS }, (_value, i) => `R${i + 1}`), "Readings", "Avg R", "Discarded", "Est. MPa"],
+      headers: ["Location", ...Array.from({ length: REQUIRED_READINGS }, (_value, i) => `R${i + 1}`), "Readings", "Avg R", "Discarded", ...(!isRock ? ["Est. MPa"] : [])],
       rows: rows.map((row, index) => {
         const state = rowStates[index];
         const avg = state?.avgRebound.toFixed(1) ?? "";
@@ -218,7 +234,7 @@ const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
           state ? `${state.conformity.retainedCount}/${REQUIRED_READINGS}` : "0/10",
           avg || "—",
           discarded,
-          est,
+          ...(!isRock ? [est] : []),
         ];
       }),
     };
@@ -235,6 +251,7 @@ const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
       ...project,
       dateTested: dateTested || project.projectDate,
       testedBy,
+      compactSummary: true,
       fields,
       skipDownload,
       tables: [tableData, validityTable],
@@ -294,45 +311,49 @@ const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
               className="h-9"
             />
           </div>
-          <div className="space-y-1.5">
-            <label className="text-xs text-muted-foreground" htmlFor="schmidt-carbonation">Carbonation depth (mm)</label>
-            <Input
-              id="schmidt-carbonation"
-              type="number"
-              min="0"
-              step="0.5"
-              value={carbonationDepth}
-              onChange={(event) => setCarbonationDepth(event.target.value)}
-              placeholder="Not determined"
-              className="h-9"
-            />
-          </div>
+          {!isRock && (
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground" htmlFor="schmidt-carbonation">Carbonation depth (mm)</label>
+              <Input
+                id="schmidt-carbonation"
+                type="number"
+                min="0"
+                step="0.5"
+                value={carbonationDepth}
+                onChange={(event) => setCarbonationDepth(event.target.value)}
+                placeholder="Not determined"
+                className="h-9"
+              />
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Strength estimation is opt-in, never assumed. */}
-      <div className="mb-4 rounded-md border p-3">
-        <div className="mb-2 flex items-center justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Strength correlation (optional)</span>
-          <span className="text-[10px] text-muted-foreground">leave blank to report rebound numbers only</span>
-        </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <div className="space-y-1.5">
-            <label className="text-xs text-muted-foreground" htmlFor="schmidt-slope">Slope (MPa per rebound)</label>
-            <Input id="schmidt-slope" type="number" step="any" value={calibrationSlope} onChange={(event) => setCalibrationSlope(event.target.value)} placeholder="e.g. 1.2" className="h-9" />
+      {/* Strength estimation is possible for concrete (EN 12504-2/ASTM C805) only; rock per ISRM SM reports rebound hardness alone. */}
+      {!isRock && (
+        <div className="mb-4 rounded-md border p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Strength correlation (optional)</span>
+            <span className="text-[10px] text-muted-foreground">leave blank to report rebound numbers only</span>
           </div>
-          <div className="space-y-1.5">
-            <label className="text-xs text-muted-foreground" htmlFor="schmidt-intercept">Intercept (MPa)</label>
-            <Input id="schmidt-intercept" type="number" step="any" value={calibrationIntercept} onChange={(event) => setCalibrationIntercept(event.target.value)} placeholder="e.g. -13.5" className="h-9" />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground" htmlFor="schmidt-slope">Slope (MPa per rebound)</label>
+              <Input id="schmidt-slope" type="number" step="any" value={calibrationSlope} onChange={(event) => setCalibrationSlope(event.target.value)} placeholder="e.g. 1.2" className="h-9" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground" htmlFor="schmidt-intercept">Intercept (MPa)</label>
+              <Input id="schmidt-intercept" type="number" step="any" value={calibrationIntercept} onChange={(event) => setCalibrationIntercept(event.target.value)} placeholder="e.g. -13.5" className="h-9" />
+            </div>
+            <p className="self-end text-[10px] leading-snug text-muted-foreground">A rebound number alone is not a strength value. Estimate only with a correlation established on this concrete (core/cube), per BS EN 12504-2 / ASTM C805.</p>
           </div>
-          <p className="self-end text-[10px] leading-snug text-muted-foreground">A rebound number alone is not a strength value. Estimate only with a correlation established on this concrete (core/cube), per BS EN 12504-2 / ASTM C805.</p>
         </div>
-      </div>
+      )}
 
       {/* Readings */}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Location</th>{Array.from({ length: REQUIRED_READINGS }, (_value, i) => <th key={i} className="w-14 text-left py-2 px-2 font-medium text-muted-foreground">R{i + 1}</th>)}<th className="w-16 text-left py-2 px-2 font-medium text-muted-foreground">Avg R</th><th className="w-20 text-left py-2 px-2 font-medium text-muted-foreground">Discarded</th><th className="w-20 text-left py-2 px-2 font-medium text-muted-foreground">Est. MPa</th><th className="w-10"></th></tr></thead>
+          <thead><tr className="border-b"><th className="text-left py-2 px-2 font-medium text-muted-foreground">Location</th>{Array.from({ length: REQUIRED_READINGS }, (_value, i) => <th key={i} className="w-14 text-left py-2 px-2 font-medium text-muted-foreground">R{i + 1}</th>)}<th className="w-16 text-left py-2 px-2 font-medium text-muted-foreground">Avg R</th><th className="w-20 text-left py-2 px-2 font-medium text-muted-foreground">Discarded</th>{!isRock && <th className="w-20 text-left py-2 px-2 font-medium text-muted-foreground">Est. MPa</th>}<th className="w-10"></th></tr></thead>
           <tbody>
             {rows.map((row, i) => {
               const state = rowStates[i];
@@ -357,7 +378,7 @@ const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
                   ))}
                   <td className="py-1.5 px-2"><CalculatedInput value={avg} /></td>
                   <td className="py-1.5 px-2 text-xs">{state && state.discardedIndexes.length > 0 ? state.discardedIndexes.map((index) => `R${index + 1}`).join(", ") : "—"}</td>
-                  <td className="py-1.5 px-2"><CalculatedInput value={est} /></td>
+                  {!isRock && <td className="py-1.5 px-2"><CalculatedInput value={est} /></td>}
                   <td className="py-1.5 px-1"><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setRows(rows.filter((_, j) => j !== i))}><X className="h-3.5 w-3.5" /></Button></td>
                 </tr>
               );
@@ -386,15 +407,15 @@ const SchmidtHammerTest = ({ testKey = "schmidt" }: { testKey?: string }) => {
 
       {chartData.length >= 1 && (
         <div className="mt-6">
-          <Label className="text-xs text-muted-foreground mb-2 block">Rebound &amp; Estimated Strength</Label>
+          <Label className="text-xs text-muted-foreground mb-2 block">{isRock ? "Avg Rebound (rock)" : "Rebound &amp; Estimated Strength"}</Label>
           <ChartContainer id={chartId} config={chartConfig} className="h-[300px] w-full">
             <BarChart data={chartData} margin={{ top: 10, right: 20, bottom: 20, left: 10 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" label={{ value: "Location", position: "insideBottom", offset: -10, className: "fill-muted-foreground text-xs" }} />
-              <YAxis label={{ value: "Value", angle: -90, position: "insideLeft", offset: 5, className: "fill-muted-foreground text-xs" }} />
+              <YAxis label={{ value: isRock ? "Rebound number" : "Value", angle: -90, position: "insideLeft", offset: 5, className: "fill-muted-foreground text-xs" }} />
               <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="rebound" name="rebound" fill="var(--color-rebound)" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="strength" name="strength" fill="var(--color-strength)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="rebound" name="rebound" fill="#2962a3" radius={[4, 4, 0, 0]} />
+              {!isRock && <Bar dataKey="strength" name="strength" fill="#2e7d32" radius={[4, 4, 0, 0]} />}
             </BarChart>
           </ChartContainer>
         </div>

@@ -114,6 +114,7 @@ const CPTTest = ({ testKey }: { testKey?: string }) => {
       ...project,
       dateTested: dateTested || project.projectDate,
       testedBy,
+      compactSummary: true,
       fields,
       skipDownload,
       tables: [{
