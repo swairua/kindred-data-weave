@@ -33,8 +33,6 @@ const CONTENT_W = 190;
 const ROW_H = 4.2;
 const HEADER_H = 6;
 const MIN_ROW_H = 3.4;
-const MIN_GRAPH_H = 52;
-const MAX_GRAPH_H = 78;
 
 const COLORS = {
   dark: [0, 0, 0] as [number, number, number],
@@ -289,7 +287,7 @@ const drawResults = (d: jsPDF, x: number, y: number, o: MoistureDensityPdfOption
  */
 const REF_UNIT_MM = 0.352778;
 const REF_BLOCK_UNITS = 384.28;
-const REF_BLOCK_H_UNITS = 186;
+const REF_BLOCK_H_UNITS = 214;
 /** Plot rectangle inside the chart block, in the same units as the on-screen SVG. */
 const PLOT_UNITS = { x: 44, y: 20, w: 316, h: 150 };
 
@@ -310,14 +308,13 @@ const dashedLine = (d: jsPDF, fromX: number, fromY: number, toX: number, toY: nu
  * chart is missing. It reads the same `mcChartGeometry` helpers the SVG uses, so
  * the printed graph matches the screen even when only vectors reach the PDF.
  */
-const drawMcGraphVector = (d: jsPDF, x: number, y: number, w: number, o: MoistureDensityPdfOptions, forcedHeight?: number): number => {
+const drawMcGraphVector = (d: jsPDF, x: number, y: number, w: number, o: MoistureDensityPdfOptions): number => {
   const scale = w / REF_BLOCK_UNITS;
-  const blockH = forcedHeight ?? REF_BLOCK_H_UNITS * scale;
-  const vScale = blockH / (REF_BLOCK_H_UNITS * scale);
+  const blockH = REF_BLOCK_H_UNITS * scale;
   const type = scale / REF_UNIT_MM;
   const px = (units: number) => x + units * scale;
-  const py = (units: number) => y + units * scale * vScale;
-  const plot = { x: px(PLOT_UNITS.x), y: py(PLOT_UNITS.y), w: PLOT_UNITS.w * scale, h: PLOT_UNITS.h * scale * vScale };
+  const py = (units: number) => y + units * scale;
+  const plot = { x: px(PLOT_UNITS.x), y: py(PLOT_UNITS.y), w: PLOT_UNITS.w * scale, h: PLOT_UNITS.h * scale };
   const plotBottom = plot.y + plot.h;
   /** Places text at a position given in chart-block units. */
   const label = (
@@ -344,7 +341,7 @@ const drawMcGraphVector = (d: jsPDF, x: number, y: number, w: number, o: Moistur
   d.setFillColor(255, 255, 255);
   d.setDrawColor(...COLORS.curve);
   d.setLineWidth(0.5 * type);
-  d.rect(x, py(8), w, (181 - 8) * scale * vScale, "FD");
+  d.rect(x, py(8), w, 198 * scale, "FD");
 
   d.setFillColor(...COLORS.plotBg);
   d.rect(plot.x, plot.y, plot.w, plot.h, "F");
@@ -384,7 +381,7 @@ const drawMcGraphVector = (d: jsPDF, x: number, y: number, w: number, o: Moistur
     }
     const captionAt = samples[Math.round((samples.length - 1) * 0.12)];
     if (!mcPointInRect(captionAt, clipRect)) return;
-    label(voidLineCaption(line.percent), PLOT_UNITS.x + captionAt.x / scale, PLOT_UNITS.y + captionAt.y / (scale * vScale) + 7, "center", 5.4, true);
+    label(voidLineCaption(line.percent), PLOT_UNITS.x + captionAt.x / scale, PLOT_UNITS.y + captionAt.y / scale + 7, "center", 5.4, true);
   });
 const curve = mcCurveSamples(toMcPlotPoints(o.fitted, plot.w, plot.h, scales.x, scales.y));
 
@@ -420,20 +417,29 @@ const curve = mcCurveSamples(toMcPlotPoints(o.fitted, plot.w, plot.h, scales.x, 
     if (!yLabelIndices.has(index)) return;
     label(formatDensityTick(value), PLOT_UNITS.x - 3, blockY(value), "right", 5.4);
   });
-  label("Dry Density (kg/m³)", PLOT_UNITS.x - 30, PLOT_UNITS.y + PLOT_UNITS.h / 2, "center", 7, true, 90);
+  const captionMidY = py(PLOT_UNITS.y + PLOT_UNITS.h / 2);
+  const captionSize = Math.max(7 * type, 3.5);
+  const caption = "Dry Density (kg/m³)";
+  d.setFontSize(captionSize);
+  d.setFont("helvetica", "bold");
+  d.setTextColor(...COLORS.dark);
+  // jsPDF's rotated text anchors at the baseline start, so the caption is placed
+  // manually with its bounding box centered on the Y axis and the anchor pushed
+  // right relative to the box's left-hand extent.
+  const captionWidth = d.getTextWidth(caption);
+  d.text(caption, px(PLOT_UNITS.x - 16.5), captionMidY + captionWidth / 2, { angle: 90, baseline: "middle" });
   scales.x.ticks.forEach((value, index) => {
     if (!xLabelIndices.has(index)) return;
     label(formatMoistureTick(value), blockX(value), 180, "center", 5.4);
   });
-  label("Moisture Content (%)", PLOT_UNITS.x + PLOT_UNITS.w / 2, 176, "center", 7, true);
-  label("DRY DENSITY / MOISTURE CONTENT RELATIONSHIP", REF_BLOCK_UNITS / 2, 4.5, "center", 7.5, true);
+  label("Moisture Content (%)", PLOT_UNITS.x + PLOT_UNITS.w / 2, 192, "center", 7, true);
+  label("DRY DENSITY / MOISTURE CONTENT RELATIONSHIP", REF_BLOCK_UNITS / 2, 2.5, "center", 7.5, true);
 
   return y + blockH;
 };
 
-const drawMcGraph = (d: jsPDF, x: number, y: number, w: number, o: MoistureDensityPdfOptions, forcedHeight?: number): number => {
-  const naturalH = (REF_BLOCK_H_UNITS * w) / REF_BLOCK_UNITS;
-  const h = forcedHeight ? Math.min(forcedHeight, naturalH) : naturalH;
+const drawMcGraph = (d: jsPDF, x: number, y: number, w: number, o: MoistureDensityPdfOptions): number => {
+  const h = (REF_BLOCK_H_UNITS * w) / REF_BLOCK_UNITS;
   if (o.chartImage) {
     try {
       const { base64, format } = imageParts(o.chartImage);
@@ -443,7 +449,7 @@ const drawMcGraph = (d: jsPDF, x: number, y: number, w: number, o: MoistureDensi
       console.warn("[Density/Moisture PDF] Chart capture could not be embedded, drawing the vector graph instead:", error);
     }
   }
-  return drawMcGraphVector(d, x, y, w, o, h);
+  return drawMcGraphVector(d, x, y, w, o);
 };
 
 const drawTitleBlock = (
@@ -544,13 +550,12 @@ export const generateMoistureDensityPDF = async (options: MoistureDensityPdfOpti
     const contentBottom = footerY - 6;
     const sampleName = pageOptions.record.label || pageOptions.record.sampleNumber || `Sample ${sheetIndex + 1}`;
 
-    const graphNaturalH = Math.min((CONTENT_W * REF_BLOCK_H_UNITS) / REF_BLOCK_UNITS, MAX_GRAPH_H);
+    const graphNaturalH = (CONTENT_W * REF_BLOCK_H_UNITS) / REF_BLOCK_UNITS;
     const resultRows = 3 + pageOptions.summary.warnings.length;
     const fixedH = 33 + 3 * ROW_H + 1.5;
     const tableH = 7 * ROW_H + 2 + 7 * ROW_H;
     let rowH = ROW_H;
-    let graphH = graphNaturalH;
-    const need = fixedH + tableH + resultRows * ROW_H + 2 + graphH + 2;
+    const need = fixedH + tableH + resultRows * ROW_H + 2 + graphNaturalH + 2;
     const have = contentBottom - topY;
     const fittedRowH = (have - fixedH - 2 - 2 - graphNaturalH) / (14 + resultRows);
     let paginateGraph = false;
@@ -560,7 +565,6 @@ export const generateMoistureDensityPDF = async (options: MoistureDensityPdfOpti
       } else {
         paginateGraph = true;
         rowH = MIN_ROW_H;
-        graphH = graphNaturalH;
       }
     }
 
@@ -580,16 +584,14 @@ export const generateMoistureDensityPDF = async (options: MoistureDensityPdfOpti
     y = drawMoistureTable(doc, x, y, pageOptions, rowH, headerH) + 2;
 
     if (!paginateGraph) {
-      const graphBudget = Math.max(contentBottom - y - resultsBlockHeight(pageOptions, rowH) - 2, MIN_GRAPH_H);
-      const fittedGraphH = Math.min(graphH, graphBudget);
-      y = drawMcGraph(doc, x, y, CONTENT_W, pageOptions, fittedGraphH) + 2;
+      y = drawMcGraph(doc, x, y, CONTENT_W, pageOptions) + 2;
       drawResults(doc, x, y, pageOptions, rowH);
       finishPage(1, 1);
     } else {
       drawResults(doc, x, y, pageOptions, rowH);
       finishPage(1, 2);
       doc.addPage();
-      drawMcGraph(doc, x, topY, CONTENT_W, pageOptions, graphH);
+      drawMcGraph(doc, x, topY, CONTENT_W, pageOptions);
       finishPage(2, 2);
     }
   });
