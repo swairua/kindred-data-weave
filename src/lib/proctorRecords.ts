@@ -112,6 +112,9 @@ export interface ProctorPayload {
     clientName: string;
     date: string;
     records: ProctorRecord[];
+    /** Project-wide chart Y-axis window saved with the record. Absent/blank = auto-fit. */
+    yAxisMin?: string;
+    yAxisMax?: string;
   };
   calculations: {
     standard: ProctorSummary;
@@ -151,7 +154,7 @@ export const emptyProctorRecord = (metadata: RecordMetadata = {}): ProctorRecord
   modifiedRows: createProctorRows(),
   standardEffort: { ...STANDARD_EFFORT },
   modifiedEffort: { ...MODIFIED_EFFORT },
-  specificGravity: "",
+  specificGravity: "2.0",
   airVoidsTarget: "5, 10",
   oversizePercent: "",
   oversizeSpecificGravity: "",
@@ -509,6 +512,24 @@ export const normalizeProctorRecord = (value: unknown, metadata: RecordMetadata 
   };
 };
 
+export const getProctorYAxis = (payload: unknown): { min: string; max: string; isSet: boolean } => {
+  let parsedPayload = payload;
+  if (typeof payload === "string") {
+    try {
+      parsedPayload = JSON.parse(payload) as unknown;
+    } catch {
+      return { min: "", max: "", isSet: false };
+    }
+  }
+  if (!isObject(parsedPayload)) return { min: "", max: "", isSet: false };
+  const project = isObject(parsedPayload.project) ? parsedPayload.project : parsedPayload;
+  // `isSet` separates a payload saved without any window (default 1400-1550 applies)
+  // from one whose window was deliberately blanked (auto-fit applies).
+  const minSet = typeof project.yAxisMin === "string";
+  const maxSet = typeof project.yAxisMax === "string";
+  return { min: readString(project.yAxisMin), max: readString(project.yAxisMax), isSet: minSet || maxSet };
+};
+
 export const getProctorRecords = (payload: unknown, metadata: RecordMetadata = {}): ProctorRecord[] => {
   let parsedPayload = payload;
   if (typeof payload === "string") {
@@ -698,8 +719,20 @@ export const createProctorPayload = (
   standard: ProctorSummary,
   modified: ProctorSummary,
   records: ProctorRecord[] = [record],
+  yAxis?: { min: string; max: string },
 ): ProctorPayload => ({
   version: "2.0",
-  project: { ...project, records },
+  project: {
+    ...project,
+    records,
+    // Store the project Y-axis window next to the samples so the layout follows
+    // the record: every browser and the PDF then render the sheet the laboratory
+    // chose. Blank strings are stored as well so an explicitly cleared window stays
+    // auto-fit instead of being overwritten by the 1400-1550 new-record default.
+    ...(yAxis && {
+      yAxisMin: yAxis.min.trim(),
+      yAxisMax: yAxis.max.trim(),
+    }),
+  },
   calculations: { standard, modified },
 });

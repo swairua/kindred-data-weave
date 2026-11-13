@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createElement } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { clearProctorResults, loadProctorResult, saveProctorResult } from "@/lib/proctorPersistence";
-import { airVoidsCurve, airVoidsDensity, applyReportedOptimum, assessFieldCompaction, calculateProctor, correctForOversize, calculateProctorPoint, compactionEnergy, createProctorPayload, createProctorRows, emptyProctorRecord, fitCompactionCurve, getProctorRecord, getProctorRecords, isReportableOptimum, parseAirVoidsTargets, proctorRowWarnings, sampleCompactionCurve, zeroAirVoidsCurve, zeroAirVoidsDensity, type ProctorRow } from "@/lib/proctorRecords";
+import { airVoidsCurve, airVoidsDensity, applyReportedOptimum, assessFieldCompaction, calculateProctor, correctForOversize, calculateProctorPoint, compactionEnergy, createProctorPayload, createProctorRows, emptyProctorRecord, fitCompactionCurve, getProctorRecord, getProctorRecords, getProctorYAxis, isReportableOptimum, parseAirVoidsTargets, proctorRowWarnings, sampleCompactionCurve, zeroAirVoidsCurve, zeroAirVoidsDensity, type ProctorRow } from "@/lib/proctorRecords";
 import { getExpectedTestType, hasRequiredSoilSampleMetadata, isInitialTestValid, isTestAllowed, toRecordMetadata } from "@/lib/recordTestWizard";
 import ProctorTest from "@/components/soil/ProctorTest";
 
@@ -495,11 +495,11 @@ describe("Proctor calculations", () => {
     expect(createProctorRows()).toHaveLength(6);
   });
 
-  it("defaults the 1 L mould and the air voids target but leaves the specific gravity blank", () => {
+  it("defaults the 1 L mould, the air voids target and Gs 2.0 for a new record", () => {
     const record = emptyProctorRecord();
     expect(record.standardMouldVolume).toBe("1000");
     expect(record.modifiedMouldVolume).toBe("1000");
-    expect(record.specificGravity).toBe("");
+    expect(record.specificGravity).toBe("2.0");
     expect(record.airVoidsTarget).toBe("5, 10");
 
     const loaded = getProctorRecord({ project: { records: [{ specificGravity: "2.72", airVoidsTarget: "10" }] } });
@@ -546,6 +546,28 @@ describe("Proctor calculations", () => {
 
     expect(getProctorRecords(JSON.stringify(payload)).map((record) => [record.label, record.sampleNumber]))
       .toEqual([["BH-04", "1"], ["BH-05", "2"]]);
+  });
+
+  it("stores the project y-axis window inside the payload and reads it back", () => {
+    const record = emptyProctorRecord({ sampleId: "BH-07" });
+    const summary = calculateProctor([], "1000");
+    const payload = createProctorPayload({ title: "P", clientName: "C", date: "2025-01-01" }, record, summary, summary, [record], { min: "1400", max: "1550" });
+
+    expect(payload.project.yAxisMin).toBe("1400");
+    expect(payload.project.yAxisMax).toBe("1550");
+    expect(getProctorYAxis(payload)).toEqual({ min: "1400", max: "1550", isSet: true });
+    expect(getProctorYAxis(JSON.stringify(payload))).toEqual({ min: "1400", max: "1550", isSet: true });
+
+    const cleared = createProctorPayload({ title: "P", clientName: "C", date: "2025-01-01" }, record, summary, summary, [record], { min: "", max: "" });
+    expect(cleared.project.yAxisMin).toBe("");
+    expect(getProctorYAxis(cleared)).toEqual({ min: "", max: "", isSet: true });
+  });
+
+  it("reads a payload without a y-axis window as the default and tolerates junk", () => {
+    expect(getProctorYAxis(createPayload("BH-04"))).toEqual({ min: "", max: "", isSet: false });
+    expect(getProctorYAxis('{"project":{"records":[]}}')).toEqual({ min: "", max: "", isSet: false });
+    expect(getProctorYAxis("not-json")).toEqual({ min: "", max: "", isSet: false });
+    expect(getProctorYAxis(null)).toEqual({ min: "", max: "", isSet: false });
   });
 });
 

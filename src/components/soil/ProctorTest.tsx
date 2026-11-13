@@ -20,6 +20,7 @@ import {
   createProctorPayload,
   emptyProctorRecord,
   getProctorRecords,
+  getProctorYAxis,
   isReportableOptimum,
   parseAirVoidsTargets,
   zeroAirVoidsCurve,
@@ -61,49 +62,6 @@ type ProctorRecordTextField =
 
 const POINT_LABELS = ["A", "B", "C", "D", "E", "F"];
 const methodClause = (method: ProctorMethod) => method === "standard" ? "3.3" : "3.5";
-
-/**
- * Persisted per-project Y-axis window, e.g. "1400/1550" for the works it was tuned on.
- * Stored under `proctor-y-axis:<projectId>` in localStorage and re-read whenever a project
- * loads, so the graph and the PDF render with the laboratory's chosen scale instead of
- * re-fitting every visit. Blank fields = auto-fit and no persisted entry.
- */
-const PROCTOR_Y_AXIS_PREFIX = "proctor-y-axis:";
-
-const yAxisKey = (projectId: string | number | null | undefined) => `${PROCTOR_Y_AXIS_PREFIX}${projectId ?? "default"}`;
-
-const readSavedAxis = (projectId: string | number | null | undefined, key: "min" | "max"): string => {
-  if (projectId === null || projectId === undefined) return "";
-  try {
-    const raw = globalThis.localStorage?.getItem(yAxisKey(projectId));
-    if (!raw) return "";
-    const parsed = JSON.parse(raw) as { min?: unknown; max?: unknown } | null;
-    const value = parsed ? parsed[key] : undefined;
-    return typeof value === "string" ? value : "";
-  } catch {
-    return "";
-  }
-};
-
-const loadAxisPair = (projectId: string | number | null | undefined) => ({
-  min: readSavedAxis(projectId, "min"),
-  max: readSavedAxis(projectId, "max"),
-});
-
-const writeSavedAxis = (projectId: string | number | null | undefined, min: string, max: string) => {
-  if (projectId === null || projectId === undefined) return;
-  try {
-    const trimmedMin = min.trim();
-    const trimmedMax = max.trim();
-    if (!trimmedMin && !trimmedMax) {
-      globalThis.localStorage?.removeItem(yAxisKey(projectId));
-      return;
-    }
-    globalThis.localStorage?.setItem(yAxisKey(projectId), JSON.stringify({ min: trimmedMin, max: trimmedMax }));
-  } catch {
-    // Storage unavailable (private mode / quota): the window still works for this session.
-  }
-};
 const methodLabel = (method: ProctorMethod) => method === "standard" ? "Standard" : "Modified";
 const MAX_POINTS = 10;
 const displayValue = (value: number | null) => value === null ? "—" : value.toFixed(2);
@@ -148,28 +106,16 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exportSelection, setExportSelection] = useState<Set<number>>(new Set([0]));
   const [exportAction, setExportAction] = useState<"print" | "download">("print");
-  // Y axis auto-fits by default (blank, unsaved fields), which always includes the air-voids
-  // lines so they can never vanish off the sheet; a laboratory working range (e.g. 1400-1550)
-  // can be typed in, is saved per project (localStorage) and applies to every page of the PDF.
-  // The owning project is kept in state so switching projects never inherits the old scale.
-  const [yAxisState, setYAxisState] = useState(() => ({ project: projectId, ...loadAxisPair(projectId) }));
-  const yAxisMin = yAxisState.min;
-  const yAxisMax = yAxisState.max;
-  const setYAxisMin = (value: string) => setYAxisState((current) => ({ ...current, project: projectId, min: value }));
-  const setYAxisMax = (value: string) => setYAxisState((current) => ({ ...current, project: projectId, max: value }));
+  // Y axis auto-fits whenever both fields are blank; a laboratory working range is
+  // typed in. New proctor records default to the lab's 1400-1550 window; the window is
+  // stored inside the Proctor payload for this project, so every browser and the PDF
+  // render the same scale. Saved records keep their stored window (auto-fit restored
+  // by clearing both fields).
+  const [yAxisMin, setYAxisMin] = useState("1400");
+  const [yAxisMax, setYAxisMax] = useState("1550");
   // Arrow keys walk the weighing grid instead of leaving the technician to drag
   // the pointer across a table this wide.
   const gridNav = useGridArrowNavigation<HTMLDivElement>();
-  // Re-read the saved window whenever the project changes, then persist each change.
-  // The owning project comes along in state, so the persist pass waits for hydration
-  // instead of writing the previous project's scale onto this project's entry.
-  useEffect(() => {
-    setYAxisState({ project: projectId, ...loadAxisPair(projectId) });
-  }, [projectId]);
-  useEffect(() => {
-    if (yAxisState.project !== projectId) return;
-    writeSavedAxis(projectId, yAxisState.min, yAxisState.max);
-  }, [projectId, yAxisState]);
   const type = savedMethod(record);
   const rows = type === "standard" ? record.standardRows : record.modifiedRows;
   const mouldVolume = type === "standard" ? record.standardMouldVolume : record.modifiedMouldVolume;
@@ -189,6 +135,8 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
       setActiveSampleIndex(0);
       setRecordId(null);
       setError(null);
+      setYAxisMin("1400");
+      setYAxisMax("1550");
       setIsLoading(false);
       return;
     }
@@ -204,6 +152,11 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
         if (!active) return;
         setRecordId(result?.id ?? null);
         setRecords(getProctorRecords(result?.payload_json, metadata));
+        const loadedAxis = getProctorYAxis(result?.payload_json);
+        // No window stored at all -> fall back to the lab's new-record default; an explicitly
+        // blanked pair stays blank (auto-fit).
+        setYAxisMin(loadedAxis.isSet ? loadedAxis.min : "1400");
+        setYAxisMax(loadedAxis.isSet ? loadedAxis.max : "1550");
         setActiveSampleIndex(0);
       })
       .catch((loadError) => {
@@ -388,7 +341,7 @@ const ProctorTest = ({ testKey }: ProctorTestProps) => {
       title: project.projectName,
       clientName: project.clientName,
       date: project.projectDate || project.date,
-    }, record, summaries.standard, summaries.modified, records.map((sample) => ({ ...sample, type: savedMethod(sample) })));
+    }, record, summaries.standard, summaries.modified, records.map((sample) => ({ ...sample, type: savedMethod(sample) })), { min: yAxisMin, max: yAxisMax });
     const data = {
       test_key: "proctor",
       name: "Density/Moisture Content Relationship",
