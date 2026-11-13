@@ -4,10 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Camera, Plus, Trash2, AlertTriangle } from "lucide-react";
+import { Camera, Plus, Trash2, AlertTriangle, Loader2 } from "lucide-react";
 import type { ReceptionPhoto } from "@/lib/reception";
-import { listReceptionPhotos, uploadReceptionPhoto, deleteReceptionPhoto } from "@/lib/api";
+import { listReceptionPhotos, uploadReceptionPhotoWithProgress, deleteReceptionPhoto } from "@/lib/api";
 import { subscribeReceptionLoad } from "@/lib/receptionEvents";
+import { resizeImageForUpload } from "@/lib/resizeImage";
 
 interface ConsignmentPhotosProps {
   /** Consignment number photos belong to. */
@@ -27,6 +28,7 @@ export const ConsignmentPhotos = ({
   disabled = false,
 }: ConsignmentPhotosProps) => {
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<Array<{ name: string; fraction: number }>>([]);
   const [photosError, setPhotosError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<Set<number>>(new Set());
   const fileInput = useRef<HTMLInputElement>(null);
@@ -36,15 +38,21 @@ export const ConsignmentPhotos = ({
       if (!files || files.length === 0 || !rcNo) return;
       setUploading(true);
       const next = [...photos];
+      setUploadProgress(Array.from(files).map((file) => ({ name: file.name, fraction: 0 })));
       for (const file of Array.from(files)) {
         try {
-          next.push(await uploadReceptionPhoto(file, rcNo));
+          const prepared = await resizeImageForUpload(file);
+          const photo = await uploadReceptionPhotoWithProgress(prepared, rcNo, (fraction) => {
+            setUploadProgress((current) => current.map((entry) => (entry.name === file.name ? { ...entry, fraction } : entry)));
+          });
+          next.push(photo);
         } catch (error) {
           toast.error(`${file.name}: ${error instanceof Error ? error.message : "Failed to upload photo"}`);
         }
       }
       onChange(next);
       setUploading(false);
+      setUploadProgress([]);
       if (fileInput.current) fileInput.current.value = "";
     },
     [rcNo, photos, onChange]
@@ -112,6 +120,26 @@ export const ConsignmentPhotos = ({
           </div>
           <button type="button" className="rounded-md border border-amber-300/60 bg-white/60 px-2 py-1 text-[11px] font-medium hover:bg-white" onClick={() => setPhotosError(null)}>Dismiss</button>
         </div>
+      )}
+
+      {uploadProgress.length > 0 && (
+        <ul className="space-y-1">
+          {uploadProgress.map((entry) => {
+            const percent = Math.round(entry.fraction * 100);
+            return (
+              <li key={entry.name} className="flex items-center gap-2 rounded border bg-muted/30 px-2 py-1 text-[11px]">
+                {percent < 100
+                  ? <Loader2 className="h-3 w-3 animate-spin text-primary" aria-hidden="true" />
+                  : <span className="h-3 w-3 inline-block rounded-full bg-emerald-500" aria-hidden="true" />}
+                <span className="flex-1 truncate">{entry.name}</span>
+                <span className="tabular-nums text-muted-foreground">{percent < 100 ? `${percent}%` : "Done"}</span>
+                <div className="h-1.5 w-20 overflow-hidden rounded bg-muted" aria-hidden="true">
+                  <div className="h-full bg-primary transition-all" style={{ width: `${percent}%` }} />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       )}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <Button

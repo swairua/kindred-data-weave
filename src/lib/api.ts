@@ -931,55 +931,68 @@ export const uploadReceptionPhoto = async (
   file: File,
   rcNo: string
 ): Promise<ReceptionPhoto> => {
+  return uploadReceptionPhotoWithProgress(file, rcNo, () => {});
+};
+
+/**
+ * XMLHttpRequest-based variant of `uploadReceptionPhoto` that reports upload progress.
+ * Callers use this when they want a live progress indication; everything else is unchanged.
+ */
+export const uploadReceptionPhotoWithProgress = async (
+  file: File,
+  rcNo: string,
+  onProgress: (fraction: number) => void
+): Promise<ReceptionPhoto> => {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("rc_no", rcNo);
 
   const url = buildApiUrl({ action: "upload-reception-photo" });
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout for uploads
 
-  try {
-    // Send session token so requireAuth() on the server can restore the session
-    const headers: HeadersInit = {};
+  return await new Promise<ReceptionPhoto>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    xhr.withCredentials = true;
     const sessionToken = getSessionToken();
-    if (sessionToken) {
-      headers["X-Session-Token"] = sessionToken;
-    }
+    if (sessionToken) xhr.setRequestHeader("X-Session-Token", sessionToken);
 
-    const response = await fetch(url, {
-      method: "POST",
-      credentials: "include",
-      headers,
-      body: formData,
-      signal: controller.signal,
+    xhr.upload.addEventListener("progress", (event) => {
+      if (event.lengthComputable && event.total > 0) {
+        onProgress(Math.min(1, event.loaded / event.total));
+      }
     });
 
-    const data = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      const errorMessage = data?.message || data?.error || `HTTP ${response.status}`;
-      console.error("[API] Reception photo upload failed -", errorMessage);
-      throw new Error(errorMessage);
-    }
-
-    // Capture rotated session token from response header
-    const responseSessionToken = response.headers.get("X-Session-Token");
-    if (responseSessionToken) {
-      setSessionToken(responseSessionToken);
-    }
-
-    return mapReceptionPhoto({
-      ...data,
-      rc_no: data?.rc_no ?? rcNo,
-      file_path: data?.file_path ?? "",
-      original_filename: data?.original_filename ?? file.name,
-      file_size: data?.file_size ?? file.size,
-      mime_type: data?.mime_type ?? file.type,
+    xhr.addEventListener("load", () => {
+      const responseSessionToken = xhr.getResponseHeader("X-Session-Token");
+      if (responseSessionToken) setSessionToken(responseSessionToken);
+      try {
+        const data = xhr.responseText ? JSON.parse(xhr.responseText) : null;
+        if (xhr.status >= 200 && xhr.status < 300) {
+          onProgress(1);
+          resolve(mapReceptionPhoto({
+            ...data,
+            rc_no: (data as Record<string, unknown> | null)?.["rc_no"] ?? rcNo,
+            file_path: (data as Record<string, unknown> | null)?.["file_path"] ?? "",
+            original_filename: (data as Record<string, unknown> | null)?.["original_filename"] ?? file.name,
+            file_size: (data as Record<string, unknown> | null)?.["file_size"] ?? file.size,
+            mime_type: (data as Record<string, unknown> | null)?.["mime_type"] ?? file.type,
+          }));
+        } else {
+          const errorMessage = (data as Record<string, unknown> | null)?.["message"]
+            ?? (data as Record<string, unknown> | null)?.["error"]
+            ?? `HTTP ${xhr.status}`;
+          reject(new Error(String(errorMessage)));
+        }
+      } catch (e) {
+        reject(e instanceof Error ? e : new Error("Upload failed"));
+      }
     });
-  } finally {
-    clearTimeout(timeoutId);
-  }
+
+    xhr.addEventListener("error", () => reject(new Error("Network error during upload")));
+    xhr.addEventListener("abort", () => reject(new Error("Upload cancelled")));
+
+    xhr.send(formData);
+  });
 };
 
 export const uploadCoringPhoto = async (

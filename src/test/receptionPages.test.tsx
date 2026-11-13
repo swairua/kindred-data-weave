@@ -11,7 +11,7 @@ const receptionMocks = vi.hoisted(() => ({
   saveReceptionConsignment: vi.fn(),
   listReceptionFieldDefinitions: vi.fn().mockResolvedValue([]),
   listReceptionPhotos: vi.fn().mockResolvedValue([]),
-  uploadReceptionPhoto: vi.fn().mockResolvedValue(null),
+  uploadReceptionPhotoWithProgress: vi.fn().mockResolvedValue(null),
   deleteReceptionPhoto: vi.fn().mockResolvedValue(true),
   generateReceptionAckPDF: vi.fn(),
 }));
@@ -21,7 +21,7 @@ vi.mock("@/lib/api", () => ({
   saveReceptionConsignment: receptionMocks.saveReceptionConsignment,
   listReceptionFieldDefinitions: receptionMocks.listReceptionFieldDefinitions,
   listReceptionPhotos: receptionMocks.listReceptionPhotos,
-  uploadReceptionPhoto: receptionMocks.uploadReceptionPhoto,
+  uploadReceptionPhotoWithProgress: receptionMocks.uploadReceptionPhotoWithProgress,
   deleteReceptionPhoto: receptionMocks.deleteReceptionPhoto,
 }));
 

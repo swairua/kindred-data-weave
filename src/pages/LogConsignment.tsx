@@ -200,9 +200,11 @@ const LogConsignment = () => {
     setIsSaving(true);
     try {
       await persist("draft");
-      toast.success("Draft saved");
-    } catch {
-      toast.error("Couldn't save the draft");
+      toast.success("Saved · stored on this device until it syncs with the lab server");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Couldn't save the draft";
+      setLoadError(message);
+      toast.error(message);
     } finally {
       setIsSaving(false);
     }
@@ -252,8 +254,10 @@ const LogConsignment = () => {
       );
       await handlePrint(toStore);
       navigate("/reception");
-    } catch {
-      toast.error("Couldn't save the consignment");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Couldn't save the consignment";
+      setLoadError(message);
+      toast.error(message);
     } finally {
       setIsSaving(false);
     }
