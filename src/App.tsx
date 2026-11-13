@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { HashRouter, Route, Routes } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -30,7 +30,7 @@ const queryClient = new QueryClient();
 const App = () => {
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-      <BrowserRouter>
+      <HashRouter>
         <ErrorBoundary>
           <QueryClientProvider client={queryClient}>
             <TooltipProvider>
@@ -72,7 +72,7 @@ const App = () => {
             </TooltipProvider>
           </QueryClientProvider>
         </ErrorBoundary>
-      </BrowserRouter>
+      </HashRouter>
     </ThemeProvider>
   );
 };

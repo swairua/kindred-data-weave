@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Cransfield Materials Testing Center</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <script>
+    // Render/CDN cannot rewrite unknown deep paths to index.html, so unmatched URLs
+    // arrive here. Bounce to the SPA root with a hash route carrying the original
+    // path and query so anyone following an old shared link lands on the same page.
+    (function () {
+      var path = window.location.pathname + window.location.search;
+      window.location.replace('/#' + path + (window.location.hash || ''));
+    })();
+  </script>
+</head>
+<body>
+  <p>Loading…</p>
+</body>
+</html>
