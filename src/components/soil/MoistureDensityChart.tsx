@@ -34,8 +34,8 @@ const PLOT_FILL = "#f2dcdb";
 const CURVE_COLOR = "#c00000";
 const VOID_COLOR = "#000000";
 const GRID_WIDTH = 0.14;
-const AXIS_WIDTH = 1.24;
-const FRAME_WIDTH = 1.6;
+const AXIS_WIDTH = 0.5;
+const FRAME_WIDTH = 0.5;
 
 interface MoistureDensityChartProps {
   /** Measured moisture content / dry density pairs. */

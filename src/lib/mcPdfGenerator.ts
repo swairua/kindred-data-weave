@@ -343,7 +343,7 @@ const drawMcGraphVector = (d: jsPDF, x: number, y: number, w: number, o: Moistur
 
   d.setFillColor(255, 255, 255);
   d.setDrawColor(...COLORS.curve);
-  d.setLineWidth(1.6 * type);
+  d.setLineWidth(0.5 * type);
   d.rect(x, py(8), w, 198 * scale, "FD");
 
   d.setFillColor(...COLORS.plotBg);
@@ -360,7 +360,7 @@ const drawMcGraphVector = (d: jsPDF, x: number, y: number, w: number, o: Moistur
     d.line(gx, plot.y, gx, plotBottom);
   });
 
-  d.setLineWidth(1.24 * type);
+  d.setLineWidth(0.5 * type);
   d.line(plot.x, plot.y, plot.x, plotBottom);
   d.line(plot.x, plotBottom, plot.x + plot.w, plotBottom);
 
