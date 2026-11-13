@@ -56,7 +56,7 @@ export interface FormulaSection {
   entries: FormulaEntry[];
 }
 
-export const FORMULAS_REFERENCE_VERSION = "2.1.0";
+export const FORMULAS_REFERENCE_VERSION = "2.2.0";
 
 export const FORMULAS_REFERENCE_TITLE = "Calculations and Formulas Reference";
 
@@ -441,7 +441,7 @@ export const FORMULA_SECTIONS: FormulaSection[] = [
         notes: [
           "A point with any missing measurement yields no densities rather than a partial result.",
           "The moisture content divides by the container tare: a tin weight entered one column over silently turns a 10% moisture content into several hundred per cent. A container tare of 0 g is legitimate (the recorded masses are then net of tin) and is not flagged.",
-          "Entry checks flag a moisture content above 60% (implausible for a compacted soil), a dry density above the particle density, a mould tare of zero, and any point whose masses fail the physical checks - see proctorRowWarnings.",
+          "Entry checks flag a moisture content above 60% (implausible for a compacted soil), a dry density above the particle density, a mould tare of zero, and any point whose masses fail the physical checks - see proctorRowWarnings. These still print in the report.",
         ],
         sourceModule: "proctorRecords",
         sourceFunctions: ["calculateProctorPoint", "proctorRowWarnings"],
@@ -462,6 +462,7 @@ export const FORMULA_SECTIONS: FormulaSection[] = [
           "The three-point parabola through the measured peak and its two neighbours is used only to derive OMC/MDD; the drawn spline is the same curve the technicians draw by hand through all readings.",
           "The measured maximum must be bracketed; the local fit must open downward and its vertex must lie between the neighboring moisture contents.",
           "When no local parabola can be supported, OMC/MDD fall back to the single densest measured point (reported as peak-point basis).",
+          "New records default specific gravity Gs to 2.0 and the Y-axis window to 1400-1550 kg/m3; the window is stored per project on the Proctor payload (yAxisMin / yAxisMax), and the exported PDF renders every sample against it.",
         ],
         sourceModule: "proctorRecords",
         sourceFunctions: ["fitCompactionCurve", "calculateProctor"],
@@ -477,7 +478,8 @@ export const FORMULA_SECTIONS: FormulaSection[] = [
           { symbol: "na", meaning: "target air voids content (%)" },
         ],
         notes: [
-          "The fitted compaction curve must stay below the ZAV line; the air-voids line always sits below ZAV by construction.",
+          "Zero air voids points above this line are not currently flagged: the two BS 1377-4 plausibility notices - 'Specific gravity outside the 2.4 to 2.9 range of mineral soils' and 'N points plot above the zero air voids line' - are suppressed in this build by default (SHOW_SPECIFIC_GRAVITY_WARNINGS=false in proctorRecords.ts) per laboratory decision; reprint with the flag enabled once Gs is settled for the granular soils.",
+          "The fitted compaction curve must stay below the ZAV line; the air-voids line always sits below ZAV by construction. Enforced non-conformity is currently handled by the laboratory during review, not by the print.",
           "Report sheets draw the 0%, 5% and 10% voids lines beside the fitted curve for the same check.",
         ],
         sourceModule: "proctorRecords",
