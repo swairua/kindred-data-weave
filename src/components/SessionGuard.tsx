@@ -3,6 +3,7 @@ import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { SessionContext } from "@/context/SessionContext";
 import { fetchCurrentUser, logoutUser, type ApiUser } from "@/lib/api";
+import { subscribeAuthLost } from "@/lib/authEvents";
 
 type SessionStatus = "checking" | "authenticated" | "unauthenticated" | "error";
 
@@ -26,6 +27,13 @@ export const SessionGuard = () => {
     });
     return () => { active = false; };
   }, [attempt]);
+
+  // Mid-session token loss (401 on any API call): bounce the user to /login with a
+  // return URL, instead of leaving them stranded on a blank record page.
+  const nextPath = `${location.pathname}${location.search}${location.hash}`;
+  useEffect(() => subscribeAuthLost(() => {
+    navigate(`/login?next=${encodeURIComponent(nextPath)}`, { replace: true });
+  }), [navigate, nextPath]);
 
   const refreshUser = useCallback(async () => {
     const currentUser = await fetchCurrentUser();

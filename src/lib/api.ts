@@ -1,6 +1,7 @@
 import type { ReceptionConsignmentInput, ReceptionFieldArea, ReceptionFieldDefinition, ReceptionPhoto } from "@/lib/reception";
 import { consignmentIsOnHold, getPrimaryTestTypeFromConsignment, type ReceptionSampleInput } from "@/lib/reception";
 import { type ApiCompressiveTestRow, type ApiTestDefinitionRow } from "@/types/api";
+import { emitAuthLost } from "@/lib/authEvents";
 
 const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
 
@@ -382,6 +383,10 @@ export const apiRequest = async <T>(
         if (sessionToken) {
           console.warn(`[API] Clearing stale session token after 401 on action: ${params?.action || 'unknown'}`);
           setSessionToken(null);
+          // Mid-session expiration: notify the shell so it navigates to /login with a ?next= URL.
+          if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+            emitAuthLost();
+          }
         }
         const tokenStatus = headers.get("X-Session-Token");
         console.error(`[API] ⚠️ 401 UNAUTHORIZED on action: ${params?.action || 'unknown'}`);
