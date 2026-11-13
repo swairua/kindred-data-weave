@@ -7,10 +7,10 @@ const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
 
 // In development (localhost), use the proxied path to bypass CORS
 // In production, use the full URL to the actual API server
-// If VITE_API_BASE_URL is set, always use that; otherwise the app is proxy-aware
-// (Vite rewrites /api.php to the upstream host in dev; in prod this is the
-// same-origin path the static server re-emits or rewrites to the API).
-export const API_BASE_URL = configuredApiBaseUrl || "/api.php";
+// API base defaults to the lab API host (same as the deployment at lab.wayrus.co.ke).
+// In dev the Vite proxy rewrites /api.php to upstream; in prod the static front-end
+// has no API route of its own, so the absolute host is required.
+export const API_BASE_URL = configuredApiBaseUrl || "https://lab.wayrus.co.ke/api.php";
 
 const SESSION_STORAGE_KEY = "lab_session_token";
 const SESSION_STORAGE_SESSION_KEY = "lab_session_token_session"; // Fallback for sandboxed environments
