@@ -56,7 +56,7 @@ export interface FormulaSection {
   entries: FormulaEntry[];
 }
 
-export const FORMULAS_REFERENCE_VERSION = "1.7.2";
+export const FORMULAS_REFERENCE_VERSION = "1.8.0";
 
 export const FORMULAS_REFERENCE_TITLE = "Calculations and Formulas Reference";
 
@@ -794,21 +794,24 @@ export const FORMULA_SECTIONS: FormulaSection[] = [
       {
         heading: "Rebound number and estimated strength",
         formulas: [
-          "R_avg = SUM(readings) / count(readings)",
-          "f_c approx = 1.2 * R_avg - 13.5   (MPa, empirical)",
+          "R_avg = SUM(retained readings) / retained count",
+          "reading differs by more than 12% from mean -> discarded; more than 2 rejected -> area invalid",
+          "f_c = M * R_avg + B   (only when a site-specific correlation M/B is configured in the record)",
         ],
         variables: [
-          { symbol: "R_avg", meaning: "average rebound number" },
+          { symbol: "R_avg", meaning: "average rebound number of the retained readings" },
           { symbol: "f_c", meaning: "estimated compressive strength (MPa)" },
-          { symbol: "1.2", meaning: "empirical slope" },
-          { symbol: "13.5", meaning: "empirical intercept (MPa)" },
+          { symbol: "M", meaning: "site correlation slope (MPa per rebound)" },
+          { symbol: "B", meaning: "site correlation intercept (MPa)" },
         ],
         notes: [
-          "Uses 5 rebound readings per location; invalid (zero/negative) readings are excluded.",
-          "The strength formula is an empirical correlation; verify by cube testing.",
+          "Ten rebound readings per test area are required by BS EN 12504-2 / ASTM C805 / BS 1881-202.",
+          "Any reading varying from the mean by more than 12% is discarded; if more than two are discarded, the area is unsuitable and must be re-taken.",
+          "The strength correlation is never assumed. If the record carries no correlation, the report prints rebound numbers only; estimated strength is printed only with a configured site-specific correlation.",
+          "Anvil calibration, impact orientation and surface condition must be documented for a conforming (completed) test; the print states conformity or lists what is missing.",
         ],
         sourceModule: "schmidtCalculations",
-        sourceFunctions: ["getValidReadings", "calculateAverageRebound", "estimateStrengthFromRebound", "calculateSchmidtRows", "averageRebound"],
+        sourceFunctions: ["getValidReadings", "evaluateSchmidtRow", "calculateAverageRebound", "estimateStrengthFromRebound", "calculateSchmidtRows", "averageRebound", "rowsConform", "REQUIRED_READINGS"],
       },
     ],
   },
