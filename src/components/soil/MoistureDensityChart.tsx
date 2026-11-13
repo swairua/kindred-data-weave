@@ -126,7 +126,7 @@ export default function MoistureDensityChart({ points, fitted, voidLines, axisLi
 
           {/* The compaction curve runs through the measured points, as drawn on
               the laboratory sheets. */}
-          {curve.length > 1 && <path d={mcCurvePath(curve.map(place))} fill="none" stroke={CURVE_COLOR} strokeWidth={0.74} />}
+          {curve.length > 1 && <path d={mcCurvePath(curve.map(place))} fill="none" stroke={CURVE_COLOR} strokeWidth={0.38} />}
           {measured.map((point, index) => {
             const position = place(point);
             return <circle key={`measured-${index}`} cx={position.x} cy={position.y} r={2.2} fill={CURVE_COLOR} />;

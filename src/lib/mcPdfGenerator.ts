@@ -393,7 +393,7 @@ const curve = mcCurveSamples(toMcPlotPoints(o.fitted, plot.w, plot.h, scales.x, 
 
   if (curve.length > 1) {
     d.setDrawColor(...COLORS.curve);
-    d.setLineWidth(0.74 * type);
+    d.setLineWidth(0.35 * type);
     for (let index = 1; index < curve.length; index += 1) {
       const visible = mcClipSegment(curve[index - 1], curve[index], clipRect);
       if (!visible) continue;
@@ -426,7 +426,7 @@ const curve = mcCurveSamples(toMcPlotPoints(o.fitted, plot.w, plot.h, scales.x, 
     label(formatMoistureTick(value), blockX(value), 180, "center", 5.4);
   });
   label("Moisture Content (%)", PLOT_UNITS.x + PLOT_UNITS.w / 2, 190, "center", 7, true);
-  label("DRY DENSITY / MOISTURE CONTENT RELATIONSHIP", REF_BLOCK_UNITS / 2, 7, "center", 7.5, true);
+  label("DRY DENSITY / MOISTURE CONTENT RELATIONSHIP", REF_BLOCK_UNITS / 2, 13.5, "center", 7.5, true);
 
   return y + blockH;
 };
