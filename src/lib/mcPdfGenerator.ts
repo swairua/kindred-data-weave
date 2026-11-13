@@ -289,7 +289,7 @@ const drawResults = (d: jsPDF, x: number, y: number, o: MoistureDensityPdfOption
  */
 const REF_UNIT_MM = 0.352778;
 const REF_BLOCK_UNITS = 384.28;
-const REF_BLOCK_H_UNITS = 214;
+const REF_BLOCK_H_UNITS = 186;
 /** Plot rectangle inside the chart block, in the same units as the on-screen SVG. */
 const PLOT_UNITS = { x: 44, y: 20, w: 316, h: 150 };
 
@@ -344,7 +344,7 @@ const drawMcGraphVector = (d: jsPDF, x: number, y: number, w: number, o: Moistur
   d.setFillColor(255, 255, 255);
   d.setDrawColor(...COLORS.curve);
   d.setLineWidth(0.5 * type);
-  d.rect(x, py(8), w, 198 * scale, "FD");
+  d.rect(x, py(8), w, (181 - 8) * scale * vScale, "FD");
 
   d.setFillColor(...COLORS.plotBg);
   d.rect(plot.x, plot.y, plot.w, plot.h, "F");
@@ -425,8 +425,8 @@ const curve = mcCurveSamples(toMcPlotPoints(o.fitted, plot.w, plot.h, scales.x, 
     if (!xLabelIndices.has(index)) return;
     label(formatMoistureTick(value), blockX(value), 180, "center", 5.4);
   });
-  label("Moisture Content (%)", PLOT_UNITS.x + PLOT_UNITS.w / 2, 190, "center", 7, true);
-  label("DRY DENSITY / MOISTURE CONTENT RELATIONSHIP", REF_BLOCK_UNITS / 2, 13.5, "center", 7.5, true);
+  label("Moisture Content (%)", PLOT_UNITS.x + PLOT_UNITS.w / 2, 176, "center", 7, true);
+  label("DRY DENSITY / MOISTURE CONTENT RELATIONSHIP", REF_BLOCK_UNITS / 2, 4.5, "center", 7.5, true);
 
   return y + blockH;
 };
