@@ -62,7 +62,6 @@ interface AtterbergRecordViewProps {
   onUpdatePlasticLimitTrials: (testId: string, trials: PlasticLimitTrial[]) => void;
   onUpdateShrinkageLimitTrials: (testId: string, trials: ShrinkageLimitTrial[]) => void;
   onUpdatePassing425um: (value: string) => void;
-  onRegisterChartRef: (recordId: string, ref: HTMLDivElement | null) => void;
   adminImages?: { logo?: string; contacts?: string; stamp?: string };
 }
 
@@ -130,10 +129,8 @@ const AtterbergRecordView = ({
   onUpdatePlasticLimitTrials,
   onUpdateShrinkageLimitTrials,
   onUpdatePassing425um,
-  onRegisterChartRef,
   adminImages,
 }: AtterbergRecordViewProps) => {
-  const chartRef = useRef<HTMLDivElement | null>(null);
   const autoCreatedRef = useRef<Set<AtterbergTestType>>(new Set());
   const project = useProject();
   // Arrow keys cover the whole report form: across the A–G trial grid, then
@@ -235,11 +232,6 @@ const AtterbergRecordView = ({
       [field]: field === "trialNo" ? value : sanitizeNumericInput(value),
     };
     onUpdateShrinkageLimitTrials(lsTest.id, [next]);
-  };
-
-  const setChartRef = (el: HTMLDivElement | null) => {
-    chartRef.current = el;
-    onRegisterChartRef(record.id, el);
   };
 
   // Auto-grow column counts: at least the default; grow by 1 when the last visible column is filled.
@@ -475,7 +467,7 @@ const AtterbergRecordView = ({
         {/* Chart + Linear Shrinkage + Results */}
         <section className="grid gap-4 lg:grid-cols-10">
           {/* Liquid Limit flow curve (Moisture % vs Penetration log scale) — also captured for PDF/Excel exports */}
-          <div className="lg:col-span-7 card p-2 print:col-span-5 h-full flex flex-col" ref={setChartRef} data-record-chart>
+          <div className="lg:col-span-7 card p-2 print:col-span-5 h-full flex flex-col" data-record-chart>
             <div className="mb-1 text-sm font-semibold text-foreground">
               Liquid Limit Flow Curve
             </div>

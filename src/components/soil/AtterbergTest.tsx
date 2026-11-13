@@ -82,7 +82,7 @@ import {
   downloadJSON,
 } from "@/lib/jsonExporter";
 import { collectSamples } from "@/lib/testResultSamples";
-import html2canvas from "html2canvas";
+import { captureAtterbergCharts } from "@/lib/captureAtterbergCharts";
 
 // Draft is now stored in the namespaced draft store ("lab_draft:AtterbergProject").
 // Older builds wrote directly to localStorage under "atterbergProjectState" (or the
@@ -751,9 +751,6 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
   // Only one sample is on screen at a time, chosen from the strip above it. A project can hold
   // many samples, and stacking every form made the page grow downwards on each "Add Record".
   const [activeRecordId, setActiveRecordId] = useState<string | null>(null);
-  // PDF and print read the chart and print sheet out of the DOM of every record, so those
-  // flows mount them all again before capturing.
-  const [renderAllRecords, setRenderAllRecords] = useState(false);
   // Sample the list asked us to open, applied once the records exist.
   const pendingFocusRecordIdRef = useRef<string | null>(null);
 
@@ -784,7 +781,6 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
   const lastLoadedLookupRef = useRef<string | null>(null);
   const skipNextPersistRef = useRef(false);
   const isSavingRef = useRef(false);
-  const chartRefsMap = useRef<Map<string, HTMLDivElement | null>>(new Map());
   const projectIdentityRef = useRef<{
     projectName: string | null;
     clientName: string | null;
@@ -1270,13 +1266,10 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
 
   // What the screen shows: the active sample only, or every record while an export mounts them.
   const visibleRecords = useMemo(() => {
-    if (renderAllRecords) {
-      return computedRecords.map((record, index) => ({ record, index }));
-    }
     if (computedRecords.length === 0) return [];
     const active = computedRecords.find((record) => record.id === activeRecordId) ?? computedRecords[0];
     return [{ record: active, index: computedRecords.indexOf(active) }];
-  }, [computedRecords, activeRecordId, renderAllRecords]);
+  }, [computedRecords, activeRecordId]);
 
   // 1-based position of the sample on screen, for the strip's "Sample 2 of 7" caption.
   const activeSampleNumber = useMemo(() => {
@@ -1522,9 +1515,6 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
         setPrintProcessing("processing");
 
         const performPrint = async () => {
-          // The chart is captured from the DOM, so the record has to be mounted even when the
-          // screen is showing another sample.
-          setRenderAllRecords(true);
           try {
             console.log(`[Print PDF] Starting PDF generation for ${recordIds.length} records`);
 
@@ -1535,10 +1525,7 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
               return;
             }
 
-            ensureRecordsExpanded(recordIds);
-            await waitForChartsToBeFullyRendered(recordIds);
-
-            const chartImages = await captureAllChartImages(recordIds, ensureRecordsExpanded);
+            const chartImages = await captureAtterbergCharts(recordsToPrint);
             console.log(`[Print PDF] Captured ${Object.keys(chartImages).length} charts out of ${recordIds.length}`);
 
             const blob = await generateAtterbergPDF({
@@ -1573,8 +1560,6 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
             console.error("Error in PDF print flow:", error);
             toast.error("Error generating PDF for print");
             setPrintProcessing("idle");
-          } finally {
-            setRenderAllRecords(false);
           }
         };
 
@@ -1672,263 +1657,6 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
   }, [persistedState.records, project.clientName, project.date, project.projectName, projectState.clientName, projectState.projectName, projectState.labOrganization, projectState.dateReported, projectState.checkedBy]);
 
   // Helper functions for chart capture and export (defined before usage)
-  const registerChartRef = useCallback((recordId: string, ref: HTMLDivElement | null) => {
-    if (ref) {
-      chartRefsMap.current.set(recordId, ref);
-      console.log(`[Chart Ref] Registered chart ref for record ${recordId}`, {
-        refTagName: ref.tagName,
-        refClassName: ref.className,
-        refId: ref.id,
-      });
-    } else {
-      chartRefsMap.current.delete(recordId);
-      console.log(`[Chart Ref] Unregistered chart ref for record ${recordId}`);
-    }
-    console.log(`[Chart Ref] Total registered charts:`, chartRefsMap.current.size);
-  }, []);
-
-const captureAllChartImages = useCallback(async (recordIds: string[], expandRecords?: (ids: string[]) => void): Promise<{ [key: string]: string }> => {
-    const chartImages: { [key: string]: string } = {};
-
-    // Expand all records before capturing to ensure charts are visible
-    if (expandRecords) {
-      expandRecords(recordIds);
-      console.log(`[Chart Capture] Expanded records for visibility`);
-      await new Promise((resolve) => setTimeout(resolve, 300));
-    }
-
-    for (const recordId of recordIds) {
-      // Find the print sheet chart instead of the data entry chart
-      // The print sheet uses variant="print" (matching the report preview exactly)
-      const recordCard = document.querySelector(`[data-atterberg-record-id="${recordId}"]`);
-      const visibleChart = (chartRefsMap.current.get(recordId) as HTMLElement | undefined)
-        ?? recordCard?.querySelector<HTMLElement>('[data-record-chart]');
-      console.log(`[Chart Capture] Visible chart for record ${recordId}`, {
-        recordCardFound: !!recordCard,
-        visibleChartFound: !!visibleChart,
-      });
-      if (visibleChart) {
-        try {
-          await new Promise((resolve) => setTimeout(resolve, 60));
-          const canvas = await html2canvas(visibleChart as HTMLElement, {
-            backgroundColor: "#ffffff",
-            scale: 3,
-            logging: false,
-            useCORS: true,
-            allowTaint: true,
-            imageTimeout: 0,
-          });
-          chartImages[`${recordId}-liquidLimit`] = canvas.toDataURL("image/png");
-          console.log(`[Chart Capture] Captured VISIBLE chart for record ${recordId}`);
-          continue;
-        } catch (error) {
-          console.error(`[Chart Capture] Visible capture failed for record ${recordId}:`, error instanceof Error ? error.message : String(error));
-        }
-      }
-      const printSheet = recordCard?.querySelector<HTMLElement>('.atterberg-print-sheet');
-      const chartBox = printSheet?.querySelector<HTMLElement>('.aps-chart-box');
-      console.log(`[Chart Capture] Print-sheet fallback for record ${recordId}`, {
-        printSheetFound: !!printSheet,
-        chartBoxFound: !!chartBox,
-      });
-
-      if (chartBox) {
-        // Temporarily override display:none on the print sheet so html2canvas can see dimensions
-        const wasDisplayNone = printSheet!.style.display === 'none';
-        const originalDisplay = printSheet!.style.display;
-        const originalVisibility = printSheet!.style.visibility;
-        printSheet!.style.display = 'block';
-        printSheet!.style.visibility = 'hidden';
-        printSheet!.style.position = 'absolute';
-        printSheet!.style.left = '-9999px';
-        printSheet!.style.top = '0';
-        printSheet!.style.width = '560px';
-
-        await new Promise((resolve) => setTimeout(resolve, 100));
-
-        const svg = chartBox.querySelector('svg');
-        if (svg) {
-          const svgWidth = svg.getAttribute('width');
-          const svgHeight = svg.getAttribute('height');
-          if (svgWidth && svgHeight) {
-            try {
-              await new Promise((resolve) => setTimeout(resolve, 100));
-
-              console.log(`[Chart Capture] Starting html2canvas for print sheet chart of record ${recordId}`, {
-                element: chartBox,
-                hasSvg: !!svg,
-                svgDimensions: { width: svgWidth, svgHeight },
-                elementDimensions: {
-                  width: chartBox.offsetWidth,
-                  height: chartBox.offsetHeight,
-                },
-              });
-
-              const canvas = await html2canvas(chartBox, {
-                backgroundColor: "#ffffff",
-                scale: 4,
-                logging: false,
-                useCORS: true,
-                allowTaint: true,
-                imageTimeout: 0,
-                windowWidth: Math.max(chartBox.scrollWidth, 560),
-                windowHeight: Math.max(chartBox.scrollHeight, 380),
-              });
-
-              const imageData = canvas.toDataURL("image/png");
-              chartImages[`${recordId}-liquidLimit`] = imageData;
-              console.log(`[Chart Capture] Successfully captured print sheet chart for record ${recordId}`, {
-                imageDataLength: imageData.length,
-                canvasWidth: canvas.width,
-                canvasHeight: canvas.height,
-              });
-            } catch (error) {
-              console.error(`[Chart Capture] Failed to capture print sheet chart for record ${recordId}:`, {
-                error: error instanceof Error ? error.message : String(error),
-                stack: error instanceof Error ? error.stack : undefined,
-              });
-            }
-          } else {
-            console.warn(`[Chart Capture] Print sheet chart SVG missing dimensions for record ${recordId}`, { svgWidth, svgHeight });
-          }
-        } else {
-          console.warn(`[Chart Capture] No SVG found in print sheet chart for record ${recordId}`);
-        }
-
-        // Restore original print sheet display
-        printSheet!.style.display = originalDisplay;
-        printSheet!.style.visibility = originalVisibility;
-        printSheet!.style.position = '';
-        printSheet!.style.left = '';
-        printSheet!.style.top = '';
-        printSheet!.style.width = '';
-      } else {
-        // Fallback: try legacy data entry chart ref
-        const legacyElement = chartRefsMap.current.get(recordId) || document.querySelector(`.liquid-limit-export-chart-${recordId}`);
-        if (legacyElement) {
-          const chartElement = legacyElement as HTMLDivElement;
-          const svg = chartElement.querySelector('svg');
-          if (svg) {
-            const svgWidth = svg.getAttribute('width');
-            const svgHeight = svg.getAttribute('height');
-            if (svgWidth && svgHeight) {
-              try {
-                await new Promise((resolve) => setTimeout(resolve, 50));
-                const canvas = await html2canvas(chartElement, {
-                  backgroundColor: "#ffffff",
-                  scale: 4,
-                  logging: false,
-                  useCORS: true,
-                  allowTaint: true,
-                  imageTimeout: 0,
-                  windowWidth: Math.max(chartElement.scrollWidth, 1200),
-                  windowHeight: Math.max(chartElement.scrollHeight, 800),
-                });
-                const imageData = canvas.toDataURL("image/png");
-                chartImages[`${recordId}-liquidLimit`] = imageData;
-              } catch (error) {
-                console.error(`[Chart Capture] Legacy fallback failed for record ${recordId}:`, error instanceof Error ? error.message : String(error));
-              }
-            }
-          }
-        }
-        console.warn(`[Chart Capture] No print sheet chart found for record ${recordId}, using fallback`);
-      }
-    }
-
-    console.log(`[Chart Capture] Completed capturing charts for ${Object.keys(chartImages).length} records`);
-    return chartImages;
-  }, []);
-
-  const waitForChartsToBeFullyRendered = useCallback(async (recordIds: string[], maxWaitTime: number = 3000): Promise<void> => {
-    console.log(`[Chart Render] Waiting for charts to be fully rendered`, { recordIds, maxWaitTime });
-    const pollInterval = 50;
-    const maxAttempts = Math.ceil(maxWaitTime / pollInterval);
-
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      const allReady = recordIds.every((recordId) => {
-        const chartRef = chartRefsMap.current.get(recordId);
-
-        // Check 1: Element is visible
-        if (!chartRef || chartRef.offsetParent === null) {
-          return false;
-        }
-
-        // Check 2: SVG elements are rendered (Recharts renders SVG charts)
-        const svg = chartRef.querySelector('svg');
-        if (!svg) {
-          console.log(`[Chart Render] No SVG found yet for record ${recordId}`);
-          return false;
-        }
-
-        // Check 3: SVG has dimensions (width and height)
-        const svgWidth = svg.getAttribute('width');
-        const svgHeight = svg.getAttribute('height');
-        if (!svgWidth || !svgHeight) {
-          console.log(`[Chart Render] SVG has no dimensions yet for record ${recordId}`);
-          return false;
-        }
-
-        // Check 4: SVG has content (child elements)
-        if (svg.children.length === 0) {
-          console.log(`[Chart Render] SVG has no content yet for record ${recordId}`);
-          return false;
-        }
-
-        return true;
-      });
-
-      if (allReady) {
-        console.log(`[Chart Render] All charts are fully rendered after ${attempt * pollInterval}ms`);
-        // Additional safety wait to ensure rendering is truly complete
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        return;
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, pollInterval));
-    }
-
-    // Log diagnostic info about charts that aren't ready
-    const notReady = recordIds.filter((recordId) => {
-      const chartRef = chartRefsMap.current.get(recordId);
-      if (!chartRef || chartRef.offsetParent === null) {
-        console.warn(`[Chart Render] Chart not visible for record ${recordId}`);
-        return true;
-      }
-      const svg = chartRef.querySelector('svg');
-      if (!svg) {
-        console.warn(`[Chart Render] No SVG found for record ${recordId}`);
-        return true;
-      }
-      const svgWidth = svg.getAttribute('width');
-      const svgHeight = svg.getAttribute('height');
-      if (!svgWidth || !svgHeight) {
-        console.warn(`[Chart Render] SVG has no dimensions for record ${recordId}:`, { svgWidth, svgHeight });
-        return true;
-      }
-      if (svg.children.length === 0) {
-        console.warn(`[Chart Render] SVG has no content for record ${recordId}`);
-        return true;
-      }
-      return false;
-    });
-
-    console.warn(`[Chart Render] Some charts are still not fully rendered after ${maxWaitTime}ms:`, notReady);
-  }, []);
-
-  const ensureRecordsExpanded = useCallback((recordIds: string[]) => {
-    console.log(`[Expand] Ensuring records are expanded:`, recordIds);
-    setProjectState((prev) => ({
-      ...prev,
-      records: prev.records.map((record) => {
-        if (recordIds.includes(record.id) && !record.isExpanded) {
-          console.log(`[Expand] Expanding record ${record.id}`);
-          return { ...record, isExpanded: true };
-        }
-        return record;
-      }),
-    }));
-  }, []);
 
 
   const exportTables = useMemo(() => buildTablesForExport(computedRecords), [computedRecords]);
@@ -1954,23 +1682,11 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
     }
 
     setIsExporting("pdf");
-    // The chart of every record is captured from the DOM, so all of them are mounted for the
-    // duration of the export even though the screen shows one at a time.
-    setRenderAllRecords(true);
     try {
       console.log(`[Export PDF] Starting PDF export for ${computedRecords.length} records`);
 
-      // Ensure all records are expanded (for chart visibility)
-      const recordIds = computedRecords.map((r) => r.id);
-      ensureRecordsExpanded(recordIds);
-
-      // Wait for all charts to be fully rendered before capturing
-      await waitForChartsToBeFullyRendered(recordIds);
-
-      // Capture chart images for the printed sheet
-      // Pass ensureRecordsExpanded as callback to ensure proper async state update and rendering wait
-      const chartImages = await captureAllChartImages(recordIds, ensureRecordsExpanded);
-      console.log(`[Export PDF] Captured ${Object.keys(chartImages).length} charts out of ${recordIds.length}`);
+      const chartImages = await captureAtterbergCharts(computedRecords);
+      console.log(`[Export PDF] Captured ${Object.keys(chartImages).length} charts out of ${computedRecords.length}`);
 
       await generateAtterbergPDF({
         projectName: project.projectName,
@@ -1982,11 +1698,10 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
       });
     } finally {
       setIsExporting(null);
-      setRenderAllRecords(false);
     }
 
     return true;
-  }, [computedRecords, project.clientName, project.date, project.projectName, projectState, captureAllChartImages, ensureRecordsExpanded, waitForChartsToBeFullyRendered]);
+  }, [computedRecords, project.clientName, project.date, project.projectName, projectState]);
 
 
   const handleRecordExportPDF = useCallback(
@@ -1998,12 +1713,7 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
       }
 
       // Expand the record and wait for chart to render
-      // Note: We don't need to call ensureRecordsExpanded first since captureAllChartImages will handle it
-      await waitForChartsToBeFullyRendered([recordId]);
-
-      // Capture the chart image for this record
-      // Pass ensureRecordsExpanded as callback to ensure proper async state update and rendering wait
-      const chartImages = await captureAllChartImages([recordId], ensureRecordsExpanded);
+      const chartImages = await captureAtterbergCharts([record]);
 
       await generateAtterbergPDF({
         projectName: project.projectName,
@@ -2016,7 +1726,7 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
 
       return true;
     },
-    [computedRecords, project.clientName, project.date, project.projectName, projectState, captureAllChartImages, ensureRecordsExpanded, waitForChartsToBeFullyRendered],
+    [computedRecords, project.clientName, project.date, project.projectName, projectState],
   );
 
   const handleRecordExportJSON = useCallback(
@@ -2082,7 +1792,7 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
             </span>
             <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pb-1">
               {computedRecords.map((record, index) => {
-                const isActive = !renderAllRecords && record.id === activeRecordId;
+                const isActive = record.id === activeRecordId;
                 const summary = [
                   record.results.liquidLimit !== undefined ? `LL ${record.results.liquidLimit}` : null,
                   record.results.plasticityIndex !== undefined ? `PI ${record.results.plasticityIndex}` : null,
@@ -2161,7 +1871,6 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
                 onUpdatePlasticLimitTrials={(testId, trials) => updateTestTrials(record.id, testId, trials)}
                 onUpdateShrinkageLimitTrials={(testId, trials) => updateTestTrials(record.id, testId, trials)}
                 onSyncTest={(test) => syncComputedTest(record.id, test)}
-                onRegisterChartRef={registerChartRef}
                 adminImages={adminImages}
               />
             ))}
@@ -2309,7 +2018,6 @@ interface RecordCardProps {
   onUpdatePlasticLimitTrials: (testId: string, trials: PlasticLimitTrial[]) => void;
   onUpdateShrinkageLimitTrials: (testId: string, trials: ShrinkageLimitTrial[]) => void;
   onSyncTest: (test: AtterbergTest) => void;
-  onRegisterChartRef: (recordId: string, ref: HTMLDivElement | null) => void;
   adminImages?: { logo?: string; contacts?: string; stamp?: string };
 }
 
@@ -2338,16 +2046,8 @@ const RecordCard = ({
   onUpdateLiquidLimitTrials,
   onUpdatePlasticLimitTrials,
   onUpdateShrinkageLimitTrials,
-  onRegisterChartRef,
   adminImages,
 }: RecordCardProps) => {
-  // Cleanup chart ref on unmount
-  useEffect(() => {
-    return () => {
-      onRegisterChartRef(record.id, null);
-    };
-  }, [record.id, onRegisterChartRef]);
-
   return (
     <AtterbergRecordView
       record={record}
@@ -2365,7 +2065,6 @@ const RecordCard = ({
       onUpdateLiquidLimitTrials={onUpdateLiquidLimitTrials}
       onUpdatePlasticLimitTrials={onUpdatePlasticLimitTrials}
       onUpdateShrinkageLimitTrials={onUpdateShrinkageLimitTrials}
-      onRegisterChartRef={onRegisterChartRef}
       adminImages={adminImages}
     />
   );
