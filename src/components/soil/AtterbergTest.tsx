@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ChevronRight, FileDown, Plus, Printer, Trash2, AlertTriangle } from "lucide-react";
+import { ChevronRight, FileDown, Plus, Printer, Trash2, AlertTriangle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { emitAuthLost } from "@/lib/authEvents";
 import { type ApiProjectRow } from "@/types/api";
 
 import TestSection from "@/components/TestSection";
@@ -354,12 +355,17 @@ const getLookupCacheKey = (lookup: AtterbergProjectLookup, projectId?: number | 
 const hasLookupCriteria = (lookup: AtterbergProjectLookup) => lookup.projectName !== "" || lookup.clientName !== "" || lookup.projectDate !== "";
 
 
+export type AtterbergRemoteLoad =
+  | { kind: "data"; state: AtterbergProjectState; focusRecordId: string | null }
+  | { kind: "empty" }              // legitimate: this project holds no Atterberg records yet
+  | { kind: "error"; message: string }; // API unreachable / expired session / server error
+
 const loadAtterbergProjectFromApi = async (
   lookup: AtterbergProjectLookup,
   projectId?: number | null,
   focusResultId?: number | null,
   focusSampleKey?: string | null,
-): Promise<{ state: AtterbergProjectState; focusRecordId: string | null } | null> => {
+): Promise<AtterbergRemoteLoad> => {
   try {
     const resultsResponse = await listRecords<ApiAtterbergResultRow>("test_results", { limit: 5000, orderBy: "updated_at", direction: "DESC" });
 
@@ -367,16 +373,16 @@ const loadAtterbergProjectFromApi = async (
     // holds exactly one sample, and before it a single row held them all. collectSamples reads
     // both, so this behaves the same in every state - including the window where the legacy
     // project-level row still sits alongside the new sample rows.
-    const toState = (rows: ApiAtterbergResultRow[]) => {
+    const toState = (rows: ApiAtterbergResultRow[]): AtterbergRemoteLoad => {
       const samples = collectSamples(rows);
-      if (samples.length === 0) return null;
+      if (samples.length === 0) return { kind: "empty" };
       const records = samples.map((sample) => sample.record).filter((r): r is AtterbergRecord => r !== null);
-      if (records.length === 0) return null;
-      // The project envelope (title, client, date) is repeated on every row; take the first.
+      if (records.length === 0) return { kind: "empty" };
+
       const firstPayload = samples[0].row.payload_json;
       const meta = isObject(firstPayload) && isObject(firstPayload.project) ? firstPayload.project : {};
       const state = normalizeAtterbergProjectState({ ...meta, records });
-      if (!state) return null;
+      if (!state) return { kind: "empty" };
       // The sample the user opened from the Test Results list. A migrated row holds exactly
       // one sample, so ?resultId= identifies it. Before the per-sample migration several
       // samples shared one row, so ?sampleKey= is honoured first when it is present.
@@ -388,48 +394,42 @@ const loadAtterbergProjectFromApi = async (
         ?? (focusResultId
           ? samples.find((sample) => Number(sample.resultId) === focusResultId)?.sampleKey ?? null
           : null);
-      return { state, focusRecordId: focused };
+      return { kind: "data", state, focusRecordId: focused };
     };
 
     if (projectId) {
       const pairRows = resultsResponse.data.filter(
         (row) => row.test_key === "atterberg" && Number(row.project_id) === projectId && row.payload_json,
       );
-      if (pairRows.length === 0) return null;
+      if (pairRows.length === 0) return { kind: "empty" };
       return toState(pairRows);
     }
 
     if (!hasLookupCriteria(lookup)) {
       // No project lookup criteria — do not auto-load latest saved project (would leak stale data into a new project)
-      return null;
+      return { kind: "empty" };
     }
 
     const projectsResponse = await listRecords<ApiProjectRow>("projects", { limit: 5000, orderBy: "updated_at", direction: "DESC" });
     const projectRow = projectsResponse.data.find((row) => matchesProjectLookup(row, lookup));
-    if (!projectRow) return null;
+    if (!projectRow) return { kind: "empty" };
 
     const pairRows = resultsResponse.data.filter(
       (row) => row.test_key === "atterberg" && Number(row.project_id) === Number(projectRow.id) && row.payload_json,
     );
-    if (pairRows.length === 0) return null;
+    if (pairRows.length === 0) return { kind: "empty" };
     return toState(pairRows);
   } catch (error) {
-    // If API is unavailable, unauthorized, or network error - return null to allow fallback to localStorage
-    if (error instanceof Error) {
-      const errorMsg = error.message.toLowerCase();
-      if (
-        errorMsg.includes("unauthorized") ||
-        errorMsg.includes("forbidden") ||
-        errorMsg.includes("failed to fetch") ||
-        errorMsg.includes("unable to reach") ||
-        errorMsg.includes("network")
-      ) {
-        console.debug("API unavailable, falling back to localStorage for Atterberg project");
-        return null;
-      }
+    // API unreachable / expired session / server error: report it instead of silently showing an empty grid.
+    const reason = error instanceof Error ? error.message : String(error);
+    const lower = reason.toLowerCase();
+    console.error("[Atterberg] Could not load Atterberg project from API:", reason);
+    if (lower.includes("unauthorized") || lower.includes("forbidden") || lower.includes("401")) {
+      // Mid-session expiry: notify the shell so it can bounce the user to /login?next=
+      emitAuthLost();
+      return { kind: "error", message: "Your session expired. Please sign in again to load this record." };
     }
-    // Re-throw unexpected errors
-    throw error;
+    return { kind: "error", message: reason.length > 0 ? reason : "Could not reach the laboratory service. Check your connection and try again." };
   }
 };
 
@@ -713,6 +713,9 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
   const [projectState, setProjectState] = useState<AtterbergProjectState>({
     records: [],
   });
+  // Gates the grid + buttons until hydration finishes, so a returning user never sees the
+  // "No records yet" flash on the way to their saved record or a redirect to /record.
+  const [hydrated, setHydrated] = useState(false);
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const [printDialogOpen, setPrintDialogOpen] = useState(false);
   const [printSelection, setPrintSelection] = useState<Set<string>>(new Set());
@@ -720,6 +723,10 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [lastSaveError, setLastSaveError] = useState<string | null>(null);
+  // Set when the API round-trips fail so the card is never mistaken for "this project has no
+  // Atterberg records yet"; cleared automatically when a retry or full reload succeeds.
+  const [recordsLoadError, setRecordsLoadError] = useState<string | null>(null);
+  const [recordsRetryKey, setRecordsRetryKey] = useState(0);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [previewData, setPreviewData] = useState<ExportPreviewData | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
@@ -828,6 +835,15 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
       hydrationDebounceRef.current = setTimeout(() => {
         if (cancelled) return;
         lastLoadedLookupRef.current = lookupCacheKey;
+        setRecordsLoadError(null);
+
+        // When there is no Atterberg record to edit (no API data, no local draft), the
+        // only useful destination is the record wizard — sending the user there beats
+        // a dead empty card with a Clear button and no forward path.
+        const redirectToRecordWizard = () => {
+          if (cancelled) return;
+          navigate("/record", { replace: true });
+        };
 
         const restoreProject = async () => {
           // One-shot new-project flag set by Index.handleStartNewProject before reload.
@@ -836,7 +852,7 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
             sessionStorage.removeItem("atterberg.newProject");
             skipNextPersistRef.current = true;
             setProjectState({ records: [] });
-            hydratedRef.current = true;
+            hydratedRef.current = true; setHydrated(true);
             return;
           }
 
@@ -865,8 +881,9 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
             );
             if (cancelled) return;
 
-            if (remote) {
+            if (remote.kind === "data") {
               skipNextPersistRef.current = true;
+              setRecordsLoadError(null);
               if (isNewRecordLaunch) {
                 setProjectState(blankAtterbergState(remote.state));
                 pendingFocusRecordIdRef.current = null;
@@ -875,17 +892,32 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
                 // Open the sample the user clicked rather than the first one of the project.
                 pendingFocusRecordIdRef.current = remote.focusRecordId;
               }
-              hydratedRef.current = true;
+              hydratedRef.current = true; setHydrated(true);
               return;
             }
-            if (project.currentProjectId) {
-              skipNextPersistRef.current = true;
-              setProjectState({ records: [] });
-              hydratedRef.current = true;
-              return;
+            if (remote.kind === "empty") {
+              setRecordsLoadError(null);
+              if (project.currentProjectId) {
+                skipNextPersistRef.current = true;
+                setProjectState({ records: [] });
+                hydratedRef.current = true; setHydrated(true);
+                if (!isNewRecordLaunch) redirectToRecordWizard();
+                return;
+              }
             }
+            // remote.kind === "error" — API failure. Do NOT pretend this project is empty.
+            console.error("[AtterbergTest] restore failed:", remote.message);
+            skipNextPersistRef.current = true;
+            setRecordsLoadError(remote.message);
+            setProjectState({ records: [] });
+            hydratedRef.current = true; setHydrated(true);
+            return;
           } catch (error) {
             console.error("Failed to restore Atterberg project from API:", error);
+            skipNextPersistRef.current = true;
+            setProjectState({ records: [] });
+            setRecordsLoadError(error instanceof Error ? error.message : "Could not load this Atterberg record.");
+            hydratedRef.current = true; setHydrated(true);
           }
 
           if (cancelled) return;
@@ -897,7 +929,7 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
             // sample once hydration is marked complete.
             skipNextPersistRef.current = true;
             setProjectState({ records: [] });
-            hydratedRef.current = true;
+            hydratedRef.current = true; setHydrated(true);
             return;
           }
 
@@ -905,6 +937,7 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
           // If localStorage was cleared by the project identity change detection effect,
           // it will be empty and we skip loading. Otherwise, we only load if it exists.
           const saved = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem("enhancedAtterbergTests");
+          let localDraftLoaded = false;
           if (saved) {
             try {
               const parsed = normalizeAtterbergProjectState(JSON.parse(saved));
@@ -912,6 +945,7 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
                 const recordCount = parsed.records?.length || 0;
                 console.log(`[AtterbergTest] Loading Atterberg project from localStorage with ${recordCount} test records`);
                 skipNextPersistRef.current = true;
+                localDraftLoaded = true;
                 setProjectState(collapseAllOnLoad(parsed));
               }
             } catch (error) {
@@ -919,7 +953,12 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
             }
           }
 
-          hydratedRef.current = true;
+          hydratedRef.current = true; setHydrated(true);
+          // No API record and no usable local draft: this screen has nothing to
+          // edit. Send the user to the record wizard instead of leaving a dead card.
+          if (!localDraftLoaded) {
+            redirectToRecordWizard();
+          }
         };
 
         void restoreProject();
@@ -934,7 +973,7 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
         clearTimeout(hydrationDebounceRef.current);
       }
     };
-  }, [effectiveProjectLookup, lookupCacheKey, project.currentProjectId]);
+  }, [effectiveProjectLookup, lookupCacheKey, project.currentProjectId, recordsRetryKey]);
 
   // Cleanup save status timeout on unmount
   useEffect(() => {
@@ -2176,6 +2215,16 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
     return true;
   }, [computedRecords.length, handleExportPDF, handleExportXLSX]);
 
+  if (!hydrated) {
+    // Bare loading state only — no card chrome, no Clear button, no misleading empty grid.
+    return (
+      <div className="flex min-h-[280px] items-center justify-center gap-2 text-sm text-muted-foreground" role="status" aria-live="polite">
+        <Loader2 className="h-5 w-5 animate-spin text-primary" aria-hidden="true" />
+        Loading records…
+      </div>
+    );
+  }
+
   return (
     <>
       <TestSection
@@ -2235,9 +2284,26 @@ const captureAllChartImages = useCallback(async (recordIds: string[], expandReco
         )}
 
         {computedRecords.length === 0 ? (
-          <div className="rounded-lg border bg-muted/20 py-10 text-center text-muted-foreground">
-            <p className="text-sm">No records yet. Add a record to begin capturing Atterberg limit tests.</p>
-          </div>
+          recordsLoadError ? (
+            <div className="rounded-lg border border-amber-300/70 bg-amber-50/60 dark:bg-amber-950/20 py-10 text-center text-amber-800 dark:text-amber-200" role="alert">
+              <AlertTriangle className="mx-auto mb-3 h-6 w-6" aria-hidden="true" />
+              <p className="text-sm font-medium">Couldn&rsquo;t load the saved Atterberg records.</p>
+              <p className="mt-1 text-xs opacity-90">{recordsLoadError}</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                onClick={() => setRecordsRetryKey((current) => current + 1)}
+              >
+                Retry load
+              </Button>
+            </div>
+          ) : (
+            <div className="rounded-lg border bg-muted/20 py-10 text-center text-muted-foreground">
+              <p className="text-sm">No records yet. Add a record to begin capturing Atterberg limit tests.</p>
+            </div>
+          )
         ) : (
           <div className="space-y-4">
             {visibleRecords.map(({ record, index }) => (
