@@ -109,7 +109,7 @@ const Settings = ({ initialTab = "company" }: { initialTab?: string }) => {
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditPage, setAuditPage] = useState(1);
   const [auditTotal, setAuditTotal] = useState(0);
-  const auditPerPage = 20;
+  const [auditPerPage, setAuditPerPage] = useState(20);
   const [selectedAuditEntry, setSelectedAuditEntry] = useState<any | null>(null);
 
   // Load all settings on mount
@@ -179,12 +179,19 @@ const Settings = ({ initialTab = "company" }: { initialTab?: string }) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleAuditPerPageChange = (value: string) => {
+    const next = Number(value) || 20;
+    setAuditPerPage(next);
+    setAuditPage(1);
+  };
+
   // Load audit log when audit tab is active
   useEffect(() => {
     if (activeTab === "audit") {
       loadAuditLog();
     }
-  }, [activeTab, auditPage]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, auditPage, auditPerPage]);
 
   const loadAuditLog = async () => {
     try {
@@ -676,31 +683,37 @@ const Settings = ({ initialTab = "company" }: { initialTab?: string }) => {
                   <CardDescription>Recent system activity - image uploads, changes, and deletions</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {auditLoading ? (
+                  {/* Stable canvas – minimum height prevents the card from collapsing while the next page loads. */}
+                  <div className="min-h-[520px]">
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-2 text-xs text-muted-foreground">
+                      <span>{auditTotal === 0 ? "No entries" : `Showing ${((auditPage - 1) * auditPerPage) + 1}–${Math.min(auditPage * auditPerPage, auditTotal)} of ${auditTotal} entries · page ${auditPage} of ${Math.max(1, Math.ceil(auditTotal / auditPerPage))}`}</span>
+                      {auditLoading && (<span className="flex items-center gap-2" aria-live="polite"><span className="block h-2 w-28 overflow-hidden rounded bg-muted"><span className="block h-2 w-1/3 animate-pulse rounded bg-primary" /></span><span>Loading…</span></span>)}
+                    </div>
+                    {auditLoading && auditLog.length === 0 ? (
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
                       <span className="ml-2 text-muted-foreground">Loading audit log...</span>
                     </div>
-                  ) : auditLog.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-8">No audit log entries found.</p>
-                  ) : (
+                    ) : auditLog.length === 0 && !auditLoading ? (
+                      <p className="text-sm text-muted-foreground text-center py-12">No audit log entries found.</p>
+                    ) : (
                     <>
                       <div className="overflow-x-auto">
-                        <table className="w-full">
+                        <table className="w-full table-fixed">
                           <thead>
                             <tr className="border-b text-left text-sm text-muted-foreground">
-                              <th className="pb-2 pr-4">Date & Time</th>
-                              <th className="pb-2 pr-4">Action</th>
-                              <th className="pb-2 pr-4">Entity</th>
-                              <th className="pb-2 pr-4">Entity ID</th>
-                              <th className="pb-2 pr-4">User</th>
-                              <th className="pb-2 pr-4">IP Address</th>
+                              <th className="pb-2 pr-4 w-[16%]">Date & Time</th>
+                              <th className="pb-2 pr-4 w-[12%]">Action</th>
+                              <th className="pb-2 pr-4 w-[14%]">Entity</th>
+                              <th className="pb-2 pr-4 w-[9%]">Entity ID</th>
+                              <th className="pb-2 pr-4 w-[17%]">User</th>
+                              <th className="pb-2 pr-4 w-[17%]">IP Address</th>
                               <th className="pb-2 pr-4">Details</th>
                             </tr>
                           </thead>
                           <tbody>
                             {auditLog.map((entry) => (
-                              <tr key={entry.id} className="border-b hover:bg-muted/50 cursor-pointer" onClick={() => setSelectedAuditEntry(entry)}>
+                              <tr key={entry.id} className="border-b hover:bg-muted/50 cursor-pointer touch-manipulation" onClick={() => setSelectedAuditEntry(entry)}>
                                 <td className="py-2 pr-4 text-sm">
                                   {entry.created_at ? new Date(entry.created_at).toLocaleString() : "—"}
                                 </td>
@@ -754,34 +767,28 @@ const Settings = ({ initialTab = "company" }: { initialTab?: string }) => {
                           </dl>
                         </DialogContent>
                       </Dialog>
-                      {/* Pagination */}
-                      {auditTotal > auditPerPage && (
-                        <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                          <p className="text-sm text-muted-foreground">
-                            Showing {((auditPage - 1) * auditPerPage) + 1} to {Math.min(auditPage * auditPerPage, auditTotal)} of {auditTotal} entries
-                          </p>
-                          <div className="flex gap-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => setAuditPage(p => Math.max(1, p - 1))} 
-                              disabled={auditPage <= 1 || auditLoading}
-                            >
-                              Previous
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => setAuditPage(p => p + 1)} 
-                              disabled={auditPage * auditPerPage >= auditTotal || auditLoading}
-                            >
-                              Next
-                            </Button>
-                          </div>
+                      </>
+                    )}
+                      {/* Pagination - always visible; first/prev/next/last + per-page selector */}
+                      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 mt-4 pt-4 border-t">
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                          <label htmlFor="audit-per-page" className="whitespace-nowrap">Rows per page</label>
+                          <select id="audit-per-page" value={String(auditPerPage)} disabled={auditLoading} onChange={(event) => handleAuditPerPageChange(event.target.value)} className="record-input h-8 w-20 rounded-md border bg-background px-2 text-sm">
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                          </select>
+                          <span>Page {auditPage} of {Math.max(1, Math.ceil(auditTotal / auditPerPage))}{auditTotal > 0 ? ` · ${((auditPage - 1) * auditPerPage) + 1}-${Math.min(auditPage * auditPerPage, auditTotal)} of ${auditTotal}` : ''}</span>
                         </div>
-                      )}
-                    </>
-                  )}
+                        <div className="flex items-center gap-1">
+                          <Button variant="outline" size="sm" onClick={() => setAuditPage(1)} disabled={auditPage <= 1 || auditLoading} aria-label="First page" className="px-2">«</Button>
+                          <Button variant="outline" size="sm" onClick={() => setAuditPage((p) => Math.max(1, p - 1))} disabled={auditPage <= 1 || auditLoading} className="px-3">Previous</Button>
+                          <Button variant="outline" size="sm" onClick={() => setAuditPage((p) => p + 1)} disabled={auditPage * auditPerPage >= auditTotal || auditLoading} className="px-3">Next</Button>
+                          <Button variant="outline" size="sm" onClick={() => setAuditPage(Math.max(1, Math.ceil(auditTotal / auditPerPage)))} disabled={auditPage * auditPerPage >= auditTotal || auditLoading} aria-label="Last page" className="px-2">»</Button>
+                        </div>
+                      </div>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
