@@ -245,7 +245,7 @@ export const generateTestPDF = async (data: PDFData) => {
     // 3 columns for 4+ fields, fewer cells when there are only a couple of fields.
     const columnCount = data.fields.length <= 2 ? data.fields.length : 3;
     const cellWidth = (pageWidth - PAGE_MARGIN * 2) / columnCount;
-    const cellHeight = 12;
+    const cellHeight = 8;
 
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
@@ -271,14 +271,15 @@ export const generateTestPDF = async (data: PDFData) => {
           doc.setDrawColor(...COLORS.border);
           doc.setLineWidth(0.4);
           doc.rect(xPos, y2, cellWidth, cellHeight);
+          const middleY = y2 + cellHeight / 2;
           doc.setFont("helvetica", "bold");
           doc.setFontSize(7);
           doc.setTextColor(...COLORS.primary);
-          doc.text(field.label, xPos + 2.5, y2 + 5);
+          doc.text(field.label, xPos + 2.5, middleY, { baseline: "middle" });
           doc.setFont("helvetica", "normal");
           doc.setFontSize(8.5);
           doc.setTextColor(...COLORS.dark);
-          doc.text(field.value || "-", xPos + 2.5, y2 + 9.5);
+          doc.text(field.value || "-", xPos + cellWidth - 2.5, middleY, { align: "right", baseline: "middle" });
         } else {
           // Unused slot in a partially filled row - still draw the frame so the grid reads as one table.
           doc.setFillColor(255, 255, 255);
