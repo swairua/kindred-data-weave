@@ -676,6 +676,22 @@ export const listRecords = async <T>(table: string, params?: Record<string, stri
   }
 };
 
+export const listAllRecords = async <T>(table: string, params?: Record<string, string | number | boolean | null | undefined>) => {
+  const limit = Number(params?.limit ?? 100);
+  const startingOffset = Number(params?.offset ?? 0);
+  const data: T[] = [];
+  let response: ApiListResponse<T>;
+  let offset = startingOffset;
+
+  do {
+    response = await listRecords<T>(table, { ...params, limit, offset });
+    data.push(...response.data);
+    offset += response.data.length;
+  } while (response.data.length === response.limit);
+
+  return { ...response, data, offset: startingOffset };
+};
+
 /** Reception consignments persist server-side once the table ships, localStorage until then. */
 const RECEPTION_STORAGE_KEY = "cransfield_reception_consignments_v1";
 

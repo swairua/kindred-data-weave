@@ -14,6 +14,7 @@ const overviewMocks = vi.hoisted(() => ({
 vi.mock("@/lib/api", () => ({
   fetchFullProject: overviewMocks.fetchFullProject,
   listRecords: overviewMocks.listRecords,
+  listAllRecords: overviewMocks.listRecords,
   updateRecord: overviewMocks.updateRecord,
 }));
 

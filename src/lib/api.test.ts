@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createRecord, fetchCurrentUser, getSessionToken, listReceptionFieldDefinitions, listReceptionPhotos, listRecords, readRecord, setSessionToken } from "@/lib/api";
+import { createRecord, fetchCurrentUser, getSessionToken, listAllRecords, listReceptionFieldDefinitions, listReceptionPhotos, listRecords, readRecord, setSessionToken } from "@/lib/api";
 
 const fetchMock = vi.fn();
 
@@ -81,6 +81,31 @@ describe("fetchCurrentUser", () => {
 
     await rejectedCheck;
     expect(getSessionToken()).toBe("preview-test-session");
+  });
+});
+
+describe("listAllRecords", () => {
+  it("fetches subsequent offsets until the final response is shorter than the batch size", async () => {
+    fetchMock
+      .mockResolvedValueOnce(response(200, {
+        table: "projects",
+        data: [{ id: "1" }, { id: "2" }],
+        limit: 2,
+        offset: 0,
+      }))
+      .mockResolvedValueOnce(response(200, {
+        table: "projects",
+        data: [{ id: "3" }],
+        limit: 2,
+        offset: 2,
+      }));
+
+    const result = await listAllRecords<{ id: number }>("projects", { limit: 2, orderBy: "id", direction: "DESC" });
+
+    expect(result.data.map((row) => row.id)).toEqual([1, 2, 3]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(new URL(fetchMock.mock.calls[0][0] as string).searchParams.get("offset")).toBe("0");
+    expect(new URL(fetchMock.mock.calls[1][0] as string).searchParams.get("offset")).toBe("2");
   });
 });
 

@@ -14,7 +14,7 @@ import {
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Layers, Plus, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { type ApiProjectRow } from "@/types/api";
-import { listRecords } from "@/lib/api";
+import { listAllRecords } from "@/lib/api";
 import { type TestDefinition } from "@/context/TestDataContext";
 import { disabledTestKeys, enabledTestKeys } from "@/lib/testDefinitions";
 import { toast } from "sonner";
@@ -90,9 +90,9 @@ const Projects = () => {
     try {
       setIsLoading(true);
       const [projectsResponse, testResultsResponse, definitionsResponse] = await Promise.all([
-        listRecords<ApiProjectRow>("projects", { limit: 100 }),
-        listRecords<ApiTestResult>("test_results", { limit: 1000 }),
-        listRecords<TestDefinition>("test_definitions", { limit: 200 }),
+        listAllRecords<ApiProjectRow>("projects", { limit: 100 }),
+        listAllRecords<ApiTestResult>("test_results", { limit: 1000 }),
+        listAllRecords<TestDefinition>("test_definitions", { limit: 200 }),
       ]);
 
       // A disabled test is not part of the catalogue, so its results are not counted

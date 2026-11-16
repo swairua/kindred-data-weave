@@ -10,6 +10,7 @@ const contextMocks = vi.hoisted(() => ({ updateProjectMetadata: vi.fn(), tests: 
 
 vi.mock("@/lib/api", () => ({
   listRecords: resultsMocks.listRecords,
+  listAllRecords: resultsMocks.listRecords,
 }));
 
 vi.mock("@/context/TestDataContext", () => ({

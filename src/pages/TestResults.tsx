@@ -22,7 +22,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Layers, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { useTestData, type AtterbergRecord, type TestDefinition } from "@/context/TestDataContext";
 import { useProject } from "@/context/ProjectContext";
-import { listRecords } from "@/lib/api";
+import { listAllRecords } from "@/lib/api";
 import { collectSamples, readSampleRecords, recordField, selectSampleRows } from "@/lib/testResultSamples";
 import { isTestEnabled } from "@/lib/testDefinitions";
 import { toast } from "sonner";
@@ -82,7 +82,7 @@ const TestResults = () => {
     try {
       setIsLoading(true);
       setLoadError(null);
-      const response = await listRecords<ApiTestResult>("test_results", { limit: 5000, orderBy: "updated_at", direction: "DESC" });
+      const response = await listAllRecords<ApiTestResult>("test_results", { limit: 5000, orderBy: "updated_at", direction: "DESC" });
       setApiTestResults(response.data || []);
     } catch (error) {
       console.error("Failed to load test results:", error);
