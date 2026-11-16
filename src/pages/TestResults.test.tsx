@@ -6,7 +6,7 @@ import TestResults from "@/pages/TestResults";
 import { SidebarProvider } from "@/components/ui/sidebar";
 
 const resultsMocks = vi.hoisted(() => ({ listRecords: vi.fn() }));
-const contextMocks = vi.hoisted(() => ({ updateProjectMetadata: vi.fn() }));
+const contextMocks = vi.hoisted(() => ({ updateProjectMetadata: vi.fn(), tests: {} as Record<string, { id: string; enabled?: boolean }> , testDefinitions: null as null | Array<{ test_key: string; name: string; category: string; sort_order: number; enabled: boolean }> }));
 
 vi.mock("@/lib/api", () => ({
   listRecords: resultsMocks.listRecords,
@@ -14,11 +14,11 @@ vi.mock("@/lib/api", () => ({
 
 vi.mock("@/context/TestDataContext", () => ({
   useTestData: () => ({
-    tests: {},
+    tests: contextMocks.tests,
     recordMetadata: {},
     projectMetadata: {},
     updateProjectMetadata: contextMocks.updateProjectMetadata,
-    testDefinitions: [
+    testDefinitions: contextMocks.testDefinitions ?? [
       { test_key: "grading", name: "Particle Size Distribution", category: "soil", sort_order: 2, enabled: true },
       { test_key: "proctor", name: "Density/Moisture Content Relationship", category: "soil", sort_order: 3, enabled: true },
       { test_key: "compressive", name: "Compressive Strength Test", category: "concrete", sort_order: 1, enabled: true },
@@ -78,6 +78,8 @@ const FIND = { timeout: 10000 };
 beforeEach(() => {
   resultsMocks.listRecords.mockReset().mockResolvedValue({ data: [] });
   contextMocks.updateProjectMetadata.mockReset();
+  contextMocks.tests = {};
+  contextMocks.testDefinitions = null;
 });
 
 // Each test mounts the whole page, sidebar included, which is slow under parallel load.
@@ -231,6 +233,29 @@ describe("TestResults duplicate handling", () => {
     expect(depths[2]).toMatch(/7\.5-10\.0/);
   });
 }, 30000);
+
+describe("TestResults empty definitions fallback", () => {
+  it("shows results for enabled fallback tests when no definitions are available", async () => {
+    contextMocks.tests = { grading: { id: "grading", enabled: true } };
+    contextMocks.testDefinitions = [];
+    resultsMocks.listRecords.mockResolvedValue({
+      data: [gradingRow("101", "2026-06-12 09:00:00", [{ sampleNumber: "Fallback sample" }])],
+    });
+
+    renderResults();
+
+    expect(await screen.findByText(/Fallback sample/, undefined, FIND)).toBeInTheDocument();
+  });
+
+  it("does not report a failed results request as an empty register", async () => {
+    resultsMocks.listRecords.mockRejectedValue(new Error("Network unavailable"));
+
+    renderResults();
+
+    expect(await screen.findByRole("alert", undefined, FIND)).toHaveTextContent("Could not load test results: Network unavailable");
+    expect(screen.queryByText("No test results found")).not.toBeInTheDocument();
+  });
+});
 
 describe("TestResults test type filter", () => {
   beforeEach(() => {

@@ -72,6 +72,7 @@ const TestResults = () => {
   const [testTypeFilter, setTestTypeFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [apiTestResults, setApiTestResults] = useState<ApiTestResult[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -80,11 +81,12 @@ const TestResults = () => {
   const loadTestResults = useCallback(async () => {
     try {
       setIsLoading(true);
+      setLoadError(null);
       const response = await listRecords<ApiTestResult>("test_results", { limit: 5000, orderBy: "updated_at", direction: "DESC" });
       setApiTestResults(response.data || []);
     } catch (error) {
       console.error("Failed to load test results:", error);
-      setApiTestResults([]);
+      setLoadError(error instanceof Error ? error.message : String(error));
     } finally {
       setIsLoading(false);
     }
@@ -146,8 +148,12 @@ const TestResults = () => {
   // Rows for a disabled test are not listed: the catalogue only offers enabled tests, so a
   // disabled test must not appear in the register.
   const enabledKeys = useMemo(
-    () => new Set(testDefinitions.filter((d) => isTestEnabled(d)).map((d) => d.test_key)),
-    [testDefinitions],
+    () => new Set(
+      testDefinitions.length > 0
+        ? testDefinitions.filter((definition) => isTestEnabled(definition)).map((definition) => definition.test_key)
+        : Object.values(testDataMap).filter((test) => test.enabled !== false).map((test) => test.id),
+    ),
+    [testDefinitions, testDataMap],
   );
 
   const visibleResults = useMemo(
@@ -499,9 +505,18 @@ const TestResults = () => {
             </CardHeader>
 
             <CardContent className="px-3 pb-3 pt-0 sm:px-4 sm:pb-4">
+              {loadError && (
+                <p role="alert" className="mb-3 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                  Could not load test results: {loadError}. Use Refresh to try again.
+                </p>
+              )}
               {isLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : loadError && apiTestResults.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <p className="text-sm text-muted-foreground">The results list is unavailable until the request succeeds.</p>
                 </div>
               ) : filteredTests.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
