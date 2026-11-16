@@ -144,6 +144,7 @@ const Projects = () => {
         // not listed. Projects with no enabled samples are left out too.
         .filter((p) => !(p.test_type && disabledTestTypeKeys.has(p.test_type)))
         .filter((p) => (p.sample_count ?? 0) > 0)
+        .sort((a, b) => (b.project_date || "").localeCompare(a.project_date || ""))
         .map((p) => ({
           id: p.id,
           name: p.name,

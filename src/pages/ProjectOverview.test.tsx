@@ -91,6 +91,23 @@ describe("ProjectOverview", () => {
     expect(await screen.findByTestId("current-location")).toHaveTextContent("/projects/42");
   });
 
+  it("lists projects newest first", async () => {
+    const projects = [
+      { ...project, id: 42, name: "Older project", project_date: "2025-01-01" },
+      { ...project, id: 43, name: "Newer project", project_date: "2026-01-01" },
+    ];
+    overviewMocks.listRecords.mockImplementation((table: string) => Promise.resolve({
+      data: table === "projects" ? projects : table === "test_results"
+        ? projects.map((item) => ({ id: item.id, project_id: item.id, test_key: "atterberg" }))
+        : [],
+    }));
+    renderOverview("/projects");
+
+    const rows = await screen.findAllByRole("row");
+    expect(rows[1]).toHaveTextContent("Newer project");
+    expect(rows[2]).toHaveTextContent("Older project");
+  });
+
   it("opens the selected grading project at its latest resumable grading result", async () => {
     const gradingProject = { ...project, test_type: "grading" };
     overviewMocks.listRecords.mockImplementation((table: string) => Promise.resolve({
