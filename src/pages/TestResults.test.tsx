@@ -10,6 +10,7 @@ const contextMocks = vi.hoisted(() => ({ updateProjectMetadata: vi.fn(), tests: 
 
 vi.mock("@/lib/api", () => ({
   listRecords: resultsMocks.listRecords,
+  listAllRecords: resultsMocks.listRecords,
 }));
 
 vi.mock("@/context/TestDataContext", () => ({
@@ -189,13 +190,12 @@ describe("TestResults duplicate handling", () => {
   });
 
   it("orders the register newest first", async () => {
-    // Three distinct projects, supplied oldest-first, so no dedup can collapse them and the
-    // assertion cannot pass by accident through the order the rows happened to arrive in.
+    // Displayed dates intentionally disagree with update dates so rows sort by what the table shows.
     resultsMocks.listRecords.mockResolvedValue({
       data: [
-        { ...gradingRow("10", "2026-05-01 09:00:00", [{ sampleNumber: "Oldest" }]), project_id: "42" },
-        { ...gradingRow("15", "2026-06-10 09:00:00", [{ sampleNumber: "Middle" }]), project_id: "43" },
-        { ...gradingRow("20", "2026-06-20 09:00:00", [{ sampleNumber: "Newest" }]), project_id: "44" },
+        { ...gradingRow("10", "2026-06-20 09:00:00", [{ sampleNumber: "Oldest" }]), project_id: "42", created_at: "2026-05-01 09:00:00" },
+        { ...gradingRow("15", "2026-05-01 09:00:00", [{ sampleNumber: "Middle" }]), project_id: "43", created_at: "2026-06-10 09:00:00" },
+        { ...gradingRow("20", "2026-06-10 09:00:00", [{ sampleNumber: "Newest" }]), project_id: "44", created_at: "2026-06-20 09:00:00" },
       ],
     });
 

@@ -22,7 +22,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Layers, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { useTestData, type AtterbergRecord, type TestDefinition } from "@/context/TestDataContext";
 import { useProject } from "@/context/ProjectContext";
-import { listRecords } from "@/lib/api";
+import { listAllRecords } from "@/lib/api";
 import { collectSamples, readSampleRecords, recordField, selectSampleRows } from "@/lib/testResultSamples";
 import { isTestEnabled } from "@/lib/testDefinitions";
 import { toast } from "sonner";
@@ -82,7 +82,7 @@ const TestResults = () => {
     try {
       setIsLoading(true);
       setLoadError(null);
-      const response = await listRecords<ApiTestResult>("test_results", { limit: 5000, orderBy: "updated_at", direction: "DESC" });
+      const response = await listAllRecords<ApiTestResult>("test_results", { limit: 5000, orderBy: "updated_at", direction: "DESC" });
       setApiTestResults(response.data || []);
     } catch (error) {
       console.error("Failed to load test results:", error);
@@ -206,7 +206,7 @@ const TestResults = () => {
         created_by: testedBy,
         material_type: result.category || "Soil",
         status: result.status || "-",
-        sort_stamp: result.updated_at || result.created_at || "",
+        sort_stamp: Date.parse(dateCreated),
       };
     });
 
@@ -235,11 +235,11 @@ const TestResults = () => {
         created_by: "-",
         material_type: result.category || "Soil",
         status: result.status || "-",
-        sort_stamp: result.updated_at || result.created_at || "",
+        sort_stamp: Date.parse(dateCreated),
       };
     });
 
-    return [...atterbergRows, ...otherSoilRows].sort((a, b) => b.sort_stamp.localeCompare(a.sort_stamp));
+    return [...atterbergRows, ...otherSoilRows].sort((a, b) => b.sort_stamp - a.sort_stamp);
   }, [atterbergResults, otherSoilResults, getTestName]);
 
 // Compressive & Coring mirror rows (see saveCompressiveTest): one display row per
@@ -251,6 +251,8 @@ const TestResults = () => {
         const isCoring = row.test_key === "coring";
         const payloadTest = row.payload_json?.test;
         const cubes = typeof payloadTest?.dataPoints === "number" ? payloadTest.dataPoints : null;
+        const dateCreated = row.created_at || row.updated_at || new Date().toISOString();
+
         return {
           id: `${row.test_key}::${row.id}`,
           resultId: Number(row.id),
@@ -265,19 +267,19 @@ const TestResults = () => {
           depth: isCoring
             ? (cubes === null ? "Core" : `${cubes} core${cubes === 1 ? "" : "s"}`)
             : cubes === null ? "-" : `${cubes} cube${cubes === 1 ? "" : "s"}`,
-          date_created: row.created_at || row.updated_at || new Date().toISOString(),
+          date_created: dateCreated,
           created_by: "-",
           material_type: row.category || "Concrete",
           status: row.status || "-",
-          sort_stamp: row.updated_at || row.created_at || "",
+          sort_stamp: Date.parse(dateCreated),
           is_coring: isCoring,
         };
       });
-    return rows.sort((a, b) => b.sort_stamp.localeCompare(a.sort_stamp));
+    return rows.sort((a, b) => b.sort_stamp - a.sort_stamp);
   }, [visibleResults, getTestName]);
 
   const tests = useMemo(
-    () => [...soilTests, ...compressiveTests].sort((a, b) => b.sort_stamp.localeCompare(a.sort_stamp)),
+    () => [...soilTests, ...compressiveTests].sort((a, b) => b.sort_stamp - a.sort_stamp),
     [soilTests, compressiveTests],
   );
 
