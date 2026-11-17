@@ -14,7 +14,7 @@ import {
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Layers, Plus, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { type ApiProjectRow } from "@/types/api";
-import { listAllRecords } from "@/lib/api";
+import { listAllRecords, listRecords } from "@/lib/api";
 import { type TestDefinition } from "@/context/TestDataContext";
 import { disabledTestKeys, enabledTestKeys } from "@/lib/testDefinitions";
 import { toast } from "sonner";
@@ -82,18 +82,21 @@ const Projects = () => {
   const [apiTestResults, setApiTestResults] = useState<ApiTestResult[]>([]);
   const [disabledTestTypeKeys, setDisabledTestTypeKeys] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
+  const [loadProgress, setLoadProgress] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Load projects and test results from API
+  // Load everything, gradually: each 500-row page is appended to state as it
+  // lands, so the table fills in progressively and no server-side row cap
+  // silently drops counts.
   const loadProjects = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [projectsResponse, testResultsResponse, definitionsResponse] = await Promise.all([
-        listAllRecords<ApiProjectRow>("projects", { limit: 100 }),
-        listAllRecords<ApiTestResult>("test_results", { limit: 1000 }),
-        listAllRecords<TestDefinition>("test_definitions", { limit: 200 }),
-      ]);
+      setLoadProgress("Loading test catalogue…");
+      setApiProjects([]);
+      setApiTestResults([]);
+
+      const definitionsResponse = await listRecords<TestDefinition>("test_definitions", { limit: 200 });
 
       // A disabled test is not part of the catalogue, so its results are not counted
       // and the project it belongs to is not listed.
@@ -102,33 +105,57 @@ const Projects = () => {
         ? enabledTestKeys(definitions)
         : null;
 
-      const testResults = (testResultsResponse.data || []).filter(
-        (testResult) => !enabledKeys || enabledKeys.has(testResult.test_key),
-      );
-      setApiTestResults(testResults);
-
-      // Count test results by project_id
-      const testCountByProject = new Map<number, number>();
-      testResults.forEach((testResult) => {
-        const count = testCountByProject.get(testResult.project_id) || 0;
-        testCountByProject.set(testResult.project_id, count + 1);
-      });
-
-      // Enrich projects with sample counts
-      const enrichedProjects = (projectsResponse.data || []).map((p) => ({
-        ...p,
-        sample_count: testCountByProject.get(p.id) || 0,
-      }));
-
-      setApiProjects(enrichedProjects);
       setDisabledTestTypeKeys(
         definitions.length > 0 ? disabledTestKeys(definitions) : new Set<string>(),
       );
+
+      // Results first: their per-project counts enrich the project rows.
+      let projectRows: ApiProjectRow[] = [];
+      const resultRows: ApiTestResult[] = [];
+      const applyProjectRows = () => {
+        const byProject = new Map<number, number>();
+        resultRows.forEach((testResult) => {
+          byProject.set(testResult.project_id, (byProject.get(testResult.project_id) || 0) + 1);
+        });
+        setApiProjects(
+          projectRows.map((p) => ({ ...p, sample_count: byProject.get(p.id) || 0 })),
+        );
+      };
+
+      setLoadProgress("Loading test results…");
+      await listAllRecords<ApiTestResult>(
+        "test_results",
+        {},
+        {
+          pageSize: 500,
+          onPage: (rows, total) => {
+            resultRows.push(...rows.filter((r) => !enabledKeys || enabledKeys.has(r.test_key)));
+            setLoadProgress(`Loading test results… (${total})`);
+            setApiTestResults([...resultRows]);
+            applyProjectRows();
+          },
+        },
+      );
+
+      setLoadProgress("Loading projects…");
+      await listAllRecords<ApiProjectRow>(
+        "projects",
+        { orderBy: "created_at", direction: "DESC" },
+        {
+          pageSize: 500,
+          onPage: (rows, total) => {
+            projectRows = [...projectRows, ...rows];
+            setLoadProgress(`Loading projects… (${total})`);
+            applyProjectRows();
+          },
+        },
+      );
     } catch (error) {
       console.error("Failed to load projects:", error);
-      setApiProjects([]);
+      toast.error("Failed to load projects");
     } finally {
       setIsLoading(false);
+      setLoadProgress(null);
     }
   }, []);
 
@@ -136,26 +163,26 @@ const Projects = () => {
     loadProjects();
   }, [loadProjects]);
 
-  // Map API data to display format
+  // Map API data to display format, newest first by actual creation time.
   const projects = useMemo(() => {
-    if (apiProjects.length > 0) {
-      return apiProjects
-        // A project whose test type is disabled is not part of the catalogue, so it is
-        // not listed. Projects with no enabled samples are left out too.
-        .filter((p) => !(p.test_type && disabledTestTypeKeys.has(p.test_type)))
-        .filter((p) => (p.sample_count ?? 0) > 0)
-        .sort((a, b) => (b.project_date || "").localeCompare(a.project_date || ""))
-        .map((p) => ({
-          id: p.id,
-          name: p.name,
-          client_name: p.client_name || undefined,
-          created_at: p.project_date || new Date().toISOString(),
-          test_type: p.test_type,
-          testTypeLabel: formatTestType(p.test_type),
-          samples: p.sample_count || 0,
-        }));
-    }
-    return [];
+    if (apiProjects.length === 0) return [];
+    return apiProjects
+      // A project whose test type is disabled is not part of the catalogue, so it is
+      // not listed. Projects with no samples yet are shown with a 0 badge.
+      .filter((p) => !(p.test_type && disabledTestTypeKeys.has(p.test_type)))
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        client_name: p.client_name || undefined,
+        created_at: p.created_at || p.project_date || new Date(0).toISOString(),
+        test_type: p.test_type,
+        testTypeLabel: formatTestType(p.test_type),
+        samples: p.sample_count || 0,
+      }))
+      .sort((a, b) => {
+        const byCreated = (Date.parse(b.created_at) || 0) - (Date.parse(a.created_at) || 0);
+        return byCreated !== 0 ? byCreated : b.id - a.id;
+      });
   }, [apiProjects, disabledTestTypeKeys]);
 
   // Filter projects based on search query
@@ -174,9 +201,10 @@ const Projects = () => {
     setCurrentPage(1);
   }, [searchQuery]);
 
-  // Calculate pagination
+  // Calculate pagination (clamped so a page index can't outrun the pages that exist mid-stream)
   const totalPages = Math.ceil(filteredProjects.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
+  const safeCurrentPage = Math.min(currentPage, Math.max(1, totalPages));
+  const startIndex = (safeCurrentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedProjects = filteredProjects.slice(startIndex, endIndex);
 
@@ -246,7 +274,8 @@ const Projects = () => {
                       <CardTitle className="text-sm font-semibold leading-5">Projects</CardTitle>
                       <CardDescription className="text-[11px] leading-4">
                         {filteredProjects.length} project{filteredProjects.length !== 1 ? "s" : ""}
-                        {totalPages > 1 && ` • Page ${currentPage} of ${totalPages}`}
+                        {totalPages > 1 && ` • Page ${safeCurrentPage} of ${totalPages}`}
+                        {isLoading && loadProgress && ` • ${loadProgress}`}
                       </CardDescription>
                     </div>
                     <div className="w-full sm:flex-1">
@@ -280,9 +309,12 @@ const Projects = () => {
                 </CardHeader>
 
                 <CardContent className="px-3 pb-3 pt-0 sm:px-4 sm:pb-4">
-                  {isLoading ? (
-                    <div className="flex items-center justify-center py-12">
+                  {isLoading && projects.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 gap-2">
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      {loadProgress && (
+                        <p className="text-xs text-muted-foreground">{loadProgress}</p>
+                      )}
                     </div>
                   ) : filteredProjects.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -349,8 +381,15 @@ const Projects = () => {
                                    </span>
                                  </TableCell>
                                  <TableCell className="hidden px-2 py-1.5 text-center font-medium sm:table-cell">
-                                   <span className="inline-flex min-w-5 justify-center rounded-sm bg-muted px-1 py-0.5 text-[10px] leading-none">
-                                     {project.samples || "0"}
+                                   <span
+                                     className={
+                                       project.samples > 0
+                                         ? "inline-flex min-w-5 justify-center rounded-sm bg-muted px-1 py-0.5 text-[10px] leading-none"
+                                         : "inline-flex min-w-5 justify-center rounded-sm border border-amber-300 bg-amber-50 px-1 py-0.5 text-[10px] leading-none text-amber-700 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400"
+                                     }
+                                     title={project.samples > 0 ? undefined : "No test results saved yet"}
+                                   >
+                                     {project.samples}
                                    </span>
                                  </TableCell>
                                  <TableCell className="px-2 py-1.5 text-right">
@@ -382,7 +421,7 @@ const Projects = () => {
                               variant="outline"
                               size="sm"
                               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                              disabled={currentPage === 1}
+                              disabled={safeCurrentPage === 1}
                               className="h-7 gap-1 px-2 text-[10px]"
                             >
                               <ChevronLeft className="h-3 w-3" />
@@ -392,7 +431,7 @@ const Projects = () => {
                               {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                                 <Button
                                   key={page}
-                                  variant={page === currentPage ? "default" : "outline"}
+                                  variant={page === safeCurrentPage ? "default" : "outline"}
                                   size="sm"
                                   onClick={() => setCurrentPage(page)}
                                   className="h-7 w-7 p-0 text-[10px]"
@@ -405,7 +444,7 @@ const Projects = () => {
                               variant="outline"
                               size="sm"
                               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                              disabled={currentPage === totalPages}
+                              disabled={safeCurrentPage === totalPages}
                               className="h-7 gap-1 px-2 text-[10px]"
                             >
                               Next

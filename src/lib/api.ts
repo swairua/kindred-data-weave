@@ -676,18 +676,53 @@ export const listRecords = async <T>(table: string, params?: Record<string, stri
   }
 };
 
-export const listAllRecords = async <T>(table: string, params?: Record<string, string | number | boolean | null | undefined>) => {
-  const limit = Number(params?.limit ?? 100);
+/**
+ * Fetch every row of a table, page by page.
+ *
+ * The list endpoint has no `total`, so the only reliable end-of-data signal is
+ * a short page: keep requesting rows at increasing offsets until a page comes
+ * back with fewer rows. Pages are requested sequentially (never in parallel)
+ * so we don't hammer the API. `onPage` is invoked after each page lands, so
+ * callers may render progressively instead of waiting for the full set —
+ * it is optional. `maxPages` is a hard stop against a misbehaving endpoint
+ * that never returns a short page.
+ *
+ * The page size is `options.pageSize` when given, else `params.limit`
+ * (default 100) — keeping it in the params keeps existing callers working.
+ */
+export const listAllRecords = async <T>(
+  table: string,
+  params?: Record<string, string | number | boolean | null | undefined>,
+  options: {
+    pageSize?: number;
+    maxPages?: number;
+    onPage?: (rows: T[], totalLoaded: number) => void;
+  } = {},
+): Promise<ApiListResponse<T> & { data: T[] }> => {
+  const limit = Math.max(1, options.pageSize ?? (Number(params?.limit) || 100));
   const startingOffset = Number(params?.offset ?? 0);
+  const maxPages = Math.max(1, options.maxPages ?? 50);
   const data: T[] = [];
-  let response: ApiListResponse<T>;
+  let response: ApiListResponse<T> = {
+    table,
+    data: [],
+    limit,
+    offset: startingOffset,
+  };
   let offset = startingOffset;
 
-  do {
+  for (let page = 0; page < maxPages; page += 1) {
     response = await listRecords<T>(table, { ...params, limit, offset });
-    data.push(...response.data);
-    offset += response.data.length;
-  } while (response.data.length === response.limit);
+    const rows = response.data || [];
+    data.push(...rows);
+    options.onPage?.(rows, data.length);
+    offset += rows.length;
+    if (rows.length < limit) break;
+  }
+
+  if (offset - startingOffset >= maxPages * limit) {
+    console.warn(`[API] listAllRecords(${table}): hit the ${maxPages}-page safety cap (${data.length} rows)`);
+  }
 
   return { ...response, data, offset: startingOffset };
 };

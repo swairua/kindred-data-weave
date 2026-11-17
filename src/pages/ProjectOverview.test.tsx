@@ -14,7 +14,16 @@ const overviewMocks = vi.hoisted(() => ({
 vi.mock("@/lib/api", () => ({
   fetchFullProject: overviewMocks.fetchFullProject,
   listRecords: overviewMocks.listRecords,
-  listAllRecords: overviewMocks.listRecords,
+  listAllRecords: async (
+    table: string,
+    params: Record<string, unknown> = {},
+    options?: { onPage?: (rows: unknown[], total: number) => void },
+  ) => {
+    const response = await overviewMocks.listRecords(table, { ...params, limit: 500, offset: 0 });
+    const rows = (response?.data ?? []) as unknown[];
+    options?.onPage?.(rows, rows.length);
+    return { ...response, data: rows, offset: 0 };
+  },
   updateRecord: overviewMocks.updateRecord,
 }));
 
@@ -78,9 +87,8 @@ beforeEach(() => {
 
 describe("ProjectOverview", () => {
   it("opens a selected project from the main list into its overview", async () => {
-    // The projects list only shows projects that have at least one saved
-    // test result, so the mock has to include one for project 42 — otherwise
-    // the row (and its Open button) is filtered out and there is nothing to click.
+    // The mock has to include at least one enabled test result for project 42 —
+    // it drives both the per-project sample badge and the Open button target.
     overviewMocks.listRecords.mockImplementation((table: string) => Promise.resolve({
       data: table === "projects" ? [project] : [
         { id: 88, project_id: 42, test_key: "atterberg", name: "Atterberg Limits", updated_at: "2026-06-12 10:00:00" },
@@ -93,9 +101,11 @@ describe("ProjectOverview", () => {
   });
 
   it("lists projects newest first", async () => {
+    // created_at disagrees with project_date on purpose: the list is ordered by
+    // actual creation time, not the report date.
     const projects = [
-      { ...project, id: 42, name: "Older project", project_date: "2025-01-01" },
-      { ...project, id: 43, name: "Newer project", project_date: "2026-01-01" },
+      { ...project, id: 42, name: "Older project", project_date: "2026-01-01", created_at: "2025-01-01 00:00:00" },
+      { ...project, id: 43, name: "Newer project", project_date: "2025-01-01", created_at: "2026-01-01 00:00:00" },
     ];
     overviewMocks.listRecords.mockImplementation((table: string) => Promise.resolve({
       data: table === "projects" ? projects : table === "test_results"

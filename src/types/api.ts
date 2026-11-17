@@ -5,6 +5,8 @@ export interface ApiProjectRow {
   project_date: string | null;
   test_type?: string | null;
   sample_count?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface ApiTestDefinitionRow {
