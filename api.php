@@ -263,6 +263,14 @@ function respond(array $payload, int $status = 200, ?string $logContext = null):
 {
     if (shouldLogApiError($status)) {
         $line = sprintf('API error response: status=%d, action=%s', $status, apiLogAction());
+        // Include the caller's IP and the request target so probe traffic can be
+        // distinguished from same-action app bugs. The request body is never logged
+        // (it can carry passwords and tokens); the URI is capped at 200 chars.
+        $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '-');
+        $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? '-'));
+        $uri = str_replace(["\r", "\n"], '', (string) ($_SERVER['REQUEST_URI'] ?? ''));
+        $uri = substr($uri, 0, 200);
+        $line .= sprintf(' remote=%s method=%s uri="%s"', $ip, $method, $uri);
         if ($logContext !== null && $logContext !== '') {
             $line .= ' ' . $logContext;
         }
