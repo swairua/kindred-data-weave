@@ -227,7 +227,12 @@ const ALLOWED_TABLES = [
 
 function apiLogAction(): string
 {
-    $action = strtolower((string) ($_GET['action'] ?? ($GLOBALS['action'] ?? '')));
+    $body = is_array($GLOBALS['body'] ?? null) ? $GLOBALS['body'] : [];
+    $action = strtolower((string) ($_GET['action'] ?? $_POST['action'] ?? ($body['action'] ?? ($GLOBALS['action'] ?? ''))));
+    if ($action === '') {
+        // Bare hits / probes with no action at all - not the same as an invalid action.
+        return 'none';
+    }
     return preg_match('/^[a-z0-9_-]{1,64}$/', $action) === 1 ? $action : 'unknown';
 }
 
