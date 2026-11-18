@@ -22,7 +22,9 @@ const ProjectOverview = lazy(() => import("./pages/ProjectOverview.tsx"));
 const UserManagement = lazy(() => import("./pages/UserManagement.tsx"));
 const Settings = lazy(() => import("./pages/Settings.tsx"));
 const Storage = lazy(() => import("./pages/Storage.tsx"));
+const StorageDetail = lazy(() => import("./pages/StorageDetail.tsx"));
 const Equipment = lazy(() => import("./pages/Equipment.tsx"));
+const EquipmentDetail = lazy(() => import("./pages/EquipmentDetail.tsx"));
 const Profile = lazy(() => import("./pages/Profile.tsx"));
 
 const queryClient = new QueryClient();
@@ -52,7 +54,9 @@ const App = () => {
                         <Route path="/reception/new" element={<LogConsignment />} />
                         <Route path="/reception/:rcNo" element={<LogConsignment />} />
                         <Route path="/storage" element={<Storage />} />
+                        <Route path="/storage/:id" element={<StorageDetail />} />
                         <Route path="/equipment" element={<Equipment />} />
+                        <Route path="/equipment/:id" element={<EquipmentDetail />} />
                         <Route path="/tests" element={<Index initialTab="soil" />} />
                         <Route path="/tests/:projectId" element={<Index initialTab="soil" />} />
                         <Route path="/reports" element={<Index />} />
