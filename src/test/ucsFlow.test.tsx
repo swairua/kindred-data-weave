@@ -6,10 +6,11 @@ import UCSTest from "@/components/rock/UCSTest";
 
 const exported = vi.hoisted(() => ({
   payload: null as null | Record<string, unknown>,
+  result: null as null | { id: number; payload_json: unknown },
 }));
 
 vi.mock("@/lib/testResultPersistence", () => ({
-  loadTestResult: vi.fn(async () => null),
+  loadTestResult: vi.fn(async () => exported.result),
   saveTestResult: vi.fn(async (_projectId: number, _recordId: number | null, data: Record<string, unknown>) => {
     exported.payload = data;
     return 999;
@@ -38,10 +39,22 @@ vi.mock("@/context/TestAccordionContext", () => ({
   useTestAccordion: () => ({ openTestKey: "ucs", setOpenTestKey: vi.fn() }),
 }));
 
-beforeEach(() => { exported.payload = null; });
+beforeEach(() => { exported.payload = null; exported.result = null; });
 afterEach(cleanup);
 
 describe("UCS test flow", () => {
+  it("restores saved diameter and length values when reopening a result", async () => {
+    exported.result = {
+      id: 123,
+      payload_json: { rows: [{ sampleId: "R1", diameter: "50", length: "125", load: "100" }] },
+    };
+
+    render(createElement(MemoryRouter, null, createElement(TooltipProvider, null, createElement(UCSTest, { testKey: "ucs" }))));
+
+    expect(await screen.findByLabelText("Length, point 1")).toHaveValue(125);
+    expect(screen.getByLabelText("Diameter, point 1")).toHaveValue(50);
+  });
+
   it("computes strength from diameter/length/load and reports in-progress until the set conforms", async () => {
     render(createElement(MemoryRouter, null, createElement(TooltipProvider, null, createElement(UCSTest, { testKey: "ucs" }))));
     expect(await screen.findByText("UCS (Unconfined Compressive Strength)")).toBeInTheDocument();
