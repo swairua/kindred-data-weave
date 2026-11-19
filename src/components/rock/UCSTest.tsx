@@ -41,10 +41,12 @@ const normalizePayloadRows = (value: unknown): UCSSpecimenRow[] => {
       // Legacy payload stored { sampleId, load, area } - derive diameter from area where possible.
       const load = String(source.load ?? "");
       const area = source.area;
-      const diameter = typeof area === "number" ? String(Math.sqrt((4 * (area as number)) / Math.PI).toFixed(1))
+      const legacyDiameter = typeof area === "number" ? String(Math.sqrt((4 * area) / Math.PI).toFixed(1))
         : (typeof area === "string" && area.trim() !== "" && Number.isFinite(Number(area)) ? String(Math.sqrt((4 * Number(area)) / Math.PI).toFixed(1)) : "");
+      const diameter = source.diameter != null ? String(source.diameter) : legacyDiameter;
+      const length = String(source.length ?? "");
       const sampleId = typeof source.sampleId === "string" && source.sampleId.trim() !== "" ? source.sampleId : `R${index + 1}`;
-      return { sampleId, diameter, length: "", load };
+      return { sampleId, diameter, length, load };
     }
     return emptyRow(`R${index + 1}`);
   });
