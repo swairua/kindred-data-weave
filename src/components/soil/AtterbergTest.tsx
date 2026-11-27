@@ -69,6 +69,7 @@ import {
 } from "@/lib/atterbergCalculations";
 import { useTestReport } from "@/hooks/useTestReport";
 import { useAdminImages } from "@/hooks/useAdminImages";
+import { assertDemoProjectWrite } from "@/lib/demoMode";
 import {
   createRecord as createApiRecord,
   deleteRecord as deleteApiRecord,
@@ -515,6 +516,7 @@ export const persistAtterbergProjectToApi = async ({
 
     if (!projectRow) {
       console.log(`[Atterberg Save] No matching project found, creating new one`);
+      assertDemoProjectWrite();
       const createdProject = await retryWithBackoff(
         () => createApiRecord<ApiProjectRow>("projects", {
           name: projectName,

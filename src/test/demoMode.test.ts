@@ -10,7 +10,13 @@ vi.mock("@/lib/api", () => ({ readRecord: mocks.readRecord, listRecords: mocks.l
 vi.mock("@/lib/pdfImageFit", () => ({ addFittedImage: mocks.addFittedImage }));
 
 import { DEMO_COMPANY, getDemoImages } from "@/lib/demoBrand";
-import { isDemoMode, setDemoMode } from "@/lib/demoMode";
+import {
+  assertDemoProjectWrite,
+  confirmDemoProjectWrite,
+  DemoProjectCancelled,
+  isDemoMode,
+  setDemoMode,
+} from "@/lib/demoMode";
 import { fetchCompanyDetails, fetchReportBrand } from "@/lib/companyDetails";
 import { fetchAdminImagesAsBase64 } from "@/lib/imageUtils";
 import { generateReceptionAckPDF } from "@/lib/receptionAckPdfGenerator";
@@ -23,7 +29,10 @@ beforeEach(() => {
   mocks.listRecords.mockResolvedValue({ data: [] });
 });
 
-afterEach(() => setDemoMode(false));
+afterEach(() => {
+  setDemoMode(false);
+  vi.restoreAllMocks();
+});
 
 describe("demo mode", () => {
   it("is off by default and still reads the real settings", async () => {
@@ -73,5 +82,28 @@ describe("demo mode", () => {
     expect(placed).toContain(demo.logo?.split(",")[1]);
     expect(placed).toContain(demo.contacts?.split(",")[1]);
     expect(mocks.readRecord).not.toHaveBeenCalled();
+  });
+
+  it("does not prompt for project writes when demo mode is off", () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    expect(confirmDemoProjectWrite()).toBe(true);
+    expect(confirm).not.toHaveBeenCalled();
+    expect(() => assertDemoProjectWrite()).not.toThrow();
+  });
+
+  it("warns before a demo-mode project write and lets the user cancel", () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    setDemoMode(true);
+    expect(confirmDemoProjectWrite()).toBe(false);
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(confirm.mock.calls[0][0]).toContain("LIVE database");
+    expect(() => assertDemoProjectWrite()).toThrow(DemoProjectCancelled);
+  });
+
+  it("proceeds with the write when the user accepts the demo warning", () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    setDemoMode(true);
+    expect(confirmDemoProjectWrite()).toBe(true);
+    expect(() => assertDemoProjectWrite()).not.toThrow();
   });
 });

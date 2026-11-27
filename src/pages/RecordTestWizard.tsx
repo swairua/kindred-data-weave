@@ -20,6 +20,7 @@ import { useTestData, type ConcreteTestMetadata, type ProjectMetadata } from "@/
 import { registry } from "@/lib/testRegistry";
 import { toast } from "sonner";
 import { useCompanyDetails } from "@/hooks/useCompanyDetails";
+import { confirmDemoProjectWrite } from "@/lib/demoMode";
 
 interface TestOption {
   key: string;
@@ -524,6 +525,10 @@ const RecordTestWizard = () => {
       && state.clientName.trim().length > 0
       && (!(isCompressiveStrengthTest || isGradingTest || isProctorTest) || (state.contractor.trim().length > 0 && state.county.trim().length > 0));
     if (!hasRequiredFields) return;
+    if (!confirmDemoProjectWrite()) {
+      toast.info("Project creation cancelled — demo mode is on");
+      return;
+    }
 
     setIsCreatingProject(true);
     try {
@@ -595,6 +600,10 @@ const RecordTestWizard = () => {
     let sourceProjectId: number | null = null;
 
     if (isTemplateCloneTestKey(state.testKey) && state.templateProjectId !== null) {
+      if (!confirmDemoProjectWrite()) {
+        toast.info("Project creation cancelled — demo mode is on");
+        return;
+      }
       try {
         const createResponse = await createRecord<{ id: number }>("projects", {
           name: state.projectName.trim(),
@@ -621,6 +630,10 @@ const RecordTestWizard = () => {
     }
 
     if (isCompressiveStrengthTest && finalProjectId === null) {
+      if (!confirmDemoProjectWrite()) {
+        toast.info("Project creation cancelled — demo mode is on");
+        return;
+      }
       try {
         const createResponse = await createRecord<{ id: number }>("projects", {
           name: state.projectName,
