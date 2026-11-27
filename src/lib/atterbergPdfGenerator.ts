@@ -7,7 +7,9 @@ import type {
   ShrinkageLimitTrial,
 } from "@/context/TestDataContext";
 import { calculateLogLinearRegression, calculateMoistureFromMass, getTrialMoisture } from "./atterbergCalculations";
-import { fetchAdminImagesAsBase64, type AdminImages } from "./imageUtils";
+import { fetchReportBrand } from "./companyDetails";
+import type { AdminImages } from "./imageUtils";
+import { addFittedImage } from "./pdfImageFit";
 import { pdfFileName } from "./pdfGenerator";
 import { classifySoilUSCS, type GrainSizeDistribution } from "./soilClassification";
 
@@ -304,12 +306,12 @@ function drawRecordPage(
     const imgW = 62;
     if (images.logo) {
       try {
-        doc.addImage(extractBase64FromDataUrl(images.logo), "PNG", margin, y, imgW, headerH, undefined, "FAST");
+        addFittedImage(doc, extractBase64FromDataUrl(images.logo), "PNG", margin, y, imgW, headerH);
       } catch { /* optional */ }
     }
     if (images.contacts) {
       try {
-        doc.addImage(extractBase64FromDataUrl(images.contacts), "PNG", pw - margin - imgW, y, imgW, headerH, undefined, "FAST");
+        addFittedImage(doc, extractBase64FromDataUrl(images.contacts), "PNG", pw - margin - imgW, y, imgW, headerH);
       } catch { /* optional */ }
     }
     y += headerH + 2;
@@ -569,11 +571,15 @@ export const generateAtterbergPDF = async (
   options: AtterbergPDFOptions
 ): Promise<Blob | void> => {
   // Fetch images in parallel with PDF setup
-  let images: Partial<Awaited<ReturnType<typeof fetchAdminImagesAsBase64>>> = {};
+  let images: AdminImages = {};
+  let companyName = "";
   try {
-    console.log("[PDF] Fetching admin images for export...");
-    images = await fetchAdminImagesAsBase64();
-    console.log("[PDF] Admin images fetch result:", {
+    console.log("[PDF] Fetching branding for export...");
+    const brand = await fetchReportBrand();
+    images = brand.images;
+    companyName = brand.company.name;
+    console.log("[PDF] Branding fetch result:", {
+      companyName,
       hasLogo: !!images.logo,
       hasContacts: !!images.contacts,
       hasStamp: !!images.stamp,
@@ -582,7 +588,7 @@ export const generateAtterbergPDF = async (
       stampSize: images.stamp ? images.stamp.length : 0,
     });
   } catch (error) {
-    console.warn("[PDF] Failed to fetch admin images for PDF, continuing without them:", error instanceof Error ? error.message : error);
+    console.warn("[PDF] Failed to fetch branding for PDF, continuing without it:", error instanceof Error ? error.message : error);
     // Continue with empty images object - images are optional
   }
 

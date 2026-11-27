@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
-import { fetchAdminImagesAsBase64, type AdminImages } from "./imageUtils";
+import { fetchReportBrand } from "./companyDetails";
+import type { AdminImages } from "./imageUtils";
 
 interface PDFData {
   title: string;
@@ -71,9 +72,9 @@ export const generateTestExcel = async (
   wb.created = new Date();
 
   // Fetch admin images for header/footer
-  let images: Partial<Awaited<ReturnType<typeof fetchAdminImagesAsBase64>>> = {};
+  let images: AdminImages = {};
   try {
-    images = await fetchAdminImagesAsBase64();
+    ({ images } = await fetchReportBrand());
   } catch (error) {
     console.warn("Failed to fetch admin images for export, continuing without them:", error instanceof Error ? error.message : error);
     // Continue with empty images object - images are optional

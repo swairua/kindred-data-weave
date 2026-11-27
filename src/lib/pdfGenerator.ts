@@ -1,6 +1,8 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import { fetchAdminImagesAsBase64, type AdminImages } from "./imageUtils";
+import { fetchReportBrand, type CompanyDetails } from "./companyDetails";
+import type { AdminImages } from "./imageUtils";
+import { addFittedImage } from "./pdfImageFit";
 
 interface PDFData {
   title: string;
@@ -64,7 +66,7 @@ export const imageParts = (dataUrl: string): { base64: string; format: "PNG" | "
  * deterministic for a given PDFData, which is what lets the table margin below
  * reserve exactly the right amount of space on continuation pages.
  */
-function addProfessionalHeader(doc: jsPDF, data: PDFData, images: AdminImages): number {
+function addProfessionalHeader(doc: jsPDF, data: PDFData, images: AdminImages, company: CompanyDetails): number {
   const compact = !!data.compactSummary;
   const pageWidth = doc.internal.pageSize.getWidth();
   const contentW = pageWidth - PAGE_MARGIN * 2;
@@ -84,13 +86,13 @@ function addProfessionalHeader(doc: jsPDF, data: PDFData, images: AdminImages): 
     if (images.logo) {
       try {
         const { base64, format } = imageParts(images.logo);
-        doc.addImage(base64, format, PAGE_MARGIN, y, imgW, headerH, undefined, "FAST");
+        addFittedImage(doc, base64, format, PAGE_MARGIN, y, imgW, headerH);
       } catch { /* logo is optional */ }
     }
     if (images.contacts) {
       try {
         const { base64, format } = imageParts(images.contacts);
-        doc.addImage(base64, format, pageWidth - PAGE_MARGIN - imgW, y, imgW, headerH, undefined, "FAST");
+        addFittedImage(doc, base64, format, pageWidth - PAGE_MARGIN - imgW, y, imgW, headerH);
       } catch { /* contacts artwork is optional */ }
     }
     y += headerH + 2;
@@ -126,7 +128,7 @@ function addProfessionalHeader(doc: jsPDF, data: PDFData, images: AdminImages): 
   const metadata = [
     { label: "Project", value: data.projectName || "—" },
     { label: "Client", value: data.clientName || "—" },
-    { label: "Lab Organization", value: data.labOrganization || "—" },
+    { label: "Lab Organization", value: data.labOrganization || company.name },
     { label: "Date Tested", value: data.dateTested || data.date || "—" },
     { label: "Date Reported", value: data.dateReported || "—" },
     { label: "Checked By", value: data.checkedBy || "—" },
@@ -183,7 +185,7 @@ function addFooter(doc: jsPDF, data: PDFData, images: AdminImages): void {
       try {
         const { base64, format } = imageParts(images.stamp);
         const size = 18;
-        doc.addImage(base64, format, PAGE_MARGIN + contentW - size, ruleY + 1, size, size, undefined, "FAST");
+        addFittedImage(doc, base64, format, PAGE_MARGIN + contentW - size, ruleY + 1, size, size);
       } catch { /* stamp is optional */ }
     }
 
@@ -213,13 +215,22 @@ export const pdfFileName = (projectName: string | undefined, testType: string, f
 };
 
 export const generateTestPDF = async (data: PDFData) => {
-  // Images are optional: a missing logo must never stop a report being produced.
+  // Images and the company identity are optional: a missing logo or an
+  // unreachable settings table must never stop a report being produced.
   let images: AdminImages = {};
+  let company: CompanyDetails | null = null;
   try {
-    images = await fetchAdminImagesAsBase64();
+    const brand = await fetchReportBrand();
+    images = brand.images;
+    company = brand.company;
   } catch (error) {
-    console.warn("[PDF] Could not load header/footer images, exporting without them:", error);
+    console.warn("[PDF] Could not load branding, exporting without it:", error);
   }
+  const reportCompany: CompanyDetails = company ?? {
+    name: data.labOrganization || "Cransfield Materials Testing Center",
+    legalName: "", addressLines: [], phone1: "", phone2: "", email: "", website: "",
+    registrationNumber: "", taxId: "", industry: "", headquartersCountry: "", yearEstablished: null,
+  };
 
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -229,13 +240,13 @@ export const generateTestPDF = async (data: PDFData) => {
 
   // The header is a fixed height for a given PDFData, so measuring it once on
   // page 1 gives the exact top margin continuation pages need.
-  const headerY = addProfessionalHeader(doc, data, images);
+  const headerY = addProfessionalHeader(doc, data, images, reportCompany);
   let y = headerY;
 
   /** Start a new page and redraw the header on it. */
   const newPage = () => {
     doc.addPage();
-    return addProfessionalHeader(doc, data, images);
+    return addProfessionalHeader(doc, data, images, reportCompany);
   };
 
   /** Draw the compact two-to-three row, 3-column summary table below the results table. */
@@ -374,7 +385,7 @@ export const generateTestPDF = async (data: PDFData) => {
         // onto a second page had the header overprinted across its rows.
         willDrawPage: () => {
           if (doc.getCurrentPageInfo().pageNumber > 1) {
-            addProfessionalHeader(doc, data, images);
+            addProfessionalHeader(doc, data, images, reportCompany);
           }
         },
         margin: { top: headerY, left: PAGE_MARGIN + 4, right: PAGE_MARGIN + 4, bottom: FOOTER_ZONE },

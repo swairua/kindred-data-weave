@@ -24,7 +24,9 @@ import {
   type CompressiveCubeInput,
 } from "./compressiveCalculations";
 
-import { fetchAdminImagesAsBase64, type AdminImages } from "./imageUtils";
+import { fetchReportBrand, FALLBACK_COMPANY_DETAILS, type CompanyDetails } from "./companyDetails";
+import type { AdminImages } from "./imageUtils";
+import { addFittedImage } from "./pdfImageFit";
 import { pdfFileName } from "./pdfGenerator";
 
 /** Page margins. A4 landscape is 297 x 210 mm. */
@@ -265,16 +267,21 @@ export const isSatisfactory = (
 
 /** A cube counts as printable only once it can produce a strength. */
 const isPopulated = (row: CompressiveCubeInput): boolean => strengthOf(row) !== null;
-const TERMS_INTRO =
-  "Reports and Certificates by Cransfield Labs are issued subject to the below terms and conditions:";
-const TERMS = [
+/** Company name in the terms: short brand keeps the terms block's height stable. */
+const companyBrand = (company: CompanyDetails): string =>
+  (company.name || FALLBACK_COMPANY_DETAILS.name).split(/\s+/)[0];
+
+const termsIntro = (company: CompanyDetails): string =>
+  `Reports and Certificates by ${companyBrand(company)} Labs are issued subject to the below terms and conditions:`;
+
+const termsText = (company: CompanyDetails): string[] => [
   "Results herein is a true representation of the cubes submitted to our lab to the best of our knowledge.",
   "Any correction or addition to these test results will make this report invalid.",
   "Once report is transmitted or released it is final and no corrections pertaining to incorrect information submitted by the client will be accepted or considered.",
   "This report should not be reproduced or published in full or part without prior written approval from our lab.",
   "All photocopies of test reports produced and not signed by our Technical Director should be considered invalid.",
   "All the results released to the client from our lab are treated as strictly confidential and would only be released to other parties with written instruction from the client.",
-  "A legal contract between the client and Cransfield Lab will deem to have constituted upon receipt of the test results by the client sent via any electronic transmission media or collected by client's representative.",
+  `A legal contract between the client and ${companyBrand(company)} Lab will deem to have constituted upon receipt of the test results by the client sent via any electronic transmission media or collected by client's representative.`,
 ];
 
 /** One cell of the identification block: a label box plus a value. */
@@ -504,23 +511,23 @@ const drawRow = (d: jsPDF, values: string[], y: number, rowH: number) => {
 };
 
 /** Measure the terms block so the row band can be sized around it. */
-const measureTerms = (d: jsPDF): number => {
+const measureTerms = (d: jsPDF, company: CompanyDetails): number => {
   let h = 0;
-  const intro = d.splitTextToSize(TERMS_INTRO, TABLE_W - 8) as string[];
+  const intro = d.splitTextToSize(termsIntro(company), TABLE_W - 8) as string[];
   h += intro.length * 4.2 + 1.4;
-  TERMS.forEach((term, index) => {
+  termsText(company).forEach((term, index) => {
     const lines = d.splitTextToSize(`${index + 1}.  ${term}`, TABLE_W - 8) as string[];
     h += lines.length * 4.2 + 0.8;
   });
   return h + 2;
 };
 
-const drawTerms = (d: jsPDF, y: number): void => {
+const drawTerms = (d: jsPDF, y: number, company: CompanyDetails): void => {
   let cy = y;
   d.setFont("times", "bold");
   d.setFontSize(8);
   d.setTextColor(...COLORS.dark);
-  (d.splitTextToSize(TERMS_INTRO, TABLE_W - 8) as string[]).forEach((line) => {
+  (d.splitTextToSize(termsIntro(company), TABLE_W - 8) as string[]).forEach((line) => {
     d.text(line, TABLE_X + 4, cy);
     cy += 4.2;
   });
@@ -528,7 +535,7 @@ const drawTerms = (d: jsPDF, y: number): void => {
   d.setFont("times", "normal");
   d.setFontSize(8);
   d.setTextColor(...COLORS.dark);
-  TERMS.forEach((term, index) => {
+  termsText(company).forEach((term, index) => {
     const lines = d.splitTextToSize(`${index + 1}.  ${term}`, TABLE_W - 8) as string[];
     lines.forEach((line) => {
       d.text(line, TABLE_X + 4, cy);
@@ -558,7 +565,7 @@ const drawFooter = (d: jsPDF, o: CompressiveStrengthPdfOptions, images: AdminIma
     try {
       // Top edge sits on the content boundary so the stamp never climbs into the terms.
       const { base64, format } = imageParts(images.stamp);
-      d.addImage(base64, format, TABLE_X + TABLE_W - 34, y - 8, 30, 30, undefined, "FAST");
+      addFittedImage(d, base64, format, TABLE_X + TABLE_W - 34, y - 8, 30, 30);
     } catch { /* the stamp is optional */ }
   }
 
@@ -579,6 +586,7 @@ const drawTitleBlock = (
   d: jsPDF,
   o: CompressiveStrengthPdfOptions,
   images: AdminImages,
+  company: CompanyDetails,
   y: number,
 ): { frameTop: number; endY: number } => {
   const imgW = 74;
@@ -590,19 +598,20 @@ const drawTitleBlock = (
   if (images.logo) {
     try {
       const { base64, format } = imageParts(images.logo);
-      d.addImage(base64, format, MARGIN, y + 1, imgW, imgH, undefined, "FAST");
+      addFittedImage(d, base64, format, MARGIN, y + 1, imgW, imgH);
     } catch { /* the logo is optional */ }
   }
   if (images.contacts) {
     try {
       const { base64, format } = imageParts(images.contacts);
-      d.addImage(base64, format, MARGIN + CONTENT_W - imgW, y + 1, imgW, imgH, undefined, "FAST");
+      addFittedImage(d, base64, format, MARGIN + CONTENT_W - imgW, y + 1, imgW, imgH);
     } catch { /* the contacts block is optional */ }
   }
   let cy = y;
   const hasImages = !!(images.logo || images.contacts);
   if (hasImages) cy += imgH + 3;
-  const addressLines = (o.labAddressLines ?? []).filter((line) => line.trim() !== "").slice(0, 3);
+  const addressLines = (o.labAddressLines?.length ? o.labAddressLines : company.addressLines)
+    .filter((line) => line.trim() !== "").slice(0, 3);
   if (!hasImages && addressLines.length > 0) {
     // No letterhead images configured: print the address as text instead of
     // leaving an empty band, so the sheet always carries the lab identity.
@@ -644,16 +653,20 @@ const drawTitleBlock = (
 };
 
 /** Height of everything on a page that is not a cube row. Title block is ~38mm with images. */
-const furnitureHeight = (d: jsPDF): number =>
-  MARGIN + 38 + 4 * ID_ROW_H + HEADER_H + measureTerms(d) + FOOTER_RESERVE;
+const furnitureHeight = (d: jsPDF, company: CompanyDetails): number =>
+  MARGIN + 38 + 4 * ID_ROW_H + HEADER_H + measureTerms(d, company) + FOOTER_RESERVE;
 
 export const generateCompressiveStrengthPDF = async (options: CompressiveStrengthPdfOptions) => {
-  // Images are optional: a missing logo or stamp must never stop a report being produced.
+  // Branding is optional: a missing logo or unreachable settings table must
+  // never stop a report being produced.
   let images: AdminImages = {};
+  let company = FALLBACK_COMPANY_DETAILS;
   try {
-    images = await fetchAdminImagesAsBase64();
+    const brand = await fetchReportBrand();
+    images = brand.images;
+    company = brand.company;
   } catch (error) {
-    console.warn("[Compressive PDF] Could not load header images, exporting without them:", error);
+    console.warn("[Compressive PDF] Could not load branding, exporting without it:", error);
   }
 
   const o = options;
@@ -665,7 +678,7 @@ export const generateCompressiveStrengthPDF = async (options: CompressiveStrengt
   const printable = o.rows.filter(isPopulated);
   const classTarget = cubeStrengthFromClass(o.record.concreteClass);
 
-  const usable = pageHeight - furnitureHeight(doc);
+  const usable = pageHeight - furnitureHeight(doc, company);
 
   // Rows keep the reference height until the sheet gets crowded, then shrink
   // toward the readable floor; past that the sheet paginates.
@@ -675,7 +688,7 @@ export const generateCompressiveStrengthPDF = async (options: CompressiveStrengt
   const rowsPerPage = Math.max(1, Math.floor(usable / rowH));
 
   const printPage = (page: CompressiveCubeInput[]): { frameTop: number; bodyEnd: number } => {
-    const title = drawTitleBlock(doc, o, images, MARGIN);
+    const title = drawTitleBlock(doc, o, images, company, MARGIN);
     let y = drawIdentification(doc, o, title.endY);
     y = drawTableHeader(doc, y);
     for (const row of page) {
@@ -693,7 +706,7 @@ export const generateCompressiveStrengthPDF = async (options: CompressiveStrengt
   const footerY = FRAME_BOTTOM - FRAME_PADDING - 22;
   const finishPage = (frameTop: number, bottom: number) => {
     pageNo += 1;
-    drawTerms(doc, Math.min(bottom + 3, footerY - measureTerms(doc)));
+    drawTerms(doc, Math.min(bottom + 3, footerY - measureTerms(doc, company)), company);
     drawFooter(doc, o, images, footerY, pageNo, totalPages);
     // The laboratory's sheet inks a single blue frame from beneath the standard
     // reference down to the footer, drawn last so it overlays the black hairlines.

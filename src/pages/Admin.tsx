@@ -2,11 +2,14 @@ import { useCallback, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Upload, Loader2, X, Copy, Check } from "lucide-react";
+import { Upload, Loader2, X, Copy, Check, Download } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { buildApiUrl, listRecords, uploadFile } from "@/lib/api";
+import { buildApiUrl, listRecords } from "@/lib/api";
 import type { ApiProjectRow } from "@/types/api";
-import { makeStampTransparent } from "@/lib/stampUtils";
+import { adminImagePreviewUrl, adminImageVersion } from "@/lib/imageUtils";
+import { subscribeAdminImagesChanged } from "@/lib/adminImageEvents";
+import { downloadAdminImage } from "@/lib/downloadAdminImage";
+import { uploadAdminImage } from "@/lib/adminImageUpload";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -29,6 +32,8 @@ interface UploadedFile {
 interface StoredImage {
   type: ImageType;
   filePath?: string;
+  version?: string;
+  filename?: string;
   loading: boolean;
   error?: string;
 }
@@ -105,63 +110,63 @@ const Admin = () => {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  useEffect(() => {
-    const fetchStoredImages = async () => {
-      try {
-        const response = await listRecords<{ image_type: string; file_path: string }>("admin_images");
-        const rows: Array<{ image_type: string; file_path: string }> = response.data || [];
+  const fetchStoredImages = useCallback(async () => {
+    try {
+      const response = await listRecords<{
+        id?: number;
+        image_type: string;
+        file_path: string;
+        original_filename?: string;
+        updated_at?: string;
+        uploaded_at?: string;
+      }>("admin_images");
+      const rows = response.data || [];
 
-        // Get latest per type
-        const latest: Record<string, string> = {};
-        for (const row of rows) {
-          if (!latest[row.image_type]) {
-            latest[row.image_type] = row.file_path;
-          }
+      // One row per image_type (UNIQUE KEY on admin_images).
+      const latest: Record<string, { path: string; version: string; filename: string }> = {};
+      for (const row of rows) {
+        if (!latest[row.image_type]) {
+          latest[row.image_type] = {
+            path: row.file_path,
+            version: adminImageVersion(row),
+            filename: row.original_filename || row.file_path.split("/").pop() || row.image_type,
+          };
         }
-
-        // Construct full URLs for images
-        const apiUrl = new URL(buildApiUrl());
-        const baseOrigin = apiUrl.origin;
-
-        const getImageUrl = (path: string): string => {
-          // If path is already a full URL, return it as is
-          if (path.startsWith('http://') || path.startsWith('https://')) {
-            return path;
-          }
-          // Otherwise, combine baseOrigin with the path
-          return `${baseOrigin}${path}`;
-        };
-
-        setStoredImages({
-          logo: {
-            type: "logo",
-            filePath: latest.logo ? getImageUrl(latest.logo) : undefined,
-            loading: false
-          },
-          contacts: {
-            type: "contacts",
-            filePath: latest.contacts ? getImageUrl(latest.contacts) : undefined,
-            loading: false
-          },
-          stamp: {
-            type: "stamp",
-            filePath: latest.stamp ? getImageUrl(latest.stamp) : undefined,
-            loading: false
-          },
-        });
-      } catch (error) {
-        console.error("Error loading stored images:", error);
-        // Set as no error - just no images available
-        setStoredImages({
-          logo: { type: "logo", loading: false },
-          contacts: { type: "contacts", loading: false },
-          stamp: { type: "stamp", loading: false },
-        });
       }
-    };
 
-    fetchStoredImages();
+      const preview = (type: ImageType): StoredImage => ({
+        type,
+        filePath: latest[type] ? adminImagePreviewUrl(type, latest[type].version) : undefined,
+        version: latest[type]?.version,
+        filename: latest[type]?.filename,
+        loading: false,
+      });
+
+      setStoredImages({ logo: preview("logo"), contacts: preview("contacts"), stamp: preview("stamp") });
+    } catch (error) {
+      console.error("Error loading stored images:", error instanceof Error ? error.message : error);
+      setStoredImages({
+        logo: { type: "logo", loading: false },
+        contacts: { type: "contacts", loading: false },
+        stamp: { type: "stamp", loading: false },
+      });
+    }
   }, []);
+
+  useEffect(() => {
+    void fetchStoredImages();
+    const refresh = () => {
+      if (document.visibilityState === "visible") void fetchStoredImages();
+    };
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("focus", refresh);
+    const unsubscribe = subscribeAdminImagesChanged(refresh);
+    return () => {
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("focus", refresh);
+      unsubscribe();
+    };
+  }, [fetchStoredImages]);
 
   const handleUpload = useCallback(async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -185,17 +190,9 @@ const Admin = () => {
     try {
       setUploadProgress(20);
 
-      // For stamps, remove background and convert to transparent PNG before upload.
-      let fileToUpload = file;
-      if (selectedImageType === "stamp") {
-        const pngBlob = await makeStampTransparent(file);
-        fileToUpload = new File([pngBlob], "stamp.png", { type: "image/png" });
-      }
+      await uploadAdminImage(file, selectedImageType);
 
-      setUploadProgress(30);
-
-      const data = await uploadFile(fileToUpload, { image_type: selectedImageType });
-
+      await fetchStoredImages();
       setUploadProgress(90);
 
       setUploadedFiles((prev) => [
@@ -217,7 +214,7 @@ const Admin = () => {
       setIsUploading(false);
       setUploadProgress(0);
     }
-  }, [selectedImageType]);
+  }, [selectedImageType, fetchStoredImages]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -282,47 +279,38 @@ const Admin = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Logo */}
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium">Logo</h4>
-              <div className="border rounded-lg overflow-hidden bg-muted min-h-[150px] flex items-center justify-center">
-                {storedImages.logo.loading ? (
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                ) : storedImages.logo.filePath ? (
-                  <img src={storedImages.logo.filePath} alt="Logo" className="h-full w-full object-contain p-2" />
-                ) : (
-                  <p className="text-xs text-muted-foreground">No logo uploaded</p>
-                )}
-              </div>
-            </div>
-
-            {/* Contacts */}
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium">Contacts</h4>
-              <div className="border rounded-lg overflow-hidden bg-muted min-h-[150px] flex items-center justify-center">
-                {storedImages.contacts.loading ? (
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                ) : storedImages.contacts.filePath ? (
-                  <img src={storedImages.contacts.filePath} alt="Contacts" className="h-full w-full object-contain p-2" />
-                ) : (
-                  <p className="text-xs text-muted-foreground">No contacts uploaded</p>
-                )}
-              </div>
-            </div>
-
-            {/* Stamp */}
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium">Stamp</h4>
-              <div className="border rounded-lg overflow-hidden bg-muted min-h-[150px] flex items-center justify-center">
-                {storedImages.stamp.loading ? (
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                ) : storedImages.stamp.filePath ? (
-                  <img src={storedImages.stamp.filePath} alt="Stamp" className="h-full w-full object-contain p-2" />
-                ) : (
-                  <p className="text-xs text-muted-foreground">No stamp uploaded</p>
-                )}
-              </div>
-            </div>
+            {(["logo", "contacts", "stamp"] as ImageType[]).map((type) => {
+              const stored = storedImages[type];
+              return (
+                <div key={type} className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <h4 className="text-sm font-medium capitalize">{type === "contacts" ? "Contacts" : type}</h4>
+                    {stored.filePath && stored.version && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1 px-2 text-xs"
+                        onClick={() => void downloadAdminImage(type, stored.version!, stored.filename)
+                          .then((name) => toast.success(`Downloaded ${name}`))
+                          .catch((error: unknown) => toast.error(error instanceof Error ? error.message : "Download failed"))}
+                      >
+                        <Download className="h-3.5 w-3.5" /> Download
+                      </Button>
+                    )}
+                  </div>
+                  <div className="border rounded-lg overflow-hidden bg-muted min-h-[150px] flex items-center justify-center">
+                    {stored.loading ? (
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    ) : stored.filePath ? (
+                      <img src={stored.filePath} alt={type} className="h-full w-full object-contain p-2" />
+                    ) : (
+                      <p className="text-xs text-muted-foreground">No {type} uploaded</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </CardContent>
       </Card>

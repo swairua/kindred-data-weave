@@ -13,6 +13,7 @@ export const resizeImageForUpload = async (
   file: File,
   maxLongEdge = 1600,
   quality = 0.85,
+  outputType?: "image/jpeg" | "image/png" | "image/webp",
 ): Promise<File> => {
   // Fast path: small files are already good enough.
   if (file.size < 400 * 1024 && /image\/(jpeg|jpg|png)/i.test(file.type)) return file;
@@ -30,11 +31,13 @@ export const resizeImageForUpload = async (
     if (!ctx) return file;
     ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
 
+    const mime = outputType ?? "image/jpeg";
+    const ext = mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg";
     const blob: Blob = await new Promise((resolve, reject) =>
-      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Image resize produced no output"))), "image/jpeg", quality),
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Image resize produced no output"))), mime, quality),
     );
-    const name = file.name.replace(/\.(heic|heif|tiff|bmp|png|webp)$/i, ".jpg");
-    return new File([blob], name, { type: "image/jpeg", lastModified: Date.now() });
+    const name = file.name.replace(/\.[a-z0-9]+$/i, `.${ext}`);
+    return new File([blob], name, { type: mime, lastModified: Date.now() });
   } finally {
     // Free the ImageBitmap resources as soon as possible.
     bitmap.close();

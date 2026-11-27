@@ -16,7 +16,8 @@ import {
   calculateModulusOfPlasticity,
   classifyAtterberg,
 } from "./atterbergCalculations";
-import { fetchAdminImagesAsBase64 } from "./imageUtils";
+import { fetchReportBrand } from "./companyDetails";
+import type { AdminImages } from "./imageUtils";
 
 interface ExportOptions {
   projectName?: string;
@@ -89,11 +90,11 @@ export const generateAtterbergXLSX = async (
   wb.created = new Date();
 
   // Fetch admin images once for all records (with retry logic)
-  let images: Partial<Awaited<ReturnType<typeof fetchAdminImagesAsBase64>>> = {};
+  let images: AdminImages = {};
   try {
-    console.log("[XLSX] Fetching admin images for export...");
-    images = await fetchAdminImagesAsBase64();
-    console.log("[XLSX] Admin images fetch result:", {
+    console.log("[XLSX] Fetching branding for export...");
+    ({ images } = await fetchReportBrand());
+    console.log("[XLSX] Branding fetch result:", {
       hasLogo: !!images.logo,
       hasContacts: !!images.contacts,
       hasStamp: !!images.stamp,

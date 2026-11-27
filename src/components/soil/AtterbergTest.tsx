@@ -68,6 +68,7 @@ import {
   isShrinkageLimitTrialValid,
 } from "@/lib/atterbergCalculations";
 import { useTestReport } from "@/hooks/useTestReport";
+import { useAdminImages } from "@/hooks/useAdminImages";
 import {
   createRecord as createApiRecord,
   deleteRecord as deleteApiRecord,
@@ -746,25 +747,14 @@ const AtterbergTest = ({ testKey }: AtterbergTestProps) => {
   const [recordsRetryKey, setRecordsRetryKey] = useState(0);
   const [isExporting, setIsExporting] = useState<"json" | "pdf" | null>(null);
   const [printProcessing, setPrintProcessing] = useState<"idle" | "saving" | "processing" | "ready">("idle");
-  const [adminImages, setAdminImages] = useState<{ logo?: string; contacts?: string; stamp?: string }>({});
+  // Shared artwork source: refreshed on upload, tab focus and cross-tab events.
+  const adminImages = useAdminImages();
 
   // Only one sample is on screen at a time, chosen from the strip above it. A project can hold
   // many samples, and stacking every form made the page grow downwards on each "Add Record".
   const [activeRecordId, setActiveRecordId] = useState<string | null>(null);
   // Sample the list asked us to open, applied once the records exist.
   const pendingFocusRecordIdRef = useRef<string | null>(null);
-
-  // Load admin images (logo, contacts, stamp) once for use in HTML print sheet
-  useEffect(() => {
-    let active = true;
-    import("@/lib/imageUtils")
-      .then(({ fetchAdminImagesAsBase64 }) => fetchAdminImagesAsBase64())
-      .then((imgs) => {
-        if (active) setAdminImages(imgs || {});
-      })
-      .catch(() => { /* images optional */ });
-    return () => { active = false; };
-  }, []);
 
   const [selectedTestIds, setSelectedTestIds] = useState<
     Record<

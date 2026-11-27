@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
-import { fetchAdminImagesAsBase64, type AdminImages } from "./imageUtils";
+import { fetchReportBrand } from "./companyDetails";
+import type { AdminImages } from "./imageUtils";
 import { imageParts } from "./pdfGenerator";
 import { getSessionToken } from "./api";
 
@@ -314,7 +315,7 @@ const drawCorePage = (doc: jsPDF, project: CoringProjectInfo, core: CoringCoreRe
 export const buildCoringReportPDF = async (project: CoringProjectInfo, cores: CoringCoreReport[]): Promise<jsPDF> => {
   let images: AdminImages = {};
   try {
-    images = await fetchAdminImagesAsBase64();
+    ({ images } = await fetchReportBrand());
   } catch (error) {
     console.warn("[CoringPDF] Could not load header/stamp images, exporting without them:", error);
   }

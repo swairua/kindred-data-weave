@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { useTestData, type ConcreteTestMetadata, type ProjectMetadata } from "@/context/TestDataContext";
 import { registry } from "@/lib/testRegistry";
 import { toast } from "sonner";
+import { useCompanyDetails } from "@/hooks/useCompanyDetails";
 
 interface TestOption {
   key: string;
@@ -147,6 +148,7 @@ const filterProjectsByTestType = (projects: ApiProjectRow[], testKey: string | n
 };
 
 const RecordTestWizard = () => {
+  const company = useCompanyDetails();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialMaterial = searchParams.get("material") as Material | null;
@@ -877,7 +879,7 @@ const RecordTestWizard = () => {
                 <div className="hidden sm:block">
                   <h1 className="text-base font-semibold text-foreground tracking-tight leading-tight">Record test</h1>
                   <p className="text-xs text-muted-foreground leading-tight">
-                    Cransfield Geotechnical Laboratory
+                    {company.name}
                   </p>
                 </div>
               </div>

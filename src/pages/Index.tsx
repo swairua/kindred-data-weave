@@ -46,6 +46,7 @@ import { registerAllTests } from "@/lib/testRegistration";
 import { registry } from "@/lib/testRegistry";
 import { isTestEnabled } from "@/lib/testDefinitions";
 import { useNavigationLoading } from "@/context/NavigationLoadingContext";
+import { useCompanyDetails } from "@/hooks/useCompanyDetails";
 
 
 // Initialize test registry once on module load
@@ -253,6 +254,7 @@ const Index = ({ initialTab }: IndexProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmittingLogin, setIsSubmittingLogin] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const company = useCompanyDetails();
   const [projectHistory, setProjectHistory] = useState<ApiProjectRow[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
@@ -804,8 +806,8 @@ const Index = ({ initialTab }: IndexProps) => {
                 <Layers className="h-6 w-6 text-primary-foreground" />
               </div>
               <div className="text-center">
-                <h1 className="text-2xl font-semibold text-foreground tracking-tight">Cransfield</h1>
-                <p className="text-sm text-muted-foreground">Geotechnical Laboratory System</p>
+                <h1 className="text-2xl font-semibold text-foreground tracking-tight">{company.name}</h1>
+                <p className="text-sm text-muted-foreground">{company.industry || "Geotechnical Laboratory System"}</p>
               </div>
             </div>
 
@@ -890,7 +892,7 @@ const Index = ({ initialTab }: IndexProps) => {
             </Card>
 
             <p className="text-center text-xs text-muted-foreground mt-6">
-              Cransfield · Geotechnical Laboratory System
+              {company.name} · {company.industry || "Geotechnical Laboratory System"}
             </p>
           </div>
         </div>
@@ -922,7 +924,7 @@ const Index = ({ initialTab }: IndexProps) => {
                               : "Admin"}
                   </h1>
                   <p className="text-xs text-muted-foreground leading-tight">
-                    Cransfield Geotechnical Laboratory
+                    {company.name}
                   </p>
                 </div>
               </div>

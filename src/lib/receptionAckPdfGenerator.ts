@@ -30,7 +30,9 @@ const receiptSampleType = (sample: { sampleType: string; container: string; mass
   return `${sample.sampleType}${sample.massKg ? `, ${sample.massKg} kg` : ""}`;
 };
 import type { ReceptionConsignmentInput } from "./reception";
-import { fetchAdminImagesAsBase64, type AdminImages } from "./imageUtils";
+import { fetchReportBrand, FALLBACK_COMPANY_DETAILS, formatCompanyAddress, formatCompanyPhones, type CompanyDetails } from "./companyDetails";
+import type { AdminImages } from "./imageUtils";
+import { addFittedImage } from "./pdfImageFit";
 
 export interface ReceptionAckOptions extends ReceptionConsignmentInput {
   labName?: string;
@@ -77,7 +79,12 @@ const imageParts = (dataUrl: string): { base64: string; format: "PNG" | "JPEG" }
  *
  * Returns the y coordinate where body content may begin.
  */
-export const drawAckHeader = (d: jsPDF, o: ReceptionAckOptions, images: AdminImages): number => {
+export const drawAckHeader = (
+  d: jsPDF,
+  o: ReceptionAckOptions,
+  images: AdminImages,
+  company: CompanyDetails = FALLBACK_COMPANY_DETAILS,
+): number => {
   const MARGIN = RECEPTION_ACK_MARGIN;
   const PAGE_W = RECEPTION_ACK_PAGE_W;
   const imgW = 62;
@@ -87,23 +94,24 @@ export const drawAckHeader = (d: jsPDF, o: ReceptionAckOptions, images: AdminIma
   if (images.logo) {
     try {
       const { base64, format } = imageParts(images.logo);
-      d.addImage(base64, format, MARGIN, y, imgW, imgH, undefined, "FAST");
+      addFittedImage(d, base64, format, MARGIN, y, imgW, imgH);
     } catch { /* logo optional */ }
   }
   if (images.contacts) {
     try {
       const { base64, format } = imageParts(images.contacts);
-      d.addImage(base64, format, PAGE_W - MARGIN - imgW, y, imgW, imgH, undefined, "FAST");
+      addFittedImage(d, base64, format, PAGE_W - MARGIN - imgW, y, imgW, imgH);
     } catch { /* contacts artwork optional */ }
   }
   if (!images.logo && !images.contacts) {
     d.setFont("times", "bold");
     d.setFontSize(13);
-    d.text((o.labName || "CRANSFIELD MATERIALS TESTING CENTER").toUpperCase(), MARGIN, y + 7);
+    d.text((o.labName || company.name || "CRANSFIELD MATERIALS TESTING CENTER").toUpperCase(), MARGIN, y + 7);
     d.setFont("times", "normal");
     d.setFontSize(8);
-    d.text(o.labAddress || "Ruiru Business Park, Kamiti Road · P.O. Box 59401-00200, Nairobi", MARGIN, y + 12);
-    d.text(`Tel ${o.labPhone || "[phone]"} · ${o.labEmail || "[email]"}`, MARGIN, y + 16);
+    const address = o.labAddress || formatCompanyAddress(company, " · ") || "Ruiru Business Park, Kamiti Road · P.O. Box 59401-00200, Nairobi";
+    d.text(address, MARGIN, y + 12);
+    d.text(`Tel ${o.labPhone || formatCompanyPhones(company) || "[phone]"} · ${o.labEmail || company.email || "[email]"}`, MARGIN, y + 16);
   }
 
   y += imgH;
@@ -113,12 +121,12 @@ export const drawAckHeader = (d: jsPDF, o: ReceptionAckOptions, images: AdminIma
   return y + 7;
 };
 
-export const loadAckImages = async (): Promise<AdminImages> => {
+export const loadAckBrand = async () => {
   try {
-    return await fetchAdminImagesAsBase64();
+    return await fetchReportBrand();
   } catch (error) {
-    console.warn("[Reception PDF] Could not load header images:", error);
-    return {};
+    console.warn("[Reception PDF] Could not load header images or company details:", error);
+    return { images: {} as AdminImages, company: FALLBACK_COMPANY_DETAILS };
   }
 };
 
@@ -277,10 +285,10 @@ const drawNotesAndSignatures = (d: jsPDF, o: ReceptionAckOptions, tableW: number
 };
 
 export const generateReceptionAckPDF = async (options: ReceptionAckOptions): Promise<jsPDF> => {
-  const images = await loadAckImages();
+  const { images, company } = await loadAckBrand();
   const o = options;
   const d = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
-  let y = drawAckHeader(d, o, images);
+  let y = drawAckHeader(d, o, images, company);
   d.setFont("helvetica", "bold");
   d.setFontSize(12);
   d.text("SAMPLE RECEIPT ACKNOWLEDGEMENT", MARGIN, y);

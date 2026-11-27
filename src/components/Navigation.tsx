@@ -20,6 +20,7 @@ import { useNavigationLoading } from "@/context/NavigationLoadingContext";
 import { Loader2 } from "lucide-react";
 import { SessionContext } from "@/context/SessionContext";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
+import { useCompanyDetails } from "@/hooks/useCompanyDetails";
 import type { ApiUser } from "@/lib/api";
 
 export type NavigationView = "dashboard" | "tests" | "reports" | "results" | "projects" | "admin" | "users" | "settings" | "logs" | "reception" | "profile";
@@ -51,6 +52,7 @@ const Navigation = ({
   const session = useContext(SessionContext);
   const user = propsUser || session?.user;
   const { hasPermission, isLoading: permissionsLoading } = useUserPermissions(user);
+  const company = useCompanyDetails();
 
   // Map navigation items to their required table permissions
   const getTableForView = (view: NavigationView): string => {
@@ -206,11 +208,11 @@ const Navigation = ({
               <Layers className="h-5 w-5 text-primary-foreground" />
             </div>
             <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
-              <h2 className="font-semibold text-[15px] text-sidebar-foreground tracking-tight leading-tight">
-                Cransfield
+              <h2 className="font-semibold text-[15px] text-sidebar-foreground tracking-tight leading-tight truncate">
+                {company.name}
               </h2>
-              <p className="text-[11px] text-muted-foreground leading-tight">
-                Geotechnical Lab
+              <p className="text-[11px] text-muted-foreground leading-tight truncate">
+                {company.industry || "Geotechnical Lab"}
               </p>
             </div>
           </div>

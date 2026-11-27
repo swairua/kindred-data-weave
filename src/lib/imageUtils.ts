@@ -10,10 +10,40 @@ export interface AdminImages {
 }
 
 type AdminImageType = "logo" | "contacts" | "stamp" | "pile_before" | "pile_after";
-type AdminImageRow = { image_type: string; file_path: string };
-type AdminImagePaths = Partial<Record<AdminImageType, string>>;
+type AdminImageRow = {
+  id?: number;
+  image_type: string;
+  file_path: string;
+  updated_at?: string;
+  uploaded_at?: string;
+};
+type AdminImageVersion = { path: string; version: string };
+type AdminImagePaths = Partial<Record<AdminImageType, AdminImageVersion>>;
 
-const getAdminImageUrl = (path: string) => {
+export const adminImageVersion = (row: AdminImageRow): string =>
+  str(row.updated_at) || str(row.uploaded_at) || (row.id ? String(row.id) : "");
+
+const str = (value: unknown): string => (typeof value === "string" ? value.trim() : "");
+
+const appendVersion = (url: string, version: string): string => {
+  if (!version) return url;
+  return `${url}${url.includes("?") ? "&" : "?"}v=${encodeURIComponent(version)}`;
+};
+
+/**
+ * `serve-image?image_type=logo` is a stable URL, so the API's 24-hour
+ * Cache-Control would keep showing the previous logo/stamp after an upload.
+ * Carrying the row version in the URL makes every replacement a new cache key.
+ */
+export const adminImagePreviewUrl = (imageType: AdminImageType, version: string): string => {
+  const apiUrl = new URL(buildApiUrl());
+  const imageUrl = new URL(apiUrl.pathname, apiUrl.origin);
+  imageUrl.searchParams.set("action", "serve-image");
+  imageUrl.searchParams.set("image_type", imageType);
+  return appendVersion(imageUrl.toString(), version);
+};
+
+const getAdminImageUrl = (path: string, version: string = "") => {
   // Extract image type from filename (format: {image_type}_{date}_{random}.{ext})
   const match = path.match(/\/(logo|contacts|stamp|pile_before|pile_after)_/);
   const imageType = match ? match[1] : null;
@@ -25,16 +55,16 @@ const getAdminImageUrl = (path: string) => {
     const apiUrl = new URL(buildApiUrl());
     const imageUrl = new URL(apiUrl.pathname, apiUrl.origin);
     imageUrl.searchParams.set('action', 'serve-image');
-    imageUrl.searchParams.set('image_type', imageType);
+    imageUrl.searchParams.set("image_type", imageType);
     console.debug("Constructed API image URL for fetch():", { path, imageType, fullUrl: imageUrl.toString() });
-    return imageUrl.toString();
+    return appendVersion(imageUrl.toString(), version);
   }
 
   // Fallback to direct path (shouldn't normally happen)
   const apiUrl = new URL(buildApiUrl());
   const imageUrl = new URL(path, apiUrl.origin).toString();
   console.debug("Constructed direct image URL:", { path, apiOrigin: apiUrl.origin, fullUrl: imageUrl });
-  return imageUrl;
+  return appendVersion(imageUrl, version);
 };
 
 const listAdminImagePaths = async (): Promise<AdminImagePaths> => {
@@ -49,7 +79,7 @@ const listAdminImagePaths = async (): Promise<AdminImagePaths> => {
     for (const row of rows) {
       if (row.image_type === "logo" || row.image_type === "contacts" || row.image_type === "stamp" || row.image_type === "pile_before" || row.image_type === "pile_after") {
         if (!latest[row.image_type]) {
-          latest[row.image_type] = row.file_path;
+          latest[row.image_type] = { path: row.file_path, version: adminImageVersion(row) };
         }
       }
     }
@@ -181,8 +211,8 @@ const retryImageFetch = async (
 
 import { makeStampTransparent } from "./stampUtils";
 
-const imagePathToBase64 = async (filePath: string, isStamp: boolean = false, sessionToken: string = ""): Promise<string | undefined> => {
-  const imageUrl = getAdminImageUrl(filePath);
+const imagePathToBase64 = async (filePath: string, isStamp: boolean = false, sessionToken: string = "", version: string = ""): Promise<string | undefined> => {
+  const imageUrl = getAdminImageUrl(filePath, version);
   try {
     // sessionToken may be empty string on server (Node.js lacks localStorage); pass as-is to fetch headers
     const response = await retryImageFetch(filePath, imageUrl, sessionToken);
@@ -280,11 +310,11 @@ export async function fetchAdminImagesAsBase64(
     // Fetch images in parallel with individual error handling
     // One failure won't break the others or the export
     const results = await Promise.allSettled([
-      latest.logo ? imagePathToBase64(latest.logo, false, sessionToken) : Promise.resolve(undefined),
-      latest.contacts ? imagePathToBase64(latest.contacts, false, sessionToken) : Promise.resolve(undefined),
-      latest.stamp ? imagePathToBase64(latest.stamp, true, sessionToken) : Promise.resolve(undefined),
-      latest.pile_before ? imagePathToBase64(latest.pile_before, false, sessionToken) : Promise.resolve(undefined),
-      latest.pile_after ? imagePathToBase64(latest.pile_after, false, sessionToken) : Promise.resolve(undefined),
+      latest.logo ? imagePathToBase64(latest.logo.path, false, sessionToken, latest.logo.version) : Promise.resolve(undefined),
+      latest.contacts ? imagePathToBase64(latest.contacts.path, false, sessionToken, latest.contacts.version) : Promise.resolve(undefined),
+      latest.stamp ? imagePathToBase64(latest.stamp.path, true, sessionToken, latest.stamp.version) : Promise.resolve(undefined),
+      latest.pile_before ? imagePathToBase64(latest.pile_before.path, false, sessionToken, latest.pile_before.version) : Promise.resolve(undefined),
+      latest.pile_after ? imagePathToBase64(latest.pile_after.path, false, sessionToken, latest.pile_after.version) : Promise.resolve(undefined),
     ]);
 
     const logo = results[0].status === "fulfilled" ? results[0].value : undefined;

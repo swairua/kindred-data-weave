@@ -1,5 +1,7 @@
 import { jsPDF } from "jspdf";
-import { fetchAdminImagesAsBase64, type AdminImages } from "./imageUtils";
+import { fetchReportBrand } from "./companyDetails";
+import type { AdminImages } from "./imageUtils";
+import { addFittedImage } from "./pdfImageFit";
 import { pdfFileName } from "./pdfGenerator";
 import {
   formatDensityTick,
@@ -469,13 +471,13 @@ const drawTitleBlock = (
   if (images.logo) {
     try {
       const { base64, format } = imageParts(images.logo);
-      d.addImage(base64, format, x, y + 1, imgW, imgH, undefined, "FAST");
+      addFittedImage(d, base64, format, x, y + 1, imgW, imgH);
     } catch { /* the logo is optional */ }
   }
   if (images.contacts) {
     try {
       const { base64, format } = imageParts(images.contacts);
-      d.addImage(base64, format, x + w - imgW, y + 1, imgW, imgH, undefined, "FAST");
+      addFittedImage(d, base64, format, x + w - imgW, y + 1, imgW, imgH);
     } catch { /* the contacts block is optional */ }
   }
 
@@ -522,7 +524,7 @@ const drawFooter = (d: jsPDF, o: MoistureDensityPdfOptions, images: AdminImages,
       // Top edge sits on the content boundary so the stamp never climbs into the graph.
       const s = 22;
       const { base64, format } = imageParts(images.stamp);
-      d.addImage(base64, format, MARGIN + CONTENT_W - s - 4, y - 6, s, s, undefined, "FAST");
+      addFittedImage(d, base64, format, MARGIN + CONTENT_W - s - 4, y - 6, s, s);
     } catch { /* the stamp is optional */ }
   }
 };
@@ -531,9 +533,9 @@ export const generateMoistureDensityPDF = async (options: MoistureDensityPdfOpti
   // Images are optional: a missing logo or stamp must never stop a report being produced.
   let images: AdminImages = {};
   try {
-    images = await fetchAdminImagesAsBase64();
+    ({ images } = await fetchReportBrand());
   } catch (error) {
-    console.warn("[Density/Moisture PDF] Could not load header/footer images, exporting without them:", error);
+    console.warn("[Density/Moisture PDF] Could not load branding, exporting without it:", error);
   }
 
   const doc = new jsPDF({ unit: "mm", format: "a4" });

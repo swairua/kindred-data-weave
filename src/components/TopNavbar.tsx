@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { FlaskConical, Package, FileText, Layers, Wrench, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/context/SessionContext";
+import { useCompanyDetails } from "@/hooks/useCompanyDetails";
 import { toast } from "sonner";
 
 type NavItem = {
@@ -33,6 +34,7 @@ const TopNavbar = ({ currentView, onViewChange, userName, userEmail, onLogout }:
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useSession();
+  const company = useCompanyDetails();
 
   const handleViewChange = (item: NavItem) => {
     onViewChange(item.id);
@@ -58,7 +60,7 @@ const TopNavbar = ({ currentView, onViewChange, userName, userEmail, onLogout }:
           <div className="flex shrink-0 items-center justify-center h-8 w-8 rounded bg-teal-500 text-white">
             <FlaskConical className="h-5 w-5" />
           </div>
-          <span className="font-semibold text-base sm:text-lg tracking-tight leading-tight truncate">Cransfield LIMS</span>
+          <span className="font-semibold text-base sm:text-lg tracking-tight leading-tight truncate">{company.name}</span>
         </div>
 
         {/* Tabs */}

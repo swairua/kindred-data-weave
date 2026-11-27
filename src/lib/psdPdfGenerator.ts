@@ -6,7 +6,9 @@ import {
   type HydrometerCalculations,
   type HydrometerInputs,
 } from "./gradingCalculations";
-import { fetchAdminImagesAsBase64, type AdminImages } from "./imageUtils";
+import { fetchReportBrand } from "./companyDetails";
+import type { AdminImages } from "./imageUtils";
+import { addFittedImage } from "./pdfImageFit";
 import { pdfFileName } from "./pdfGenerator";
 import {
   PSD_DECADE_LINES,
@@ -738,13 +740,13 @@ const drawTitleBlock = (
   if (images.logo) {
     try {
       const { base64, format } = imageParts(images.logo);
-      d.addImage(base64, format, x, cy, imgW, imgH, undefined, "FAST");
+      addFittedImage(d, base64, format, x, cy, imgW, imgH);
     } catch { /* the logo is optional */ }
   }
   if (images.contacts) {
     try {
       const { base64, format } = imageParts(images.contacts);
-      d.addImage(base64, format, x + w - imgW, cy, imgW, imgH, undefined, "FAST");
+      addFittedImage(d, base64, format, x + w - imgW, cy, imgW, imgH);
     } catch { /* the contacts image is optional */ }
   }
 
@@ -790,7 +792,7 @@ const drawFooter = (d: jsPDF, o: ParticleSizeDistributionPdfOptions, images: Adm
       // The stamp straddles the footer row, like the laboratory's own stamp.
       const s = 15.7;
       const { base64, format } = imageParts(images.stamp);
-      d.addImage(base64, format, MARGIN + CONTENT_W - s - 1.8, top - 6.8, s, s, undefined, "FAST");
+      addFittedImage(d, base64, format, MARGIN + CONTENT_W - s - 1.8, top - 6.8, s, s);
     } catch { /* the stamp is optional */ }
   }
 };
@@ -806,7 +808,7 @@ export const generateParticleSizeDistributionPDF = async (options: ParticleSizeD
 
   let images: AdminImages = {};
   try {
-    images = await fetchAdminImagesAsBase64(sessionToken);
+    ({ images } = await fetchReportBrand(sessionToken));
   } catch (error) {
     console.warn("[PSD PDF] Could not load header/footer images, exporting without them:", error);
   }

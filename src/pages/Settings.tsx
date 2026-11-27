@@ -11,10 +11,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Loader2, Upload, X } from "lucide-react";
+import { Loader2, Upload, X, Download } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { readRecord, updateRecord, listRecords, uploadFile, createRecord } from "@/lib/api";
+import { readRecord, updateRecord, listRecords, createRecord } from "@/lib/api";
 import { toast } from "sonner";
+import { uploadAdminImage, adminImageId, type AdminImageType as ImageType } from "@/lib/adminImageUpload";
+import { downloadAdminImage } from "@/lib/downloadAdminImage";
+import { adminImagePreviewUrl, adminImageVersion } from "@/lib/imageUtils";
+import { subscribeAdminImagesChanged } from "@/lib/adminImageEvents";
+import { invalidateCompanyDetails } from "@/hooks/useCompanyDetails";
 
 interface CompanyInfo {
   id: number;
@@ -40,6 +45,11 @@ interface AdminImage {
   image_type: string;
   uploaded_by: number;
   created_at: string;
+  updated_at?: string;
+  uploaded_at?: string;
+  previewUrl?: string;
+  version?: string;
+  original_filename?: string;
 }
 
 interface AuditLogEntry {
@@ -62,6 +72,17 @@ interface SettingsRecord {
   company_id?: number;
   [key: string]: unknown;
 }
+
+const mapAdminImages = (rows: AdminImage[]): Record<ImageType, AdminImage | null> => {
+  const map: Record<ImageType, AdminImage | null> = { logo: null, contacts: null, stamp: null };
+  rows.forEach((img) => {
+    const type = img.image_type as ImageType;
+    if ((type === "logo" || type === "contacts" || type === "stamp") && !map[type]) {
+      map[type] = { ...img, previewUrl: adminImagePreviewUrl(type, adminImageVersion(img)), version: adminImageVersion(img) };
+    }
+  });
+  return map;
+};
 
 const Settings = ({ initialTab = "company" }: { initialTab?: string }) => {
   const navigate = useNavigate();
@@ -105,12 +126,12 @@ const Settings = ({ initialTab = "company" }: { initialTab?: string }) => {
   const [integrationsFormData, setIntegrationsFormData] = useState<Partial<SettingsRecord>>({});
 
   // Audit log state
-  const [auditLog, setAuditLog] = useState<any[]>([]);
+  const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditPage, setAuditPage] = useState(1);
   const [auditTotal, setAuditTotal] = useState(0);
   const [auditPerPage, setAuditPerPage] = useState(20);
-  const [selectedAuditEntry, setSelectedAuditEntry] = useState<any | null>(null);
+  const [selectedAuditEntry, setSelectedAuditEntry] = useState<AuditLogEntry | null>(null);
 
   // Load all settings on mount
   useEffect(() => {
@@ -126,13 +147,7 @@ const Settings = ({ initialTab = "company" }: { initialTab?: string }) => {
 
         // Load all images
         const imagesData = await listRecords<AdminImage>("admin_images");
-        const imageMap: Record<ImageType, AdminImage | null> = { logo: null, contacts: null, stamp: null };
-        imagesData.data?.forEach((img) => {
-          if (img.image_type === "logo" && !imageMap.logo) imageMap.logo = img;
-          else if (img.image_type === "contacts" && !imageMap.contacts) imageMap.contacts = img;
-          else if (img.image_type === "stamp" && !imageMap.stamp) imageMap.stamp = img;
-        });
-        setImages(imageMap);
+        setImages(mapAdminImages(imagesData.data || []));
 
         // Load each settings table (record id = 1)
         const loadSetting = async (table: string) => {
@@ -174,6 +189,13 @@ const Settings = ({ initialTab = "company" }: { initialTab?: string }) => {
     loadData();
   }, []);
 
+  // Another tab (or this one) uploaded artwork: refresh the previews in place.
+  useEffect(() => subscribeAdminImagesChanged(() => {
+    void listRecords<AdminImage>("admin_images")
+      .then((res) => setImages(mapAdminImages(res.data || [])))
+      .catch(() => { /* previews are optional */ });
+  }), []);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -196,7 +218,7 @@ const Settings = ({ initialTab = "company" }: { initialTab?: string }) => {
   const loadAuditLog = async () => {
     try {
       setAuditLoading(true);
-      const response = await listRecords<any>("audit_log", { 
+      const response = await listRecords<AuditLogEntry>("audit_log", { 
         limit: auditPerPage, 
         offset: (auditPage - 1) * auditPerPage,
         orderBy: "created_at",
@@ -238,6 +260,7 @@ const Settings = ({ initialTab = "company" }: { initialTab?: string }) => {
         changes: formData,
       });
       setCompany({ ...company, ...formData } as CompanyInfo);
+      invalidateCompanyDetails();
       toast.success("Company settings saved");
     } catch (error) {
       console.error("Failed to save company settings:", error);
@@ -276,6 +299,7 @@ const Settings = ({ initialTab = "company" }: { initialTab?: string }) => {
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, imageType: ImageType) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
     if (!file.type.startsWith("image/")) {
       toast.error("Please select an image file");
@@ -290,12 +314,26 @@ const Settings = ({ initialTab = "company" }: { initialTab?: string }) => {
           return { ...prev, [imageType]: newProgress };
         });
       }, 200);
-      const uploadedImage = await uploadFile(file, { image_type: imageType });
+      const uploaded = await uploadAdminImage(file, imageType);
       clearInterval(progressInterval);
       setUploadProgress((prev) => ({ ...prev, [imageType]: 100 }));
-      setImages((prev) => ({ ...prev, [imageType]: uploadedImage }));
+      const imageId = adminImageId(uploaded);
+      const previewUrl = adminImagePreviewUrl(imageType, imageId ? String(imageId) : "");
+      setImages((prev) => ({
+        ...prev,
+        [imageType]: {
+          id: imageId ?? Date.now(),
+          file_path: uploaded.file_path || "",
+          file_name: file.name,
+          image_type: imageType,
+          uploaded_by: 0,
+          created_at: new Date().toISOString(),
+          previewUrl,
+          version: imageId ? String(imageId) : "",
+        },
+      }));
       const fieldName = `${imageType}_image_id`;
-      setFormData((prev) => ({ ...prev, [fieldName]: uploadedImage.id }));
+      if (imageId !== null) setFormData((prev) => ({ ...prev, [fieldName]: imageId }));
       toast.success(`${imageType} image uploaded successfully`);
     } catch (error) {
       console.error(`Failed to upload ${imageType}:`, error);
@@ -401,6 +439,51 @@ const Settings = ({ initialTab = "company" }: { initialTab?: string }) => {
                     <div className="space-y-2">
                       <Label htmlFor="website">Website</Label>
                       <Input id="website" name="website" value={formData.website || ""} onChange={handleInputChange} />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Letterhead artwork</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Logo, contact image and stamp used on every report. Stamp backgrounds are removed automatically.
+                    </p>
+                    <div className="grid gap-3 md:grid-cols-3">
+                      {(["logo", "contacts", "stamp"] as ImageType[]).map((type) => (
+                        <div key={type} className="space-y-2 rounded-md border p-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium capitalize">
+                              {type === "contacts" ? "Contact image" : type}
+                            </span>
+                            {images[type] && (
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  aria-label={`Download ${type} image`}
+                                  onClick={() => void downloadAdminImage(type, images[type]?.version || "", images[type]?.original_filename)
+                                    .then((name) => toast.success(`Downloaded ${name}`))
+                                    .catch((error: unknown) => toast.error(error instanceof Error ? error.message : "Download failed"))}
+                                >
+                                  <Download className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveImage(type)} aria-label={`Remove ${type} image`}>
+                                  <X className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex h-16 items-center justify-center overflow-hidden rounded bg-muted/40">
+                            {images[type]?.previewUrl ? (
+                              <img src={images[type].previewUrl} alt={`${type} preview`} className="max-h-full max-w-full object-contain" />
+                            ) : (
+                              <span className="text-xs text-muted-foreground">No {type} uploaded</span>
+                            )}
+                          </div>
+                          <Input type="file" accept="image/*" onChange={(e) => void handleImageUpload(e, type)} />
+                          {isUploading[type] && <Progress value={uploadProgress[type]} />}
+                        </div>
+                      ))}
                     </div>
                   </div>
                   <div className="flex justify-end">

@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { Eye, EyeOff, Layers, Loader2 } from "lucide-react";
 import { loginUser } from "@/lib/api";
+import { useCompanyDetails } from "@/hooks/useCompanyDetails";
 
 const getSafeNextPath = (value: string | null) => {
   if (!value || !value.startsWith("/") || value.startsWith("//") || value.startsWith("/\\")) {
@@ -23,6 +24,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const company = useCompanyDetails();
   const [loginError, setLoginError] = useState<string | null>(null);
 
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
@@ -61,8 +63,8 @@ const Login = () => {
               <Layers className="h-5 w-5 text-primary-foreground" />
             </div>
             <div className="text-center">
-              <h1 className="text-2xl font-semibold text-foreground tracking-tight">Cransfield</h1>
-              <p className="text-sm text-muted-foreground">Geotechnical Laboratory System</p>
+              <h1 className="text-2xl font-semibold text-foreground tracking-tight">{company.name}</h1>
+              <p className="text-sm text-muted-foreground">{company.industry || "Geotechnical Laboratory System"}</p>
             </div>
           </div>
 
@@ -147,7 +149,7 @@ const Login = () => {
           </Card>
 
           <p className="text-center text-xs text-muted-foreground mt-6">
-            Cransfield · Geotechnical Laboratory System
+            {company.name} · {company.industry || "Geotechnical Laboratory System"}
           </p>
         </div>
       </div>

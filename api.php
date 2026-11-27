@@ -1496,6 +1496,10 @@ try {
         $imageId = $_GET['image_id'] ?? $body['image_id'] ?? null;
         $imageType = $_GET['image_type'] ?? $body['image_type'] ?? null;
         $filePath = $_GET['file_path'] ?? $body['file_path'] ?? null;
+        // `?v=<row version>` marks a URL as content-addressed from the caller's point
+        // of view. Unversioned by-type URLs must never be cached: they always mean
+        // "the current logo/stamp", which changes on every upload.
+        $hasVersion = isset($_GET['v']) || isset($body['v']);
 
         $sql = null;
         $params = [];
@@ -1540,7 +1544,9 @@ try {
             header('Content-Type: ' . $mimeType);
             header('Content-Length: ' . $fileSize);
             header('Content-Disposition: inline; filename=' . basename($realPath));
-            header('Cache-Control: public, max-age=86400'); // Cache for 24 hours
+            // A file_path names a specific upload (random suffix in the filename),
+            // so its bytes never change and it is safe to cache aggressively.
+            header('Cache-Control: public, max-age=31536000, immutable'); // Immutable upload file
 
             // Stream the file
             if (readfile($realPath) === false) {
@@ -1605,7 +1611,13 @@ try {
         header('Content-Type: ' . $mimeType);
         header('Content-Length: ' . $fileSize);
         header('Content-Disposition: inline; filename=' . basename($realPath));
-        header('Cache-Control: public, max-age=86400'); // Cache for 24 hours
+        // Versioned URLs pin one artwork revision; bare image_type/image_id URLs
+        // resolve to "whatever is current" and must not survive in a browser cache.
+        header(
+            $hasVersion
+                ? 'Cache-Control: public, max-age=31536000, immutable'
+                : 'Cache-Control: private, no-store, max-age=0, must-revalidate'
+        );
 
         // CORS headers are already set at the top of this file,
         // so fetch() with custom headers will work now
