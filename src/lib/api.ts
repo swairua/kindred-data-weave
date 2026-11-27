@@ -867,16 +867,31 @@ const mapReceptionFieldDefinition = (value: unknown): ReceptionFieldDefinition =
   };
 };
 
+/** Stored photo paths may be relative, root-relative or already absolute. */
+const receptionPhotoPath = (raw: string): string => {
+  if (!raw) return "";
+  try {
+    const parsed = new URL(raw);
+    return parsed.pathname.startsWith("/") ? parsed.pathname : `/${parsed.pathname}`;
+  } catch {
+    return raw.startsWith("/") ? raw : `/${raw}`;
+  }
+};
+
 const mapReceptionPhoto = (value: unknown): ReceptionPhoto => {
   const row = value as Record<string, unknown>;
-  // Photos are served from the same origin as the front-end; SAME-ORIGIN, not the API host.
-  const base = new URL("/", typeof window !== "undefined" ? window.location.origin : "http://localhost");
-  const rawPath = String(row.file_path ?? row.filePath ?? "");
-  const relativePath = rawPath.startsWith("/") ? rawPath.slice(1) : rawPath;
+  // Photos live on the API host, not on the front-end origin. Going through
+  // serve-image works identically in dev (Vite proxy) and on Render, where
+  // /uploads/... does not exist on the static site.
+  const relativePath = receptionPhotoPath(String(row.file_path ?? row.filePath ?? ""));
+  const version = String(row.updated_at ?? row.created_at ?? row.id ?? "");
+  const filePath = relativePath
+    ? buildApiUrl({ action: "serve-image", file_path: relativePath, v: version })
+    : "";
   return {
     id: Number(row.id),
     rcNo: String(row.rc_no ?? row.rcNo ?? ""),
-    filePath: new URL(relativePath, base).toString(),
+    filePath,
     originalFilename: (row.original_filename ?? row.originalFilename) as string | undefined,
     fileSize: Number(row.file_size ?? row.fileSize) || undefined,
     mimeType: (row.mime_type ?? row.mimeType) as string | undefined,

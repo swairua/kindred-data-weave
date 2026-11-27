@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createRecord, fetchCurrentUser, getSessionToken, listAllRecords, listReceptionFieldDefinitions, listReceptionPhotos, listRecords, readRecord, setSessionToken } from "@/lib/api";
+import { buildApiUrl, createRecord, fetchCurrentUser, getSessionToken, listAllRecords, listReceptionFieldDefinitions, listReceptionPhotos, listRecords, readRecord, setSessionToken } from "@/lib/api";
 
 const fetchMock = vi.fn();
 
@@ -223,12 +223,31 @@ describe("reception API response mapping", () => {
     await expect(listReceptionPhotos("RC-26-0001")).resolves.toEqual([{
       id: 8,
       rcNo: "RC-26-0001",
-      filePath: `${window.location.origin}/uploads/reception/photo.jpg`,
+      filePath: buildApiUrl({ action: "serve-image", file_path: "/uploads/reception/photo.jpg", v: "2026-06-12 10:00:00" }),
       originalFilename: "photo.jpg",
       fileSize: 2048,
       mimeType: "image/jpeg",
       uploadedBy: 4,
       createdAt: "2026-06-12 10:00:00",
     }]);
+  });
+
+  it("normalises absolute stored photo paths through the API, not the app origin", async () => {
+    fetchMock.mockResolvedValue(response(200, {
+      data: [{
+        id: 9,
+        rc_no: "RC-26-0002",
+        file_path: "https://lab.wayrus.co.ke/uploads/reception/absolute.jpg",
+        created_at: "2026-06-13 10:00:00",
+      }],
+    }));
+
+    const photos = await listReceptionPhotos("RC-26-0002");
+    expect(photos[0].filePath).toBe(buildApiUrl({
+      action: "serve-image",
+      file_path: "/uploads/reception/absolute.jpg",
+      v: "2026-06-13 10:00:00",
+    }));
+    expect(photos[0].filePath).not.toContain(window.location.origin);
   });
 });
