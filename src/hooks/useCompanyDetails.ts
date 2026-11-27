@@ -4,6 +4,7 @@ import {
   fetchCompanyDetails,
   type CompanyDetails,
 } from "@/lib/companyDetails";
+import { subscribeDemoModeChanged } from "@/lib/demoMode";
 
 /** Short-lived, app-wide cache so every screen does not re-read the same rows. */
 let cached: CompanyDetails | null = null;
@@ -38,22 +39,28 @@ export const useCompanyDetails = (): CompanyDetails => {
 
   useEffect(() => {
     let active = true;
-    void load().then((value) => {
-      if (active) setDetails(value);
-    });
-    // A second admin may have changed the letterhead while this tab was idle.
-    const refresh = () => {
-      if (document.visibilityState !== "visible") return;
-      void load(true).then((value) => {
+    const refresh = (force = false) => {
+      void load(force).then((value) => {
         if (active) setDetails(value);
       });
     };
-    document.addEventListener("visibilitychange", refresh);
-    window.addEventListener("focus", refresh);
+    refresh();
+    // A second admin may have changed the letterhead while this tab was idle.
+    const onFocus = () => {
+      if (document.visibilityState === "visible") refresh(true);
+    };
+    const onDemoMode = () => {
+      invalidateCompanyDetails();
+      refresh(true);
+    };
+    document.addEventListener("visibilitychange", onFocus);
+    window.addEventListener("focus", onFocus);
+    const unsubscribeDemo = subscribeDemoModeChanged(onDemoMode);
     return () => {
       active = false;
-      document.removeEventListener("visibilitychange", refresh);
-      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", onFocus);
+      window.removeEventListener("focus", onFocus);
+      unsubscribeDemo();
     };
   }, []);
 

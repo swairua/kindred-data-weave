@@ -12,6 +12,8 @@
  */
 import { readRecord } from "./api";
 import { fetchAdminImagesAsBase64, type AdminImages } from "./imageUtils";
+import { isDemoMode } from "./demoMode";
+import { DEMO_COMPANY } from "./demoBrand";
 
 export interface CompanyDetails {
   name: string;
@@ -57,6 +59,10 @@ export const formatCompanyPhones = (company: CompanyDetails): string =>
  * this at export time, so a change made in Settings reaches the very next PDF.
  */
 export const fetchCompanyDetails = async (): Promise<CompanyDetails> => {
+  // Demo mode replaces the identity, never the data: lists/reads still go to
+  // the live API exactly as before.
+  if (isDemoMode()) return { ...DEMO_COMPANY, addressLines: [...DEMO_COMPANY.addressLines] };
+
   const [companyResult, orgResult] = await Promise.allSettled([
     readRecord<Record<string, unknown>>("company_info", 1),
     readRecord<Record<string, unknown>>("organisation_details", 1),

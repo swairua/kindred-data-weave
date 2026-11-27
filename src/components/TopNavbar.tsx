@@ -4,6 +4,7 @@ import { FlaskConical, Package, FileText, Layers, Wrench, Menu } from "lucide-re
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/context/SessionContext";
 import { useCompanyDetails } from "@/hooks/useCompanyDetails";
+import { useDemoMode } from "@/hooks/useDemoMode";
 import { toast } from "sonner";
 
 type NavItem = {
@@ -35,6 +36,7 @@ const TopNavbar = ({ currentView, onViewChange, userName, userEmail, onLogout }:
   const location = useLocation();
   const { user, logout } = useSession();
   const company = useCompanyDetails();
+  const demoMode = useDemoMode();
 
   const handleViewChange = (item: NavItem) => {
     onViewChange(item.id);
@@ -61,6 +63,11 @@ const TopNavbar = ({ currentView, onViewChange, userName, userEmail, onLogout }:
             <FlaskConical className="h-5 w-5" />
           </div>
           <span className="font-semibold text-base sm:text-lg tracking-tight leading-tight truncate">{company.name}</span>
+          {demoMode && (
+            <span className="shrink-0 rounded bg-purple-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white" title="Sample branding in the app and all exports">
+              Demo
+            </span>
+          )}
         </div>
 
         {/* Tabs */}

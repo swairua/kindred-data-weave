@@ -1,5 +1,7 @@
 import { buildApiUrl, listRecords } from "./api";
 import { toast } from "sonner";
+import { isDemoMode } from "./demoMode";
+import { getDemoImages } from "./demoBrand";
 
 export interface AdminImages {
   logo?: string; // base64 data URL
@@ -296,6 +298,8 @@ const imagePathToBase64 = async (filePath: string, isStamp: boolean = false, ses
 export async function fetchAdminImagesAsBase64(
   sessionToken: string = ""
 ): Promise<AdminImages> {
+  if (isDemoMode()) return { ...getDemoImages() };
+
   const images: AdminImages = {};
 
   try {

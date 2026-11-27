@@ -20,6 +20,10 @@ import { downloadAdminImage } from "@/lib/downloadAdminImage";
 import { adminImagePreviewUrl, adminImageVersion } from "@/lib/imageUtils";
 import { subscribeAdminImagesChanged } from "@/lib/adminImageEvents";
 import { invalidateCompanyDetails } from "@/hooks/useCompanyDetails";
+import { useDemoMode } from "@/hooks/useDemoMode";
+import { setDemoMode } from "@/lib/demoMode";
+import { DEMO_COMPANY, getDemoImages } from "@/lib/demoBrand";
+import { formatCompanyAddress, formatCompanyPhones } from "@/lib/companyDetails";
 
 interface CompanyInfo {
   id: number;
@@ -86,6 +90,8 @@ const mapAdminImages = (rows: AdminImage[]): Record<ImageType, AdminImage | null
 
 const Settings = ({ initialTab = "company" }: { initialTab?: string }) => {
   const navigate = useNavigate();
+  const demoMode = useDemoMode();
+  const demoImages = demoMode ? getDemoImages() : null;
   const [activeTab, setActiveTab] = useState(initialTab);
   const [company, setCompany] = useState<CompanyInfo | null>(null);
   const [formData, setFormData] = useState<Partial<CompanyInfo>>({});
@@ -397,6 +403,48 @@ const Settings = ({ initialTab = "company" }: { initialTab?: string }) => {
 
             {/* Company tab */}
             <TabsContent value="company">
+              <Card className="mb-6 border-purple-300 bg-purple-50/40">
+                <CardHeader>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <CardTitle>Demo mode</CardTitle>
+                      <CardDescription>Use built-in sample branding for presentations</CardDescription>
+                    </div>
+                    <Switch
+                      checked={demoMode}
+                      onCheckedChange={(checked) => {
+                        setDemoMode(checked);
+                        toast.success(checked ? "Demo mode on — sample branding in the app and exports" : "Demo mode off — real branding restored");
+                      }}
+                      aria-label="Demo mode"
+                    />
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Demo mode changes only the company identity and letterhead artwork shown in this app and in every PDF/Excel export.
+                    Records still load from the live lab API — nothing is filtered or duplicated.
+                  </p>
+                  {demoMode && demoImages && (
+                    <div className="grid gap-3 md:grid-cols-3">
+                      {(["logo", "contacts", "stamp"] as ImageType[]).map((type) => (
+                        <div key={type} className="space-y-1 rounded-md border bg-white/70 p-2">
+                          <p className="text-xs font-medium capitalize">{type === "contacts" ? "Contact image" : type}</p>
+                          <div className="flex h-14 items-center justify-center">
+                            <img src={demoImages[type]} alt={`Demo ${type}`} className="max-h-full max-w-full object-contain" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {demoMode && (
+                    <p className="text-xs text-muted-foreground">
+                      {DEMO_COMPANY.name} · {formatCompanyAddress(DEMO_COMPANY)} · Tel {formatCompanyPhones(DEMO_COMPANY)} · {DEMO_COMPANY.email}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
               <Card>
                 <CardHeader>
                   <CardTitle>Company Information</CardTitle>

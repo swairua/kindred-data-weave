@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { fetchAdminImagesAsBase64, type AdminImages } from "@/lib/imageUtils";
 import { subscribeAdminImagesChanged } from "@/lib/adminImageEvents";
+import { subscribeDemoModeChanged } from "@/lib/demoMode";
 
 /** Shared base64 artwork source: the same fetch the PDF exporters use. */
 let cached: AdminImages | null = null;
@@ -44,14 +45,20 @@ export const useAdminImages = (): AdminImages => {
       if (document.visibilityState === "visible") refresh(true);
     };
     const onChanged = () => refresh(true);
+    const onDemoMode = () => {
+      invalidateAdminImages();
+      refresh(true);
+    };
     document.addEventListener("visibilitychange", onFocus);
     window.addEventListener("focus", onFocus);
     const unsubscribe = subscribeAdminImagesChanged(onChanged);
+    const unsubscribeDemo = subscribeDemoModeChanged(onDemoMode);
     return () => {
       active = false;
       document.removeEventListener("visibilitychange", onFocus);
       window.removeEventListener("focus", onFocus);
       unsubscribe();
+      unsubscribeDemo();
     };
   }, []);
 

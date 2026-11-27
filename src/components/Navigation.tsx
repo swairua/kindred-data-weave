@@ -21,6 +21,7 @@ import { Loader2 } from "lucide-react";
 import { SessionContext } from "@/context/SessionContext";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
 import { useCompanyDetails } from "@/hooks/useCompanyDetails";
+import { useDemoMode } from "@/hooks/useDemoMode";
 import type { ApiUser } from "@/lib/api";
 
 export type NavigationView = "dashboard" | "tests" | "reports" | "results" | "projects" | "admin" | "users" | "settings" | "logs" | "reception" | "profile";
@@ -53,6 +54,7 @@ const Navigation = ({
   const user = propsUser || session?.user;
   const { hasPermission, isLoading: permissionsLoading } = useUserPermissions(user);
   const company = useCompanyDetails();
+  const demoMode = useDemoMode();
 
   // Map navigation items to their required table permissions
   const getTableForView = (view: NavigationView): string => {
@@ -214,6 +216,11 @@ const Navigation = ({
               <p className="text-[11px] text-muted-foreground leading-tight truncate">
                 {company.industry || "Geotechnical Lab"}
               </p>
+              {demoMode && (
+                <span className="mt-1 inline-block rounded bg-purple-600 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+                  Demo mode
+                </span>
+              )}
             </div>
           </div>
         </SidebarHeader>

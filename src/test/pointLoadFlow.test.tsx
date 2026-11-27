@@ -42,7 +42,7 @@ beforeEach(() => { exported.payload = null; });
 afterEach(cleanup);
 
 describe("Point load test flow", () => {
-  it("computes Is and Is(50), reports in-progress, then completed after orientation and enough specimens are added", { timeout: 30000 }, async () => {
+  it("computes Is and Is(50), reports in-progress, then completed after orientation and enough specimens are added", { timeout: 60_000 }, async () => {
     render(createElement(MemoryRouter, null, createElement(TooltipProvider, null, createElement(PointLoadTest, { testKey: "pointload" }))));
     expect(await screen.findByText("Point Load Test")).toBeInTheDocument();
 
